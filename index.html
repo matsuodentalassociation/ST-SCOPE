@@ -22,16 +22,23 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <script>
 (function () {
+  if (window.__nocacheBusterRan) return;
+  window.__nocacheBusterRan = true;
+
   const ver = Date.now().toString();
 
   document.querySelectorAll('link[rel="stylesheet"][href]').forEach(link => {
-    const u = new URL(link.getAttribute('href'), location.href);
+    const href = link.getAttribute('href');
+    if (!href) return;
+    const u = new URL(href, location.href);
     u.searchParams.set('v', ver);
     link.setAttribute('href', u.toString());
   });
 
   document.querySelectorAll('script[src]').forEach(s => {
-    const u = new URL(s.getAttribute('src'), location.href);
+    const src = s.getAttribute('src');
+    if (!src) return;
+    const u = new URL(src, location.href);
     u.searchParams.set('v', ver);
     s.setAttribute('src', u.toString());
   });
