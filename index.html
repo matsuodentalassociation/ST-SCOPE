@@ -10,44 +10,7 @@
 <meta name="color-scheme" content="dark">
 <meta name="supported-color-schemes" content="dark">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<head>
-<meta charset="UTF-8">
-<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<meta http-equiv="Pragma" content="no-cache">
-<meta http-equiv="Expires" content="0">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<meta name="theme-color" content="#090d16">
-<meta name="color-scheme" content="dark">
-<meta name="supported-color-schemes" content="dark">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<script>
-(function () {
-  if (window.__nocacheBusterRan) return;
-  window.__nocacheBusterRan = true;
-
-  const ver = Date.now().toString();
-
-  document.querySelectorAll('link[rel="stylesheet"][href]').forEach(link => {
-    const href = link.getAttribute('href');
-    if (!href) return;
-    const u = new URL(href, location.href);
-    u.searchParams.set('v', ver);
-    link.setAttribute('href', u.toString());
-  });
-
-  document.querySelectorAll('script[src]').forEach(s => {
-    const src = s.getAttribute('src');
-    if (!src) return;
-    const u = new URL(src, location.href);
-    u.searchParams.set('v', ver);
-    s.setAttribute('src', u.toString());
-  });
-})();
-</script>
-
-<title>SleepTracker AI ST-V24</title>
-
-<title>SleepTracker AI ST-V24</title>
+<title>SleepTracker AI ST-V26</title>
 
 <style>
   :root {
@@ -558,7 +521,7 @@
 
 <header class="top">
   <div class="top-inner">
-    <div class="brand">🌙 SleepTracker <span id="buildBadge">ST-V24</span></div>
+    <div class="brand">🌙 SleepTracker <span id="buildBadge">ST-V26</span></div>
     <div id="statusBadge" class="badge b-gray">待機中</div>
   </div>
 </header>
@@ -735,20 +698,78 @@
 </main>
 
 <script>
-  /* ST-V24: 監査済み内蔵版。外部HTMLによるページ置換は行いません。 */
+  // 公開ページではGitHubの最新コミットを照会し、より新しい版だけを読み込む。
+  // ローカルHTMLでは配信元の保存領域へ切り替わらないため、ページの差し替えは行わない。
   const GitHubLoader = Object.freeze({
     async init() {
       const textEl = document.getElementById("ghStatusText");
       const dotEl = document.getElementById("ghDot");
-      if (textEl) textEl.textContent = "ST-V24 監査済み内蔵版";
-      if (dotEl) {
-        dotEl.className = "gh-dot live";
-        dotEl.style.background = "";
-        dotEl.style.boxShadow = "";
+      const localVersion = 26;
+      const repo = "matsuodentalassociation/ST-SCOPE";
+      const hostedHere = location.origin === "https://matsuodentalassociation.github.io" &&
+        /^\/ST-SCOPE\/(?:index\.html)?$/.test(location.pathname);
+      const show = (message, live = false) => {
+        if (textEl) textEl.textContent = message;
+        if (dotEl) dotEl.className = live ? "gh-dot live" : "gh-dot";
+      };
+      if (!hostedHere) {
+        show("ST-V26 ローカル版（GitHub配信ページではありません）", true);
+        return {replaced:false, local:true, version:"ST-V26"};
       }
-      return {replaced:false, local:true, version:"ST-V24"};
+      const getText = async (url, accept) => {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 6000);
+        try {
+          const response = await fetch(url, {
+            cache:"no-store", credentials:"omit", signal:controller.signal,
+            headers:{Accept:accept}
+          });
+          if (!response.ok) throw new Error("HTTP " + response.status);
+          return await response.text();
+        } finally { clearTimeout(timeout); }
+      };
+      try {
+        show("GitHubの最新コミットを確認中…");
+        const nonce = Date.now() + "-" + Math.random().toString(36).slice(2);
+        const commit = JSON.parse(await getText(
+          "https://api.github.com/repos/" + repo + "/commits/main?cb=" + nonce,
+          "application/vnd.github+json"
+        ));
+        const sha = commit.sha;
+        if (!/^[a-f0-9]{40}$/.test(sha || "")) throw new Error("コミットIDを検証できません");
+        const remote = await getText(
+          "https://raw.githubusercontent.com/" + repo + "/" + sha + "/index.html?cb=" + nonce,
+          "text/html"
+        );
+        const parsed = new DOMParser().parseFromString(remote, "text/html");
+        const badge = parsed.getElementById("buildBadge")?.textContent?.trim();
+        const version = /^ST-V(\d+)$/.exec(badge || "");
+        if (!version || !parsed.getElementById("btnStart") || !parsed.getElementById("btnStop") ||
+            !/<!doctype html>/i.test(remote.slice(0, 200)) || !/<\/html>\s*$/i.test(remote)) {
+          throw new Error("取得したHTMLの形式が不正です");
+        }
+        if (Number(version[1]) <= localVersion) {
+          show("ST-V26 起動中（GitHub: " + badge + " / " + sha.slice(0, 7) + "）", true);
+          return {replaced:false, local:true, version:"ST-V26"};
+        }
+        // DOM置換は録音中には行わない。ここはApp.init()より前の起動時だけ実行される。
+        show(badge + " を読み込み中…");
+        document.open();
+        document.write(remote);
+        document.close();
+        return {replaced:true, local:false, version:badge};
+      } catch (error) {
+        console.warn("[GitHubLoader]", error);
+        show("GitHub確認不可・ST-V26 内蔵版で起動", true);
+        return {replaced:false, local:true, version:"ST-V26"};
+      }
     },
-    forceReload() { location.reload(); }
+    forceReload() {
+      // HTML自体の古いキャッシュを避ける再読込用。配信側のCache-Controlも必要。
+      const url = new URL(location.href);
+      url.searchParams.set("cb", String(Date.now()));
+      location.replace(url.href);
+    }
   });
 </script>
 
@@ -1718,11 +1739,12 @@
 
     function selectRecorderMimeType() {
       if (!window.MediaRecorder) return "";
-      const candidates = [
-        "audio/webm;codecs=opus",
-        "audio/mp4",
-        "audio/webm"
-      ];
+      // iPhone SafariではMP4/AACを優先し、他の端末のWebM優先順は維持する。
+      const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+        (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+      const candidates = isIos
+        ? ["audio/mp4", "audio/webm;codecs=opus", "audio/webm"]
+        : ["audio/webm;codecs=opus", "audio/mp4", "audio/webm"];
       return candidates.find(type => {
         try { return MediaRecorder.isTypeSupported(type); }
         catch (error) { return false; }
@@ -1813,6 +1835,11 @@
           currentClipMeta = null;
           isClipRecording = false;
 
+          if (meta && !blob.size) {
+            console.warn("[RecorderEmpty] 録音データが返されませんでした");
+            setEngineText("録音データが空です。iPhoneの画面を点灯したまま再測定してください", "var(--danger)");
+            toast("録音データが空のため、クリップを保存できませんでした");
+          }
           if (meta && blob.size > 0) {
             await Promise.allSettled(currentClipChunkWrites);
             currentClipChunkWrites = [];
@@ -1842,7 +1869,13 @@
           }
         };
 
-        mediaRecorder.start(1000);
+        // Safariでは分割データ要求を避け、停止時に完成したMP4を受け取る。
+        // 他の端末では従来どおり1秒ごとの回復用チャンクを保持する。
+        if (mimeType === "audio/mp4" || mediaRecorder.mimeType?.includes("mp4")) {
+          mediaRecorder.start();
+        } else {
+          mediaRecorder.start(1000);
+        }
 
         clearTimeout(clipStopTimeout);
         const checkClipEnd = () => {
@@ -1868,6 +1901,8 @@
           clipFinalizePromise = null;
 
           console.warn("[Recording]", error);
+          setEngineText("録音を開始できませんでした: " + (error?.message || error), "var(--danger)");
+          toast("録音を開始できませんでした");
         }
       }
 
@@ -1875,13 +1910,24 @@
         clearTimeout(clipStopTimeout);
         clipStopTimeout = null;
 
-        try {
-          if (mediaRecorder && mediaRecorder.state === "recording") {
+        if (!mediaRecorder || mediaRecorder.state !== "recording") return;
+
+        // requestDataがSafariで失敗しても、stopは必ず別途試す。
+        // MP4は停止時にまとめて受け取るため、途中のrequestDataは行わない。
+        if (!mediaRecorder.mimeType?.includes("mp4")) {
+          try {
             mediaRecorder.requestData();
-            mediaRecorder.stop();
+          } catch (error) {
+            console.warn("[RecorderRequestData]", error);
           }
+        }
+
+        try {
+          mediaRecorder.stop();
         } catch (error) {
           console.warn("[RecorderStop]", error);
+          setEngineText("録音の停止に失敗しました", "var(--danger)");
+          toast("録音の停止に失敗しました");
         }
       }
 
@@ -2552,8 +2598,8 @@
       }
 
       const APP_BUILD = Object.freeze({
-        version:"24",
-        build:"ST-V24",
+        version:"26",
+        build:"ST-V26",
         feature:"RAW_CAPTURE_PLAYBACK_GAIN_2_8"
       });
 
@@ -2807,6 +2853,9 @@
       async function buildFullSessionZip(session) {
         // IndexedDBから該当セッションの全クリップ（Blob実体含む）を取得
         const clips = await clipsForSession(session);
+        if (!clips.some(clip => clipAudioBlob(clip)?.size > 0)) {
+          throw new Error("音声クリップが保存されていません。音声なしのZIPは完全ログとして出力しません");
+        }
         const entries = [];
         const metadata = [];
         const audioManifest = []; // ★追加: オシロスコープ同期用音声マニフェスト
@@ -3757,7 +3806,7 @@
         initialized = true;
         const buildBadge = document.getElementById("buildBadge");
         if (buildBadge) buildBadge.textContent = APP_BUILD.build;
-        document.title = "SleepTracker AI ST-V24";
+        document.title = "SleepTracker AI ST-V26";
         document.documentElement.dataset.sleepTrackerBuild = APP_BUILD.build;
         bindNightScreenControls();
         exitNightScreen();
