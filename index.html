@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="st-build-id" content="ST-V33-Safari-20261002-01">
+<meta name="st-build-id" content="ST-V34-Safari-20261002-05">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
@@ -11,7 +11,7 @@
 <meta name="color-scheme" content="dark">
 <meta name="supported-color-schemes" content="dark">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>SleepTracker AI ST-V33</title>
+<title>SleepTracker AI ST-V34</title>
 
 <style>
 :root {
@@ -27,7 +27,6 @@
   --snore:#38bdf8;
   --brux:#f59e0b;
   --talk:#a855f7;
-  --fart:#10b981;
   --motion:#ec4899;
   --env:#64748b;
 }
@@ -315,7 +314,6 @@ body {
 .tag-roll { background:#83184333; color:var(--motion); }
 .tag-brux { background:#b4530933; color:var(--brux); }
 .tag-talk { background:#6b21a833; color:var(--talk); }
-.tag-fart { background:#065f4633; color:var(--fart); }
 .tag-env { background:#33415544; color:#94a3b8; }
 
 #toastWrap {
@@ -523,7 +521,7 @@ body.night-screen-active > :not(#nightScreen) {
 
 <header class="top">
 <div class="top-inner">
-  <div class="brand">🌙 SleepTracker <span id="buildBadge">ST-V33</span></div>
+  <div class="brand">🌙 SleepTracker <span id="buildBadge">ST-V34</span></div>
   <div id="statusBadge" class="badge b-gray">待機中</div>
 </div>
 </header>
@@ -626,7 +624,6 @@ body.night-screen-active > :not(#nightScreen) {
     <div class="card stat-card"><div class="stat-k">🔄 寝返り</div><div id="count-roll" class="stat-val" style="color:var(--motion)">0</div></div>
     <div class="card stat-card"><div class="stat-k">😬 歯ぎしり</div><div id="count-brux" class="stat-val" style="color:var(--brux)">0</div></div>
     <div class="card stat-card"><div class="stat-k">🗣️ 寝言</div><div id="count-talk" class="stat-val" style="color:var(--talk)">0</div></div>
-    <div class="card stat-card"><div class="stat-k">💨 おなら</div><div id="count-fart" class="stat-val" style="color:var(--fart)">0</div></div>
     <div class="card stat-card"><div class="stat-k">⚠️ 無呼吸疑い</div><div id="count-apnea" class="stat-val" style="color:#f43f5e">0</div></div>
   </div>
 </section>
@@ -650,7 +647,6 @@ body.night-screen-active > :not(#nightScreen) {
       <button class="filter-btn" onclick="App.filterCategory('roll',this)">寝返り (<span id="fc-roll">0</span>)</button>
       <button class="filter-btn" onclick="App.filterCategory('bruxism',this)">歯ぎしり (<span id="fc-brux">0</span>)</button>
       <button class="filter-btn" onclick="App.filterCategory('talk',this)">寝言 (<span id="fc-talk">0</span>)</button>
-      <button class="filter-btn" onclick="App.filterCategory('fart',this)">おなら (<span id="fc-fart">0</span>)</button>
       <button class="filter-btn" onclick="App.filterCategory('apnea',this)">無呼吸疑い (<span id="fc-apnea">0</span>)</button>
       <button class="filter-btn" onclick="App.filterCategory('env',this)">環境音 (<span id="fc-env">0</span>)</button>
     </div>
@@ -800,6 +796,17 @@ window.GitHubLoader = (() => {
       }
       const remote = await getText("https://raw.githubusercontent.com/" + repo +
         "/" + sha + "/index.html?cb=" + nonce, "text/html");
+      const fileInfo = JSON.parse(await getText("https://api.github.com/repos/" + repo +
+        "/contents/index.html?ref=" + sha, "application/vnd.github+json"));
+      const bytes = new TextEncoder().encode(remote);
+      const header = new TextEncoder().encode("blob " + bytes.length + "\0");
+      const gitBytes = new Uint8Array(header.length + bytes.length);
+      gitBytes.set(header); gitBytes.set(bytes, header.length);
+      const digest = await crypto.subtle.digest("SHA-1", gitBytes);
+      const remoteHash = Array.from(new Uint8Array(digest), x => x.toString(16).padStart(2, "0")).join("");
+      if (!/^[a-f0-9]{40}$/.test(fileInfo.sha || "") || remoteHash !== fileInfo.sha) {
+        throw new Error("HTML内容のハッシュがGitHubと一致しません");
+      }
       const parsed = new DOMParser().parseFromString(remote, "text/html");
       const badge = parsed.getElementById("buildBadge")?.textContent.trim();
       const localVersion = /^ST-V(\d+)$/.exec(label());
@@ -819,16 +826,25 @@ window.GitHubLoader = (() => {
       const localBuild = document.querySelector('meta[name="st-build-id"]')?.content;
       const remoteBuild = parsed.querySelector('meta[name="st-build-id"]')?.content;
       if (!remoteBuild) throw new Error("取得HTMLにビルド識別子がありません");
-      // ビルド名が一致しても内容の一致とは限らない。未適用SHAは必ず取得・適用する。
-      if (Number(version[1]) === Number(localVersion[1]) && remoteBuild !== localBuild) {
+      if (Number(version[1]) === Number(localVersion[1])) {
+        const payload = doc => Array.from(doc.querySelectorAll("style, script")).map(el =>
+          el.textContent.replace(/\bconst\s+(GitHubLoader|App)\s*=/g, "window.$1 =")).join("\n");
+        const payloadHash = async doc => Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256",
+          new TextEncoder().encode(payload(doc)))), x => x.toString(16).padStart(2, "0")).join("");
+        const sameContent = await payloadHash(document) === await payloadHash(parsed);
+        if (remoteBuild === localBuild && sameContent) {
+          window.__STAppliedCommit = sha;
+          show(label() + " / 最新コミットのHTMLと同一ビルド " + sha.slice(0, 7), true);
+          return {replaced:false};
+        }
         // 同一版番号のビルドは日付・連番を比較。比較不能な版への切替も拒否する。
         const buildOrder = value => {
           const match = /(?:^|[-_])(\d{8})[-_](\d+)$/.exec(value || "");
           return match ? [Number(match[1]), Number(match[2])] : null;
         };
         const currentOrder = buildOrder(localBuild), nextOrder = buildOrder(remoteBuild);
-        if (!currentOrder || !nextOrder || nextOrder[0] < currentOrder[0] ||
-            (nextOrder[0] === currentOrder[0] && nextOrder[1] <= currentOrder[1])) {
+        if (remoteBuild !== localBuild && (!currentOrder || !nextOrder || nextOrder[0] < currentOrder[0] ||
+            (nextOrder[0] === currentOrder[0] && nextOrder[1] <= currentOrder[1]))) {
           throw new Error("旧ビルドまたは順序を確認できないビルドへの更新を停止しました");
         }
       }
@@ -855,12 +871,8 @@ window.GitHubLoader = (() => {
       window.__STUpdateApplying = true;
       try { await window.App.disposeForUpdate(); }
       catch (error) { window.__STUpdateApplying = false; throw error; }
-      // 新しいページのスクリプトが実行されるまで更新ロックを保持する。
-      // 適用SHAも新ページ側で設定し、取得だけで「適用済み」にしない。
-      const bootstrap = parsed.createElement("script");
-      bootstrap.textContent = "window.__STAppliedCommit=" + JSON.stringify(sha) +
-        ";window.__STUpdateApplying=false;";
-      parsed.head.insertBefore(bootstrap, parsed.head.firstChild);
+      window.__STAppliedCommit = sha;
+      window.__STUpdateApplying = false;
       document.open();
       document.write("<!DOCTYPE html>\n" + parsed.documentElement.outerHTML);
       document.close();
@@ -905,7 +917,7 @@ window.App = (() => {
   const MIN_REPORT_DURATION_SEC = 30 * 60;
   const CALIBRATION_MS = 30000;
   const CHECKPOINT_INTERVAL_MS = 60000;
-  const STALE_SESSION_MS = 15000;
+  const STALE_SESSION_MS = Math.max(15000, CHECKPOINT_INTERVAL_MS * 2 + 15000);
   const SCHEMA_VERSION = 4;
 
   let db = null;
@@ -1051,6 +1063,9 @@ window.App = (() => {
   let secondPeakHzLatch = 0;
   let secondPeakEpochMsLatch = 0;
   let secondMotionGLatch = 0;
+  let secondMotionAvailable = false;
+  let lastMotionSampleMs = 0;
+  let lastValidAudioMs = 0;
 
   const NIGHT_AUTO_DELAY_MS = 5000;
   const NIGHT_PEEK_MS = 5000;
@@ -1069,7 +1084,6 @@ window.App = (() => {
     roll:0,
     bruxism:0,
     talk:0,
-    fart:0,
     env:0,
     apnea:0
   };
@@ -1350,7 +1364,13 @@ window.App = (() => {
     bins.forEach(v => { if (!binMap.has(v.sessionId)) binMap.set(v.sessionId, []); binMap.get(v.sessionId).push(v); });
     const now = Date.now();
     for (const item of sessions) {
-      if (item.status === "recording" && now - Number(item.lastSavedAt || 0) > STALE_SESSION_MS) {
+      let heartbeat = null;
+      try { heartbeat = JSON.parse(localStorage.getItem(SESSION_KEY) || "null"); } catch (_) {}
+      const localAlive = (isTracking || stopRequested) && String(item.id) === String(activeSessionId);
+      const sharedAlive = heartbeat?.active && String(heartbeat.sessionId) === String(item.id) &&
+        now - Number(heartbeat.heartbeatAt || 0) <= STALE_SESSION_MS;
+      if (item.status === "recording" && !localAlive && !sharedAlive &&
+          now - Number(item.lastSavedAt || 0) > STALE_SESSION_MS) {
         item.status = "interrupted";
         item.endedAt = item.lastSavedAt;
         await putSessionRecord(item);
@@ -1618,6 +1638,8 @@ window.App = (() => {
     const acc = event.acceleration || event.accelerationIncludingGravity;
     if (!acc || acc.x == null || acc.y == null || acc.z == null) return;
 
+    if (![acc.x, acc.y, acc.z].every(v => Number.isFinite(Number(v)))) return;
+    lastMotionSampleMs = Date.now();
     const current = {
       x:Number(acc.x) || 0,
       y:Number(acc.y) || 0,
@@ -1862,14 +1884,6 @@ window.App = (() => {
         "音声中域 " + Math.round(spectrum.midRatio * 100) + "% / 重心 " + spectrum.centroid + "Hz");
     }
 
-    if (
-      spectrum.subLowRatio > 0.62 &&
-      spectrum.centroid < 180 &&
-      deltaDb >= 8
-    ) {
-      return classResult("fart", "💨 おなら", "tag-fart", "極低域 " + Math.round(spectrum.subLowRatio * 100) + "%");
-    }
-
     return classResult("env", "🛌 環境音", "tag-env", "既知分類の特徴不足 / 重心 " + spectrum.centroid + "Hz");
   }
 
@@ -1891,7 +1905,6 @@ window.App = (() => {
     else if (score("snore") >= 2 && score("snore") >= score("bruxism")) category = "snore";
     else if (score("bruxism") >= 3 && score("bruxism") > score("snore") * 1.5) category = "bruxism";
     else if (score("talk") >= 3) category = "talk";
-    else if (score("fart") >= 2) category = "fart";
     else if (score("snore") >= 1) category = "snore";
 
     const defs = {
@@ -1899,7 +1912,6 @@ window.App = (() => {
       roll:["🔄 寝返り・体動", "tag-roll"],
       bruxism:["😬 歯ぎしり・硬音", "tag-brux"],
       talk:["🗣️ 寝言", "tag-talk"],
-      fart:["💨 おなら", "tag-fart"],
       apnea:["⚠️ 無呼吸疑い", "tag-snore"],
       env:["🛌 環境音", "tag-env"]
     };
@@ -1978,7 +1990,8 @@ window.App = (() => {
       label: result.label,
       tagClass: result.tagClass,
       peakDb: Number(peakDb),
-      motionG: Number(motionG).toFixed(2),
+      motionG: lastMotionSampleMs && now - lastMotionSampleMs <= 7000 ? Number(motionG).toFixed(3) : null,
+      motionSamples: [],
       timeStr: formatHMS(exactStartSec),
       realClock: new Date(now).toLocaleTimeString("ja-JP", {
         hour: "2-digit",
@@ -2220,29 +2233,33 @@ window.App = (() => {
   function qualityFromSession(session) {
     const bins = improvedProfileBins(session);
     const total = Math.max(1, Number(session.durationSec || 1));
-    const eligible = total >= MIN_REPORT_DURATION_SEC;
-    const awakeSec = bins.filter(b => b.state === 0).reduce((n,b) => n + Number(b.durationSec || 0), 0);
-    const stableSec = bins.filter(b => b.state >= 2).reduce((n,b) => n + Number(b.durationSec || 0), 0);
+    const observedSec = Math.min(total, bins.filter(b => !b.gap).reduce((n,b) => n + Number(b.durationSec || 0), 0));
+    const missingSec = Math.max(0, total - observedSec);
+    const sleepSec = bins.filter(b => !b.gap && b.state > 0).reduce((n,b) => n + Number(b.durationSec || 0), 0);
+    const coverage = observedSec / total;
+    const eligible = total >= MIN_REPORT_DURATION_SEC && observedSec >= MIN_REPORT_DURATION_SEC;
+    const awakeSec = bins.filter(b => !b.gap && b.state === 0).reduce((n,b) => n + Number(b.durationSec || 0), 0);
+    const stableSec = bins.filter(b => !b.gap && b.state >= 2).reduce((n,b) => n + Number(b.durationSec || 0), 0);
 
     if (!eligible) {
       return {
-        eligible:false, score:null, awakeSec, stableSec,
+        eligible:false, score:null, awakeSec, stableSec, sleepSec, missingSec, coverage,
         durationPct:null, continuityPct:null, snorePct:null, breathingPct:null, motionPct:null,
         label:"測定時間不足"
       };
     }
 
-    const durationHours = total / 3600;
+    const durationHours = sleepSec / 3600;
     const durationPct = Math.round(Math.max(0, Math.min(100, 100 - Math.abs(7.5 - durationHours) * 20)));
-    const continuityPct = Math.round(Math.max(0, Math.min(100, 100 * (1 - awakeSec / total))));
+    const continuityPct = Math.round(Math.max(0, Math.min(100, 100 * (1 - awakeSec / Math.max(1, observedSec)))));
     const snoreImpact = (session.counts?.snore || 0) * 4 + (session.snoreDurationSec || 0) / total * 100;
     const snorePct = Math.round(Math.max(0, Math.min(100, 100 - snoreImpact)));
     const breathingPct = Math.round(Math.max(0, Math.min(100, 100 - (session.counts?.apnea || 0) * 15)));
     const motionAvg = bins.length ? bins.reduce((n,b) => n + Number(b.avgMotion || 0), 0) / bins.length : 0;
     const motionPct = Math.round(Math.max(0, Math.min(100, 100 - motionAvg * 250)));
-    const score = Math.round(durationPct * .25 + continuityPct * .25 + snorePct * .18 + breathingPct * .17 + motionPct * .15);
+    const score = Math.round((durationPct * .25 + continuityPct * .25 + snorePct * .18 + breathingPct * .17 + motionPct * .15) * coverage);
     return {
-      eligible:true, score, awakeSec, stableSec, durationPct, continuityPct, snorePct, breathingPct, motionPct,
+      eligible:true, score, awakeSec, stableSec, sleepSec, missingSec, coverage, durationPct, continuityPct, snorePct, breathingPct, motionPct,
       label:score >= 85 ? "良好" : score >= 70 ? "比較的良好" : score >= 50 ? "やや不安定" : "要確認"
     };
   }
@@ -2251,7 +2268,7 @@ window.App = (() => {
     await persistCheckpoint("completed", true);
     const clips = await getClipsFromDB();
     const own = clips.filter(c => c.sessionId === activeSessionId || (Number(c.id) >= sessionStartMs && Number(c.id) <= Date.now() + 5000));
-    const c = {snore:0, roll:0, bruxism:0, talk:0, fart:0, env:0, apnea:0};
+    const c = {snore:0, roll:0, bruxism:0, talk:0, env:0, apnea:0};
     own.forEach(x => { if (c[x.category] !== undefined) c[x.category]++; });
     const records = await getAllStore("sessions");
     const session = records.find(x => x.id === activeSessionId);
@@ -2419,10 +2436,10 @@ window.App = (() => {
     }
 
     const bins = improvedProfileBins(s);
-    const firstSleep = q.eligible ? bins.find(b => Number(b.state) > 0) : null;
+    const firstSleep = q.eligible ? bins.find(b => !b.gap && Number(b.state) > 0) : null;
     const latency = firstSleep ? Number(firstSleep.startSec || 0) : 0;
     const sleepSec = q.eligible
-      ? Math.max(0, Number(s.durationSec || 0) - q.awakeSec - latency)
+      ? q.sleepSec
       : 0;
 
     document.getElementById("rStart").textContent = s.startTime;
@@ -2540,13 +2557,13 @@ window.App = (() => {
       .filter(v => Number.isFinite(v.sec) && v.sec >= 0 && v.sec <= total)
       .sort((a,b) => a.sec - b.sec);
 
-    if (logs.length < 30) {
+    if (!logs.length && session.schemaVersion < 4) {
       return (Array.isArray(session.profileBins) ? session.profileBins : []).map(v => ({
         ...v,
         state:Math.max(0, Math.min(3, Number(v.state) || 0)),
         depth:Math.max(0, Math.min(3, Number(v.state) || 0)),
         operation:false,
-        gap:false,
+        gap:!!v.gap,
         source:"legacy"
       }));
     }
@@ -2569,7 +2586,7 @@ window.App = (() => {
       return {
         startSec:index*BIN_SEC,
         durationSec:Math.min(BIN_SEC, total-index*BIN_SEC),
-        gap:items.length < 8,
+        gap:items.length < Math.min(8, Math.ceil(Math.min(BIN_SEC, total-index*BIN_SEC) / 2)),
         operation:false,
         state:1, depth:1,
         avgMotion:motions.reduce((a,b) => a+b, 0) / motions.length,
@@ -3063,7 +3080,6 @@ left+plotWidth/2}" y="${motionCenter+4}" text-anchor="middle" fill="#64748b" fon
       roll: "count-roll",
       bruxism: "count-brux",
       talk: "count-talk",
-      fart: "count-fart",
       apnea: "count-apnea"
     };
     Object.entries(ids).forEach(([cat, id]) => {
@@ -3080,7 +3096,6 @@ left+plotWidth/2}" y="${motionCenter+4}" text-anchor="middle" fill="#64748b" fon
       roll: "fc-roll",
       bruxism: "fc-brux",
       talk: "fc-talk",
-      fart: "fc-fart",
       apnea: "fc-apnea",
       env: "fc-env"
     };
@@ -3142,7 +3157,7 @@ left+plotWidth/2}" y="${motionCenter+4}" text-anchor="middle" fill="#64748b" fon
 
       const sub = document.createElement("div");
       sub.className = "clip-sub";
-      sub.textContent = `${clip.realClock || ""} | 最大音量: ${clip.peakDb || 0}dB | 体動: ${clip.motionG || 0}G | ${clip.reason || ""}`;
+      sub.textContent = `${clip.realClock || ""} | 最大音量: ${clip.peakDb || 0}dB | 体動: ${clip.motionG == null ? "未取得" : Number(clip.motionG).toFixed(3) + "G"} | ${clip.reason || ""}`;
 
       info.append(title, sub);
 
@@ -3367,6 +3382,9 @@ left+plotWidth/2}" y="${motionCenter+4}" text-anchor="middle" fill="#64748b" fon
       return;
     }
 
+    // 入力欠測を、いびき停止と誤認しない。
+    if (lastValidAudioMs && now - lastValidAudioMs > MONITOR_STALE_MS) silenceStartTime = null;
+    lastValidAudioMs = now;
     currentDb = rawDb;
     const meterDb = Math.min(100, Math.max(0, (currentDb - 20) / 75 * 100));
     const meterEl = document.getElementById("meterFill");
@@ -3390,14 +3408,19 @@ left+plotWidth/2}" y="${motionCenter+4}" text-anchor="middle" fill="#64748b" fon
 
     const motionVal = currentMotionG;
     const mText = document.getElementById("motionText");
-    if (mText) mText.textContent = motionVal.toFixed(2) + " G";
+    if (mText) mText.textContent = now - lastMotionSampleMs <= 7000 && lastMotionSampleMs ? motionVal.toFixed(2) + " G" : "未取得";
     const mFill = document.getElementById("meterMotionFill");
     if (mFill) mFill.style.width = Math.min(100, motionVal / 0.5 * 100) + "%";
 
     if (isClipRecording && currentClipMeta) {
       currentClipMeta.waveformDb.push(currentDb);
       if (currentDb > currentClipMeta.peakDb) currentClipMeta.peakDb = Math.round(currentDb);
-      if (motionVal > Number(currentClipMeta.motionG)) currentClipMeta.motionG = motionVal.toFixed(2);
+      const motionAvailable = !!lastMotionSampleMs && now - lastMotionSampleMs <= 7000;
+      currentClipMeta.motionSamples.push({offsetMs:now-currentClipMeta.startedAt,
+        motionG:motionAvailable ? +motionVal.toFixed(3) : null});
+      if (motionAvailable && (currentClipMeta.motionG == null || motionVal > Number(currentClipMeta.motionG))) {
+        currentClipMeta.motionG = motionVal.toFixed(3);
+      }
     }
 
     const result = classifySoundAndMotion(deltaDb, spectrum, motionVal);
@@ -3410,16 +3433,16 @@ left+plotWidth/2}" y="${motionCenter+4}" text-anchor="middle" fill="#64748b" fon
     if (result) {
       addClipVote(result);
       if (result.category === "snore") {
+        const gapMs = silenceStartTime ? now - silenceStartTime : 0;
+        if (gapMs >= 30000 && gapMs <= 120000 && currentDb >= 40) {
+          const apneaResult = classResult("apnea", "⚠️ 無呼吸疑い", "tag-snore",
+            "いびき空白 " + Math.round(gapMs / 1000) + "秒後、" + currentDb.toFixed(1) + "dBで再開（未校正・参考）");
+          triggerClipRecording(apneaResult, currentDb, motionVal, CLIP_DURATION_MS);
+        }
         snoreTimestamps.push(now);
         if (snoreTimestamps.length > 20) snoreTimestamps.shift();
         silenceStartTime = now;
       }
-    }
-
-    if (snoreTimestamps.length >= 3 && silenceStartTime && now - silenceStartTime >= 12000 && now - silenceStartTime <= 30000) {
-      const apneaResult = classResult("apnea", "⚠️ 無呼吸疑い", "tag-snore", "いびき停止 " + Math.round((now - silenceStartTime)/1000) + "秒 継続");
-      triggerClipRecording(apneaResult, currentDb, motionVal, CLIP_DURATION_MS);
-      silenceStartTime = null;
     }
 
     if (result && (!isClipRecording || result.category === "apnea")) {
@@ -3429,31 +3452,35 @@ left+plotWidth/2}" y="${motionCenter+4}" text-anchor="middle" fill="#64748b" fon
     collectProfileSample(now, currentDb, deltaDb, motionVal, result, spectrum);
 
     const sec = Math.max(0, Math.floor((now - sessionStartMs) / 1000));
+    if (sec !== lastTimeSeriesSec) {
+      flushSecondLog();
+      lastTimeSeriesSec = sec;
+      secondPeakDbLatch = Number.NEGATIVE_INFINITY;
+      secondPeakHzLatch = 0;
+      secondPeakEpochMsLatch = 0;
+      secondMotionGLatch = 0;
+      secondMotionAvailable = false;
+    }
     if (currentDb > secondPeakDbLatch) {
       secondPeakDbLatch = currentDb;
       secondPeakHzLatch = spectrum.peakHz || 0;
       secondPeakEpochMsLatch = now;
     }
-    if (motionVal > secondMotionGLatch) {
-      secondMotionGLatch = motionVal;
+    if (lastMotionSampleMs && now - lastMotionSampleMs <= 7000) {
+      secondMotionAvailable = true;
+      secondMotionGLatch = Math.max(secondMotionGLatch, motionVal);
     }
+  }
 
-    if (sec !== lastTimeSeriesSec) {
-      if (lastTimeSeriesSec !== -1) {
-        timeSeriesLogs.push({
-          sec: lastTimeSeriesSec,
-          epochMs: secondPeakEpochMsLatch || (sessionStartMs + lastTimeSeriesSec * 1000),
-          db: +Math.max(0, secondPeakDbLatch).toFixed(1),
-          peakHz: Math.round(secondPeakHzLatch || 0),
-          motionG: +secondMotionGLatch.toFixed(3)
-        });
-      }
-      lastTimeSeriesSec = sec;
-      secondPeakDbLatch = currentDb;
-      secondPeakHzLatch = spectrum.peakHz || 0;
-      secondPeakEpochMsLatch = now;
-      secondMotionGLatch = motionVal;
+  function flushSecondLog() {
+    if (lastTimeSeriesSec < 0 || !Number.isFinite(secondPeakDbLatch)) return;
+    if (!timeSeriesLogs.some(v => v.sec === lastTimeSeriesSec)) {
+      timeSeriesLogs.push({sec:lastTimeSeriesSec,
+        epochMs:secondPeakEpochMsLatch || sessionStartMs + lastTimeSeriesSec * 1000,
+        db:+Math.max(0, secondPeakDbLatch).toFixed(1), peakHz:Math.round(secondPeakHzLatch || 0),
+        motionG:secondMotionAvailable ? +secondMotionGLatch.toFixed(3) : null});
     }
+    lastTimeSeriesSec = -1;
   }
 
   // テスト専用の状態。既存の録音・IndexedDB・睡眠判定には流用しない。
@@ -3788,6 +3815,9 @@ left+plotWidth/2}" y="${motionCenter+4}" text-anchor="middle" fill="#64748b" fon
       profileAccumulator = null;
       lastProfileFlushMs = sessionStartMs;
       lastTimeSeriesSec = -1;
+      lastMotionSampleMs = 0;
+      lastValidAudioMs = 0;
+      secondMotionAvailable = false;
       secondPeakDbLatch = Number.NEGATIVE_INFINITY;
       secondPeakHzLatch = 0;
       secondPeakEpochMsLatch = 0;
@@ -3871,6 +3901,7 @@ left+plotWidth/2}" y="${motionCenter+4}" text-anchor="middle" fill="#64748b" fon
     clearInterval(watchdogInterval);
 
     await waitForRecorderFinalize();
+    flushSecondLog();
     flushProfileBin(true);
 
     await releaseAudioPipeline();
