@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="st-build-id" content="ST-V34-Safari-20261002-05">
+<meta name="st-build-id" content="ST-V35-Safari-20261002-01">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
@@ -11,7 +11,7 @@
 <meta name="color-scheme" content="dark">
 <meta name="supported-color-schemes" content="dark">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>SleepTracker AI ST-V34</title>
+<title>SleepTracker AI ST-V35</title>
 
 <style>
 :root {
@@ -521,7 +521,7 @@ body.night-screen-active > :not(#nightScreen) {
 
 <header class="top">
 <div class="top-inner">
-  <div class="brand">🌙 SleepTracker <span id="buildBadge">ST-V34</span></div>
+  <div class="brand">🌙 SleepTracker <span id="buildBadge">ST-V35</span></div>
   <div id="statusBadge" class="badge b-gray">待機中</div>
 </div>
 </header>
@@ -987,7 +987,12 @@ window.App = (() => {
     const oldStream = stream;
     stream = null;
     recordingStream = null;
-    if (oldStream) oldStream.getTracks().forEach(track => track.stop());
+    const releaseErrors = [];
+    if (oldStream) {
+      try { oldStream.getTracks().forEach(track => {
+        try { track.stop(); } catch (error) { releaseErrors.push(error); }
+      }); } catch (error) { releaseErrors.push(error); }
+    }
     for (const node of [sourceNode, analyser, silentOutputNode]) {
       try { node?.disconnect(); } catch (_) {}
     }
@@ -995,7 +1000,9 @@ window.App = (() => {
     timeBuf = freqBuf = null;
     const oldContext = audioCtx;
     audioCtx = null;
-    try { if (oldContext && oldContext.state !== "closed") await oldContext.close(); } catch (_) {}
+    try { if (oldContext && oldContext.state !== "closed") await oldContext.close(); }
+    catch (error) { releaseErrors.push(error); }
+    if (releaseErrors.length) throw new Error("音声解放: " + releaseErrors.map(e => e?.message || String(e)).join(" / "));
   }
   let recordingStream = null;
   let analyser = null;
@@ -1524,9 +1531,10 @@ window.App = (() => {
     if (!db) await initDB();
     if (!db || !session?.id) return false;
     const sessionId = String(session.id);
-    const exactClips = (await getClipsFromDB()).filter(c => String(c.sessionId || "") === sessionId);
+    const clips = await getClipsFromDB();
+    const exactClips = clips.filter(c => String(c.sessionId || "") === sessionId);
     const bounds = sessionClipBounds(session);
-    const legacyClips = (await getClipsFromDB()).filter(c => !c.sessionId && clipStartedAt(c) >= bounds.start && clipStartedAt(c) <= bounds.end);
+    const legacyClips = clips.filter(c => !c.sessionId && clipStartedAt(c) >= bounds.start && clipStartedAt(c) <= bounds.end);
     const clipIds = [...new Set([...exactClips, ...legacyClips].map(c => String(c.id)))];
     return new Promise(resolve => {
       try {
@@ -2038,48 +2046,60 @@ window.App = (() => {
         renderAudioDiagnostics();
       };
 
+      const clipRecorder = mediaRecorder;
       mediaRecorder.onstop = async () => {
-        audioDiagnostic.recorder = "inactive（クリップ終了）";
-        renderAudioDiagnostics();
-        await new Promise(r => setTimeout(r, 60));
-
-        const actualType = mediaRecorder?.mimeType || currentRecordingChunks[0]?.type || "audio/mp4";
-        const blob = new Blob(currentRecordingChunks, { type: actualType });
+        const chunks = currentRecordingChunks.slice();
         const meta = currentClipMeta;
-
-        mediaRecorder = null;
-        currentRecordingChunks = [];
-        currentClipMeta = null;
-        isClipRecording = false;
-
-        if (meta && blob.size > 0) {
-          await Promise.allSettled(currentClipChunkWrites);
+        const writes = currentClipChunkWrites.slice();
+        const finalize = clipFinalizeResolve;
+        const finalizePromise = clipFinalizePromise;
+        if (mediaRecorder === clipRecorder) {
+          mediaRecorder = null;
+          currentRecordingChunks = [];
+          currentClipMeta = null;
           currentClipChunkWrites = [];
-          meta.durationSec = Math.max(1, Math.round((Date.now() - meta.startedAt) / 1000));
-          meta.waveform = normalizeWaveform(meta.waveformDb || [], 56);
-          delete meta.waveformDb;
-          finalizeClipClassification(meta);
-          const saved = await saveClipToDB({ ...meta, blob });
-
-          if (saved) {
-            await deleteAudioChunks(meta.id);
-            counts[meta.category] = (counts[meta.category] || 0) + 1;
-            updateCountUI();
-          } else {
-            toast("録音保存に失敗しました。監視は継続します");
-          }
-        } else if (meta && blob.size === 0) {
-          console.warn("[RecorderEmpty] 録音チャンクが空でした");
+          isClipRecording = false;
         }
-
-        if (clipFinalizeResolve) clipFinalizeResolve();
-        clipFinalizeResolve = null;
-        clipFinalizePromise = null;
-
-        if (pendingClipRequest && isTracking && !stopRequested) {
+        try {
+          audioDiagnostic.recorder = "inactive（クリップ終了）";
+          renderAudioDiagnostics();
+          await new Promise(r => setTimeout(r, 60));
+          const actualType = clipRecorder.mimeType || chunks[0]?.type || "audio/mp4";
+          const blob = new Blob(chunks, {type:actualType});
+          if (meta && blob.size > 0) {
+            await Promise.allSettled(writes);
+            meta.durationSec = Math.max(1, Math.round((Date.now() - meta.startedAt) / 1000));
+            meta.waveform = normalizeWaveform(meta.waveformDb || [], 56);
+            delete meta.waveformDb;
+            finalizeClipClassification(meta);
+            if (!await saveClipToDB({...meta, blob})) throw new Error("録音保存に失敗しました");
+            await deleteAudioChunks(meta.id);
+            if (String(meta.sessionId) === String(activeSessionId)) {
+              counts[meta.category] = (counts[meta.category] || 0) + 1;
+              updateCountUI();
+            }
+          } else if (meta) {
+            throw new Error("録音チャンクが空でした");
+          }
+          if (finalize) finalize({ok:true});
+        } catch (error) {
+          console.error("[RecorderFinalize]", error);
+          if (finalize) finalize({ok:false, error:error?.message || String(error)});
+          try { toast("録音の確定に失敗しました。記録を確認してください"); } catch (_) {}
+        } finally {
+          if (clipFinalizePromise === finalizePromise) {
+            clipFinalizeResolve = null;
+            clipFinalizePromise = null;
+          }
+        }
+        if (pendingClipRequest && isTracking && !stopRequested && String(meta?.sessionId) === String(activeSessionId)) {
           const next = pendingClipRequest;
           pendingClipRequest = null;
-          setTimeout(() => triggerClipRecording(next.result, next.peakDb, next.motionG, next.durationMs), 100);
+          setTimeout(() => {
+            if (isTracking && !stopRequested && String(meta?.sessionId) === String(activeSessionId)) {
+              triggerClipRecording(next.result, next.peakDb, next.motionG, next.durationMs);
+            }
+          }, 100);
         }
       };
 
@@ -2142,11 +2162,15 @@ window.App = (() => {
 
   async function waitForRecorderFinalize() {
     stopActiveRecorder();
-    if (!clipFinalizePromise) return;
-    await Promise.race([
-      clipFinalizePromise,
-      new Promise(resolve => setTimeout(resolve, 3000))
-    ]);
+    const pending = clipFinalizePromise;
+    if (!pending) return;
+    let timer;
+    try {
+      const result = await Promise.race([pending, new Promise((_, reject) => {
+        timer = setTimeout(() => reject(new Error("録音の確定がタイムアウトしました。最後の録音は未確認です")), 3000);
+      })]);
+      if (result?.ok === false) throw new Error(result.error || "録音の確定に失敗しました");
+    } finally { clearTimeout(timer); }
   }
 
   function normalizeWaveform(values, target = 56) {
@@ -2265,9 +2289,13 @@ window.App = (() => {
   }
 
   async function saveCompletedSession() {
-    await persistCheckpoint("completed", true);
+    if (await persistCheckpoint("completed", true) !== true) {
+      throw new Error("測定記録の最終保存に失敗しました。保存済みの途中記録を確認してください");
+    }
     const clips = await getClipsFromDB();
-    const own = clips.filter(c => c.sessionId === activeSessionId || (Number(c.id) >= sessionStartMs && Number(c.id) <= Date.now() + 5000));
+    const endedAt = Date.now();
+    const own = clips.filter(c => String(c.sessionId || "") === String(activeSessionId) ||
+      (!c.sessionId && clipStartedAt(c) >= sessionStartMs && clipStartedAt(c) <= endedAt + 5000));
     const c = {snore:0, roll:0, bruxism:0, talk:0, env:0, apnea:0};
     own.forEach(x => { if (c[x.category] !== undefined) c[x.category]++; });
     const records = await getAllStore("sessions");
@@ -2275,7 +2303,11 @@ window.App = (() => {
     if (session) {
       session.counts = c;
       session.snoreDurationSec = own.filter(x => x.category === "snore").reduce((n, x) => n + Number(x.durationSec || 0), 0);
-      await putSessionRecord(session);
+      if (await putSessionRecord(session) !== true) {
+        throw new Error("録音集計の保存に失敗しました。記録を確認してください");
+      }
+    } else {
+      throw new Error("保存した測定記録を読み取れませんでした");
     }
     await loadPersistentSessions();
   }
@@ -3602,7 +3634,6 @@ left+plotWidth/2}" y="${motionCenter+4}" text-anchor="middle" fill="#64748b" fon
     }
     testRecordingBusy = true;
     testRecordingResult = null;
-    document.getElementById("btnTestExport").disabled = true;
     const diagnosticEvents = [];
     let testStartedAt = Date.now();
     const diagnostic = (phase, detail = {}) => {
@@ -3610,21 +3641,10 @@ left+plotWidth/2}" y="${motionCenter+4}" text-anchor="middle" fill="#64748b" fon
       diagnosticEvents.push(event);
       console.info("[TestRecording]", event);
     };
-    diagnostic("permission-request");
-    startButton.disabled = true;
     const button = document.getElementById("btnTestRecording");
     const status = document.getElementById("testRecordingStatus");
     const player = document.getElementById("testRecordingAudio");
     const playback = document.getElementById("testPlaybackStatus");
-    button.disabled = true;
-    player.pause();
-    player.removeAttribute("src");
-    player.load();
-    player.classList.add("hidden");
-    if (testRecordingUrl) URL.revokeObjectURL(testRecordingUrl);
-    testRecordingUrl = null;
-    playback.textContent = "再生未確認（音が聞こえるかは再生して確認してください）";
-    status.textContent = "マイク許可を確認中…";
 
     let testStream = null;
     let recorder = null;
@@ -3636,6 +3656,18 @@ left+plotWidth/2}" y="${motionCenter+4}" text-anchor="middle" fill="#64748b" fon
     const chunks = [];
     let dataEvents = 0;
     try {
+      document.getElementById("btnTestExport").disabled = true;
+      diagnostic("permission-request");
+      startButton.disabled = true;
+      button.disabled = true;
+      player.pause();
+      player.removeAttribute("src");
+      player.load();
+      player.classList.add("hidden");
+      if (testRecordingUrl) URL.revokeObjectURL(testRecordingUrl);
+      testRecordingUrl = null;
+      playback.textContent = "再生未確認（音が聞こえるかは再生して確認してください）";
+      status.textContent = "マイク許可を確認中…";
       if (!navigator.mediaDevices?.getUserMedia) {
         throw new Error("マイクAPIを使用できません。HTTPS配信とブラウザの権限を確認してください");
       }
@@ -3749,6 +3781,7 @@ left+plotWidth/2}" y="${motionCenter+4}" text-anchor="middle" fill="#64748b" fon
       status.textContent = "テスト失敗: " + (error?.name || "Error") + " / " + (error?.message || String(error));
       playback.textContent = "再生未確認（テスト失敗）";
     } finally {
+      try {
       clearInterval(tick);
       clearTimeout(stopTimer);
       clearTimeout(finalizeTimer);
@@ -3759,7 +3792,7 @@ left+plotWidth/2}" y="${motionCenter+4}" text-anchor="middle" fill="#64748b" fon
         recorder.onerror = null;
         if (recorder.state !== "inactive") { try { recorder.stop(); } catch (_) {} }
       }
-      if (testStream) testStream.getTracks().forEach(track => track.stop());
+      if (testStream) testStream.getTracks().forEach(track => { try { track.stop(); } catch (error) { console.warn("[TestTrackStop]", error); } });
       chunks.length = 0;
       if (testRecordingResult) {
         try {
@@ -3774,10 +3807,13 @@ left+plotWidth/2}" y="${motionCenter+4}" text-anchor="middle" fill="#64748b" fon
           status.textContent += "\nDB保存不可。ページを閉じる前に専用ZIPを保存してください。";
         }
       }
-      document.getElementById("btnTestExport").disabled = !testRecordingResult;
-      testRecordingBusy = false;
-      button.disabled = false;
-      startButton.disabled = isTracking || stopRequested;
+      } finally {
+        testRecordingBusy = false;
+        if (startButton) startButton.disabled = !!window.__STUpdateApplying || isTracking || stopRequested || trackingStartPending;
+        if (button) button.disabled = !!window.__STUpdateApplying || isTracking || stopRequested || trackingStartPending;
+        const exportButton = document.getElementById("btnTestExport");
+        if (exportButton) exportButton.disabled = !testRecordingResult || testExportBusy;
+      }
     }
   }
 
@@ -3876,54 +3912,104 @@ left+plotWidth/2}" y="${motionCenter+4}" text-anchor="middle" fill="#64748b" fon
       toast("開始エラー: " + (error?.message || error));
     } finally {
       trackingStartPending = false;
+      if (btnStart) btnStart.disabled = !!window.__STUpdateApplying || isTracking || stopRequested || testRecordingBusy;
     }
   }
 
   async function stopTracking() {
-    if (!isTracking && !stopRequested) return;
+    if (!isTracking || stopRequested) return;
     stopRequested = true;
-
+    const stoppedSessionId = activeSessionId;
     const btnStart = document.getElementById("btnStart");
     const btnNight = document.getElementById("btnNight");
     const btnStop = document.getElementById("btnStop");
     const statusBadge = document.getElementById("statusBadge");
-
-    btnStop.disabled = true;
-    btnNight.disabled = true;
-    statusBadge.textContent = "停止処理中...";
-    setEngineText("測定データを保存しています...", "var(--warn)");
-
-    exitNightScreen();
-    clearTimeout(monitorTimeout);
-    clearInterval(timerInterval);
-    clearInterval(heartbeatInterval);
-    clearInterval(checkpointInterval);
-    clearInterval(watchdogInterval);
-
-    await waitForRecorderFinalize();
-    flushSecondLog();
-    flushProfileBin(true);
-
-    await releaseAudioPipeline();
-    audioDiagnostic.phase = "測定終了";
-    renderAudioDiagnostics();
-
-    await releaseWakeLock();
-
-    isTracking = false;
-
-    await saveCompletedSession();
-    clearSessionHeartbeat();
-
-    btnStart.disabled = false;
-    statusBadge.textContent = "待機中";
-    statusBadge.className = "badge b-gray";
-    setEngineText("測定終了・データ保存完了", "var(--muted)");
-
-    await loadReportSessions(activeSessionId);
-    switchTab("report");
-    stopRequested = false;
-    toast("測定が正常に完了しました");
+    const errors = [];
+    let saved = false;
+    const attempt = async (phase, task) => {
+      try { await task(); return true; }
+      catch (error) {
+        errors.push(phase + ": " + (error?.message || String(error)));
+        console.error("[StopTracking]", phase, error);
+        return false;
+      }
+    };
+    try {
+      await attempt("停止画面", () => {
+        if (btnStart) btnStart.disabled = true;
+        if (btnStop) btnStop.disabled = true;
+        if (btnNight) btnNight.disabled = true;
+        if (statusBadge) statusBadge.textContent = "停止処理中...";
+        setEngineText("測定データを保存しています...", "var(--warn)");
+      });
+      // A failure in one step must not prevent the remaining cleanup/save steps.
+      await attempt("消灯解除", () => exitNightScreen());
+      clearTimeout(monitorTimeout);
+      clearInterval(timerInterval);
+      clearInterval(heartbeatInterval);
+      clearInterval(checkpointInterval);
+      clearInterval(watchdogInterval);
+      await attempt("録音の確定", () => waitForRecorderFinalize());
+      await attempt("秒ログ確定", () => flushSecondLog());
+      await attempt("プロファイル確定", () => flushProfileBin(true));
+    } finally {
+      // Stop all producers before permitting another session to start.
+      isTracking = false;
+      clearTimeout(monitorTimeout);
+      clearTimeout(clipStopTimeout);
+      clearInterval(timerInterval);
+      clearInterval(heartbeatInterval);
+      clearInterval(checkpointInterval);
+      clearInterval(watchdogInterval);
+      await attempt("音声解放", () => releaseAudioPipeline());
+      await attempt("画面ロック解放", () => releaseWakeLock());
+      // A timed-out recorder must not retain references to the next session.
+      if (mediaRecorder) {
+        const oldRecorder = mediaRecorder;
+        oldRecorder.ondataavailable = oldRecorder.onstop = oldRecorder.onerror = null;
+        await attempt("録音解放", () => {
+          if (oldRecorder.state !== "inactive") oldRecorder.stop();
+        });
+      }
+      mediaRecorder = null;
+      isClipRecording = false;
+      pendingClipRequest = null;
+      currentClipMeta = null;
+      currentRecordingChunks = [];
+      currentClipChunkWrites = [];
+      if (clipFinalizeResolve) clipFinalizeResolve();
+      clipFinalizeResolve = clipFinalizePromise = null;
+      try {
+        saved = await attempt("最終保存", () => saveCompletedSession());
+        await attempt("共有状態解除", () => clearSessionHeartbeat());
+        if (saved) {
+          await attempt("レポート表示", async () => {
+            await loadReportSessions(stoppedSessionId);
+            switchTab("report");
+          });
+        }
+      } finally {
+        stopRequested = false;
+        if (btnStart) btnStart.disabled = !!window.__STUpdateApplying || trackingStartPending || testRecordingBusy;
+        if (btnStop) btnStop.disabled = true;
+        if (btnNight) btnNight.disabled = true;
+      }
+      await attempt("終了通知", () => {
+        const clean = saved && errors.length === 0;
+        audioDiagnostic.phase = clean ? "測定終了" : "測定終了・要確認";
+        if (!clean) audioDiagnostic.error = errors.join(" / ");
+        if (statusBadge) {
+          statusBadge.textContent = clean ? "待機中" : "終了・要確認";
+          statusBadge.className = "badge b-gray";
+        }
+        setEngineText(clean ? "測定終了・データ保存完了" :
+          (saved ? "記録保存済み。終了処理に問題があります: " : "保存を確認できません。途中記録を確認してください: ") + errors.join(" / "),
+          clean ? "var(--muted)" : "var(--danger)");
+        renderAudioDiagnostics();
+        toast(clean ? "測定が正常に完了しました" :
+          (saved ? "測定終了。終了処理に問題があるため記録を確認してください" : "測定終了。保存失敗・未確認のため記録を確認してください"));
+      });
+    }
   }
 
   async function init() {
