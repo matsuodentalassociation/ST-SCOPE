@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="st-build-id" content="ST-V32-Safari-20261002-04">
+<meta name="st-build-id" content="ST-V33-Safari-20261002-01">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
@@ -11,7 +11,7 @@
 <meta name="color-scheme" content="dark">
 <meta name="supported-color-schemes" content="dark">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>SleepTracker AI ST-V32</title>
+<title>SleepTracker AI ST-V33</title>
 
 <style>
 :root {
@@ -523,7 +523,7 @@ body.night-screen-active > :not(#nightScreen) {
 
 <header class="top">
 <div class="top-inner">
-  <div class="brand">🌙 SleepTracker <span id="buildBadge">ST-V32</span></div>
+  <div class="brand">🌙 SleepTracker <span id="buildBadge">ST-V33</span></div>
   <div id="statusBadge" class="badge b-gray">待機中</div>
 </div>
 </header>
@@ -819,12 +819,8 @@ window.GitHubLoader = (() => {
       const localBuild = document.querySelector('meta[name="st-build-id"]')?.content;
       const remoteBuild = parsed.querySelector('meta[name="st-build-id"]')?.content;
       if (!remoteBuild) throw new Error("取得HTMLにビルド識別子がありません");
-      if (Number(version[1]) === Number(localVersion[1])) {
-        if (remoteBuild === localBuild) {
-          window.__STAppliedCommit = sha;
-          show(label() + " / 最新コミットのHTMLと同一ビルド " + sha.slice(0, 7), true);
-          return {replaced:false};
-        }
+      // ビルド名が一致しても内容の一致とは限らない。未適用SHAは必ず取得・適用する。
+      if (Number(version[1]) === Number(localVersion[1]) && remoteBuild !== localBuild) {
         // 同一版番号のビルドは日付・連番を比較。比較不能な版への切替も拒否する。
         const buildOrder = value => {
           const match = /(?:^|[-_])(\d{8})[-_](\d+)$/.exec(value || "");
@@ -859,8 +855,12 @@ window.GitHubLoader = (() => {
       window.__STUpdateApplying = true;
       try { await window.App.disposeForUpdate(); }
       catch (error) { window.__STUpdateApplying = false; throw error; }
-      window.__STAppliedCommit = sha;
-      window.__STUpdateApplying = false;
+      // 新しいページのスクリプトが実行されるまで更新ロックを保持する。
+      // 適用SHAも新ページ側で設定し、取得だけで「適用済み」にしない。
+      const bootstrap = parsed.createElement("script");
+      bootstrap.textContent = "window.__STAppliedCommit=" + JSON.stringify(sha) +
+        ";window.__STUpdateApplying=false;";
+      parsed.head.insertBefore(bootstrap, parsed.head.firstChild);
       document.open();
       document.write("<!DOCTYPE html>\n" + parsed.documentElement.outerHTML);
       document.close();
