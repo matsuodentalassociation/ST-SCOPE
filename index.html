@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="st-build-id" content="ST-V29-update-20261001-01">
+<meta name="st-build-id" content="ST-V31-Safari-20261002-02">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
@@ -11,7 +11,7 @@
 <meta name="color-scheme" content="dark">
 <meta name="supported-color-schemes" content="dark">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>SleepTracker AI ST-V29</title>
+<title>SleepTracker AI ST-V31</title>
 
 <style>
 :root {
@@ -520,7 +520,7 @@ body.night-screen-active > :not(#nightScreen) {
 
 <header class="top">
 <div class="top-inner">
-  <div class="brand">🌙 SleepTracker <span id="buildBadge">ST-V29</span></div>
+  <div class="brand">🌙 SleepTracker <span id="buildBadge">ST-V31</span></div>
   <div id="statusBadge" class="badge b-gray">待機中</div>
 </div>
 </header>
@@ -602,6 +602,12 @@ body.night-screen-active > :not(#nightScreen) {
   </div>
 
   <!-- 診断録音は睡眠ログ・分類録音とは分離し、専用DBとZIPで保持する -->
+  <!-- 通常測定の診断。既存の専用テスト録音とは独立しています。 -->
+  <details class="card col" open>
+    <summary>マイク・音声開始の診断</summary>
+    <pre id="audioDiagnostics" style="white-space:pre-wrap;overflow-wrap:anywhere;font-size:11px;margin:8px 0"></pre>
+    <div style="font-size:11px;color:var(--muted)">通常測定は音を検出してクリップ録音します。開始直後の録音件数0は、それだけでは異常ではありません。dB値は未校正です。</div>
+  </details>
   <div class="card col" id="testRecordingPanel">
     <strong>🎙️ 1分間のテスト録音</strong>
     <div style="font-size:12px;color:var(--muted)">睡眠測定を止めてから実行してください。録音中に声を出し、画面を開いたままお待ちください。結果は睡眠ログと別の診断用DBに最新1件を保存します。テスト後に専用ZIPを保存してください（DB保存不可でもZIP出力できます）。</div>
@@ -709,7 +715,7 @@ body.night-screen-active > :not(#nightScreen) {
 
 <script>
 window.GitHubLoader = (() => {
-  const loaderSource = document.currentScript.textContent;
+  // 取得した最新版の更新処理をそのまま使用し、旧ローダーで上書きしない。
   const repo = "matsuodentalassociation/ST-SCOPE";
   const publishedURL = "https://matsuodentalassociation.github.io/ST-SCOPE/";
   let checking = false;
@@ -733,10 +739,13 @@ window.GitHubLoader = (() => {
       /測定中|停止処理中/.test(document.getElementById("statusBadge")?.textContent || "");
   }
   async function getText(url, accept) {
+    // APIとHTMLの両方で、毎回異なるURLとno-storeを併用する。
+    const requestURL = new URL(url);
+    requestURL.searchParams.set("_stcb", Date.now() + "-" + Math.random().toString(36).slice(2));
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 10000);
     try {
-      const response = await fetch(url, {cache:"no-store", credentials:"omit",
+      const response = await fetch(requestURL.href, {cache:"no-store", credentials:"omit",
         signal:controller.signal, headers:{Accept:accept}});
       if (!response.ok) throw new Error("HTTP " + response.status);
       return await response.text();
@@ -764,7 +773,7 @@ window.GitHubLoader = (() => {
       return {replaced:false, local:true};
     }
     if (!manual && window.__STAppliedCommit) {
-      show(label() + " / 最新コミット適用済み " + window.__STAppliedCommit.slice(0, 7), true);
+      show(label() + " / 適用済みコミット " + window.__STAppliedCommit.slice(0, 7) + "（再確認は更新ボタン）", true);
       return {replaced:false};
     }
     if (checking) return {replaced:false};
@@ -804,12 +813,31 @@ window.GitHubLoader = (() => {
         show(label() + " 継続 / GitHubは旧版 " + badge);
         return {replaced:false};
       }
+      const localBuild = document.querySelector('meta[name="st-build-id"]')?.content;
+      const remoteBuild = parsed.querySelector('meta[name="st-build-id"]')?.content;
+      if (!remoteBuild) throw new Error("取得HTMLにビルド識別子がありません");
+      if (Number(version[1]) === Number(localVersion[1])) {
+        if (remoteBuild === localBuild) {
+          show(label() + " / 最新コミットのHTMLと同一ビルド " + sha.slice(0, 7), true);
+          return {replaced:false};
+        }
+        // 同一版番号のビルドは日付・連番を比較。比較不能な版への切替も拒否する。
+        const buildOrder = value => {
+          const match = /(?:^|[-_])(\d{8})[-_](\d+)$/.exec(value || "");
+          return match ? [Number(match[1]), Number(match[2])] : null;
+        };
+        const currentOrder = buildOrder(localBuild), nextOrder = buildOrder(remoteBuild);
+        if (!currentOrder || !nextOrder || nextOrder[0] < currentOrder[0] ||
+            (nextOrder[0] === currentOrder[0] && nextOrder[1] <= currentOrder[1])) {
+          throw new Error("旧ビルドまたは順序を確認できないビルドへの更新を停止しました");
+        }
+      }
       if (busy()) {
         show("最新版を確認しました。録音・保存終了後に更新を確認してください");
         return {replaced:false};
       }
       // 同じwindowでも再宣言エラーを起こさず、更新処理を引き継ぐ。
-      loaderScript.textContent = loaderSource;
+      // loaderScriptは取得した最新版を維持する。
       appScript.textContent = appScript.textContent.replace(/\bconst\s+App\s*=/, "window.App =");
       if (!document.querySelector('meta[name="st-build-id"]')?.content) {
         throw new Error("現在のビルド情報がありません");
@@ -820,8 +848,11 @@ window.GitHubLoader = (() => {
         meta.content = badge + "-" + sha.slice(0, 7);
         parsed.head.appendChild(meta);
       }
+      if (typeof window.App.disposeForUpdate !== "function") {
+        throw new Error("安全な更新終了処理がないため、現在の画面を維持します");
+      }
       window.__STUpdateApplying = true;
-      try { await window.App.disposeForUpdate?.(); }
+      try { await window.App.disposeForUpdate(); }
       catch (error) { window.__STUpdateApplying = false; throw error; }
       window.__STAppliedCommit = sha;
       window.__STUpdateApplying = false;
@@ -881,6 +912,74 @@ window.App = (() => {
   let stream = null;
   let audioCtx = null;
   let sourceNode = null;
+  let silentOutputNode = null;
+  let audioDiagnosticTimer = null;
+  const audioDiagnostic = {
+    phase:"待機", microphone:"未取得", resume:"未実行", rms:null, db:null,
+    recorder:"未生成（音の検出待ち）", formats:[], mime:"未選択",
+    dataEvents:0, bytes:0, error:"なし"
+  };
+
+  function audioError(error) {
+    return (error?.name || "Error") + ": " + (error?.message || String(error));
+  }
+
+  function renderAudioDiagnostics() {
+    const panel = document.getElementById("audioDiagnostics");
+    if (!panel) return;
+    const tracks = stream?.getAudioTracks() || [];
+    const trackText = tracks.length ? tracks.map((track, i) =>
+      "#" + i + " readyState=" + track.readyState + " enabled=" + track.enabled + " muted=" + track.muted).join("\n") : "なし";
+    panel.textContent = [
+      "ビルド: " + document.querySelector('meta[name="st-build-id"]')?.content,
+      "処理段階: " + audioDiagnostic.phase,
+      "マイク取得: " + audioDiagnostic.microphone,
+      "トラック: " + trackText,
+      "AudioContext: " + (audioCtx?.state || "なし"),
+      "resume(): " + audioDiagnostic.resume,
+      "解析値 RMS: " + (audioDiagnostic.rms == null ? "未取得" : audioDiagnostic.rms.toExponential(3)) +
+        " / dB: " + (audioDiagnostic.db == null ? "未取得" : audioDiagnostic.db.toFixed(2)),
+      "MediaRecorder対応形式: " + (audioDiagnostic.formats.join(" / ") || "未確認／対応形式なし"),
+      "採用形式: " + audioDiagnostic.mime,
+      "録音状態: " + (mediaRecorder?.state || audioDiagnostic.recorder),
+      "生成データ: " + audioDiagnostic.dataEvents + "件 / " + audioDiagnostic.bytes + " bytes",
+      "エラー: " + audioDiagnostic.error
+    ].join("\n");
+  }
+
+  // resumeが解決しない場合にも、開始画面のまま永久に待たないようにする。
+  async function waitForAudioResume(promise) {
+    let timer;
+    try {
+      await Promise.race([promise, new Promise((_, reject) => {
+        timer = setTimeout(() => reject(new Error("音声開始がタイムアウトしました。もう一度開始ボタンを押してください")), 8000);
+      })]);
+      audioDiagnostic.resume = "完了 / " + audioCtx.state;
+      if (audioCtx.state !== "running") throw new Error("音声解析を開始できません: " + audioCtx.state);
+    } catch (error) {
+      audioDiagnostic.resume = audioError(error);
+      throw error;
+    } finally {
+      clearTimeout(timer);
+      renderAudioDiagnostics();
+    }
+  }
+
+  async function releaseAudioPipeline() {
+    // 測定開始前の失敗でも、取得済みマイクと音声ノードを確実に片付ける。
+    const oldStream = stream;
+    stream = null;
+    recordingStream = null;
+    if (oldStream) oldStream.getTracks().forEach(track => track.stop());
+    for (const node of [sourceNode, analyser, silentOutputNode]) {
+      try { node?.disconnect(); } catch (_) {}
+    }
+    sourceNode = analyser = silentOutputNode = null;
+    timeBuf = freqBuf = null;
+    const oldContext = audioCtx;
+    audioCtx = null;
+    try { if (oldContext && oldContext.state !== "closed") await oldContext.close(); } catch (_) {}
+  }
   let recordingStream = null;
   let analyser = null;
   let timeBuf = null;
@@ -1555,61 +1654,80 @@ window.App = (() => {
   }
 
   async function createAudioPipeline() {
-    const newStream = await navigator.mediaDevices.getUserMedia({
-      audio:{
-        echoCancellation:false,
-        noiseSuppression:false,
-        autoGainControl:false
-      }
-    });
-
-    if (stopRequested) {
-      newStream.getTracks().forEach(track => track.stop());
-      throw new Error("測定終了処理中");
-    }
-
-    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-    if (!AudioContextClass) {
-      newStream.getTracks().forEach(track => track.stop());
-      throw new Error("AudioContext非対応");
-    }
-
-    if (!audioCtx || audioCtx.state === "closed") {
-      audioCtx = new AudioContextClass();
-    }
-
-    if (audioCtx.state === "suspended") {
-      await audioCtx.resume();
-    }
-
-    if (sourceNode) {
-      try { sourceNode.disconnect(); } catch (_) {}
-    }
-
-    if (stream && stream !== newStream) {
-      stream.getTracks().forEach(track => track.stop());
-    }
-
-    stream = newStream;
-    sourceNode = audioCtx.createMediaStreamSource(stream);
-
-    analyser = audioCtx.createAnalyser();
-    analyser.fftSize = 2048;
-    analyser.smoothingTimeConstant = 0.4;
-
-    sourceNode.connect(analyser);
-    recordingStream = stream;
-
-    timeBuf = new Float32Array(analyser.fftSize);
-    freqBuf = new Uint8Array(analyser.frequencyBinCount);
-
-    stream.getAudioTracks().forEach(track => {
-      track.addEventListener("ended", () => {
-        if (isTracking && !stopRequested) {
-          recoverAudioPipeline("マイク接続が終了しました");
-        }
+    let newStream = null;
+    // 最初のawaitより前にAudioContextを作りresumeを呼ぶ。
+    // startTrackingからもDB初期化より先に呼び、ボタン操作との関係を維持する。
+    try {
+      audioDiagnostic.phase = "音声開始・マイク取得中";
+      renderAudioDiagnostics();
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContextClass) throw new Error("AudioContext非対応");
+      if (!navigator.mediaDevices?.getUserMedia) throw new Error("マイク取得APIを使用できません。HTTPSとブラウザの対応状況を確認してください");
+      if (!audioCtx || audioCtx.state === "closed") audioCtx = new AudioContextClass();
+      audioCtx.onstatechange = renderAudioDiagnostics;
+      audioDiagnostic.resume = "呼び出し中";
+      const resumeAttempt = Promise.resolve(audioCtx.resume()).then(
+        () => ({ok:true}), error => ({ok:false, error})
+      );
+      newStream = await navigator.mediaDevices.getUserMedia({
+        audio:{echoCancellation:false, noiseSuppression:false, autoGainControl:false}
       });
-    });
+      audioDiagnostic.microphone = "成功";
+      if (stopRequested) throw new Error("測定終了処理中");
+      const tracks = newStream.getAudioTracks();
+      if (!tracks.length || !tracks.some(track => track.readyState === "live" && track.enabled)) {
+        throw new Error("有効なマイク音声トラックがありません");
+      }
+      // 古いトラックのendedイベントが再取得を起こさないよう、先に参照を切り替える。
+      const oldStream = stream;
+      stream = newStream;
+      if (oldStream && oldStream !== newStream) oldStream.getTracks().forEach(track => track.stop());
+      for (const node of [sourceNode, analyser, silentOutputNode]) {
+        try { node?.disconnect(); } catch (_) {}
+      }
+      sourceNode = audioCtx.createMediaStreamSource(stream);
+      analyser = audioCtx.createAnalyser();
+      analyser.fftSize = 2048;
+      analyser.smoothingTimeConstant = 0.4;
+      sourceNode.connect(analyser);
+      // 解析グラフを出力まで接続する。gain=0なのでマイク音はスピーカーに出さない。
+      silentOutputNode = audioCtx.createGain();
+      silentOutputNode.gain.value = 0;
+      analyser.connect(silentOutputNode);
+      silentOutputNode.connect(audioCtx.destination);
+      recordingStream = stream; // 録音は従来どおり加工前のマイクストリームを使用。
+      timeBuf = new Float32Array(analyser.fftSize);
+      freqBuf = new Uint8Array(analyser.frequencyBinCount);
+      renderAudioDiagnostics();
+      await waitForAudioResume(resumeAttempt.then(result => {
+        if (!result.ok) throw result.error;
+      }));
+      const probe = createSafeMediaRecorder(recordingStream);
+      if (!probe) throw new Error("この環境ではMediaRecorderを生成できません");
+      audioDiagnostic.recorder = "開始可能（音の検出待ち／実録音は未開始）";
+      tracks.forEach(track => {
+        track.addEventListener("mute", renderAudioDiagnostics);
+        track.addEventListener("unmute", renderAudioDiagnostics);
+        track.addEventListener("ended", () => {
+          renderAudioDiagnostics();
+          if (stream === newStream && isTracking && !stopRequested) {
+            recoverAudioPipeline("マイク接続が終了しました");
+          }
+        });
+      });
+      audioDiagnostic.phase = "入力・解析開始済み";
+      renderAudioDiagnostics();
+    } catch (error) {
+      audioDiagnostic.error = audioError(error);
+      audioDiagnostic.phase = "音声開始失敗";
+      if (!newStream) audioDiagnostic.microphone = "未取得／失敗: " + audioError(error);
+      renderAudioDiagnostics();
+      if (newStream && newStream !== stream) newStream.getTracks().forEach(track => track.stop());
+      await releaseAudioPipeline();
+      // 解放後にも、失敗理由は診断欄に残す。
+      renderAudioDiagnostics();
+      throw error;
+    }
   }
 
   async function recoverAudioPipeline(reason) {
@@ -1636,8 +1754,10 @@ window.App = (() => {
     let sum = 0;
     for (let i = 0; i < timeBuf.length; i++) sum += timeBuf[i] * timeBuf[i];
     const rms = Math.sqrt(sum / timeBuf.length);
-    if (!Number.isFinite(rms) || rms <= 1e-7) return 0;
-    return Math.min(95, Math.max(0, 20 * Math.log10(rms) + 72));
+    audioDiagnostic.rms = Number.isFinite(rms) ? rms : null;
+    const value = !Number.isFinite(rms) || rms <= 1e-7 ? 0 : Math.min(95, Math.max(0, 20 * Math.log10(rms) + 72));
+    audioDiagnostic.db = value;
+    return value;
   }
 
   function analyzeFrequencySpectrum() {
@@ -1794,16 +1914,25 @@ window.App = (() => {
       ? ["audio/mp4", "audio/mp4;codecs=mp4a.40.2", "audio/aac", "audio/webm;codecs=opus", "audio/webm"]
       : ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", "audio/aac"];
 
+    audioDiagnostic.formats = candidates.filter(mime => {
+      try { return !!MediaRecorder.isTypeSupported?.(mime); } catch (_) { return false; }
+    });
     for (const mime of candidates) {
       try {
         if (MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(mime)) {
-          return new MediaRecorder(stream, { mimeType: mime });
+          const recorder = new MediaRecorder(stream, { mimeType: mime });
+          audioDiagnostic.mime = recorder.mimeType || mime;
+          renderAudioDiagnostics();
+          return recorder;
         }
       } catch (_) {}
     }
 
     try {
-      return new MediaRecorder(stream);
+      const recorder = new MediaRecorder(stream);
+      audioDiagnostic.mime = recorder.mimeType || "ブラウザ既定";
+      renderAudioDiagnostics();
+      return recorder;
     } catch (error) {
       console.warn("[MediaRecorderFallbackFail]", error);
       return null;
@@ -1870,6 +1999,9 @@ window.App = (() => {
       mediaRecorder.ondataavailable = event => {
         if (event.data && event.data.size > 0) {
           currentRecordingChunks.push(event.data);
+          audioDiagnostic.dataEvents++;
+          audioDiagnostic.bytes += event.data.size;
+          renderAudioDiagnostics();
           const snapshot = currentClipMeta ? {...currentClipMeta} : null;
           const index = currentClipChunkIndex++;
           if (snapshot) {
@@ -1880,9 +2012,15 @@ window.App = (() => {
 
       mediaRecorder.onerror = event => {
         console.warn("[Recorder]", event.error || event);
+        audioDiagnostic.error = audioError(event.error || new Error("録音エラー"));
+        audioDiagnostic.recorder = "録音エラー";
+        setEngineText("録音エラー: " + audioDiagnostic.error, "var(--danger)");
+        renderAudioDiagnostics();
       };
 
       mediaRecorder.onstop = async () => {
+        audioDiagnostic.recorder = "inactive（クリップ終了）";
+        renderAudioDiagnostics();
         await new Promise(r => setTimeout(r, 60));
 
         const actualType = mediaRecorder?.mimeType || currentRecordingChunks[0]?.type || "audio/mp4";
@@ -1932,6 +2070,8 @@ window.App = (() => {
         try { mediaRecorder.start(1000); } catch (_) { mediaRecorder.start(); }
       }
 
+      audioDiagnostic.recorder = mediaRecorder.state;
+      renderAudioDiagnostics();
       clearTimeout(clipStopTimeout);
       const checkClipEnd = () => {
         if (!isClipRecording || !currentClipMeta) return;
@@ -1955,6 +2095,9 @@ window.App = (() => {
       clipFinalizeResolve = null;
       clipFinalizePromise = null;
 
+      audioDiagnostic.error = audioError(error);
+      audioDiagnostic.recorder = "録音開始失敗";
+      renderAudioDiagnostics();
       console.warn("[Recording]", error);
       setEngineText("録音エラー: " + (error?.message || error), "var(--danger)");
     }
@@ -3417,7 +3560,7 @@ left+plotWidth/2}" y="${motionCenter+4}" text-anchor="middle" fill="#64748b" fon
   }
 
   async function startTestRecording() {
-    if (testRecordingBusy || testExportBusy) return;
+    if (window.__STUpdateApplying || testRecordingBusy || testExportBusy) return;
     const startButton = document.getElementById("btnStart");
     if (isTracking || stopRequested || trackingStartPending || startButton.disabled) {
       toast("睡眠測定の終了後にテストしてください");
@@ -3605,7 +3748,7 @@ left+plotWidth/2}" y="${motionCenter+4}" text-anchor="middle" fill="#64748b" fon
   }
 
   async function startTracking() {
-    if (testRecordingBusy || trackingStartPending || isTracking) return;
+    if (window.__STUpdateApplying || testRecordingBusy || trackingStartPending || isTracking) return;
     trackingStartPending = true;
     stopRequested = false;
 
@@ -3615,8 +3758,17 @@ left+plotWidth/2}" y="${motionCenter+4}" text-anchor="middle" fill="#64748b" fon
     const statusBadge = document.getElementById("statusBadge");
 
     try {
-      await initDB();
+      btnStart.disabled = true;
+      statusBadge.textContent = "開始処理中";
+      statusBadge.className = "badge b-gray";
+      setEngineText("マイク・音声処理を開始しています...", "var(--warn)");
+      Object.assign(audioDiagnostic, {
+        phase:"開始操作", microphone:"未取得", resume:"未実行", rms:null, db:null,
+        recorder:"未生成", formats:[], mime:"未選択", dataEvents:0, bytes:0, error:"なし"
+      });
+      // DBの非同期処理より先に音声を開始し、ユーザー操作を失わないようにする。
       await createAudioPipeline();
+      await initDB();
 
       sessionStartMs = Date.now();
       activeSessionId = uniqueSessionId(sessionStartMs);
@@ -3670,7 +3822,20 @@ left+plotWidth/2}" y="${motionCenter+4}" text-anchor="middle" fill="#64748b" fon
       toast("睡眠測定を開始しました");
     } catch (error) {
       console.error("[StartTracking]", error);
-      stopTracking();
+      audioDiagnostic.error = audioError(error);
+      audioDiagnostic.phase = "測定開始失敗";
+      if (isTracking) {
+        await stopTracking();
+      } else {
+        await releaseAudioPipeline();
+        btnStart.disabled = false;
+        btnNight.disabled = true;
+        btnStop.disabled = true;
+        statusBadge.textContent = "開始失敗";
+        statusBadge.className = "badge b-gray";
+      }
+      setEngineText("開始エラー: " + audioDiagnostic.error, "var(--danger)");
+      renderAudioDiagnostics();
       toast("開始エラー: " + (error?.message || error));
     } finally {
       trackingStartPending = false;
@@ -3701,14 +3866,9 @@ left+plotWidth/2}" y="${motionCenter+4}" text-anchor="middle" fill="#64748b" fon
     await waitForRecorderFinalize();
     flushProfileBin(true);
 
-    if (stream) {
-      stream.getTracks().forEach(t => t.stop());
-      stream = null;
-    }
-    if (audioCtx) {
-      try { await audioCtx.close(); } catch (_) {}
-      audioCtx = null;
-    }
+    await releaseAudioPipeline();
+    audioDiagnostic.phase = "測定終了";
+    renderAudioDiagnostics();
 
     await releaseWakeLock();
 
@@ -3733,9 +3893,11 @@ left+plotWidth/2}" y="${motionCenter+4}" text-anchor="middle" fill="#64748b" fon
     initialized = true;
 
     const buildBadge = document.getElementById("buildBadge");
-    if (buildBadge) buildBadge.textContent = "ST-V29";
-    document.title = "SleepTracker AI ST-V29";
+    if (buildBadge) buildBadge.textContent = "ST-V31";
+    document.title = "SleepTracker AI ST-V31";
 
+    renderAudioDiagnostics();
+    audioDiagnosticTimer = setInterval(renderAudioDiagnostics, 1000);
     bindNightScreenControls();
     exitNightScreen();
     checkIosMotionBanner();
@@ -3768,6 +3930,7 @@ left+plotWidth/2}" y="${motionCenter+4}" text-anchor="middle" fill="#64748b" fon
     if (isTracking || trackingStartPending || testRecordingBusy || testExportBusy || exportBusy || stopRequested) {
       throw new Error("処理中は更新できません");
     }
+    clearInterval(audioDiagnosticTimer);
     document.removeEventListener("visibilitychange", handleVisibilityChange);
     window.removeEventListener("pageshow", handleVisibilityChange);
     window.removeEventListener("pagehide", flushOnPageHide);
