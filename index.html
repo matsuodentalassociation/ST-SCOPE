@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="st-build-id" content="ST-V31-Safari-20261002-02">
+<meta name="st-build-id" content="ST-V32-Safari-20261002-03">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
@@ -11,7 +11,7 @@
 <meta name="color-scheme" content="dark">
 <meta name="supported-color-schemes" content="dark">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>SleepTracker AI ST-V31</title>
+<title>SleepTracker AI ST-V32</title>
 
 <style>
 :root {
@@ -45,6 +45,8 @@ html {
   background:#090d16;
   color-scheme:dark;
   overscroll-behavior-y:none;
+  min-height:100vh;
+  min-height:100dvh;
 }
 
 body {
@@ -61,7 +63,7 @@ body {
   position:sticky;
   top:0;
   z-index:40;
-  background:#090d16eb;
+  background:#090d16;
   backdrop-filter:blur(12px);
   border-bottom:1px solid var(--line);
 }
@@ -472,6 +474,7 @@ body {
 
 .night-hold-seconds { margin-top:5px; color:#2b1116; font-size:9px; }
 
+html.night-screen-active,
 body.night-screen-active {
   background:#000 !important;
   overflow:hidden !important;
@@ -520,7 +523,7 @@ body.night-screen-active > :not(#nightScreen) {
 
 <header class="top">
 <div class="top-inner">
-  <div class="brand">🌙 SleepTracker <span id="buildBadge">ST-V31</span></div>
+  <div class="brand">🌙 SleepTracker <span id="buildBadge">ST-V32</span></div>
   <div id="statusBadge" class="badge b-gray">待機中</div>
 </div>
 </header>
@@ -818,6 +821,7 @@ window.GitHubLoader = (() => {
       if (!remoteBuild) throw new Error("取得HTMLにビルド識別子がありません");
       if (Number(version[1]) === Number(localVersion[1])) {
         if (remoteBuild === localBuild) {
+          window.__STAppliedCommit = sha;
           show(label() + " / 最新コミットのHTMLと同一ビルド " + sha.slice(0, 7), true);
           return {replaced:false};
         }
@@ -838,6 +842,7 @@ window.GitHubLoader = (() => {
       }
       // 同じwindowでも再宣言エラーを起こさず、更新処理を引き継ぐ。
       // loaderScriptは取得した最新版を維持する。
+      loaderScript.textContent = loaderScript.textContent.replace(/\bconst\s+GitHubLoader\s*=/, "window.GitHubLoader =");
       appScript.textContent = appScript.textContent.replace(/\bconst\s+App\s*=/, "window.App =");
       if (!document.querySelector('meta[name="st-build-id"]')?.content) {
         throw new Error("現在のビルド情報がありません");
@@ -1140,6 +1145,7 @@ window.App = (() => {
     screen.classList.add("active");
     screen.classList.remove("peek");
     screen.setAttribute("aria-hidden", "false");
+    document.documentElement.classList.add("night-screen-active");
     document.body.classList.add("night-screen-active");
     const theme = document.querySelector('meta[name="theme-color"]');
     if (theme) theme.setAttribute("content", "#000000");
@@ -1161,6 +1167,7 @@ window.App = (() => {
       screen.setAttribute("aria-hidden", "true");
     }
     nightPointerId = null;
+    document.documentElement.classList.remove("night-screen-active");
     document.body.classList.remove("night-screen-active");
     const theme = document.querySelector('meta[name="theme-color"]');
     if (theme) theme.setAttribute("content", "#090d16");
