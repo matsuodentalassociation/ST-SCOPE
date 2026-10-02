@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="st-build-id" content="ST-V32-Safari-20261002-03">
+<meta name="st-build-id" content="ST-V32-Safari-20261002-04">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
@@ -3899,9 +3899,12 @@ left+plotWidth/2}" y="${motionCenter+4}" text-anchor="middle" fill="#64748b" fon
     if (initialized) return;
     initialized = true;
 
+    const buildId = document.querySelector('meta[name="st-build-id"]')?.content || "";
+    const buildLabel = /^(ST-V\d+)(?:-|$)/.exec(buildId)?.[1] ||
+      document.getElementById("buildBadge")?.textContent.trim() || "版不明";
     const buildBadge = document.getElementById("buildBadge");
-    if (buildBadge) buildBadge.textContent = "ST-V31";
-    document.title = "SleepTracker AI ST-V31";
+    if (buildBadge) buildBadge.textContent = buildLabel;
+    document.title = "SleepTracker AI " + buildLabel;
 
     renderAudioDiagnostics();
     audioDiagnosticTimer = setInterval(renderAudioDiagnostics, 1000);
