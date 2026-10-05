@@ -1,888 +1,124 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="st-build-id" content="ST-V37-20261005-05">
-<meta name="st-update-protocol" content="dom-v1">
-<meta name="theme-color" content="#090d16">
-<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>SleepTracker ST-V37</title>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="st-build-id" content="ST-V38-20261005-01"><meta name="st-update-protocol" content="dom-v1">
+<meta name="theme-color" content="#090d16"><meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<title>SleepTracker ST-V38</title>
 <style>
-:root{color-scheme:dark;--bg:#090d16;--card:#131b2e;--line:#334155;--text:#f1f5f9;--muted:#94a3b8}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
-.shell{height:100vh;height:100dvh;max-width:960px;margin:auto;display:flex;flex-direction:column;padding:env(safe-area-inset-top) 12px env(safe-area-inset-bottom)}
-header,.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}header{justify-content:space-between;padding:12px 0}h1{font-size:17px;margin:0}h2{font-size:16px;margin:0 0 8px}p{margin:8px 0}small{color:var(--muted)}
-button,select{font:inherit;color:var(--text);background:#24314a;border:1px solid var(--line);border-radius:9px;padding:10px;cursor:pointer}button:disabled{opacity:.45;cursor:default}.primary{background:#4f46e5}.danger{background:#991b1b}
-nav{display:flex;gap:8px;margin:8px 0}nav button{flex:1}.scroll{flex:1;min-height:0;overflow:auto;padding-bottom:12px}.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:10px}.hidden{display:none!important}
-#timer{font:700 36px ui-monospace,monospace;text-align:center;margin:12px}pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:11px}audio{width:100%;margin-top:6px}.clip{padding:10px 0;border-top:1px solid var(--line)}.clip button{margin:6px 4px 0 0}#sessionSelect{width:100%;margin-top:8px}
-#notice,#updateText,#testStatus{font-size:12px;overflow-wrap:anywhere}#notice,#testStatus{white-space:pre-wrap}
-.chart,.progress{background:#0b1220;border:1px solid var(--line);border-radius:10px;padding:10px;margin-top:12px}.chart-head{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:12px}.chart canvas{display:block;width:100%;height:145px}.value{color:#38bdf8;font-family:ui-monospace,monospace}#motionValue{color:#ec4899}
-#testCounter{font:700 32px ui-monospace,monospace;margin:6px 0}.track{height:8px;border-radius:8px;background:#24314a;overflow:hidden}#testProgress{height:100%;width:0;background:#6366f1}#testDetails{font-size:11px;color:var(--muted)}
-#nightScreen{position:fixed;inset:0;background:#000;z-index:9999;touch-action:none;user-select:none;-webkit-user-select:none;display:grid;place-items:center}#nightClock{color:#64748b;font:28px ui-monospace,monospace;visibility:hidden}#nightScreen.peek #nightClock{visibility:visible}body.night .shell{visibility:hidden}
-</style>
-</head>
-<body>
-<div class="shell">
-<header><h1>🌙 SleepTracker <span id="buildBadge">ST-V37</span></h1><span id="statusBadge">待機</span></header>
-<div class="card"><div class="row"><button id="btnCheckUpdate">更新確認</button><button id="btnApplyUpdate" disabled>最新版を適用</button></div><div id="updateText">更新確認は測定・保存とは独立しています。</div><small id="buildInfo"></small></div>
+:root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;background:#090d16;color:#f1f5f9;font:14px/1.5 -apple-system,sans-serif}.shell{max-width:960px;margin:auto;padding:env(safe-area-inset-top) 12px env(safe-area-inset-bottom)}header,.row,nav{display:flex;gap:8px;align-items:center;flex-wrap:wrap}header{justify-content:space-between}h1{font-size:18px}h2{font-size:16px}button,select{font:inherit;color:inherit;background:#24314a;border:1px solid #334155;border-radius:9px;padding:10px;cursor:pointer}button:disabled{opacity:.45;cursor:default}.primary{background:#4f46e5}.danger{background:#991b1b}nav{margin:10px 0}nav button{flex:1}.card{background:#131b2e;border:1px solid #334155;border-radius:12px;padding:12px;margin-bottom:10px}.hidden{display:none!important}small{color:#94a3b8}pre,#notice,#testStatus{white-space:pre-wrap;overflow-wrap:anywhere}pre,small,#updateText{font-size:12px}audio,select{width:100%}audio{margin-top:8px}.clip{padding:10px 0;border-top:1px solid #334155}.clip button{margin:6px 4px 0 0}.chart{background:#0b1220;border-radius:9px;padding:8px;margin-top:10px}.chart strong{font-size:12px}.chart span{float:right;color:#38bdf8;font-family:monospace}.chart.motion span{color:#ec4899}canvas{width:100%;height:140px;display:block}#timer,#testCounter{font:700 32px monospace;margin:12px 0}.track{height:8px;background:#24314a;border-radius:8px;overflow:hidden}#testProgress{height:100%;background:#6366f1;width:0}#nightScreen{position:fixed;inset:0;background:#000;z-index:9999;display:grid;place-items:center;touch-action:none;user-select:none;-webkit-user-select:none}#nightClock{color:#64748b;font:28px monospace;visibility:hidden}#nightScreen.peek #nightClock{visibility:visible}body.night .shell{visibility:hidden}
+</style></head>
+<body><div class="shell">
+<header><h1>🌙 SleepTracker ST-V38</h1><span id="statusBadge">待機</span></header>
+<div class="card"><div class="row"><button id="btnCheckUpdate">更新確認</button><button id="btnApplyUpdate" disabled>最新版を適用</button></div><p id="updateText">更新確認は測定とは独立しています。</p><small id="buildInfo"></small></div>
 <nav><button id="tabMeasure">測定</button><button id="tabRecords">保存済み記録</button></nav>
-<main class="scroll">
 <section id="measurePanel">
-<div class="card">
-<div id="timer">00:00:00</div><p id="liveText">入力未取得</p><p id="engineText">待機</p>
-<div class="row"><button id="btnStart" class="primary" disabled>測定開始</button><button id="btnNight" disabled>黒画面</button><button id="btnStop" class="danger" disabled>測定停止</button></div>
-<div class="chart"><div class="chart-head"><strong>入力音量（相対 dBFS）</strong><span id="audioValue" class="value">未取得</span></div><canvas id="audioGraph" role="img" aria-label="入力音量、直近60秒"></canvas><small>未校正の相対値です。欠測区間は線を描きません。</small></div>
-<div class="chart"><div class="chart-head"><strong>体動（加速度変化・G）</strong><span id="motionValue" class="value">未取得</span></div><canvas id="motionGraph" role="img" aria-label="体動、直近60秒"></canvas><small>センサーなしは欠測。0.5 Gを超える値は上端表示です。</small></div>
-</div>
-<div class="card"><strong>検証版・終夜動作未確認</strong>
-<p>前面に開いたまま使用してください。開始1分後に黒画面。タップで時刻を5秒表示、0.8秒長押しで戻ります。黒画面中はグラフ描画を停止します。</p>
-<p>通常測定は3秒遅延・約15秒の独立録音。通常停止時は約3秒待って末尾を取得します。中断時の末尾取得・分割境界の連続性・再生は保証できません。</p>
-<small>診断用ではありません。音声には会話が含まれます。自動送信しません。背景動作・手動ロックは保証しません。強い発熱時は停止してください。サイトデータ削除・オリジン変更などで保存記録を失う場合があります。</small>
-</div>
+<div class="card"><div id="timer">00:00:00</div><p id="liveText">入力未取得</p><p id="motionStatus">体動未取得</p><p id="engineText">待機</p><div class="row"><button id="btnStart" class="primary" disabled>測定開始</button><button id="btnNight" disabled>黒画面</button><button id="btnStop" class="danger" disabled>測定停止</button></div>
+<div class="chart"><strong>入力音量（相対 dBFS）</strong><span id="audioValue">未取得</span><canvas id="audioGraph" role="img" aria-label="音量、直近60秒"></canvas></div>
+<div class="chart motion"><strong>体動（加速度変化・G）</strong><span id="motionValue">未取得</span><canvas id="motionGraph" role="img" aria-label="体動、直近60秒"></canvas></div></div>
+<div class="card"><strong>検証版・終夜動作未確認</strong><p>前面に開いたまま使用。開始1分後に黒画面。タップで時刻を5秒表示、0.8秒長押しで戻ります。黒画面中は描画のみ停止します。</p><p>通常録音は3秒遅延・約15秒の独立音声。通常停止は末尾取得のため約3秒待機。分割境界・末尾・再生は実機未検証です。</p><small>音量は未校正の相対値。体動は隣接加速度差で、0.5 G超はグラフ上端表示。欠測はゼロではありません。診断用ではなく、会話を録音する場合があります。自動送信しません。背景動作・手動ロックは保証しません。発熱時は停止。サイトデータ削除・オリジン変更等で記録を失う場合があります。</small></div>
 <details class="card"><summary>録音・保存の診断</summary><pre id="diagnostics"></pre></details>
-<div class="card"><h2>30秒テスト録音</h2><small>加工前のマイクを直接録音（遅延なし）。別の診断DBに最新1件を保存します。</small>
-<div class="row"><button id="btnTest" disabled>30秒テスト開始</button><button id="btnTestExport" disabled>テストZIP出力</button></div>
-<div class="progress"><div id="testPhase" role="status" aria-live="polite">未実施</div><div id="testCounter">00:00 / 00:30</div><div class="track"><div id="testProgress"></div></div><div id="testDetails">録音器: 未生成</div></div>
-<div class="chart"><div class="chart-head"><strong>テスト入力音量（相対 dBFS）</strong><span id="testValue" class="value">未取得</span></div><canvas id="testGraph" role="img" aria-label="テスト入力音量、直近60秒"></canvas></div>
-<p id="testStatus">未実施</p><audio id="testAudio" controls playsinline></audio><small id="testPlayback">音声内容は再生して確認してください。</small>
-</div>
-</section>
-<section id="recordsPanel" class="hidden">
-<div class="card"><h2>保存済み・不完全記録</h2><button id="btnRefresh">一覧更新</button><select id="sessionSelect"></select><pre id="summary"></pre><div class="row"><button id="btnFullExport" class="primary" disabled>ZIP出力・回収</button><button id="btnDeleteSession" class="danger" disabled>この記録を削除</button></div></div>
-<div class="card"><h2>音イベント・保存音声</h2><small>40イベントずつ表示。長いイベントは複数の独立音声です。</small><div id="clipList"></div><button id="btnMore" disabled>次の40件</button></div>
-</section>
-<div id="notice" role="status" aria-live="polite" class="card">初期化中</div>
-</main></div>
-<div id="nightScreen" class="hidden" role="dialog" aria-label="0.8秒長押しで操作画面に戻る"><div id="nightClock"></div></div>
+<div class="card"><h2>30秒・音声／モーションテスト</h2><p>音声を出し、端末を軽く動かして両方の値を確認してください。</p><small>音声は直接録音（遅延なし）。別の診断DBに最新1件を保存します。許可状態と実際の値受信は別に表示します。</small><div class="row"><button id="btnTest" disabled>30秒テスト開始</button><button id="btnTestExport" disabled>テストZIP出力</button></div>
+<p id="testPhase" role="status" aria-live="polite">未実施</p><div id="testCounter">00:00 / 00:30</div><div class="track"><div id="testProgress"></div></div><small id="testDetails"></small>
+<div class="chart"><strong>テスト音量（相対 dBFS）</strong><span id="testValue">未取得</span><canvas id="testGraph" role="img" aria-label="テスト音量、直近60秒"></canvas></div>
+<div class="chart motion"><strong>テスト体動（加速度変化・G）</strong><span id="testMotionValue">未取得</span><canvas id="testMotionGraph" role="img" aria-label="テスト体動、直近60秒"></canvas><p id="testMotionStatus">体動未取得</p></div>
+<p id="testStatus">未実施</p><audio id="testAudio" controls playsinline></audio><small id="testPlayback">音声内容は再生して確認してください。</small></div></section>
+<section id="recordsPanel" class="hidden"><div class="card"><h2>保存済み・不完全記録</h2><button id="btnRefresh">一覧更新</button><select id="sessionSelect"></select><pre id="summary"></pre><div class="row"><button id="btnFullExport" class="primary" disabled>ZIP出力・回収</button><button id="btnDeleteSession" class="danger" disabled>この記録を削除</button></div></div><div class="card"><h2>音イベント・保存音声</h2><small>40イベントずつ表示。長いイベントは複数の独立音声です。</small><div id="clipList"></div><button id="btnMore" disabled>次の40件</button></div></section>
+<div id="notice" class="card" role="status" aria-live="polite">初期化中</div></div>
+<div id="nightScreen" class="hidden" role="dialog" aria-label="0.8秒長押しで戻る"><div id="nightClock"></div></div>
 <script>
-window.App = (() => {
+window.App = (()=>{
 'use strict';
-const VERSION='ST-V37',BUILD='ST-V37-20261005-05',SCHEMA=5;
-const DB_NAME='SleepTrackerClassifierV6DB',PRE=3000,UNIT=15000,TEST=30000,ZIP_LIMIT=256*1024*1024;
-const $=id=>document.getElementById(id),tell=s=>{$('notice').textContent=s;};
-const message=e=>e?.message||String(e);
+const BUILD='ST-V38-20261005-01',VERSION='ST-V38',SCHEMA=5,PRE=3000,UNIT=15000,TEST=30000;
+const $=id=>document.getElementById(id),tell=s=>{$('notice').textContent=s;},msg=e=>e?.message||String(e);
 const uid=()=>window.crypto?.randomUUID?.()||Date.now()+'-'+Math.random().toString(36).slice(2);
-const sleep=ms=>new Promise(r=>setTimeout(r,ms));
-let db,diagnosticDB,audio,session,selected,unit,closing,stopping;
-let ready=false,initializing=true,operation=false,testBusy=false,state='待機';
-let origin=0,stopAt=0,calibrationEnd=0,baseline=null,samples=[],quietAt=null,event=null;
-let second=null,previousAcc=null,motion=null,motionAt=null,motionPeak=null,lastInput=0,lastTick=0;
-let queue=Promise.resolve(),pending=0,saveError=null,bytes=0,dataEvents=0;
-let ticker,nightTimer,wake,hold,peek,pointer=null,point,held=false,page=0,generation=0,urls=[];
-let testResult,testURL,testEntry,testStart=0,testElapsed=0;
-const now=()=>Math.max(0,performance.now()-origin);
-const format=(ms,short=false)=>{
-  const s=Math.floor(Math.max(0,ms||0)/1000);
-  return (short?[Math.floor(s/60),s%60]:[Math.floor(s/3600),Math.floor(s/60)%60,s%60]).map(v=>String(v).padStart(2,'0')).join(':');
-};
-const graph={
-  audio:{min:-100,max:0,color:'#38bdf8',unit:'dBFS',data:[]},
-  motion:{min:0,max:.5,color:'#ec4899',unit:'G',data:[]},
-  test:{min:-100,max:0,color:'#38bdf8',unit:'dBFS',data:[]}
-};
+let db,tdb,audio,session,selected,unit,event,closing,stopping,wake,ticker,nightTimer;
+let ready=false,initializing=true,operation=false,testBusy=false,state='待機',origin=0,stopAt=0;
+let queue=Promise.resolve(),pending=0,saveError=null,second=null,baseline=null,calibrationEnd=0,samples=[],quietAt=null,lastInput=0,lastTick=0,bytes=0;
+let page=0,generation=0,urls=[],testResult,testURL,testEntry,testSamples=[],audioCount=0,peakDb=null;
+let hold,peek,pointer=null,point,held=false,uiCount=0;
+const motion={permission:'未要求',events:0,valid:0,previous:null,value:null,at:null,peak:null,max:null};
+const graphs=Object.fromEntries(['audio','motion','test','testMotion'].map(k=>[k,{data:[],motion:k.toLowerCase().includes('motion')} ]));
+const elapsed=()=>Math.max(0,performance.now()-origin);
+function clock(ms,short=false){const s=Math.floor(Math.max(0,ms||0)/1000);return (short?[Math.floor(s/60),s%60]:[Math.floor(s/3600),Math.floor(s/60)%60,s%60]).map(v=>String(v).padStart(2,'0')).join(':');}
 function busy(){return initializing||operation||testBusy||!!session||!!stopping||!!window.__STUpdateApplying;}
-function controls(){
-  const b=busy(),running=!!session&&!stopping&&['環境音計測','測定中'].includes(state);
-  for(const id of ['btnStart','btnTest','btnRefresh'])$(id).disabled=b||!ready;
-  for(const id of ['btnStop','btnNight'])$(id).disabled=!running;
-  for(const id of ['btnFullExport','btnDeleteSession'])$(id).disabled=b||!selected;
-  $('sessionSelect').disabled=b;$('btnTestExport').disabled=b||!testResult;
-  $('statusBadge').textContent=state;
-}
+function controls(){const b=busy(),r=!!session&&!stopping&&['環境音計測','測定中'].includes(state);for(const id of ['btnStart','btnTest','btnRefresh'])$(id).disabled=b||!ready;for(const id of ['btnStop','btnNight'])$(id).disabled=!r;for(const id of ['btnFullExport','btnDeleteSession'])$(id).disabled=b||!selected;$('sessionSelect').disabled=b;$('btnTestExport').disabled=b||!testResult;$('statusBadge').textContent=state;}
 function setState(s){state=s;controls();}
-async function limit(p,ms,text){
-  let t;try{return await Promise.race([p,new Promise((_,reject)=>{t=setTimeout(()=>reject(new Error(text)),ms);})]);}
-  finally{clearTimeout(t);}
-}
-function open(name,version,upgrade){
-  return new Promise((resolve,reject)=>{
-    let ended=false;
-    const t=setTimeout(()=>finish(new Error('DB準備時間切れ')),10000);
-    function finish(e,value){if(ended){value?.close();return;}ended=true;clearTimeout(t);e?reject(e):resolve(value);}
-    let r;try{r=indexedDB.open(name,version);}catch(e){finish(e);return;}
-    r.onupgradeneeded=()=>upgrade(r.result,r.transaction);
-    r.onblocked=()=>finish(new Error('DBが他タブで使用中です。別タブを閉じてください'));
-    r.onerror=()=>finish(r.error);
-    r.onsuccess=()=>finish(null,r.result);
-  });
-}
-function transaction(database,names,mode,work){
-  return new Promise((resolve,reject)=>{
-    let t,result,done=false;
-    const timer=setTimeout(()=>{
-      try{t?.abort();}catch(_){}finish(new Error('DB処理時間切れ'));
-    },10000);
-    function finish(e){if(done)return;done=true;clearTimeout(timer);e?reject(e):resolve(result);}
-    try{
-      t=database.transaction(names,mode);
-      t.oncomplete=()=>finish();t.onabort=t.onerror=()=>finish(t.error||new Error('DB処理失敗'));
-      work(t,value=>{result=value;});
-    }catch(e){try{t?.abort();}catch(_){}finish(e);}
-  });
-}
-const write=(names,work)=>transaction(db,names,'readwrite',work);
-const get=(store,key)=>transaction(db,[store],'readonly',(t,set)=>{
-  const r=t.objectStore(store).get(key);r.onsuccess=()=>set(r.result);
-});
-function rows(store,id=null,metadata=false){
-  return transaction(db,[store],'readonly',(t,set)=>{
-    const values=[],s=t.objectStore(store);
-    const r=id!==null&&s.indexNames.contains('sessionId')?s.index('sessionId').openCursor(IDBKeyRange.only(id)):s.openCursor();
-    r.onsuccess=()=>{
-      const c=r.result;if(!c){set(values);return;}
-      const v=c.value;
-      if(id===null||String(v.sessionId)===String(id)){
-        if(metadata){const {blob,...m}=v;values.push({...m,byteLength:blob?.size||v.byteLength||0,mimeType:v.mimeType||blob?.type||''});}
-        else values.push(v);
-      }
-      c.continue();
-    };
-  });
-}
-async function testDB(save,value){
-  if(!diagnosticDB){
-    diagnosticDB=await open('ST_RECORDING_DIAGNOSTICS_V1',1,d=>{
-      if(!d.objectStoreNames.contains('latest'))d.createObjectStore('latest');
-    });
-    diagnosticDB.onversionchange=()=>{diagnosticDB.close();diagnosticDB=null;};
-  }
-  return transaction(diagnosticDB,['latest'],save?'readwrite':'readonly',(t,set)=>{
-    const s=t.objectStore('latest'),r=save?s.put(value,'latest'):s.get('latest');
-    r.onsuccess=()=>set(r.result);
-  });
-}
-function fail(e){
-  saveError??=e;
-  if(session){session.interrupted=true;session.saveError=message(e);}
-  exitNight();tell('録音・保存エラー: '+message(e)+'。保存済み部分は残しています。');
-  if(session&&!stopping)setTimeout(()=>stop(true),0);
-}
-function enqueue(work){
-  if(saveError)return Promise.reject(saveError);
-  if(pending>=16){const e=new Error('保存待ち上限超過');fail(e);return Promise.reject(e);}
-  pending++;
-  const p=queue.then(work);
-  queue=p.catch(fail).finally(()=>pending--);
-  return p;
-}
-async function mic(){
-  if(!isSecureContext||!navigator.mediaDevices?.getUserMedia)throw new Error('HTTPS等の安全な環境とマイクAPIが必要です');
-  let expired=false;
-  const p=navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false},video:false}).then(s=>{
-    if(expired){s.getTracks().forEach(t=>t.stop());throw new Error('マイク取得時間切れ');}return s;
-  });
-  try{return await limit(p,30000,'マイク取得時間切れ。権限を確認してください');}
-  catch(e){expired=true;throw e;}
-}
-function motionPermission(){
-  try{
-    if(typeof DeviceMotionEvent==='undefined')return Promise.resolve(false);
-    return typeof DeviceMotionEvent.requestPermission==='function'?DeviceMotionEvent.requestPermission().then(v=>v==='granted',()=>false):Promise.resolve(true);
-  }catch(_){return Promise.resolve(false);}
-}
-function onMotion(e){
-  if(!session||stopping)return;
-  let a=e.acceleration,kind=0;
-  if(!a||![a.x,a.y,a.z].every(Number.isFinite)){a=e.accelerationIncludingGravity;kind=1;}
-  if(!a||![a.x,a.y,a.z].every(Number.isFinite))return;
-  if(previousAcc&&previousAcc.kind===kind){
-    motion=Math.hypot(a.x-previousAcc.x,a.y-previousAcc.y,a.z-previousAcc.z)/9.80665;
-    motionAt=now();motionPeak=Math.max(motionPeak??0,motion);session.motionAvailable=true;
-  }
-  previousAcc={x:a.x,y:a.y,z:a.z,kind};
-}
-function newAudio(){
-  const C=window.AudioContext||window.webkitAudioContext;if(!C)throw new Error('AudioContext非対応');
-  const c=new C(),resume=Promise.resolve(c.resume());resume.catch(()=>{});
-  return {ctx:c,resume,stream:null,nodes:[]};
-}
-function attachAudio(a,s,delayed){
-  a.stream=s;a.source=a.ctx.createMediaStreamSource(s);
-  a.analyser=a.ctx.createAnalyser();a.analyser.fftSize=1024;
-  a.buffer=new Float32Array(1024);
-  const mute=a.ctx.createGain();mute.gain.value=0;
-  a.source.connect(a.analyser);a.analyser.connect(mute);mute.connect(a.ctx.destination);
-  a.nodes=[a.source,a.analyser,mute];
-  if(delayed){
-    const d=a.ctx.createDelay(4);d.delayTime.value=PRE/1000;
-    a.destination=a.ctx.createMediaStreamDestination();
-    a.source.connect(d);d.connect(a.destination);a.nodes.push(d,a.destination);
-  }
-}
-function inputDb(){
-  const t=audio?.stream?.getAudioTracks()[0];
-  if(!t||t.readyState!=='live'||t.muted||audio.ctx.state!=='running')return null;
-  audio.analyser.getFloatTimeDomainData(audio.buffer);
-  let sum=0;for(const v of audio.buffer)sum+=v*v;
-  const rms=Math.sqrt(sum/audio.buffer.length);
-  return Number.isFinite(rms)?20*Math.log10(Math.max(1e-7,rms)):null;
-}
-async function releaseAudio(){
-  const a=audio;audio=null;if(!a)return;
-  a.stream?.getTracks().forEach(t=>t.stop());a.destination?.stream.getTracks().forEach(t=>t.stop());
-  for(const n of a.nodes){try{n.disconnect();}catch(_){}}
-  try{if(a.ctx.state!=='closed')await limit(a.ctx.close(),2000,'音声解放時間切れ');}catch(_){}
-}
-function recorderFor(s){
-  if(!window.MediaRecorder)throw new Error('MediaRecorder非対応');
-  for(const m of ['audio/mp4;codecs=mp4a.40.2','audio/mp4','audio/webm;codecs=opus','audio/webm','audio/ogg;codecs=opus']){
-    try{if(MediaRecorder.isTypeSupported(m))return new MediaRecorder(s,{mimeType:m});}catch(_){}
-  }
-  return new MediaRecorder(s);
-}
-function extension(m){
-  for(const [pattern,ext] of [[/mp4/i,'m4a'],[/webm/i,'webm'],[/ogg/i,'ogg'],[/aac/i,'aac']])if(pattern.test(m))return ext;
-  throw new Error('未対応音声形式: '+m);
-}
-// 通常録音とテストで同じ録音・停止・最終通知処理を使用する。
-function capture(s,duration,onFinish){
-  const r=recorderFor(s),parts=[];
-  let resolve,reject,ended=false,stopTimer,finalTimer;
-  const entry={r,start:performance.now(),stopMs:null,bytes:0,events:0,error:null};
-  entry.done=new Promise((res,rej)=>{resolve=res;reject=rej;});entry.done.catch(()=>{});
-  entry.stop=()=>{
-    clearTimeout(stopTimer);
-    if(entry.stopMs===null)entry.stopMs=performance.now();
-    if(!ended&&!finalTimer)finalTimer=setTimeout(()=>reject(new Error('録音停止通知時間切れ')),8000);
-    try{if(r.state!=='inactive')r.stop();}catch(e){reject(e);}
-    return entry.done;
-  };
-  entry.cancelTimer=()=>clearTimeout(stopTimer);
-  entry.dispose=()=>{
-    clearTimeout(stopTimer);clearTimeout(finalTimer);
-    r.ondataavailable=r.onstop=r.onerror=null;
-    try{if(r.state!=='inactive')r.stop();}catch(_){}
-  };
-  r.ondataavailable=e=>{
-    entry.events++;if(e.data?.size){parts.push(e.data);entry.bytes+=e.data.size;}
-  };
-  r.onerror=e=>{entry.error=e.error||new Error('録音エラー');entry.stop();};
-  r.onstop=()=>{
-    if(ended)return;ended=true;clearTimeout(stopTimer);clearTimeout(finalTimer);
-    entry.stopMs??=performance.now();
-    entry.blob=new Blob(parts,{type:r.mimeType||parts[0]?.type||''});parts.length=0;
-    Promise.resolve().then(()=>onFinish?.(entry)).then(()=>resolve(entry),reject);
-  };
-  try{r.start();stopTimer=setTimeout(()=>entry.stop().catch(()=>{}),duration);}
-  catch(e){entry.dispose();throw e;}
-  return entry;
-}
-async function requestWake(){
-  if(!session||stopping||document.hidden||wake)return;
-  const owner=session;
-  try{
-    if(!navigator.wakeLock)throw new Error('非対応');
-    const lock=await navigator.wakeLock.request('screen');
-    if(session!==owner||stopping){await lock.release();return;}
-    wake=lock;lock.addEventListener('release',()=>{if(wake===lock)wake=null;});
-  }catch(e){tell('画面消灯防止なし: '+message(e));}
-}
-
-function graphPush(key,value){
-  const a=graph[key].data,t=performance.now();
-  a.push({t,v:Number.isFinite(value)?value:null});
-  while(a.length&&(a[0].t<t-60000||a.length>300))a.shift();
-}
-function drawGraph(key){
-  const c=graph[key],canvas=$(key+'Graph'),rect=canvas.getBoundingClientRect();
-  if(!rect.width)return;
-  const ratio=Math.min(2,devicePixelRatio||1),w=rect.width,h=rect.height;
-  if(canvas.width!==Math.round(w*ratio)||canvas.height!==Math.round(h*ratio)){
-    canvas.width=Math.round(w*ratio);canvas.height=Math.round(h*ratio);
-  }
-  const g=canvas.getContext('2d');if(!g)return;
-  g.setTransform(ratio,0,0,ratio,0,0);g.clearRect(0,0,w,h);g.font='10px sans-serif';
-  const l=42,r=w-8,top=10,b=h-24,t=performance.now(),range=c.max-c.min;
-  g.lineWidth=1;
-  for(let i=0;i<=4;i++){
-    const y=top+(b-top)*i/4,v=c.max-range*i/4;
-    g.strokeStyle='#223047';g.beginPath();g.moveTo(l,y);g.lineTo(r,y);g.stroke();
-    g.fillStyle='#94a3b8';g.textAlign='right';g.fillText(key==='motion'?v.toFixed(2):v.toFixed(0),l-5,y+3);
-  }
-  g.fillStyle='#94a3b8';g.textAlign='left';g.fillText('-60秒',l,h-6);g.textAlign='right';g.fillText('現在',r,h-6);
-  g.strokeStyle=c.color;g.lineWidth=2;g.beginPath();let prev=null,count=0;
-  for(const p of c.data){
-    if(p.t<t-60000)continue;
-    if(p.v===null){prev=null;continue;}
-    const x=l+(p.t-t+60000)/60000*(r-l),y=b-(Math.max(c.min,Math.min(c.max,p.v))-c.min)/range*(b-top);
-    if(!prev||p.t-prev.t>1800)g.moveTo(x,y);else g.lineTo(x,y);
-    prev=p;count++;
-  }
-  g.stroke();
-  const last=c.data[c.data.length-1];
-  $(key+'Value').textContent=last&&t-last.t<2000&&last.v!==null?last.v.toFixed(key==='motion'?3:1)+' '+c.unit:'未取得／欠測';
-  if(!count){g.fillStyle='#94a3b8';g.textAlign='center';g.fillText('未取得／欠測',(l+r)/2,(top+b)/2);}
-}
-function testUI(ms,phase,detail){
-  $('testCounter').textContent=format(ms,true)+' / 00:30';
-  $('testProgress').style.width=Math.min(100,ms/TEST*100)+'%';
-  if(phase)$('testPhase').textContent=phase;
-  if(detail!==undefined)$('testDetails').textContent=detail;
-}
-function flush(){
-  if(!second||!session)return;
-  const v=second;second=null;v.motionG=motionPeak;v.motionValid=motionPeak!==null;motionPeak=null;
-  v.sessionId=session.id;v.key=session.id+':'+String(v.sec).padStart(8,'0');
-  const s={...session,lastSavedAt:Date.now(),lastElapsedMs:v.elapsed_ms};
-  enqueue(()=>write(['sessionLogs','sessions'],t=>{
-    t.objectStore('sessionLogs').put(v);t.objectStore('sessions').put(s);
-  })).catch(()=>{});
-}
-function recordUnit(){
-  if(!event||unit||closing||stopping||saveError)return;
-  const ev=event,owner=session,start=now(),index=ev.units++;
-  try{
-    const entry=capture(audio.destination.stream,UNIT,e=>{
-      if(unit===entry)unit=null;
-      bytes+=e.bytes;dataEvents+=e.events;
-      if(e.error)throw e.error;
-      if(!e.blob.size)throw new Error('音声0バイト');
-      extension(e.blob.type);
-      const end=e.stopMs-origin;
-      const row={
-        key:ev.id+':'+String(index).padStart(6,'0'),clipId:ev.id,sessionId:owner.id,index,
-        blob:e.blob,byteLength:e.blob.size,mimeType:e.blob.type,
-        startElapsedMs:Math.max(ev.startElapsedMs,start-PRE),
-        endElapsedMs:Math.max(ev.startElapsedMs,end-PRE),
-        recorderStartMs:start,recorderStopMs:end,independent:true,finalized:true
-      };
-      const meta={...ev,mimeType:e.blob.type,lastAudioEndMs:row.endElapsedMs,status:'open',unitCount:ev.units};
-      const saved=enqueue(()=>write(['audioChunks','clips'],t=>{
-        t.objectStore('audioChunks').put(row);t.objectStore('clips').put(meta);
-      }));
-      if(session===owner&&!closing&&!stopping)recordUnit();
-      return saved;
-    });
-    unit=entry;owner.mimeType=entry.r.mimeType;
-    entry.done.catch(fail);
-  }catch(e){fail(e);}
-}
-function beginEvent(t){
-  const start=Math.max(calibrationEnd,t-PRE);
-  event={id:uid(),sessionId:session.id,startElapsedMs:start,startSec:start/1000,
-    detectedElapsedMs:t,units:0,status:'open',prerollMs:t-start,
-    prerollMethod:'AudioContext DelayNode',boundaryVerified:false};
-  const meta={...event};quietAt=null;
-  enqueue(()=>write(['clips'],tx=>tx.objectStore('clips').put(meta))).catch(()=>{});
-  recordUnit();
-}
-function endEvent(end){
-  if(closing)return closing;if(!event)return Promise.resolve();
-  const ev=event,entry=unit;
-  // closingを先に設定し、次の録音単位の開始を抑制する。
-  closing=Promise.resolve().then(async()=>{
-    if(entry)await entry.stop();
-    ev.endElapsedMs=end;ev.endSec=end/1000;ev.durationSec=Math.max(0,(end-ev.startElapsedMs)/1000);
-    ev.status='saved';ev.unitCount=ev.units;
-    await enqueue(()=>write(['clips'],t=>t.objectStore('clips').put({...ev})));
-  }).finally(()=>{if(event===ev)event=null;closing=null;quietAt=null;});
-  return closing;
-}
-function monitor(value){
-  const t=now();
-  if(lastTick&&t-lastTick>2500){session.interrupted=true;quietAt=null;motionPeak=null;}
-  lastTick=t;
-  const sec=Math.floor(t/1000);if(second&&second.sec!==sec)flush();
-  second??={sec,elapsed_ms:sec*1000,epochMs:session.startedAt+sec*1000,maxDb:null,audioValid:false};
-  if(value!==null){lastInput=t;second.maxDb=Math.max(second.maxDb??-Infinity,value);second.audioValid=true;}
-  else{session.interrupted=true;quietAt=null;}
-  if(motionAt===null||t-motionAt>2000)motion=null;
-  graphPush('audio',value);graphPush('motion',motion);
-  if(state==='環境音計測'){
-    if(value!==null&&t<calibrationEnd)samples.push(value);
-    if(t>=calibrationEnd){
-      if(samples.length<80)throw new Error('基準音量の有効データ不足');
-      samples.sort((a,b)=>a-b);const n=samples.length;
-      baseline=n%2?samples[(n-1)/2]:(samples[n/2-1]+samples[n/2])/2;samples=[];
-      session.baselineDb=baseline;session.thresholdDb=baseline+6;setState('測定中');
-    }
-  }
-  if(state==='測定中'&&value!==null){
-    if(value>session.thresholdDb){quietAt=null;if(!event&&!closing)beginEvent(t);}
-    else if(event&&!closing){quietAt??=t;if(t-quietAt>=5000+PRE)endEvent(quietAt+5000).catch(fail);}
-  }
-  if(t-lastInput>7000)throw new Error('音声入力を7秒以上取得できません');
-}
-let uiCount=0;
-function update(){
-  let value=null;
-  try{
-    if(audio?.analyser)value=inputDb();
-    if(session&&!stopping&&['環境音計測','測定中'].includes(state))monitor(value);
-    if(testBusy&&testEntry){
-      graphPush('test',value);
-      if(testEntry.r.state==='recording'){
-        testUI(performance.now()-testStart,'録音中','録音器: recording（最終データは停止時に取得）');
-      }else if(testEntry.stopMs!==null)testUI(testEntry.stopMs-testEntry.start,'停止処理中');
-    }
-  }catch(e){if(session)fail(e);else $('testStatus').textContent=message(e);}
-  if(++uiCount%2||document.hidden||document.body.classList.contains('night')){
-    if($('nightScreen').classList.contains('peek'))$('nightClock').textContent=new Date().toLocaleTimeString('ja-JP');
-    return;
-  }
-  if(session){
-    $('timer').textContent=format(stopping?stopAt:now());
-    $('liveText').textContent='音量: '+(value===null?'欠測':value.toFixed(1)+' dBFS')+
-      ' ／ 体動: '+(motion===null?'欠測':motion.toFixed(3)+' G')+
-      ' ／ 基準: '+(baseline===null?'計測中':baseline.toFixed(1));
-    $('engineText').textContent=state+' ／ '+(event?'イベント録音中':'イベント待ち')+' ／ 画面消灯防止: '+(wake?'有効':'無効');
-    $('diagnostics').textContent='ビルド: '+BUILD+'\nAudioContext: '+audio?.ctx.state+
-      '\n録音器: '+(unit?.r.state||'イベント待ち')+'\n遅延: 3秒\nMIME: '+session.mimeType+
-      '\n保存音声: '+bytes+' bytes / '+dataEvents+'通知\n保存待ち: '+pending+
-      '\nエラー: '+(saveError?message(saveError):'なし');
-  }
-  if(!$('measurePanel').classList.contains('hidden'))Object.keys(graph).forEach(drawGraph);
-}
-async function start(){
-  if(busy()||!ready)return;
-  origin=performance.now();stopAt=0;saveError=null;pending=0;queue=Promise.resolve();
-  session={id:'st-'+Date.now()+'-'+uid(),schemaVersion:SCHEMA,appVersion:VERSION,buildId:BUILD,
-    startedAt:Date.now(),status:'recording',interrupted:false,motionAvailable:false,
-    lastSavedAt:Date.now(),audioUnitTargetMs:UNIT,stopDrainTargetMs:PRE,boundaryVerified:false,
-    recordingMethod:'MediaRecorder / DelayNode 3秒 / 独立15秒単位'};
-  setState('開始準備');
-  try{
-    audio=newAudio();
-    const permission=motionPermission(),request=mic();request.catch(()=>{});
-    const s=await request;audio.stream=s;
-    await limit(audio.resume,8000,'AudioContext開始時間切れ');
-    if(audio.ctx.state!=='running')throw new Error('AudioContextを開始できません');
-    attachAudio(audio,s,true);
-    const probe=recorderFor(audio.destination.stream);extension(probe.mimeType);session.mimeType=probe.mimeType;
-    await write(['sessions'],t=>t.objectStore('sessions').put({...session}));
-    if(await limit(permission,15000,'体動権限時間切れ').catch(()=>false))
-      window.addEventListener('devicemotion',onMotion,{passive:true});
-    previousAcc=null;motion=motionPeak=null;motionAt=null;second=null;event=null;unit=null;closing=null;
-    samples=[];baseline=null;quietAt=null;bytes=dataEvents=0;lastTick=0;lastInput=now();
-    graph.audio.data=[];graph.motion.data=[];
-    calibrationEnd=now()+30000;
-    session.calibrationStartedElapsedMs=calibrationEnd-30000;session.calibrationEndedElapsedMs=calibrationEnd;
-    setState('環境音計測');
-    s.getAudioTracks().forEach(t=>t.addEventListener('ended',()=>{if(session&&!stopping)fail(new Error('マイク終了'));}));
-    nightTimer=setTimeout(enterNight,Math.max(0,60000-now()));
-    await requestWake();tell('環境音を30秒計測します。通常録音は3秒遅延あり。');
-  }catch(e){
-    session.status='interrupted';session.interrupted=true;session.saveError=message(e);
-    try{await write(['sessions'],t=>t.objectStore('sessions').put({...session}));}catch(_){}
-    await releaseAudio();session=null;setState('エラー');tell('開始失敗: '+message(e));
-  }
-}
-function stop(error=false){
-  if(stopping)return stopping;if(!session)return Promise.resolve();
-  stopping=Promise.resolve().then(async()=>{
-    const s=session;stopAt=now();clearTimeout(nightTimer);exitNight();setState('停止処理中');
-    try{
-      flush();if(closing)await closing;
-      if(event){
-        const track=audio?.stream.getAudioTracks()[0];
-        const healthy=()=>audio?.ctx.state==='running'&&track?.readyState==='live'&&!track.muted;
-        if(!error&&!saveError&&healthy()&&unit?.r.state==='recording'){
-          unit.cancelTimer();tell('遅延中の末尾音声を取得しています（約3秒）。');
-          await sleep(PRE+150);
-          s.stopDrainStatus=healthy()?'待機完了・再生確認が必要':'入力中断・末尾未確認';
-          if(!healthy())s.interrupted=true;
-          await endEvent(stopAt);
-        }else{
-          s.stopDrainStatus='入力中断等により末尾未確認';s.interrupted=true;
-          await endEvent(Math.max(event.startElapsedMs,stopAt-PRE));
-        }
-      }else s.stopDrainStatus='対象イベントなし';
-      await limit(queue,12000,'保存待ち時間切れ');if(saveError)throw saveError;
-      s.status=error||s.interrupted?'interrupted':'completed';
-    }catch(e){s.status='interrupted';s.interrupted=true;s.saveError=message(e);}
-    finally{
-      s.endedAt=s.startedAt+stopAt;s.durationSec=stopAt/1000;s.lastElapsedMs=stopAt;
-      try{await write(['sessions'],t=>t.objectStore('sessions').put({...s}));}
-      catch(e){s.status='interrupted';s.saveError=message(e);}
-      unit?.dispose();unit=null;await releaseAudio();
-      const lock=wake;wake=null;try{await lock?.release();}catch(_){}
-      window.removeEventListener('devicemotion',onMotion);
-      session=null;event=null;closing=null;setState(s.status==='completed'?'保存済み':'中断・不完全記録');
-      $('timer').textContent=format(stopAt);
-      tell(s.saveError?'不完全記録: '+s.saveError+'。保存済み部分を回収してください。':
-        '停止・保存完了。'+s.stopDrainStatus+'。ZIPは別操作です。');
-      try{await refresh(s.id);}catch(e){tell('一覧取得失敗: '+message(e));}
-    }
-  }).finally(()=>{stopping=null;controls();});
-  return stopping;
-}
-
-function enterNight(){
-  if(!session||stopping)return;$('nightScreen').classList.remove('hidden');document.body.classList.add('night');
-  document.querySelector('meta[name="theme-color"]').content='#000000';
-}
-function exitNight(){
-  $('nightScreen').classList.add('hidden');$('nightScreen').classList.remove('peek');document.body.classList.remove('night');
-  document.querySelector('meta[name="theme-color"]').content='#090d16';clearTimeout(hold);pointer=null;
-}
-function bindNight(){
-  const n=$('nightScreen'),cancel=()=>{clearTimeout(hold);pointer=null;};
-  n.onpointerdown=e=>{
-    if(pointer!==null)return;pointer=e.pointerId;point=[e.clientX,e.clientY];held=false;
-    try{n.setPointerCapture(pointer);}catch(_){}
-    hold=setTimeout(()=>{held=true;exitNight();},800);
-  };
-  n.onpointermove=e=>{if(pointer===e.pointerId&&Math.hypot(e.clientX-point[0],e.clientY-point[1])>28){held=true;cancel();}};
-  n.onpointerup=e=>{
-    if(pointer!==e.pointerId)return;cancel();
-    if(!held){$('nightClock').textContent=new Date().toLocaleTimeString('ja-JP');n.classList.add('peek');clearTimeout(peek);peek=setTimeout(()=>n.classList.remove('peek'),5000);}
-  };
-  n.onpointercancel=cancel;n.oncontextmenu=e=>e.preventDefault();
-}
-function clearPlayers(){
-  for(const a of $('clipList').querySelectorAll('audio')){a.pause();a.removeAttribute('src');a.load();}
-  urls.forEach(u=>URL.revokeObjectURL(u));urls=[];$('clipList').textContent='';
-}
-async function refresh(preferred=''){
-  const all=(await rows('sessions')).sort((a,b)=>b.startedAt-a.startedAt);
-  const old=String(preferred||$('sessionSelect').value);$('sessionSelect').textContent='';
-  for(const s of all){
-    const o=document.createElement('option');o.value=s.id;
-    o.textContent=new Date(s.startedAt).toLocaleString('ja-JP')+' / '+s.status;$('sessionSelect').append(o);
-  }
-  if(all.some(s=>String(s.id)===old))$('sessionSelect').value=old;
-  selected=all.find(s=>String(s.id)===$('sessionSelect').value)||null;
-  page=0;generation++;clearPlayers();controls();
-  $('summary').textContent=selected?'ID: '+selected.id+'\n状態: '+selected.status+
-    '\n形式: '+(selected.mimeType||'旧記録')+'\n遅延末尾: '+(selected.stopDrainStatus||'未確認')+
-    (selected.status==='recording'?'\n未完了記録。他タブが稼働中でないか確認してください。':'')+
-    '\n'+(selected.saveError||''):'保存記録なし';
-  await showClips();
-}
-function audioRefs(c,chunks){
-  const refs=chunks.filter(v=>v.clipId===c.id).sort((a,b)=>a.index-b.index);
-  if(c.byteLength)refs.push({legacy:true,id:c.id,byteLength:c.byteLength});
-  return refs;
-}
-async function showClips(){
-  $('btnMore').disabled=true;if(!selected)return;
-  const id=selected.id,token=generation;
-  const clips=(await rows('clips',id,true)).sort((a,b)=>(a.startElapsedMs??(a.startSec||0)*1000)-(b.startElapsedMs??(b.startSec||0)*1000));
-  const chunks=await rows('audioChunks',id,true);
-  if(token!==generation)return;
-  for(const c of clips.slice(page*40,(page+1)*40)){
-    const el=document.createElement('div');el.className='clip';
-    const title=document.createElement('strong');title.textContent=format(c.startElapsedMs??(c.startSec||0)*1000)+' / '+(c.label||'音イベント')+' / '+(c.status||'旧記録');el.append(title);
-    const refs=audioRefs(c,chunks);if(!refs.length)el.append(document.createTextNode(' 音声保存なし'));
-    for(const ref of refs){
-      const b=document.createElement('button');b.textContent='音声'+(ref.index===undefined?'':ref.index+1)+' ('+ref.byteLength+' bytes)';
-      b.onclick=async()=>{
-        if(busy())return;b.disabled=true;
-        try{
-          const row=await get(ref.legacy?'clips':'audioChunks',ref.legacy?ref.id:ref.key);
-          if(token!==generation)return;if(!row?.blob?.size)throw new Error('音声なし');
-          const a=document.createElement('audio');a.controls=true;a.setAttribute('playsinline','');a.preload='metadata';
-          const u=URL.createObjectURL(row.blob);urls.push(u);a.src=u;
-          a.onerror=()=>tell('音声再生・デコード失敗');el.append(a);b.remove();
-        }catch(e){tell(message(e));b.disabled=false;}
-      };el.append(b);
-    }
-    $('clipList').append(el);
-  }
-  page++;$('btnMore').disabled=page*40>=clips.length;
-}
-function showTest(){
-  const a=$('testAudio');a.pause();a.removeAttribute('src');a.load();
-  if(testURL)URL.revokeObjectURL(testURL);testURL=null;
-  if(testResult?.blob?.size){testURL=URL.createObjectURL(testResult.blob);a.src=testURL;}
-  $('testPlayback').textContent='実際の音声内容は再生して確認してください。';
-  a.onerror=()=>{$('testPlayback').textContent='音声再生・デコード失敗';};
-}
-async function startTest(){
-  if(busy()||!ready)return;testBusy=true;controls();
-  let entry,result,failure=null;testElapsed=0;graph.test.data=[];
-  try{
-    $('testAudio').pause();testUI(0,'マイク取得中');$('testStatus').textContent='マイクを許可してください。';
-    audio=newAudio();const s=await mic();audio.stream=s;
-    // 解析Contextが開始できなくても、直接録音の成否は別に確認する。
-    await limit(audio.resume,8000,'解析Context開始時間切れ').catch(e=>{$('testStatus').textContent=message(e);});
-    attachAudio(audio,s,false);
-    entry=capture(s,TEST);testEntry=entry;testStart=entry.start;
-    const startedAt=Date.now();$('testStatus').textContent='声を出してグラフを確認してください。音声データは停止時に取得します。';
-    await entry.done;
-    testElapsed=entry.stopMs-entry.start;
-    result={startedAt,endedAt:Date.now(),recordedMs:testElapsed,targetMs:TEST,
-      mimeType:entry.blob.type,blob:entry.blob,buildId:BUILD,diagnosticOnly:true,
-      completed:testElapsed>=TEST-150&&!entry.error&&entry.blob.size>0,
-      receivedEvents:entry.events};
-    if(entry.error)failure=message(entry.error);
-    if(!entry.blob.size)failure='音声0バイト';
-  }catch(e){
-    failure=message(e);
-    if(entry?.blob?.size){
-      result={startedAt:Date.now()-(entry.stopMs-entry.start),endedAt:Date.now(),
-        recordedMs:entry.stopMs-entry.start,targetMs:TEST,mimeType:entry.blob.type,
-        blob:entry.blob,buildId:BUILD,diagnosticOnly:true,completed:false};
-    }
-  }finally{
-    entry?.dispose();testEntry=null;await releaseAudio();
-    if(result){
-      if(failure)result.error=failure;
-      testResult=result;testElapsed=result.recordedMs;showTest();
-      testUI(testElapsed,'診断DB保存中',result.blob.size+' bytes');
-      try{await testDB(true,result);testUI(testElapsed,result.completed?'録音・保存完了':'不完全テスト保存済み');}
-      catch(e){failure=(failure?failure+' / ':'')+'DB保存失敗: '+message(e);testUI(testElapsed,'DB保存失敗・ZIP回収可能');}
-      $('testStatus').textContent=(failure?failure:'録音・保存完了')+'\n'+(testElapsed/1000).toFixed(1)+'秒 / '+result.blob.size+' bytes / '+result.mimeType+'\n音声は再生して確認してください。';
-    }else{
-      // マイク取得失敗等で前回の有効テストを上書きしない。
-      testUI(0,'テスト失敗');$('testStatus').textContent=failure||'録音失敗';showTest();
-    }
-    testBusy=false;controls();
-  }
-}
-
+async function limit(p,ms,text){let t;try{return await Promise.race([p,new Promise((_,reject)=>{t=setTimeout(()=>reject(new Error(text)),ms);})]);}finally{clearTimeout(t);}}
+function open(name,version,upgrade){return new Promise((resolve,reject)=>{let done=false;const timer=setTimeout(()=>end(new Error('DB準備時間切れ')),10000);function end(e,d){if(done){d?.close();return;}done=true;clearTimeout(timer);e?reject(e):resolve(d);}let r;try{r=indexedDB.open(name,version);}catch(e){end(e);return;}r.onupgradeneeded=()=>upgrade(r.result,r.transaction);r.onerror=()=>end(r.error);r.onblocked=()=>end(new Error('DB使用中。別タブを閉じてください'));r.onsuccess=()=>end(null,r.result);});}
+function tx(database,names,mode,work){return new Promise((resolve,reject)=>{let t,result,done=false;const timer=setTimeout(()=>{try{t?.abort();}catch(_){}end(new Error('DB処理時間切れ'));},10000);function end(e){if(done)return;done=true;clearTimeout(timer);e?reject(e):resolve(result);}try{t=database.transaction(names,mode);t.oncomplete=()=>end();t.onabort=t.onerror=()=>end(t.error||new Error('DB処理失敗'));work(t,v=>{result=v;});}catch(e){try{t?.abort();}catch(_){}end(e);}});}
+const write=(names,work)=>tx(db,names,'readwrite',work);
+const get=(name,key)=>tx(db,[name],'readonly',(t,set)=>{const r=t.objectStore(name).get(key);r.onsuccess=()=>set(r.result);});
+function rows(name,id=null,meta=false){return tx(db,[name],'readonly',(t,set)=>{const a=[],s=t.objectStore(name),r=id!==null&&s.indexNames.contains('sessionId')?s.index('sessionId').openCursor(IDBKeyRange.only(id)):s.openCursor();r.onsuccess=()=>{const c=r.result;if(!c){set(a);return;}const v=c.value;if(id===null||String(v.sessionId)===String(id)){if(meta){const {blob,...m}=v;a.push({...m,byteLength:blob?.size||v.byteLength||0,mimeType:v.mimeType||blob?.type||''});}else a.push(v);}c.continue();};});}
+async function testDB(save,v){if(!tdb){tdb=await open('ST_RECORDING_DIAGNOSTICS_V1',1,d=>{if(!d.objectStoreNames.contains('latest'))d.createObjectStore('latest');});tdb.onversionchange=()=>{tdb.close();tdb=null;};}return tx(tdb,['latest'],save?'readwrite':'readonly',(t,set)=>{const s=t.objectStore('latest'),r=save?s.put(v,'latest'):s.get('latest');r.onsuccess=()=>set(r.result);});}
+function fail(e){saveError??=e;if(session){session.interrupted=true;session.saveError=msg(e);}exitNight();tell('録音・保存エラー: '+msg(e)+'。保存済み部分は残しています。');if(session&&!stopping)setTimeout(()=>stop(true),0);}
+function enqueue(work){if(saveError)return Promise.reject(saveError);if(pending>=16){const e=new Error('保存待ち上限超過');fail(e);return Promise.reject(e);}pending++;const p=queue.then(work);queue=p.catch(fail).finally(()=>pending--);return p;}
+async function mic(){if(!isSecureContext||!navigator.mediaDevices?.getUserMedia)throw new Error('HTTPS等の安全な環境とマイクAPIが必要です');let abandoned=false;const p=navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false},video:false}).then(s=>{if(abandoned){s.getTracks().forEach(t=>t.stop());throw new Error('マイク取得時間切れ');}return s;});try{return await limit(p,30000,'マイク取得時間切れ。権限を確認してください');}catch(e){abandoned=true;throw e;}}
+// 許可要求はボタンクリック直後、awaitより前に呼ぶ。
+function requestMotion(){stopMotion();Object.assign(motion,{permission:'確認中',events:0,valid:0,previous:null,value:null,at:null,peak:null,max:null});try{if(typeof DeviceMotionEvent==='undefined'){motion.permission='API非対応';return Promise.resolve(false);}const p=typeof DeviceMotionEvent.requestPermission==='function'?DeviceMotionEvent.requestPermission():Promise.resolve('granted');return limit(p,15000,'権限確認時間切れ').then(v=>{motion.permission=v==='granted'?'許可済み':'拒否';return v==='granted';},e=>{motion.permission=msg(e);return false;});}catch(e){motion.permission=msg(e);return Promise.resolve(false);}}
+function stopMotion(){window.removeEventListener('devicemotion',onMotion);}
+function motionValue(){return motion.at!==null&&performance.now()-motion.at<2000?motion.value:null;}
+function motionText(){const v=motionValue();return '許可: '+motion.permission+' ／ イベント '+motion.events+'件 ／ 有効値 '+motion.valid+'件 ／ '+(v===null?'欠測・値未受信':v.toFixed(3)+' G');}
+function onMotion(e){if((!session&&!testBusy)||stopping)return;motion.events++;let a=e.acceleration,kind=0;if(!a||![a.x,a.y,a.z].every(Number.isFinite)){a=e.accelerationIncludingGravity;kind=1;}if(!a||![a.x,a.y,a.z].every(Number.isFinite))return;if(motion.previous?.kind===kind){const v=Math.hypot(a.x-motion.previous.x,a.y-motion.previous.y,a.z-motion.previous.z)/9.80665;if(Number.isFinite(v)){motion.value=v;motion.at=performance.now();motion.valid++;motion.peak=Math.max(motion.peak??0,v);motion.max=Math.max(motion.max??0,v);if(session)session.motionAvailable=true;}}motion.previous={x:a.x,y:a.y,z:a.z,kind};}
+function newAudio(){const C=window.AudioContext||window.webkitAudioContext;if(!C)throw new Error('AudioContext非対応');const ctx=new C(),resume=Promise.resolve(ctx.resume());resume.catch(()=>{});return {ctx,resume,nodes:[],stream:null};}
+function attach(a,s,delayed){a.stream=s;a.source=a.ctx.createMediaStreamSource(s);a.analyser=a.ctx.createAnalyser();a.analyser.fftSize=1024;a.data=new Float32Array(1024);const mute=a.ctx.createGain();mute.gain.value=0;a.source.connect(a.analyser);a.analyser.connect(mute);mute.connect(a.ctx.destination);a.nodes=[a.source,a.analyser,mute];if(delayed){const d=a.ctx.createDelay(4);d.delayTime.value=PRE/1000;a.destination=a.ctx.createMediaStreamDestination();a.source.connect(d);d.connect(a.destination);a.nodes.push(d,a.destination);}}
+function inputDb(){const t=audio?.stream?.getAudioTracks()[0];if(!t||t.readyState!=='live'||t.muted||audio.ctx.state!=='running')return null;audio.analyser.getFloatTimeDomainData(audio.data);let sum=0;for(const v of audio.data)sum+=v*v;const rms=Math.sqrt(sum/audio.data.length);return Number.isFinite(rms)?20*Math.log10(Math.max(1e-7,rms)):null;}
+async function releaseAudio(){const a=audio;audio=null;if(!a)return;a.stream?.getTracks().forEach(t=>t.stop());a.destination?.stream.getTracks().forEach(t=>t.stop());for(const n of a.nodes){try{n.disconnect();}catch(_){}}try{if(a.ctx.state!=='closed')await limit(a.ctx.close(),2000,'音声解放時間切れ');}catch(_){} }
+function recorder(s){if(!window.MediaRecorder)throw new Error('MediaRecorder非対応');for(const m of ['audio/mp4;codecs=mp4a.40.2','audio/mp4','audio/webm;codecs=opus','audio/webm','audio/ogg;codecs=opus']){try{if(MediaRecorder.isTypeSupported(m))return new MediaRecorder(s,{mimeType:m});}catch(_){}}return new MediaRecorder(s);}
+function extension(m){for(const [p,e] of [[/mp4/i,'m4a'],[/webm/i,'webm'],[/ogg/i,'ogg'],[/aac/i,'aac']])if(p.test(m))return e;throw new Error('未対応音声形式: '+m);}
+function capture(s,duration,finish){const r=recorder(s),parts=[];let resolve,reject,ended=false,timer,finalTimer;const e={r,start:performance.now(),stopMs:null,bytes:0,error:null};e.done=new Promise((a,b)=>{resolve=a;reject=b;});e.done.catch(()=>{});e.stop=()=>{clearTimeout(timer);e.stopMs??=performance.now();if(!ended&&!finalTimer)finalTimer=setTimeout(()=>reject(new Error('録音停止通知時間切れ')),8000);try{if(r.state!=='inactive')r.stop();}catch(x){reject(x);}return e.done;};e.cancelTimer=()=>clearTimeout(timer);e.dispose=()=>{clearTimeout(timer);clearTimeout(finalTimer);r.ondataavailable=r.onstop=r.onerror=null;try{if(r.state!=='inactive')r.stop();}catch(_){} };r.ondataavailable=x=>{if(x.data?.size){parts.push(x.data);e.bytes+=x.data.size;}};r.onerror=x=>{e.error=x.error||new Error('録音エラー');e.stop();};r.onstop=()=>{if(ended)return;ended=true;clearTimeout(timer);clearTimeout(finalTimer);e.stopMs??=performance.now();e.blob=new Blob(parts,{type:r.mimeType||parts[0]?.type||''});parts.length=0;Promise.resolve().then(()=>finish?.(e)).then(()=>resolve(e),reject);};try{r.start();timer=setTimeout(()=>e.stop().catch(()=>{}),duration);}catch(x){e.dispose();throw x;}return e;}
+async function requestWake(){if(!session||stopping||document.hidden||wake)return;const owner=session;try{if(!navigator.wakeLock)throw new Error('非対応');const lock=await navigator.wakeLock.request('screen');if(session!==owner||stopping){await lock.release();return;}wake=lock;lock.addEventListener('release',()=>{if(wake===lock)wake=null;});}catch(e){tell('画面消灯防止なし: '+msg(e));}}
+function pushGraph(k,v){const a=graphs[k].data,t=performance.now();a.push({t,v:Number.isFinite(v)?v:null});while(a.length&&(a[0].t<t-60000||a.length>300))a.shift();}
+function draw(k){const c=graphs[k],canvas=$(k+'Graph'),rect=canvas.getBoundingClientRect();if(!rect.width)return;const d=Math.min(2,devicePixelRatio||1),w=rect.width,h=rect.height;if(canvas.width!==Math.round(w*d)||canvas.height!==Math.round(h*d)){canvas.width=Math.round(w*d);canvas.height=Math.round(h*d);}const g=canvas.getContext('2d');if(!g)return;g.setTransform(d,0,0,d,0,0);g.clearRect(0,0,w,h);g.font='10px sans-serif';const l=42,r=w-8,b=h-24,t=performance.now(),min=c.motion?0:-100,max=c.motion?0.5:0;g.lineWidth=1;for(let i=0;i<=4;i++){const y=10+(b-10)*i/4,v=max-(max-min)*i/4;g.strokeStyle='#223047';g.beginPath();g.moveTo(l,y);g.lineTo(r,y);g.stroke();g.fillStyle='#94a3b8';g.textAlign='right';g.fillText(v.toFixed(c.motion?2:0),l-5,y+3);}g.textAlign='left';g.fillText('-60秒',l,h-6);g.textAlign='right';g.fillText('現在',r,h-6);g.strokeStyle=c.motion?'#ec4899':'#38bdf8';g.lineWidth=2;g.beginPath();let prev=null;for(const p of c.data){if(p.t<t-60000)continue;if(p.v===null){prev=null;continue;}const x=l+(p.t-t+60000)/60000*(r-l),y=b-(Math.max(min,Math.min(max,p.v))-min)/(max-min)*(b-10);if(!prev||p.t-prev.t>1800)g.moveTo(x,y);else g.lineTo(x,y);prev=p;}g.stroke();const last=c.data[c.data.length-1];$(k+'Value').textContent=last&&t-last.t<2000&&last.v!==null?last.v.toFixed(c.motion?3:1)+(c.motion?' G':' dBFS'):'未取得／欠測';}
+function testUI(ms,phase,detail){$('testCounter').textContent=clock(ms,true)+' / 00:30';$('testProgress').style.width=Math.min(100,ms/TEST*100)+'%';if(phase)$('testPhase').textContent=phase;if(detail!==undefined)$('testDetails').textContent=detail;}
+function flush(){if(!second||!session)return;const v=second;second=null;v.motionG=motion.peak;v.motionValid=motion.peak!==null;motion.peak=null;v.sessionId=session.id;v.key=session.id+':'+String(v.sec).padStart(8,'0');const s={...session,lastSavedAt:Date.now(),lastElapsedMs:v.elapsed_ms};enqueue(()=>write(['sessionLogs','sessions'],t=>{t.objectStore('sessionLogs').put(v);t.objectStore('sessions').put(s);})).catch(()=>{});}
+function recordUnit(){if(!event||unit||closing||stopping||saveError)return;const ev=event,owner=session,start=elapsed(),index=ev.units++;try{const entry=capture(audio.destination.stream,UNIT,e=>{if(unit===entry)unit=null;bytes+=e.bytes;if(e.error)throw e.error;if(!e.blob.size)throw new Error('音声0バイト');extension(e.blob.type);const end=e.stopMs-origin,row={key:ev.id+':'+String(index).padStart(6,'0'),clipId:ev.id,sessionId:owner.id,index,blob:e.blob,byteLength:e.blob.size,mimeType:e.blob.type,startElapsedMs:Math.max(ev.startElapsedMs,start-PRE),endElapsedMs:Math.max(ev.startElapsedMs,end-PRE),recorderStartMs:start,recorderStopMs:end,independent:true,finalized:true},meta={...ev,mimeType:e.blob.type,lastAudioEndMs:row.endElapsedMs,status:'open',unitCount:ev.units};const saved=enqueue(()=>write(['audioChunks','clips'],t=>{t.objectStore('audioChunks').put(row);t.objectStore('clips').put(meta);}));if(session===owner&&!closing&&!stopping)recordUnit();return saved;});unit=entry;owner.mimeType=entry.r.mimeType;entry.done.catch(fail);}catch(e){fail(e);}}
+function beginEvent(t){const start=Math.max(calibrationEnd,t-PRE);event={id:uid(),sessionId:session.id,startElapsedMs:start,startSec:start/1000,detectedElapsedMs:t,units:0,status:'open',prerollMs:t-start,prerollMethod:'AudioContext DelayNode',boundaryVerified:false};const meta={...event};quietAt=null;enqueue(()=>write(['clips'],t=>t.objectStore('clips').put(meta))).catch(()=>{});recordUnit();}
+function endEvent(end){if(closing)return closing;if(!event)return Promise.resolve();const ev=event,entry=unit;closing=Promise.resolve().then(async()=>{if(entry)await entry.stop();Object.assign(ev,{endElapsedMs:end,endSec:end/1000,durationSec:Math.max(0,(end-ev.startElapsedMs)/1000),status:'saved',unitCount:ev.units});await enqueue(()=>write(['clips'],t=>t.objectStore('clips').put({...ev})));}).finally(()=>{if(event===ev)event=null;closing=null;quietAt=null;});return closing;}
+function monitor(v){const t=elapsed();if(lastTick&&t-lastTick>2500){session.interrupted=true;quietAt=null;motion.peak=null;}lastTick=t;const sec=Math.floor(t/1000);if(second&&second.sec!==sec)flush();second??={sec,elapsed_ms:sec*1000,epochMs:session.startedAt+sec*1000,maxDb:null,audioValid:false};if(v!==null){lastInput=t;second.maxDb=Math.max(second.maxDb??-Infinity,v);second.audioValid=true;}else{session.interrupted=true;quietAt=null;}pushGraph('audio',v);pushGraph('motion',motionValue());if(state==='環境音計測'){if(v!==null&&t<calibrationEnd)samples.push(v);if(t>=calibrationEnd){if(samples.length<80)throw new Error('基準音量データ不足');samples.sort((a,b)=>a-b);const n=samples.length;baseline=n%2?samples[(n-1)/2]:(samples[n/2-1]+samples[n/2])/2;samples=[];session.baselineDb=baseline;session.thresholdDb=baseline+6;setState('測定中');}}if(state==='測定中'&&v!==null){if(v>session.thresholdDb){quietAt=null;if(!event&&!closing)beginEvent(t);}else if(event&&!closing){quietAt??=t;if(t-quietAt>=5000+PRE)endEvent(quietAt+5000).catch(fail);}}if(t-lastInput>7000)throw new Error('音声入力を7秒以上取得できません');}
+function update(){let v=null;try{if(audio?.analyser)v=inputDb();if(session&&!stopping&&['環境音計測','測定中'].includes(state))monitor(v);if(testBusy&&testEntry?.r.state==='recording'){const ms=performance.now()-testEntry.start,m=motionValue();pushGraph('test',v);pushGraph('testMotion',m);if(v!==null){audioCount++;peakDb=Math.max(peakDb??-Infinity,v);}if(testSamples.length<160)testSamples.push({elapsed_ms:Math.round(ms),db:v,motionG:m});testUI(ms,'録音・センサー取得中','音声有効 '+audioCount+'件 ／ 体動有効 '+motion.valid+'件');}}catch(e){if(session)fail(e);else $('testStatus').textContent=msg(e);}if(++uiCount%2||document.hidden||document.body.classList.contains('night')){if($('nightScreen').classList.contains('peek'))$('nightClock').textContent=new Date().toLocaleTimeString('ja-JP');return;}if(session){$('timer').textContent=clock(stopping?stopAt:elapsed());$('liveText').textContent='音量: '+(v===null?'欠測':v.toFixed(1)+' dBFS')+' ／ 基準: '+(baseline===null?'計測中':baseline.toFixed(1));$('motionStatus').textContent=motionText();$('engineText').textContent=state+' ／ '+(event?'イベント録音中':'イベント待ち')+' ／ 画面消灯防止: '+(wake?'有効':'無効');$('diagnostics').textContent=BUILD+'\nContext: '+audio?.ctx.state+'\n録音器: '+(unit?.r.state||'イベント待ち')+'\nMIME: '+session.mimeType+'\n保存音声: '+bytes+' bytes\n保存待ち: '+pending+'\nエラー: '+(saveError?msg(saveError):'なし');}if(testBusy)$('testMotionStatus').textContent=motionText();if(!$('measurePanel').classList.contains('hidden'))Object.keys(graphs).forEach(draw);}
+async function start(){if(busy()||!ready)return;origin=performance.now();stopAt=0;saveError=null;pending=0;queue=Promise.resolve();session={id:'st-'+Date.now()+'-'+uid(),schemaVersion:SCHEMA,appVersion:VERSION,buildId:BUILD,startedAt:Date.now(),status:'recording',interrupted:false,motionAvailable:false,lastSavedAt:Date.now(),audioUnitTargetMs:UNIT,stopDrainTargetMs:PRE,boundaryVerified:false,recordingMethod:'MediaRecorder / DelayNode 3秒 / 独立15秒単位'};setState('開始準備');try{audio=newAudio();const permission=requestMotion(),request=mic();request.catch(()=>{});const s=await request;audio.stream=s;await limit(audio.resume,8000,'Context開始時間切れ');if(audio.ctx.state!=='running')throw new Error('Context開始失敗');attach(audio,s,true);const probe=recorder(audio.destination.stream);extension(probe.mimeType);session.mimeType=probe.mimeType;await write(['sessions'],t=>t.objectStore('sessions').put({...session}));if(await permission)window.addEventListener('devicemotion',onMotion,{passive:true});session.motionPermission=motion.permission;second=null;event=null;unit=null;closing=null;samples=[];baseline=null;quietAt=null;bytes=0;lastTick=0;lastInput=elapsed();graphs.audio.data=[];graphs.motion.data=[];calibrationEnd=elapsed()+30000;session.calibrationStartedElapsedMs=calibrationEnd-30000;session.calibrationEndedElapsedMs=calibrationEnd;setState('環境音計測');s.getAudioTracks().forEach(t=>t.addEventListener('ended',()=>{if(session&&!stopping)fail(new Error('マイク終了'));}));nightTimer=setTimeout(enterNight,Math.max(0,60000-elapsed()));await requestWake();tell('環境音を30秒計測します。通常録音は3秒遅延あり。');}catch(e){session.status='interrupted';session.interrupted=true;session.saveError=msg(e);try{await write(['sessions'],t=>t.objectStore('sessions').put({...session}));}catch(_){}stopMotion();await releaseAudio();session=null;setState('エラー');tell('開始失敗: '+msg(e));}}
+function stop(error=false){if(stopping)return stopping;if(!session)return Promise.resolve();stopping=Promise.resolve().then(async()=>{const s=session;stopAt=elapsed();clearTimeout(nightTimer);exitNight();setState('停止処理中');try{flush();if(closing)await closing;if(event){const track=audio?.stream.getAudioTracks()[0],healthy=()=>audio?.ctx.state==='running'&&track?.readyState==='live'&&!track.muted;if(!error&&!saveError&&healthy()&&unit?.r.state==='recording'){unit.cancelTimer();tell('遅延中の末尾音声を取得しています（約3秒）。');await new Promise(r=>setTimeout(r,PRE+150));s.stopDrainStatus=healthy()?'待機完了・再生確認が必要':'入力中断・末尾未確認';if(!healthy())s.interrupted=true;await endEvent(stopAt);}else{s.stopDrainStatus='入力中断等により末尾未確認';s.interrupted=true;await endEvent(Math.max(event.startElapsedMs,stopAt-PRE));}}else s.stopDrainStatus='対象イベントなし';await limit(queue,12000,'保存待ち時間切れ');if(saveError)throw saveError;s.status=error||s.interrupted?'interrupted':'completed';}catch(e){s.status='interrupted';s.interrupted=true;s.saveError=msg(e);}finally{s.endedAt=s.startedAt+stopAt;s.durationSec=stopAt/1000;s.lastElapsedMs=stopAt;s.motionEvents=motion.events;s.motionValidCount=motion.valid;try{await write(['sessions'],t=>t.objectStore('sessions').put({...s}));}catch(e){s.status='interrupted';s.saveError=msg(e);}unit?.dispose();unit=null;stopMotion();await releaseAudio();const lock=wake;wake=null;try{await lock?.release();}catch(_){}session=null;event=null;closing=null;setState(s.status==='completed'?'保存済み':'中断・不完全記録');$('timer').textContent=clock(stopAt);tell(s.saveError?'不完全記録: '+s.saveError+'。保存済み部分を回収してください。':'停止・保存完了。'+s.stopDrainStatus+'。ZIPは別操作です。');try{await refresh(s.id);}catch(e){tell('一覧取得失敗: '+msg(e));}}}).finally(()=>{stopping=null;controls();});return stopping;}
+function enterNight(){if(!session||stopping)return;$('nightScreen').classList.remove('hidden');document.body.classList.add('night');document.querySelector('meta[name="theme-color"]').content='#000000';}
+function exitNight(){$('nightScreen').classList.add('hidden');$('nightScreen').classList.remove('peek');document.body.classList.remove('night');document.querySelector('meta[name="theme-color"]').content='#090d16';clearTimeout(hold);pointer=null;}
+function bindNight(){const n=$('nightScreen'),cancel=()=>{clearTimeout(hold);pointer=null;};n.onpointerdown=e=>{if(pointer!==null)return;pointer=e.pointerId;point=[e.clientX,e.clientY];held=false;try{n.setPointerCapture(pointer);}catch(_){}hold=setTimeout(()=>{held=true;exitNight();},800);};n.onpointermove=e=>{if(pointer===e.pointerId&&Math.hypot(e.clientX-point[0],e.clientY-point[1])>28){held=true;cancel();}};n.onpointerup=e=>{if(pointer!==e.pointerId)return;cancel();if(!held){$('nightClock').textContent=new Date().toLocaleTimeString('ja-JP');n.classList.add('peek');clearTimeout(peek);peek=setTimeout(()=>n.classList.remove('peek'),5000);}};n.onpointercancel=cancel;n.oncontextmenu=e=>e.preventDefault();}
+function clearPlayers(){for(const a of $('clipList').querySelectorAll('audio')){a.pause();a.removeAttribute('src');a.load();}urls.forEach(u=>URL.revokeObjectURL(u));urls=[];$('clipList').textContent='';}
+async function refresh(preferred=''){const all=(await rows('sessions')).sort((a,b)=>b.startedAt-a.startedAt),old=String(preferred||$('sessionSelect').value);$('sessionSelect').textContent='';for(const s of all){const o=document.createElement('option');o.value=s.id;o.textContent=new Date(s.startedAt).toLocaleString('ja-JP')+' / '+s.status;$('sessionSelect').append(o);}if(all.some(s=>String(s.id)===old))$('sessionSelect').value=old;selected=all.find(s=>String(s.id)===$('sessionSelect').value)||null;page=0;generation++;clearPlayers();controls();$('summary').textContent=selected?'ID: '+selected.id+'\n状態: '+selected.status+'\n形式: '+(selected.mimeType||'旧記録')+'\n遅延末尾: '+(selected.stopDrainStatus||'未確認')+(selected.status==='recording'?'\n未完了。他タブが測定中でないか確認してください。':'')+'\n'+(selected.saveError||''):'保存記録なし';await showClips();}
+function refs(c,chunks){const a=chunks.filter(v=>v.clipId===c.id).sort((a,b)=>a.index-b.index);if(c.byteLength)a.push({legacy:true,id:c.id,byteLength:c.byteLength});return a;}
+async function showClips(){$('btnMore').disabled=true;if(!selected)return;const id=selected.id,token=generation,clips=(await rows('clips',id,true)).sort((a,b)=>(a.startElapsedMs??(a.startSec||0)*1000)-(b.startElapsedMs??(b.startSec||0)*1000)),chunks=await rows('audioChunks',id,true);if(token!==generation)return;for(const c of clips.slice(page*40,(page+1)*40)){const el=document.createElement('div');el.className='clip';const title=document.createElement('strong');title.textContent=clock(c.startElapsedMs??(c.startSec||0)*1000)+' / '+(c.label||'音イベント')+' / '+(c.status||'旧記録');el.append(title);const a=refs(c,chunks);if(!a.length)el.append(document.createTextNode(' 音声保存なし'));for(const ref of a){const b=document.createElement('button');b.textContent='音声'+(ref.index===undefined?'':ref.index+1)+' ('+ref.byteLength+' bytes)';b.onclick=async()=>{if(busy())return;b.disabled=true;try{const row=await get(ref.legacy?'clips':'audioChunks',ref.legacy?ref.id:ref.key);if(token!==generation)return;if(!row?.blob?.size)throw new Error('音声なし');const p=document.createElement('audio');p.controls=true;p.setAttribute('playsinline','');p.preload='metadata';const u=URL.createObjectURL(row.blob);urls.push(u);p.src=u;p.onerror=()=>tell('音声再生・デコード失敗');el.append(p);b.remove();}catch(e){tell(msg(e));b.disabled=false;}};el.append(b);}$('clipList').append(el);}page++;$('btnMore').disabled=page*40>=clips.length;}
+function showTest(){const a=$('testAudio');a.pause();a.removeAttribute('src');a.load();if(testURL)URL.revokeObjectURL(testURL);testURL=null;if(testResult?.blob?.size){testURL=URL.createObjectURL(testResult.blob);a.src=testURL;}$('testPlayback').textContent='音声内容は再生して確認してください。';a.onerror=()=>{$('testPlayback').textContent='音声再生・デコード失敗';};}
+async function startTest(){if(busy()||!ready)return;testBusy=true;controls();let entry,result,failure=null;testSamples=[];audioCount=0;peakDb=null;graphs.test.data=[];graphs.testMotion.data=[];try{$('testAudio').pause();testUI(0,'マイク・体動権限確認中','許可ダイアログを確認してください');$('testStatus').textContent='音声を出し、端末を軽く動かしてください。';audio=newAudio();const permission=requestMotion(),request=mic();request.catch(()=>{});const s=await request;audio.stream=s;await limit(audio.resume,8000,'解析Context開始時間切れ').catch(e=>{$('testStatus').textContent=msg(e);});attach(audio,s,false);if(await permission)window.addEventListener('devicemotion',onMotion,{passive:true});entry=capture(s,TEST);testEntry=entry;const startedAt=Date.now();await entry.done;const recordedMs=entry.stopMs-entry.start;result={startedAt,endedAt:Date.now(),recordedMs,targetMs:TEST,mimeType:entry.blob.type,blob:entry.blob,buildId:BUILD,diagnosticOnly:true,completed:recordedMs>=TEST-150&&!entry.error&&entry.blob.size>0};if(entry.error)failure=msg(entry.error);if(!entry.blob.size)failure='音声0バイト';}catch(e){failure=msg(e);if(entry?.blob?.size)result={startedAt:Date.now()-(entry.stopMs-entry.start),endedAt:Date.now(),recordedMs:entry.stopMs-entry.start,targetMs:TEST,mimeType:entry.blob.type,blob:entry.blob,buildId:BUILD,diagnosticOnly:true,completed:false};}finally{entry?.dispose();testEntry=null;stopMotion();const m={permission:motion.permission,eventCount:motion.events,validCount:motion.valid,maxG:motion.max,received:motion.valid>0};$('testMotionStatus').textContent=motionText()+' ／ '+(motion.valid?'体動値受信確認済み':'体動値未確認');await releaseAudio();if(result){Object.assign(result,{audioValidCount:audioCount,audioPeakDb:peakDb,motion:m,samples:testSamples});if(failure)result.error=failure;testResult=result;showTest();testUI(result.recordedMs,'診断DB保存中',result.blob.size+' bytes');try{await testDB(true,result);testUI(result.recordedMs,result.completed?'録音・保存完了':'不完全テスト保存済み');}catch(e){failure=(failure?failure+' / ':'')+'DB保存失敗: '+msg(e);testUI(result.recordedMs,'DB保存失敗・ZIP回収可能');}$('testStatus').textContent=(failure||'録音・保存完了')+'\n'+(result.recordedMs/1000).toFixed(1)+'秒 / '+result.blob.size+' bytes / '+result.mimeType+'\n音声入力有効 '+audioCount+'件 ／ 体動値有効 '+motion.valid+'件\n'+(motion.valid?'体動受信確認済み。':'体動未確認（非対応・拒否・値未受信等）。')+'音声内容は再生してください。';}else{testUI(0,'テスト失敗');$('testStatus').textContent=failure||'録音失敗';showTest();}testBusy=false;controls();}}
 const crcTable=Uint32Array.from({length:256},(_,n)=>{for(let i=0;i<8;i++)n=(n>>>1)^((n&1)?0xedb88320:0);return n>>>0;});
-async function crc(blob){
-  let c=0xffffffff;
-  for(let i=0;i<blob.size;i+=65536)for(const x of new Uint8Array(await blob.slice(i,i+65536).arrayBuffer()))c=(c>>>8)^crcTable[(c^x)&255];
-  return (c^0xffffffff)>>>0;
-}
-class Zip{
-  constructor(){this.parts=[];this.central=[];this.offset=0;this.files=[];}
-  async add(name,value){
-    const blob=value instanceof Blob?value:new Blob([value]),n=new TextEncoder().encode(name);
-    if(this.offset+blob.size+30+n.length>ZIP_LIMIT)throw new Error('ZIP暫定上限256MiB超過');
-    const checksum=await crc(blob),h=new Uint8Array(30+n.length),v=new DataView(h.buffer);
-    v.setUint32(0,0x04034b50,true);v.setUint16(4,20,true);v.setUint16(6,0x800,true);
-    v.setUint32(14,checksum,true);v.setUint32(18,blob.size,true);v.setUint32(22,blob.size,true);v.setUint16(26,n.length,true);h.set(n,30);
-    const c=new Uint8Array(46+n.length),d=new DataView(c.buffer);
-    d.setUint32(0,0x02014b50,true);d.setUint16(4,20,true);d.setUint16(6,20,true);d.setUint16(8,0x800,true);
-    d.setUint32(16,checksum,true);d.setUint32(20,blob.size,true);d.setUint32(24,blob.size,true);d.setUint16(28,n.length,true);d.setUint32(42,this.offset,true);c.set(n,46);
-    this.parts.push(h,blob);this.central.push(c);this.offset+=h.length+blob.size;
-    this.files.push({path:name,size:blob.size,crc32:checksum.toString(16).padStart(8,'0')});
-  }
-  blob(){
-    const size=this.central.reduce((n,c)=>n+c.length,0);
-    if(this.offset+size+22>ZIP_LIMIT||this.files.length>65535)throw new Error('ZIP上限超過');
-    const e=new Uint8Array(22),v=new DataView(e.buffer);
-    v.setUint32(0,0x06054b50,true);v.setUint16(8,this.files.length,true);v.setUint16(10,this.files.length,true);
-    v.setUint32(12,size,true);v.setUint32(16,this.offset,true);
-    return new Blob([...this.parts,...this.central,e],{type:'application/zip'});
-  }
-}
-function aggregate(logs){
-  const bins=new Map();
-  for(const v of logs){
-    const i=Math.floor(v.sec/30);if(!bins.has(i))bins.set(i,{startSec:i*30,a:[],m:[]});
-    const b=bins.get(i),d=v.maxDb??v.db;
-    if(Number.isFinite(d))b.a.push(d);if(Number.isFinite(v.motionG))b.m.push(v.motionG);
-  }
-  const avg=a=>a.length?a.reduce((s,v)=>s+v,0)/a.length:null;
-  return [...bins.values()].sort((a,b)=>a.startSec-b.startSec).map(b=>({
-    startSec:b.startSec,durationSec:30,audioSampleCount:b.a.length,motionSampleCount:b.m.length,
-    avgDb:avg(b.a),maxDb:b.a.length?Math.max(...b.a):null,avgMotion:avg(b.m),maxMotion:b.m.length?Math.max(...b.m):null
-  }));
-}
-function download(blob,name){
-  const u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download=name;
-  document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),120000);
-  tell('ダウンロード開始。端末への保存完了は確認できません。元データは残しています。');
-}
-async function exportZip(test=false){
-  if(busy()||(test?!testResult:!selected))return;operation=true;controls();
-  try{
-    tell('ZIP作成中。元データは削除しません。');
-    const z=new Zip();let filename;
-    if(test){
-      const {blob,...meta}=testResult;let path=null;
-      if(blob?.size){path='audio/test.'+extension(meta.mimeType||blob.type);await z.add(path,blob);}
-      await z.add('diagnostics.json',JSON.stringify({...meta,audioFile:path,audioBytes:blob?.size||0}));
-      await z.add('README.txt','診断専用・遅延なし。音声内容は再生して確認してください。');
-      filename='SleepTest_'+meta.startedAt+'.zip';
-    }else{
-      const s={...selected},logs=(await rows('sessionLogs',s.id)).sort((a,b)=>a.sec-b.sec)
-        .map(({key,sessionId,...v})=>({...v,maxDb:v.maxDb??v.db??null,elapsed_ms:v.elapsed_ms??v.sec*1000}));
-      const clips=await rows('clips',s.id,true),chunks=await rows('audioChunks',s.id,true),manifest=[];
-      for(const c of chunks)if(!clips.some(v=>v.id===c.clipId))clips.push({id:c.clipId,sessionId:s.id,status:'interrupted',recovered:true});
-      for(const c of clips){
-        c.audioRefs=[];
-        for(const ref of audioRefs(c,chunks)){
-          const row=await get(ref.legacy?'clips':'audioChunks',ref.legacy?ref.id:ref.key);
-          if(!row?.blob?.size)continue;
-          const type=row.mimeType||row.blob.type,path='audio/'+encodeURIComponent(c.id)+'_'+(ref.legacy?'legacy':ref.index)+'.'+extension(type);
-          await z.add(path,row.blob);c.audioRefs.push(path);
-          manifest.push({clipId:c.id,path,mimeType:type,size:row.blob.size,
-            startElapsedMs:row.startElapsedMs??(c.startSec||0)*1000,
-            endElapsedMs:row.endElapsedMs??null,independent:row.independent??null});
-        }
-      }
-      const interrupted=!!s.interrupted||s.status==='recording';
-      await z.add('log.json',JSON.stringify({
-        schemaVersion:SCHEMA,appVersion:VERSION,buildId:BUILD,
-        session:{...s,status:s.status==='recording'?'interrupted':s.status},interrupted,
-        baselineDb:s.baselineDb??null,thresholdDb:s.thresholdDb??null,motionAvailable:!!s.motionAvailable,
-        timeSeriesLogs:logs,profileBins:logs.length?aggregate(logs):await rows('profileBins',s.id),
-        clips,audioManifest:manifest,
-        units:{maxDb:'相対dBFS。旧V35 dbは独自オフセット値',motionG:'隣接加速度差 / 9.80665、1秒最大値'},
-        aggregation:'30秒の有効値平均・最大。欠測null。睡眠段階は算出しない'
-      }));
-      await z.add('README.txt',BUILD+'\n日時: '+new Date(s.startedAt).toLocaleString('ja-JP')+
-        '\n状態: '+s.status+'\n'+(interrupted?'中断・未完了記録\n':'')+
-        '音量は相対値。体動欠測はゼロではありません。\n音声は独立ファイル。境界・末尾・SleepScope互換性は未検証。診断用ではありません。');
-      filename='SleepLog_'+s.id+'.zip';
-    }
-    await z.add('manifest.json',JSON.stringify({schemaVersion:SCHEMA,appVersion:VERSION,buildId:BUILD,
-      diagnosticOnly:test,sessionId:test?null:selected.id,files:z.files.slice(),
-      selfEntry:'自身のCRC・サイズはZIP中央ディレクトリ参照'}));
-    download(z.blob(),filename);
-  }catch(e){tell('ZIP出力失敗: '+message(e)+'。元データは残しています。');}
-  finally{operation=false;controls();}
-}
-async function deleteSelected(){
-  if(busy()||!selected)return;
-  if(!confirm('この記録と音声を削除します。取り消せません。他タブで測定中の記録は削除しないでください。'))return;
-  operation=true;controls();
-  try{
-    const id=selected.id;
-    await write(['sessions','clips','sessionLogs','profileBins','audioChunks'],t=>{
-      t.objectStore('sessions').delete(id);
-      for(const name of ['clips','sessionLogs','profileBins','audioChunks']){
-        const r=t.objectStore(name).index('sessionId').openCursor(IDBKeyRange.only(id));
-        r.onsuccess=()=>{const c=r.result;if(c){c.delete();c.continue();}};
-      }
-    });
-    await refresh();tell('削除完了。セッションIDのない旧録音は保護して残しました。');
-  }catch(e){tell('削除失敗: '+message(e));}
-  finally{operation=false;controls();}
-}
-function visibility(){
-  if(!session||stopping)return;
-  session.interrupted=true;
-  if(document.hidden)flush();
-  else{
-    if(audio?.ctx.state!=='running')Promise.resolve(audio?.ctx.resume()).catch(fail);
-    requestWake();
-  }
-}
+async function crc(b){let c=0xffffffff;for(let i=0;i<b.size;i+=65536)for(const x of new Uint8Array(await b.slice(i,i+65536).arrayBuffer()))c=(c>>>8)^crcTable[(c^x)&255];return (c^0xffffffff)>>>0;}
+class Zip{constructor(){this.parts=[];this.central=[];this.offset=0;this.files=[];}async add(name,value){const b=value instanceof Blob?value:new Blob([value]),n=new TextEncoder().encode(name);if(this.offset+b.size+30+n.length>256*1024*1024)throw new Error('ZIP暫定上限256MiB超過');const sum=await crc(b),h=new Uint8Array(30+n.length),v=new DataView(h.buffer);v.setUint32(0,0x04034b50,true);v.setUint16(4,20,true);v.setUint16(6,0x800,true);v.setUint32(14,sum,true);v.setUint32(18,b.size,true);v.setUint32(22,b.size,true);v.setUint16(26,n.length,true);h.set(n,30);const c=new Uint8Array(46+n.length),d=new DataView(c.buffer);d.setUint32(0,0x02014b50,true);d.setUint16(4,20,true);d.setUint16(6,20,true);d.setUint16(8,0x800,true);d.setUint32(16,sum,true);d.setUint32(20,b.size,true);d.setUint32(24,b.size,true);d.setUint16(28,n.length,true);d.setUint32(42,this.offset,true);c.set(n,46);this.parts.push(h,b);this.central.push(c);this.offset+=h.length+b.size;this.files.push({path:name,size:b.size,crc32:sum.toString(16).padStart(8,'0')});}blob(){const size=this.central.reduce((n,c)=>n+c.length,0);if(this.offset+size+22>256*1024*1024||this.files.length>65535)throw new Error('ZIP上限超過');const e=new Uint8Array(22),v=new DataView(e.buffer);v.setUint32(0,0x06054b50,true);v.setUint16(8,this.files.length,true);v.setUint16(10,this.files.length,true);v.setUint32(12,size,true);v.setUint32(16,this.offset,true);return new Blob([...this.parts,...this.central,e],{type:'application/zip'});}}
+function aggregate(logs){const bins=new Map();for(const v of logs){const i=Math.floor(v.sec/30);if(!bins.has(i))bins.set(i,{startSec:i*30,a:[],m:[]});const b=bins.get(i),d=v.maxDb??v.db;if(Number.isFinite(d))b.a.push(d);if(Number.isFinite(v.motionG))b.m.push(v.motionG);}const avg=a=>a.length?a.reduce((s,v)=>s+v,0)/a.length:null;return [...bins.values()].sort((a,b)=>a.startSec-b.startSec).map(b=>({startSec:b.startSec,durationSec:30,audioSampleCount:b.a.length,motionSampleCount:b.m.length,avgDb:avg(b.a),maxDb:b.a.length?Math.max(...b.a):null,avgMotion:avg(b.m),maxMotion:b.m.length?Math.max(...b.m):null}));}
+function download(blob,name){const u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),120000);tell('ダウンロード開始。端末への保存完了は確認できません。元データは残しています。');}
+async function exportZip(test=false){if(busy()||(test?!testResult:!selected))return;operation=true;controls();try{tell('ZIP作成中。元データは削除しません。');const z=new Zip();let filename;if(test){const {blob,...m}=testResult;let path=null;if(blob?.size){path='audio/test.'+extension(m.mimeType||blob.type);await z.add(path,blob);}await z.add('diagnostics.json',JSON.stringify({...m,audioFile:path,audioBytes:blob?.size||0}));await z.add('README.txt','診断専用・音声遅延なし。motionは許可と実受信を区別。欠測null。音声は再生確認が必要です。');filename='SleepTest_'+m.startedAt+'.zip';}else{const s={...selected},logs=(await rows('sessionLogs',s.id)).sort((a,b)=>a.sec-b.sec).map(({key,sessionId,...v})=>({...v,maxDb:v.maxDb??v.db??null,elapsed_ms:v.elapsed_ms??v.sec*1000})),clips=await rows('clips',s.id,true),chunks=await rows('audioChunks',s.id,true),manifest=[];for(const c of chunks)if(!clips.some(v=>v.id===c.clipId))clips.push({id:c.clipId,sessionId:s.id,status:'interrupted',recovered:true});for(const c of clips){c.audioRefs=[];for(const ref of refs(c,chunks)){const row=await get(ref.legacy?'clips':'audioChunks',ref.legacy?ref.id:ref.key);if(!row?.blob?.size)continue;const type=row.mimeType||row.blob.type,path='audio/'+encodeURIComponent(c.id)+'_'+(ref.legacy?'legacy':ref.index)+'.'+extension(type);await z.add(path,row.blob);c.audioRefs.push(path);manifest.push({clipId:c.id,path,mimeType:type,size:row.blob.size,startElapsedMs:row.startElapsedMs??(c.startSec||0)*1000,endElapsedMs:row.endElapsedMs??null,independent:row.independent??null});}}const interrupted=!!s.interrupted||s.status==='recording';await z.add('log.json',JSON.stringify({schemaVersion:SCHEMA,appVersion:VERSION,buildId:BUILD,session:{...s,status:s.status==='recording'?'interrupted':s.status},interrupted,baselineDb:s.baselineDb??null,thresholdDb:s.thresholdDb??null,motionAvailable:!!s.motionAvailable,timeSeriesLogs:logs,profileBins:logs.length?aggregate(logs):await rows('profileBins',s.id),clips,audioManifest:manifest,units:{maxDb:'相対dBFS。旧V35 dbは独自オフセット値',motionG:'隣接加速度差 / 9.80665、1秒最大値'},aggregation:'30秒の有効値平均・最大。欠測null。睡眠段階は算出しない'}));await z.add('README.txt',BUILD+'\n日時: '+new Date(s.startedAt).toLocaleString('ja-JP')+'\n状態: '+s.status+'\n'+(interrupted?'中断・未完了記録\n':'')+'音量は相対値。欠測はゼロではありません。\n音声は独立ファイル。境界・末尾・SleepScope互換性は未検証。診断用ではありません。');filename='SleepLog_'+s.id+'.zip';}await z.add('manifest.json',JSON.stringify({schemaVersion:SCHEMA,appVersion:VERSION,buildId:BUILD,diagnosticOnly:test,sessionId:test?null:selected.id,files:z.files.slice(),selfEntry:'自身のCRC・サイズはZIP中央ディレクトリ参照'}));download(z.blob(),filename);}catch(e){tell('ZIP失敗: '+msg(e)+'。元データは残しています。');}finally{operation=false;controls();}}
+async function deleteSelected(){if(busy()||!selected)return;if(!confirm('この記録と音声を削除します。他タブで測定中の記録は削除しないでください。取り消せません。'))return;operation=true;controls();try{const id=selected.id;await write(['sessions','clips','sessionLogs','profileBins','audioChunks'],t=>{t.objectStore('sessions').delete(id);for(const name of ['clips','sessionLogs','profileBins','audioChunks']){const r=t.objectStore(name).index('sessionId').openCursor(IDBKeyRange.only(id));r.onsuccess=()=>{const c=r.result;if(c){c.delete();c.continue();}};}});await refresh();tell('削除完了。セッションIDのない旧録音は残しました。');}catch(e){tell('削除失敗: '+msg(e));}finally{operation=false;controls();}}
+function visibility(){if(!session||stopping)return;session.interrupted=true;if(document.hidden)flush();else{if(audio?.ctx.state!=='running')Promise.resolve(audio?.ctx.resume()).catch(fail);requestWake();}}
 function pagehide(){if(session){session.interrupted=true;if(!stopping)flush();}}
-async function disposeForUpdate(){
-  if(busy())throw new Error('処理中は更新できません');
-  window.__STUpdateApplying=true;controls();await queue;
-  clearInterval(ticker);clearTimeout(nightTimer);clearTimeout(hold);clearTimeout(peek);
-  clearPlayers();$('testAudio').pause();$('testAudio').removeAttribute('src');$('testAudio').load();
-  if(testURL)URL.revokeObjectURL(testURL);
-  await releaseAudio();
-  document.removeEventListener('visibilitychange',visibility);window.removeEventListener('pagehide',pagehide);
-  db?.close();diagnosticDB?.close();ready=false;
-}
-async function init(){
-  bindNight();
-  const safe=fn=>()=>Promise.resolve().then(fn).catch(e=>tell(message(e)));
-  // 音声開始だけはユーザー操作直後に実行する。
-  $('btnStart').onclick=()=>start().catch(e=>tell(message(e)));
-  $('btnTest').onclick=()=>startTest().catch(e=>tell(message(e)));
-  $('btnStop').onclick=()=>stop().catch(e=>tell(message(e)));
-  $('btnNight').onclick=enterNight;
-  $('btnRefresh').onclick=safe(()=>refresh());
-  $('sessionSelect').onchange=safe(()=>refresh($('sessionSelect').value));
-  $('btnMore').onclick=safe(showClips);
-  $('btnFullExport').onclick=()=>exportZip();
-  $('btnTestExport').onclick=()=>exportZip(true);
-  $('btnDeleteSession').onclick=deleteSelected;
-  for(const [id,records] of [['tabMeasure',false],['tabRecords',true]])$(id).onclick=()=>{
-    $('measurePanel').classList.toggle('hidden',records);$('recordsPanel').classList.toggle('hidden',!records);
-  };
-  document.addEventListener('visibilitychange',visibility);window.addEventListener('pagehide',pagehide);
-  ticker=setInterval(update,250);
-  try{
-    db=await open(DB_NAME,5,(d,t)=>{
-      for(const name of ['clips','sessions','sessionLogs','profileBins','audioChunks']){
-        const s=d.objectStoreNames.contains(name)?t.objectStore(name):d.createObjectStore(name,{keyPath:['clips','sessions'].includes(name)?'id':'key'});
-        if(name!=='sessions'&&!s.indexNames.contains('sessionId'))s.createIndex('sessionId','sessionId',{unique:false});
-      }
-    });
-    db.onversionchange=()=>{db.close();ready=false;if(session)fail(new Error('DBが他タブで更新されました'));controls();};
-    ready=true;await refresh();tell('DB準備完了。既存記録は削除していません。');
-    try{if(localStorage.getItem('ST_SESSION_HISTORY_V63'))tell('旧localStorage履歴あり。未検証移行・削除は行いません。旧版からも回収してください。');}catch(_){}
-    try{
-      testResult=await testDB(false);
-      if(testResult){showTest();testUI(testResult.recordedMs||0,'保存済みテスト復元',(testResult.blob?.size||0)+' bytes');$('testStatus').textContent='保存済み音声を復元。再生確認が必要です。';}
-    }catch(e){$('testStatus').textContent='診断DB復元失敗: '+message(e);}
-  }catch(e){ready=false;setState('エラー');tell('保存機能の準備失敗: '+message(e));}
-  finally{initializing=false;controls();}
-}
+async function disposeForUpdate(){if(busy())throw new Error('処理中は更新できません');window.__STUpdateApplying=true;controls();await queue;clearInterval(ticker);clearTimeout(nightTimer);clearTimeout(hold);clearTimeout(peek);stopMotion();clearPlayers();$('testAudio').pause();$('testAudio').removeAttribute('src');$('testAudio').load();if(testURL)URL.revokeObjectURL(testURL);await releaseAudio();document.removeEventListener('visibilitychange',visibility);window.removeEventListener('pagehide',pagehide);db?.close();tdb?.close();ready=false;}
+async function init(){bindNight();const safe=fn=>()=>Promise.resolve().then(fn).catch(e=>tell(msg(e)));$('btnStart').onclick=()=>start().catch(e=>tell(msg(e)));$('btnTest').onclick=()=>startTest().catch(e=>tell(msg(e)));$('btnStop').onclick=()=>stop().catch(e=>tell(msg(e)));$('btnNight').onclick=enterNight;$('btnRefresh').onclick=safe(()=>refresh());$('sessionSelect').onchange=safe(()=>refresh($('sessionSelect').value));$('btnMore').onclick=safe(showClips);$('btnFullExport').onclick=()=>exportZip();$('btnTestExport').onclick=()=>exportZip(true);$('btnDeleteSession').onclick=deleteSelected;for(const [id,r] of [['tabMeasure',false],['tabRecords',true]])$(id).onclick=()=>{$('measurePanel').classList.toggle('hidden',r);$('recordsPanel').classList.toggle('hidden',!r);};document.addEventListener('visibilitychange',visibility);window.addEventListener('pagehide',pagehide);ticker=setInterval(update,250);try{db=await open('SleepTrackerClassifierV6DB',5,(d,t)=>{for(const name of ['clips','sessions','sessionLogs','profileBins','audioChunks']){const s=d.objectStoreNames.contains(name)?t.objectStore(name):d.createObjectStore(name,{keyPath:['clips','sessions'].includes(name)?'id':'key'});if(name!=='sessions'&&!s.indexNames.contains('sessionId'))s.createIndex('sessionId','sessionId',{unique:false});}});db.onversionchange=()=>{db.close();ready=false;if(session)fail(new Error('DBが他タブで更新されました'));else tell('DB更新を検出。再読み込みしてください。');controls();};ready=true;await refresh();tell('DB準備完了。既存記録は削除していません。');try{if(localStorage.getItem('ST_SESSION_HISTORY_V63'))tell('旧localStorage履歴あり。未検証移行・削除は行いません。旧版からも回収してください。');}catch(_){}try{testResult=await testDB(false);if(testResult){showTest();testUI(testResult.recordedMs||0,'保存済みテスト復元',(testResult.blob?.size||0)+' bytes');const m=testResult.motion;$('testMotionStatus').textContent=m?'前回: '+m.permission+' ／ イベント '+m.eventCount+'件 ／ 有効 '+m.validCount+'件 ／ 最大 '+(m.maxG==null?'欠測':Number(m.maxG).toFixed(3)+' G'):'旧テスト: 体動記録なし';$('testStatus').textContent='保存済み音声を復元。再生確認が必要です。';}}catch(e){$('testStatus').textContent='診断DB復元失敗: '+msg(e);}}catch(e){ready=false;setState('エラー');tell('保存機能準備失敗: '+msg(e));}finally{initializing=false;controls();}}
 return Object.freeze({init,isBusy:busy,disposeForUpdate});
 })();
 </script>
 <script>
-window.GitHubLoader = (() => {
+window.GitHubLoader = (()=>{
 'use strict';
-const REPO='matsuodentalassociation/ST-SCOPE',PATH='index.html';
-const $=id=>document.getElementById(id),status=s=>{$('updateText').textContent=s;};
-const build=()=>document.querySelector('meta[name="st-build-id"]').content;
+const REPO='matsuodentalassociation/ST-SCOPE',PATH='index.html',$=id=>document.getElementById(id),status=s=>{$('updateText').textContent=s;},build=()=>document.querySelector('meta[name="st-build-id"]').content;
 let checking=false,candidate;
-async function fetchBytes(url,accept){
-  const u=new URL(url);u.searchParams.set('_stcb',Date.now()+'-'+Math.random());
-  const c=new AbortController(),t=setTimeout(()=>c.abort(),12000);
-  try{
-    const r=await fetch(u,{cache:'no-store',credentials:'omit',signal:c.signal,headers:{Accept:accept}});
-    if(!r.ok)throw new Error('HTTP '+r.status);return new Uint8Array(await r.arrayBuffer());
-  }finally{clearTimeout(t);}
-}
+// API・コミット固定raw取得の双方にキャッシュバスティングを適用。
+async function fetchBytes(url,accept){const u=new URL(url);u.searchParams.set('_stcb',Date.now()+'-'+Math.random());const c=new AbortController(),timer=setTimeout(()=>c.abort(),12000);try{const r=await fetch(u,{cache:'no-store',credentials:'omit',signal:c.signal,headers:{Accept:accept}});if(!r.ok)throw new Error('HTTP '+r.status);return new Uint8Array(await r.arrayBuffer());}finally{clearTimeout(timer);}}
 const json=async u=>JSON.parse(new TextDecoder().decode(await fetchBytes(u,'application/vnd.github+json')));
 function order(b){return /^ST-V(\d+)-(\d{8})-(\d+)$/.exec(b)?.slice(1).map(Number);}
 function compare(a,b){for(let i=0;i<3;i++)if(a[i]!==b[i])return a[i]-b[i];return 0;}
-async function check(){
-  if(checking||App.isBusy()){status('処理終了後に更新確認してください。');return;}
-  checking=true;candidate=null;$('btnCheckUpdate').disabled=true;$('btnApplyUpdate').disabled=true;
-  try{
-    status('GitHub確認中…');
-    const commit=await json('https://api.github.com/repos/'+REPO+'/commits/main'),sha=commit.sha;
-    if(!/^[a-f0-9]{40}$/.test(sha||''))throw new Error('コミットID不正');
-    const raw=await fetchBytes('https://raw.githubusercontent.com/'+REPO+'/'+sha+'/'+PATH,'text/html');
-    const info=await json('https://api.github.com/repos/'+REPO+'/contents/'+PATH+'?ref='+sha);
-    const h=new TextEncoder().encode('blob '+raw.length+'\0'),data=new Uint8Array(h.length+raw.length);
-    data.set(h);data.set(raw,h.length);
-    if(!crypto.subtle)throw new Error('更新検証API非対応');
-    const hash=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-1',data)),v=>v.toString(16).padStart(2,'0')).join('');
-    if(hash!==info.sha)throw new Error('ファイルハッシュ不一致');
-    const text=new TextDecoder('utf-8',{fatal:true}).decode(raw),doc=new DOMParser().parseFromString(text,'text/html');
-    const next=doc.querySelector('meta[name="st-build-id"]')?.content,a=order(next||''),b=order(build());
-    if(!a||!b||! /^\s*<!doctype html>/i.test(text)||!/<\/html>\s*$/i.test(text))throw new Error('HTML・ビルド情報不正');
-    const diff=compare(a,b);
-    if(diff<=0){status(diff<0?'GitHubは旧版。現在の '+build()+' を維持します。':'同一ビルド '+build()+' / '+sha.slice(0,7));return;}
-    const scripts=[...doc.querySelectorAll('script')];
-    if(doc.querySelector('meta[name="st-update-protocol"]')?.content!=='dom-v1'||
-      !doc.getElementById('btnStart')||!doc.getElementById('btnStop')||
-      scripts.some(s=>s.src||(s.type&&s.type!=='text/javascript'))||
-      !['window.App =','window.GitHubLoader =','window.STBoot'].every(v=>scripts.some(s=>s.textContent.includes(v))))
-      throw new Error('更新構造非対応');
-    candidate={doc,sha,next};$('btnApplyUpdate').disabled=false;status(next+' / '+sha.slice(0,7)+' 取得・検証済み。適用は手動です。');
-  }catch(e){status('更新確認失敗: '+e.message+'。現在の測定・保存は利用できます。');}
-  finally{checking=false;$('btnCheckUpdate').disabled=false;}
-}
-async function apply(){
-  if(!candidate||App.isBusy()){status('処理終了後に適用してください。');return;}
-  if(!confirm(candidate.next+' を適用します。DBは削除しません。')||App.isBusy())return;
-  const c=candidate;
-  try{
-    await App.disposeForUpdate();window.__STAppliedCommit=c.sha;
-    const scripts=[...c.doc.querySelectorAll('script')].map(s=>s.textContent);c.doc.querySelectorAll('script').forEach(s=>s.remove());
-    document.head.replaceChildren(...[...c.doc.head.childNodes].map(n=>document.importNode(n,true)));
-    document.body.replaceChildren(...[...c.doc.body.childNodes].map(n=>document.importNode(n,true)));
-    document.documentElement.lang=c.doc.documentElement.lang||'ja';window.STBoot=undefined;
-    for(const code of scripts){const s=document.createElement('script');s.textContent=code;document.body.append(s);}
-    if(typeof window.STBoot!=='function')throw new Error('起動処理なし');
-    window.__STUpdateApplying=false;await window.STBoot();
-  }catch(e){
-    window.__STUpdateApplying=false;const p=document.createElement('p');
-    p.textContent='更新失敗: '+e.message+'。配布URLを再読み込みしてください。DBは残しています。';document.body.append(p);
-  }
-}
-function init(){
-  $('buildInfo').textContent='実行ビルド: '+build()+(window.__STAppliedCommit?' / '+window.__STAppliedCommit.slice(0,7):'');
-  $('btnCheckUpdate').onclick=check;$('btnApplyUpdate').onclick=apply;
-  if(window.__STAppliedCommit)status('取得コミットを適用しました。');else check();
-}
+async function check(){if(checking||window.__STUpdateApplying||window.App.isBusy()){status('処理終了後に更新確認してください。');return;}checking=true;candidate=null;$('btnCheckUpdate').disabled=true;$('btnApplyUpdate').disabled=true;try{status('GitHub最新コミット確認中…');const commit=await json('https://api.github.com/repos/'+REPO+'/commits/main'),sha=commit.sha;if(!/^[a-f0-9]{40}$/.test(sha||''))throw new Error('コミットID不正');const raw=await fetchBytes('https://raw.githubusercontent.com/'+REPO+'/'+sha+'/'+PATH,'text/html'),info=await json('https://api.github.com/repos/'+REPO+'/contents/'+PATH+'?ref='+sha),h=new TextEncoder().encode('blob '+raw.length+'\0'),data=new Uint8Array(h.length+raw.length);data.set(h);data.set(raw,h.length);if(!window.crypto?.subtle)throw new Error('更新検証API非対応');const hash=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-1',data)),v=>v.toString(16).padStart(2,'0')).join('');if(hash!==info.sha)throw new Error('ファイルハッシュ不一致');const text=new TextDecoder('utf-8',{fatal:true}).decode(raw),doc=new DOMParser().parseFromString(text,'text/html'),next=doc.querySelector('meta[name="st-build-id"]')?.content,a=order(next||''),b=order(build());if(!a||!b||!/^\s*<!doctype html>/i.test(text)||!/<\/html>\s*$/i.test(text))throw new Error('HTML・ビルド情報不正');const diff=compare(a,b);if(diff<=0){status(diff<0?'GitHubは旧版。現在の '+build()+' を維持します。':'同一ビルド '+build()+' / '+sha.slice(0,7));return;}const scripts=[...doc.querySelectorAll('script')];if(doc.querySelector('meta[name="st-update-protocol"]')?.content!=='dom-v1'||!doc.getElementById('btnStart')||!doc.getElementById('btnStop')||scripts.some(s=>s.src||(s.type&&s.type!=='text/javascript'))||!['window.App =','window.GitHubLoader =','window.STBoot'].every(v=>scripts.some(s=>s.textContent.includes(v))))throw new Error('更新構造非対応');candidate={doc,sha,next};$('btnApplyUpdate').disabled=false;status(next+' / '+sha.slice(0,7)+' 取得・ハッシュ検証済み。適用は手動です。');}catch(e){status('更新確認失敗: '+e.message+'。現在の測定・保存は利用できます。');}finally{checking=false;$('btnCheckUpdate').disabled=false;}}
+async function apply(){if(!candidate||window.App.isBusy()){status('処理終了後に適用してください。');return;}if(!confirm(candidate.next+' を適用します。DBは削除しません。')||window.App.isBusy())return;const c=candidate;let scriptError=null;const onError=e=>{scriptError=e.error||new Error(e.message||'新コード実行失敗');};try{await window.App.disposeForUpdate();window.__STUpdateApplying=true;window.__STAppliedCommit=c.sha;const scripts=[...c.doc.querySelectorAll('script')].map(s=>s.textContent);c.doc.querySelectorAll('script').forEach(s=>s.remove());document.head.replaceChildren(...[...c.doc.head.childNodes].map(n=>document.importNode(n,true)));document.body.replaceChildren(...[...c.doc.body.childNodes].map(n=>document.importNode(n,true)));document.documentElement.lang=c.doc.documentElement.lang||'ja';window.App=undefined;window.GitHubLoader=undefined;window.STBoot=undefined;window.addEventListener('error',onError);for(const code of scripts){const s=document.createElement('script');s.textContent=code;document.body.append(s);if(scriptError)throw scriptError;}if(typeof window.STBoot!=='function'||typeof window.App?.init!=='function'||typeof window.GitHubLoader?.init!=='function')throw new Error('起動構造不正');window.removeEventListener('error',onError);window.__STUpdateApplying=false;await window.STBoot();}catch(e){window.__STUpdateApplying=false;const p=document.createElement('p');p.textContent='更新失敗: '+e.message+'。配布URLを再読み込みしてください。DBは残しています。';document.body.append(p);}finally{window.removeEventListener('error',onError);}}
+function init(){$('buildInfo').textContent='実行ビルド: '+build()+(window.__STAppliedCommit?' / '+window.__STAppliedCommit.slice(0,7):'');$('btnCheckUpdate').onclick=check;$('btnApplyUpdate').onclick=apply;if(window.__STAppliedCommit)status('取得コミットを適用しました。');else check();}
 return Object.freeze({init,check,apply});
 })();
-window.STBoot=async()=>{
-  try{await window.App.init();}catch(e){document.getElementById('notice').textContent='初期化失敗: '+e.message;}
-  window.GitHubLoader.init();
-};
+window.STBoot=async()=>{try{await window.App.init();}catch(e){document.getElementById('notice').textContent='初期化失敗: '+e.message;}window.GitHubLoader.init();};
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>{if(!window.__STUpdateApplying)window.STBoot();},{once:true});
 else if(!window.__STUpdateApplying)window.STBoot();
 </script>
-</body>
-</html>
+</body></html>
