@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#000000">
-<meta name="st-build-id" content="ST-V43-20261006-01">
-<title>SleepTracker ST-V43</title>
+<meta name="st-build-id" content="ST-V44-20261006-01">
+<title>SleepTracker ST-V44</title>
 <style>
 :root{color-scheme:dark;font:15px/1.6 system-ui,sans-serif;background:#000;color:#e2e8f0}
 *{box-sizing:border-box}body{margin:0}
@@ -17,7 +17,7 @@ button{cursor:pointer}button:disabled{opacity:.45;cursor:default}
 input[type=text],select{width:100%}label{display:block;margin:9px 0}
 .row{display:flex;flex-wrap:wrap;gap:8px}.primary{background:#3730a3}.danger{background:#7f1d1d}
 small{color:#94a3b8}pre{white-space:pre-wrap;overflow-wrap:anywhere}
-#timer{font:bold 30px monospace}canvas{width:100%;height:100px;background:#080e19}
+#timer{font:bold 30px monospace}canvas{display:block;width:100%;height:100px;background:#080e19}
 audio{width:100%}.clip{padding:10px 0;border-top:1px solid #334155}.hidden{display:none!important}
 #night{position:fixed;inset:0;z-index:10000;background:#000;display:grid;place-items:center;touch-action:none;user-select:none;-webkit-user-select:none}
 #nightClock{visibility:hidden;color:#475569;font:28px monospace}
@@ -28,8 +28,8 @@ body.dark{overflow:hidden;overscroll-behavior:none}body.dark main{visibility:hid
 </head>
 <body>
 <main>
-<h1>SleepTracker ST-V43</h1>
-<small>ST-V43-20261006-01</small>
+<h1>SleepTracker ST-V44</h1>
+<small>ST-V44-20261006-01</small>
 
 <section>
 <h2>GitHub更新</h2>
@@ -45,7 +45,7 @@ body.dark{overflow:hidden;overscroll-behavior:none}body.dark main{visibility:hid
 <label>HTMLパス<input id="sourcePath" type="text" autocomplete="off" value="index.html"></label>
 <label><input id="autoCheck" type="checkbox">起動時と10分ごとに確認</label>
 <button id="saveUpdateSettings" disabled>設定保存</button>
-<p><small>GitHubと配信HTMLのビルド・SHA-256が一致した場合だけ、同じサイトを再読み込みします。測定・保存中は更新しません。</small></p>
+<p><small>GitHubの最新コミットからHTMLを動的取得し、配信HTMLのビルド・SHA-256との一致を確認して同じサイトで適用します。取得・適用時はキャッシュバスティングを使用します。測定・保存中は更新しません。</small></p>
 </details>
 </section>
 
@@ -58,8 +58,12 @@ body.dark{overflow:hidden;overscroll-behavior:none}body.dark main{visibility:hid
 <button id="stop" class="danger" disabled>停止・保存</button>
 <button id="black" disabled>黒画面</button>
 </div>
+<small>音量：相対デジタルレベル</small>
 <canvas id="graph" aria-label="音量グラフ"></canvas>
-<small>環境音計測30秒、プリロール3秒、約15秒ごとの独立音声。開始1分後に黒画面。タップで時刻、0.8秒長押しで戻ります。背景・ロック中の継続や録音境界は保証できません。</small>
+<small id="motionScale">体動：加速度変化量（G）／直近120秒／欠測は空白</small>
+<canvas id="motionGraph" aria-label="体動波形グラフ"></canvas>
+<small>体動波形は既存の1秒ごとのmotionG（端末の加速度変化量の最大値）。生の3軸加速度や身体の運動量ではありません。黒画面中は描画しません。</small>
+<p><small>環境音計測30秒、プリロール3秒、約15秒ごとの独立音声。開始1分後に黒画面。タップで時刻、0.8秒長押しで戻ります。背景・ロック中の継続や録音境界は保証できません。</small></p>
 </section>
 
 <section>
@@ -115,7 +119,8 @@ body.dark{overflow:hidden;overscroll-behavior:none}body.dark main{visibility:hid
 (() => {
 'use strict';
 
-const VERSION='ST-V43',BUILD='ST-V43-20261006-01';
+const VERSION='ST-V44',BUILD='ST-V44-20261006-01';
+// 既存データを維持するためDB名・版・ストアは変更しない。
 const DB_NAME='SleepTrackerClassifierV6DB',DB_VERSION=5;
 const LOCK='ST-measurement-v41';
 const STORES=['sessions','sessionLogs','profileBins','clips','audioChunks'];
@@ -125,26 +130,33 @@ const $=id=>document.getElementById(id);
 const msg=e=>e?.message||String(e);
 const say=t=>{$('notice').textContent=t;};
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
-const uid=()=>crypto.randomUUID?.()||Date.now()+'-'+Math.random().toString(36).slice(2);
+const uid=()=>crypto.randomUUID?.()||
+  Date.now()+'-'+Math.random().toString(36).slice(2);
+
 const num=v=>{
   if(v===null||v===undefined||v==='')return null;
   if(typeof v!=='number'&&typeof v!=='string')return null;
-  const n=Number(v);return Number.isFinite(n)?n:null;
+  const n=Number(v);
+  return Number.isFinite(n)?n:null;
 };
 const seconds=v=>{
-  const n=num(v);return n!==null&&n>=0&&n<=MAX_SEC?n:null;
+  const n=num(v);
+  return n!==null&&n>=0&&n<=MAX_SEC?n:null;
 };
 const millis=v=>{
-  const n=num(v);return n!==null&&n>=0&&n<=MAX_SEC*1000?n:null;
+  const n=num(v);
+  return n!==null&&n>=0&&n<=MAX_SEC*1000?n:null;
 };
-// UNIX秒や極端な未来値をUNIXミリ秒として受け入れない。
 const epoch=v=>{
-  const n=num(v);return n!==null&&n>=1e11&&n<1e13?n:null;
+  const n=num(v);
+  return n!==null&&n>=1e11&&n<1e13?n:null;
 };
-const ext=m=>/mp4|m4a/i.test(m||'')?'m4a':/ogg/i.test(m||'')?'ogg':
-  /wav/i.test(m||'')?'wav':'webm';
+const ext=m=>/mp4|m4a/i.test(m||'')?'m4a':
+  /ogg/i.test(m||'')?'ogg':/wav/i.test(m||'')?'wav':'webm';
 const local=v=>{
-  const n=epoch(v);return n===null?'不明':new Date(n).toLocaleString('ja-JP',{hour12:false});
+  const n=epoch(v);
+  return n===null?'不明':
+    new Date(n).toLocaleString('ja-JP',{hour12:false});
 };
 const clock=ms=>{
   const n=Math.floor(Math.max(0,ms||0)/1000);
@@ -152,8 +164,11 @@ const clock=ms=>{
     .map(v=>String(v).padStart(2,'0')).join(':');
 };
 const timezone=()=>{
-  try{return Intl.DateTimeFormat().resolvedOptions().timeZone||null;}
-  catch(_){return null;}
+  try{
+    return Intl.DateTimeFormat().resolvedOptions().timeZone||null;
+  }catch(_){
+    return null;
+  }
 };
 
 let db,ready=false,work=false,initializing=false;
@@ -163,24 +178,30 @@ let origin=0,ticker=null,nightTimer=null,wake=null,lastTick=0;
 let recording=null,event=null,ending=null;
 let queue=Promise.resolve(),pending=0,saveError=null,second=null;
 let calibration=[],calibrationUntil=0,baseline=null,quietSince=null;
-let history=[],lastPaint=0,refs=[],page=0,playerURLs=[];
+let history=[],motionHistory=[],lastPaint=0,refs=[],page=0,playerURLs=[];
 let plan=null,prepared=null,preparedURL=null;
 let hold=null,peek=null,pointer=null,point=null,moved=false;
-const motion={permission:'未要求',previous:null,peak:null,events:0,valid:0};
+const motion={
+  permission:'未要求',previous:null,peak:null,events:0,valid:0
+};
 
 const elapsed=()=>Math.max(0,performance.now()-origin);
 const busy=()=>work||!!session||!!stopping||Updater.busy;
+
 function controls(){
   const b=busy();
   $('start').disabled=!ready||b;
   $('stop').disabled=!session||initializing||!!stopping;
   $('black').disabled=!session||initializing||!!stopping;
-  for(const id of ['refresh','recover','sessions','checkUpdate','saveUpdateSettings'])
-    $(id).disabled=!ready||b;
-  for(const id of ['repository','branch','sourcePath','autoCheck'])
-    $(id).disabled=b;
-  for(const id of ['export','split','remove'])
+  for(const id of [
+    'refresh','recover','sessions','checkUpdate','saveUpdateSettings'
+  ])$(id).disabled=!ready||b;
+  for(const id of [
+    'repository','branch','sourcePath','autoCheck'
+  ])$(id).disabled=b;
+  for(const id of ['export','split','remove']){
     $(id).disabled=!ready||b||!selected;
+  }
   if(plan||prepared)$('remove').disabled=true;
   $('more').disabled=b||page*20>=refs.length;
   $('save').disabled=b||!prepared;
@@ -205,15 +226,21 @@ function tx(names,mode,body){
     }
   });
 }
-const put=(name,value)=>tx([name],'readwrite',t=>t.objectStore(name).put(value));
+
+const put=(name,value)=>tx(
+  [name],'readwrite',t=>t.objectStore(name).put(value)
+);
 const get=(name,key)=>tx([name],'readonly',(t,set)=>{
-  const r=t.objectStore(name).get(key);r.onsuccess=()=>set(r.result);
+  const r=t.objectStore(name).get(key);
+  r.onsuccess=()=>set(r.result);
 });
+
 function rows(name,id=null,metadata=false){
   return tx([name],'readonly',(t,set)=>{
     const result=[],s=t.objectStore(name);
     const r=id!==null&&s.indexNames.contains('sessionId')
-      ?s.index('sessionId').openCursor(IDBKeyRange.only(id)):s.openCursor();
+      ?s.index('sessionId').openCursor(IDBKeyRange.only(id))
+      :s.openCursor();
     r.onsuccess=()=>{
       const c=r.result;
       if(!c){set(result);return;}
@@ -221,28 +248,38 @@ function rows(name,id=null,metadata=false){
       if(id===null||v.sessionId===id){
         if(metadata){
           const {blob,...rest}=v;
-          result.push({...rest,hasBlob:blob instanceof Blob,
+          result.push({
+            ...rest,
+            hasBlob:blob instanceof Blob,
             bytes:blob instanceof Blob?blob.size:0,
-            mimeType:v.mimeType||blob?.type||''});
-        }else result.push(v);
+            mimeType:v.mimeType||blob?.type||''
+          });
+        }else{
+          result.push(v);
+        }
       }
       c.continue();
     };
   });
 }
+
 function openDB(){
   return new Promise((resolve,reject)=>{
     const r=indexedDB.open(DB_NAME,DB_VERSION);
-    r.onblocked=()=>say('他のタブを閉じてください。DB準備が待機中です。');
+    r.onblocked=()=>say(
+      '他のタブを閉じてください。DB準備が待機中です。'
+    );
     r.onerror=()=>reject(r.error);
     r.onupgradeneeded=()=>{
       for(const name of STORES){
         const s=r.result.objectStoreNames.contains(name)
           ?r.transaction.objectStore(name)
-          :r.result.createObjectStore(name,{keyPath:
-            name==='sessions'||name==='clips'?'id':'key'});
-        if(name!=='sessions'&&!s.indexNames.contains('sessionId'))
+          :r.result.createObjectStore(name,{
+            keyPath:name==='sessions'||name==='clips'?'id':'key'
+          });
+        if(name!=='sessions'&&!s.indexNames.contains('sessionId')){
           s.createIndex('sessionId','sessionId',{unique:false});
+        }
       }
     };
     r.onsuccess=()=>resolve(r.result);
@@ -250,26 +287,41 @@ function openDB(){
 }
 
 async function lock(){
-  if(releaseLock)throw new Error('この画面で別の処理が実行中です');
+  if(releaseLock){
+    throw new Error('この画面で別の処理が実行中です');
+  }
   if(!navigator.locks?.request)return;
   await new Promise((resolve,reject)=>{
     navigator.locks.request(LOCK,{ifAvailable:true},async token=>{
-      if(!token){reject(new Error('別タブで測定・保存処理中です'));return;}
-      await new Promise(release=>{releaseLock=release;resolve();});
+      if(!token){
+        reject(new Error('別タブで測定・保存処理中です'));
+        return;
+      }
+      await new Promise(release=>{
+        releaseLock=release;
+        resolve();
+      });
     }).catch(reject);
   });
 }
-function unlock(){releaseLock?.();releaseLock=null;}
+
+function unlock(){
+  releaseLock?.();
+  releaseLock=null;
+}
 
 function fail(e){
   saveError??=e instanceof Error?e:new Error(msg(e));
   say('記録エラー: '+msg(saveError)+'。保存済み部分は残します。');
   if(session&&!initializing&&!stopping)void stop(true);
 }
+
 function enqueue(fn){
   if(saveError)return Promise.reject(saveError);
   if(pending>=16){
-    const e=new Error('保存待ち上限超過');fail(e);return Promise.reject(e);
+    const e=new Error('保存待ち上限超過');
+    fail(e);
+    return Promise.reject(e);
   }
   pending++;
   const task=queue.then(()=>{
@@ -280,18 +332,22 @@ function enqueue(fn){
   return task;
 }
 
-// 音声1ファイルに対して、配置情報を1件生成する。
+// 音声1ファイルに対して配置情報を1件生成する。
 // 保存済みの経過時刻にプリロールを再適用しない。
 async function audioRefs(s){
   const base=epoch(s.startedAt);
-  if(base===null)throw new Error('測定開始時刻がUNIXミリ秒ではありません');
+  if(base===null){
+    throw new Error('測定開始時刻がUNIXミリ秒ではありません');
+  }
   const clips=await rows('clips',s.id,true);
   const chunks=await rows('audioChunks',s.id,true);
   const parents=new Map(clips.map(c=>[c.id,c]));
   const result=[],chunkParents=new Set();
 
   function append(c,store,key,index,parent=null){
-    if(!c.hasBlob||!c.bytes)throw new Error('音声欠落・0バイト: '+key);
+    if(!c.hasBlob||!c.bytes){
+      throw new Error('音声欠落・0バイト: '+key);
+    }
     let start=seconds(c.startSec);
     if(start===null){
       const ms=millis(c.startElapsedMs);
@@ -301,7 +357,6 @@ async function audioRefs(s){
       const at=epoch(c.startedAt)??epoch(c.startEpochMs);
       if(at!==null)start=seconds((at-base)/1000);
     }
-    // 親の開始位置を全チャンクに複製しない。
     if(start===null&&index===0&&parent){
       start=seconds(parent.startSec);
       if(start===null){
@@ -310,7 +365,8 @@ async function audioRefs(s){
       }
     }
 
-    let duration=seconds(c.durationSec),durationSource='durationSec';
+    let duration=seconds(c.durationSec);
+    let durationSource='durationSec';
     if(duration===null&&start!==null){
       const endMs=millis(c.endElapsedMs);
       const endSec=endMs!==null?endMs/1000:seconds(c.endSec);
@@ -340,18 +396,23 @@ async function audioRefs(s){
     append(c,'audioChunks',c.key,num(c.index),parents.get(c.clipId));
   }
   for(const c of clips){
-    // 親のBlobと子のBlobが両方ある場合は子を優先し、二重出力しない。
     if(chunkParents.has(c.id))continue;
-    if(c.hasBlob)append(c,'clips',c.id,'legacy');
-    else if(num(c.byteLength)>0)
+    if(c.hasBlob){
+      append(c,'clips',c.id,'legacy');
+    }else if(num(c.byteLength)>0){
       throw new Error('旧音声Blob欠落: '+c.id);
+    }
   }
 
-  result.sort((a,b)=>(a.startSec??Infinity)-(b.startSec??Infinity)||
-    String(a.key).localeCompare(String(b.key)));
+  result.sort((a,b)=>
+    (a.startSec??Infinity)-(b.startSec??Infinity)||
+    String(a.key).localeCompare(String(b.key))
+  );
   result.forEach((r,i)=>{
     r.id='clip_'+String(i+1).padStart(6,'0');
-    const suffix=r.startSec===null?'unknown':String(Math.round(r.startSec*1000)/1000);
+    const suffix=r.startSec===null
+      ?'unknown'
+      :String(Math.round(r.startSec*1000)/1000);
     r.audioFile='audio/'+r.id+'_'+suffix+'s_event.'+ext(r.mimeType);
     r.startedAt=r.startSec===null?null:base+r.startSec*1000;
   });
@@ -360,21 +421,27 @@ async function audioRefs(s){
 
 function clearPlayers(){
   for(const a of $('clips').querySelectorAll('audio')){
-    a.pause();a.removeAttribute('src');a.load();
+    a.pause();
+    a.removeAttribute('src');
+    a.load();
   }
   playerURLs.forEach(URL.revokeObjectURL);
-  playerURLs=[];$('clips').replaceChildren();
+  playerURLs=[];
+  $('clips').replaceChildren();
 }
+
 async function showPlayers(){
   if(busy())return;
   const id=selected?.id;
   const batch=refs.slice(page*20,++page*20);
   for(const r of batch){
-    const div=document.createElement('div');div.className='clip';
+    const div=document.createElement('div');
+    div.className='clip';
     const label=document.createElement('div');
     label.textContent=local(r.startedAt)+' / '+r.audioFile+
       ' / '+(r.size/1024).toFixed(1)+' KiB';
-    const button=document.createElement('button');button.textContent='読み込む';
+    const button=document.createElement('button');
+    button.textContent='読み込む';
     button.onclick=async()=>{
       if(busy())return;
       button.disabled=true;
@@ -382,64 +449,94 @@ async function showPlayers(){
         const v=await get(r.store,r.key);
         if(selected?.id!==id||!div.isConnected)return;
         if(!v?.blob?.size)throw new Error('音声欠落');
-        const url=URL.createObjectURL(v.blob);playerURLs.push(url);
+        const url=URL.createObjectURL(v.blob);
+        playerURLs.push(url);
         const a=document.createElement('audio');
-        a.controls=true;a.preload='metadata';a.src=url;
+        a.controls=true;
+        a.preload='metadata';
+        a.src=url;
         a.setAttribute('playsinline','');
-        div.append(a);button.remove();
-      }catch(e){button.disabled=false;say(msg(e));}
+        div.append(a);
+        button.remove();
+      }catch(e){
+        button.disabled=false;
+        say(msg(e));
+      }
     };
-    div.append(label,button);$('clips').append(div);
+    div.append(label,button);
+    $('clips').append(div);
   }
   controls();
 }
+
 async function refresh(id=$('sessions').value){
-  const list=(await rows('sessions')).sort((a,b)=>(num(b.startedAt)||0)-(num(a.startedAt)||0));
+  const list=(await rows('sessions')).sort(
+    (a,b)=>(num(b.startedAt)||0)-(num(a.startedAt)||0)
+  );
   $('sessions').replaceChildren();
   for(const s of list){
-    const o=document.createElement('option');o.value=s.id;
+    const o=document.createElement('option');
+    o.value=s.id;
     o.textContent=local(s.startedAt)+' / '+s.status;
     $('sessions').append(o);
   }
   selected=list.find(s=>s.id===id)||list[0]||null;
-  refs=[];page=0;clearPlayers();
+  refs=[];
+  page=0;
+  clearPlayers();
   if(selected){
     $('sessions').value=selected.id;
     try{
       refs=await audioRefs(selected);
-      $('summary').textContent='記録版: '+(selected.appVersion||'不明')+
-        '\n状態: '+selected.status+'\n開始: '+local(selected.startedAt)+
+      $('summary').textContent=
+        '記録版: '+(selected.appVersion||'不明')+
+        '\n状態: '+selected.status+
+        '\n開始: '+local(selected.startedAt)+
         '\n保存済み終了: '+local(selected.endedAt)+
         '\n音声: '+refs.length+'件 / '+
         (refs.reduce((n,r)=>n+r.size,0)/1048576).toFixed(2)+' MiB'+
-        '\n開始時刻不明: '+refs.filter(r=>r.startSec===null).length+'件'+
+        '\n開始時刻不明: '+
+        refs.filter(r=>r.startSec===null).length+'件'+
         '\n再出力時に終了日時と音声対応を検証します。';
-    }catch(e){$('summary').textContent=msg(e);}
-  }else $('summary').textContent='保存記録なし';
+    }catch(e){
+      $('summary').textContent=msg(e);
+    }
+  }else{
+    $('summary').textContent='保存記録なし';
+  }
   controls();
 }
 
-// durationSecが保存されていない旧音声にだけ使用する。
 async function probeDuration(blob){
   const audio=document.createElement('audio');
   const url=URL.createObjectURL(blob);
   try{
     return await new Promise((resolve,reject)=>{
-      const timer=setTimeout(()=>reject(new Error('音声時間の取得時間切れ')),8000);
+      const timer=setTimeout(
+        ()=>reject(new Error('音声時間の取得時間切れ')),8000
+      );
       const finish=()=>{
         const duration=seconds(audio.duration);
         if(duration!==null&&duration>0){
-          clearTimeout(timer);resolve(duration);
+          clearTimeout(timer);
+          resolve(duration);
         }
       };
       audio.onloadedmetadata=finish;
       audio.ondurationchange=finish;
-      audio.onerror=()=>{clearTimeout(timer);reject(new Error('音声時間を取得できません'));};
-      audio.preload='metadata';audio.src=url;audio.load();
+      audio.onerror=()=>{
+        clearTimeout(timer);
+        reject(new Error('音声時間を取得できません'));
+      };
+      audio.preload='metadata';
+      audio.src=url;
+      audio.load();
     });
   }finally{
     audio.onloadedmetadata=audio.ondurationchange=audio.onerror=null;
-    audio.removeAttribute('src');audio.load();URL.revokeObjectURL(url);
+    audio.removeAttribute('src');
+    audio.load();
+    URL.revokeObjectURL(url);
   }
 }
 
@@ -448,18 +545,25 @@ function normalizeLogs(raw,base){
     let sec;
     if(v.sec!==undefined&&v.sec!==null){
       sec=seconds(v.sec);
-      if(sec===null)throw new Error('ログsecが範囲外です: '+v.sec);
+      if(sec===null){
+        throw new Error('ログsecが範囲外です: '+v.sec);
+      }
     }else{
       const ms=millis(v.elapsed_ms);
-      if(ms!==null)sec=ms/1000;
-      else{
+      if(ms!==null){
+        sec=ms/1000;
+      }else{
         const at=epoch(v.epochMs);
         sec=at===null?null:seconds((at-base)/1000);
       }
-      if(sec===null)throw new Error('ログの経過時刻を確定できません');
+      if(sec===null){
+        throw new Error('ログの経過時刻を確定できません');
+      }
     }
-    return {...v,sec,elapsed_ms:sec*1000,epochMs:base+sec*1000,
-      maxDb:num(v.maxDb)??num(v.db)};
+    return {
+      ...v,sec,elapsed_ms:sec*1000,epochMs:base+sec*1000,
+      maxDb:num(v.maxDb)??num(v.db)
+    };
   }).sort((a,b)=>a.sec-b.sec);
 }
 
@@ -467,13 +571,24 @@ function aggregate(logs){
   const map=new Map();
   for(const v of logs){
     const sec=Math.floor(v.sec/30)*30;
-    if(!map.has(sec))map.set(sec,{sec,an:0,as:0,am:null,mn:0,ms:0,mm:null});
+    if(!map.has(sec)){
+      map.set(sec,{sec,an:0,as:0,am:null,mn:0,ms:0,mm:null});
+    }
     const b=map.get(sec),a=num(v.maxDb),m=num(v.motionG);
-    if(a!==null){b.an++;b.as+=a;b.am=b.am===null?a:Math.max(b.am,a);}
-    if(m!==null){b.mn++;b.ms+=m;b.mm=b.mm===null?m:Math.max(b.mm,m);}
+    if(a!==null){
+      b.an++;
+      b.as+=a;
+      b.am=b.am===null?a:Math.max(b.am,a);
+    }
+    if(m!==null){
+      b.mn++;
+      b.ms+=m;
+      b.mm=b.mm===null?m:Math.max(b.mm,m);
+    }
   }
   return [...map.values()].sort((a,b)=>a.sec-b.sec).map(b=>({
-    startSec:b.sec,durationSec:30,audioSampleCount:b.an,motionSampleCount:b.mn,
+    startSec:b.sec,durationSec:30,
+    audioSampleCount:b.an,motionSampleCount:b.mn,
     avgDb:b.an?b.as/b.an:null,maxDb:b.am,
     avgMotion:b.mn?b.ms/b.mn:null,maxMotion:b.mm
   }));
@@ -485,26 +600,34 @@ function normalizeSession(raw,logs,audio,warnings){
   const candidates=[];
   const add=n=>{if(n!==null)candidates.push(n);};
   add(seconds(raw.durationSec));
-  const last=millis(raw.lastElapsedMs),checkpoint=millis(raw.checkpointElapsedMs);
+  const last=millis(raw.lastElapsedMs);
+  const checkpoint=millis(raw.checkpointElapsedMs);
   add(last===null?null:last/1000);
   add(checkpoint===null?null:checkpoint/1000);
   const end=epoch(raw.endedAt);
   add(end===null?null:seconds((end-base)/1000));
   for(const v of logs)add(seconds(v.sec+1));
   for(const r of audio)add(seconds(r.startSec+r.durationSec));
-  if(!candidates.length)throw new Error('測定の終了位置を確定できません');
-  const durationSec=Math.max(...[0,...candidates.slice(0,5)]);
-  // 大量ログにspreadを使わず最大値を求める。
-  let duration=durationSec;
+  if(!candidates.length){
+    throw new Error('測定の終了位置を確定できません');
+  }
+  let duration=Math.max(...[0,...candidates.slice(0,5)]);
   for(const n of candidates)duration=Math.max(duration,n);
-  if(seconds(duration)===null)throw new Error('測定時間が31日を超えています');
+  if(seconds(duration)===null){
+    throw new Error('測定時間が31日を超えています');
+  }
   const endedAt=base+duration*1000;
-  if(end===null||Math.abs(end-endedAt)>1000)
-    warnings.push('終了日時を有効な経過時間から再構成しました。元DBは変更していません。');
-  const s={...raw,startedAt:base,endedAt,durationSec:duration,
-    lastElapsedMs:duration*1000,audioFileCount:audio.length,
-    audioBytes:audio.reduce((n,r)=>n+r.size,0)};
-  // 出力単位の混在を防ぐ。DB内の元データは削除しない。
+  if(end===null||Math.abs(end-endedAt)>1000){
+    warnings.push(
+      '終了日時を有効な経過時間から再構成しました。元DBは変更していません。'
+    );
+  }
+  const s={
+    ...raw,startedAt:base,endedAt,durationSec:duration,
+    lastElapsedMs:duration*1000,
+    audioFileCount:audio.length,
+    audioBytes:audio.reduce((n,r)=>n+r.size,0)
+  };
   delete s.endSec;
   delete s.startEpochMs;
   delete s.endEpochMs;
@@ -514,15 +637,12 @@ function normalizeSession(raw,logs,audio,warnings){
 function clipOf(r){
   return {
     id:r.id,sessionId:plan.session.id,
-    startSec:r.startSec,
-    startedAt:r.startedAt,
+    startSec:r.startSec,startedAt:r.startedAt,
     durationSec:r.durationSec,
     endSec:r.startSec+r.durationSec,
     endedAt:r.startedAt+r.durationSec*1000,
-    audioFile:r.audioFile,
-    mimeType:r.mimeType,byteLength:r.size,
-    independent:r.independent,
-    durationSource:r.durationSource
+    audioFile:r.audioFile,mimeType:r.mimeType,byteLength:r.size,
+    independent:r.independent,durationSource:r.durationSource
   };
 }
 
@@ -532,21 +652,30 @@ async function buildPlan(split){
   if(base===null)throw new Error('測定開始時刻が不正です');
   const audio=await audioRefs(raw);
   for(const r of audio){
-    if(r.startSec===null)
+    if(r.startSec===null){
       throw new Error('音声開始時刻を確定できません: '+r.key);
-    if(r.independent===false)
-      throw new Error('連続録音の断片を検出しました。単独音声としては出力できません: '+r.key);
+    }
+    if(r.independent===false){
+      throw new Error(
+        '連続録音の断片を検出しました。単独音声としては出力できません: '+r.key
+      );
+    }
     if(r.durationSec===null){
       const v=await get(r.store,r.key);
       if(!v?.blob?.size)throw new Error('音声欠落: '+r.key);
       r.durationSec=await probeDuration(v.blob);
       r.durationSource='audio metadata';
     }
-    if(r.durationSec<=0||seconds(r.startSec+r.durationSec)===null)
+    if(r.durationSec<=0||
+      seconds(r.startSec+r.durationSec)===null){
       throw new Error('音声時間が不正です: '+r.key);
+    }
   }
-  if(audio.some(r=>r.independent===null))
-    warnings.push('旧音声チャンクの単独再生可否は不明です。再生で確認してください。');
+  if(audio.some(r=>r.independent===null)){
+    warnings.push(
+      '旧音声チャンクの単独再生可否は不明です。再生で確認してください。'
+    );
+  }
   const logs=normalizeLogs(await rows('sessionLogs',raw.id),base);
   const s=normalizeSession(raw,logs,audio,warnings);
   const bins=logs.length?aggregate(logs):await rows('profileBins',raw.id);
@@ -555,149 +684,238 @@ async function buildPlan(split){
     parts.push({name:stem+'_logs.zip',kind:'logs',refs:[]});
     let part=null,total=0;
     for(const r of audio){
-      if(!part||total+r.size+1024>SPLIT-1024*1024||part.refs.length>=10000){
-        part={name:stem+'_audio_'+String(parts.length).padStart(3,'0')+'.zip',
-          kind:'audio',refs:[]};
-        parts.push(part);total=0;
+      if(!part||total+r.size+1024>SPLIT-1024*1024||
+        part.refs.length>=10000){
+        part={
+          name:stem+'_audio_'+
+            String(parts.length).padStart(3,'0')+'.zip',
+          kind:'audio',refs:[]
+        };
+        parts.push(part);
+        total=0;
       }
-      part.refs.push(r);total+=r.size+1024;
+      part.refs.push(r);
+      total+=r.size+1024;
     }
-  }else parts.push({name:stem+'.zip',kind:'full',refs:audio});
-  return {session:s,logs,bins,warnings,parts,next:0,createdAt:Date.now()};
+  }else{
+    parts.push({name:stem+'.zip',kind:'full',refs:audio});
+  }
+  return {
+    session:s,logs,bins,warnings,parts,next:0,createdAt:Date.now()
+  };
 }
 
-// CRC32は分割読み込み。SHA-256は1ファイル単位。
 const CRC=Uint32Array.from({length:256},(_,n)=>{
-  for(let i=0;i<8;i++)n=(n&1)?0xedb88320^(n>>>1):n>>>1;
+  for(let i=0;i<8;i++){
+    n=(n&1)?0xedb88320^(n>>>1):n>>>1;
+  }
   return n>>>0;
 });
+
 async function hash(blob){
-  if(!crypto.subtle)throw new Error('HTTPS・SHA-256対応ブラウザで開いてください');
+  if(!crypto.subtle){
+    throw new Error('HTTPS・SHA-256対応ブラウザで開いてください');
+  }
   let crc=0xffffffff;
   for(let p=0;p<blob.size;p+=262144){
-    const a=new Uint8Array(await blob.slice(p,p+262144).arrayBuffer());
+    const a=new Uint8Array(
+      await blob.slice(p,p+262144).arrayBuffer()
+    );
     for(const v of a)crc=(crc>>>8)^CRC[(crc^v)&255];
     await sleep(0);
   }
-  const digest=await crypto.subtle.digest('SHA-256',await blob.arrayBuffer());
+  const digest=await crypto.subtle.digest(
+    'SHA-256',await blob.arrayBuffer()
+  );
   return {
     crc32:((crc^0xffffffff)>>>0).toString(16).padStart(8,'0'),
-    sha256:Array.from(new Uint8Array(digest),v=>v.toString(16).padStart(2,'0')).join('')
+    sha256:Array.from(
+      new Uint8Array(digest),
+      v=>v.toString(16).padStart(2,'0')
+    ).join('')
   };
 }
+
 function zipDate(value){
   const n=epoch(value);
   if(n===null)throw new Error('ZIP日時が不正です');
   const d=new Date(n);
-  if(d.getFullYear()<1980||d.getFullYear()>2107)
+  if(d.getFullYear()<1980||d.getFullYear()>2107){
     throw new Error('ZIP日時の範囲外です');
+  }
   const extra=new Uint8Array(9),v=new DataView(extra.buffer);
   const sec=Math.floor(n/1000);
-  if(sec>0xffffffff)throw new Error('ZIP UTC日時の範囲外です');
-  v.setUint16(0,0x5455,true);v.setUint16(2,5,true);
-  extra[4]=1;v.setUint32(5,sec,true);
+  if(sec>0xffffffff){
+    throw new Error('ZIP UTC日時の範囲外です');
+  }
+  v.setUint16(0,0x5455,true);
+  v.setUint16(2,5,true);
+  extra[4]=1;
+  v.setUint32(5,sec,true);
   return {
     time:(d.getHours()<<11)|(d.getMinutes()<<5)|(d.getSeconds()>>1),
-    date:((d.getFullYear()-1980)<<9)|((d.getMonth()+1)<<5)|d.getDate(),
+    date:((d.getFullYear()-1980)<<9)|
+      ((d.getMonth()+1)<<5)|d.getDate(),
     extra
   };
 }
 
 class Zip{
-  constructor(){this.parts=[];this.files=[];this.offset=0;this.centralSize=0;}
+  constructor(){
+    this.parts=[];
+    this.files=[];
+    this.offset=0;
+    this.centralSize=0;
+  }
+
   async add(path,value,modified){
-    if(path.startsWith('/')||path.includes('\\')||path.split('/').includes('..')||
-      this.files.some(f=>f.path===path))throw new Error('ZIPパス不正・重複');
+    if(path.startsWith('/')||path.includes('\\')||
+      path.split('/').includes('..')||
+      this.files.some(f=>f.path===path)){
+      throw new Error('ZIPパス不正・重複');
+    }
     const blob=value instanceof Blob?value:new Blob([value]);
     const name=new TextEncoder().encode(path),stamp=zipDate(modified);
-    const hl=30+name.length+stamp.extra.length,cl=46+name.length+stamp.extra.length;
-    if(name.length>65535||this.files.length>=65534||blob.size>=0xffffffff||
-      this.offset+hl+blob.size+this.centralSize+cl+22>=0xffffffff)
+    const hl=30+name.length+stamp.extra.length;
+    const cl=46+name.length+stamp.extra.length;
+    if(name.length>65535||this.files.length>=65534||
+      blob.size>=0xffffffff||
+      this.offset+hl+blob.size+this.centralSize+cl+22>=0xffffffff){
       throw new Error('ZIP32上限です。分割回収を使用してください');
+    }
     const h=await hash(blob),crc=parseInt(h.crc32,16);
     const header=new Uint8Array(hl),v=new DataView(header.buffer);
-    v.setUint32(0,0x04034b50,true);v.setUint16(4,20,true);
-    v.setUint16(6,0x800,true);v.setUint16(10,stamp.time,true);
-    v.setUint16(12,stamp.date,true);v.setUint32(14,crc,true);
-    v.setUint32(18,blob.size,true);v.setUint32(22,blob.size,true);
-    v.setUint16(26,name.length,true);v.setUint16(28,stamp.extra.length,true);
-    header.set(name,30);header.set(stamp.extra,30+name.length);
+    v.setUint32(0,0x04034b50,true);
+    v.setUint16(4,20,true);
+    v.setUint16(6,0x800,true);
+    v.setUint16(10,stamp.time,true);
+    v.setUint16(12,stamp.date,true);
+    v.setUint32(14,crc,true);
+    v.setUint32(18,blob.size,true);
+    v.setUint32(22,blob.size,true);
+    v.setUint16(26,name.length,true);
+    v.setUint16(28,stamp.extra.length,true);
+    header.set(name,30);
+    header.set(stamp.extra,30+name.length);
+
     const central=new Uint8Array(cl),c=new DataView(central.buffer);
-    c.setUint32(0,0x02014b50,true);c.setUint16(4,20,true);c.setUint16(6,20,true);
-    c.setUint16(8,0x800,true);c.setUint16(12,stamp.time,true);
-    c.setUint16(14,stamp.date,true);c.setUint32(16,crc,true);
-    c.setUint32(20,blob.size,true);c.setUint32(24,blob.size,true);
-    c.setUint16(28,name.length,true);c.setUint16(30,stamp.extra.length,true);
+    c.setUint32(0,0x02014b50,true);
+    c.setUint16(4,20,true);
+    c.setUint16(6,20,true);
+    c.setUint16(8,0x800,true);
+    c.setUint16(12,stamp.time,true);
+    c.setUint16(14,stamp.date,true);
+    c.setUint32(16,crc,true);
+    c.setUint32(20,blob.size,true);
+    c.setUint32(24,blob.size,true);
+    c.setUint16(28,name.length,true);
+    c.setUint16(30,stamp.extra.length,true);
     c.setUint32(42,this.offset,true);
-    central.set(name,46);central.set(stamp.extra,46+name.length);
-    this.files.push({path,size:blob.size,...h,modifiedEpochMs:modified,
-      offset:this.offset,header,central});
-    this.parts.push(header,blob);this.offset+=hl+blob.size;this.centralSize+=cl;
+    central.set(name,46);
+    central.set(stamp.extra,46+name.length);
+
+    this.files.push({
+      path,size:blob.size,...h,modifiedEpochMs:modified,
+      offset:this.offset,header,central
+    });
+    this.parts.push(header,blob);
+    this.offset+=hl+blob.size;
+    this.centralSize+=cl;
   }
+
   finish(){
     const end=new Uint8Array(22),v=new DataView(end.buffer);
     v.setUint32(0,0x06054b50,true);
-    v.setUint16(8,this.files.length,true);v.setUint16(10,this.files.length,true);
-    v.setUint32(12,this.centralSize,true);v.setUint32(16,this.offset,true);
+    v.setUint16(8,this.files.length,true);
+    v.setUint16(10,this.files.length,true);
+    v.setUint32(12,this.centralSize,true);
+    v.setUint32(16,this.offset,true);
     this.end=end;
-    return new Blob([...this.parts,...this.files.map(f=>f.central),end],
-      {type:'application/zip'});
+    return new Blob([
+      ...this.parts,...this.files.map(f=>f.central),end
+    ],{type:'application/zip'});
   }
+
   async verify(blob,sessionId){
     const equal=async(at,expected)=>{
-      const actual=new Uint8Array(await blob.slice(at,at+expected.length).arrayBuffer());
-      if(actual.length!==expected.length||actual.some((v,i)=>v!==expected[i]))
+      const actual=new Uint8Array(
+        await blob.slice(at,at+expected.length).arrayBuffer()
+      );
+      if(actual.length!==expected.length||
+        actual.some((v,i)=>v!==expected[i])){
         throw new Error('ZIPヘッダー・ファイル名・日時不一致');
+      }
     };
-    if(blob.size!==this.offset+this.centralSize+22)
+    if(blob.size!==this.offset+this.centralSize+22){
       throw new Error('ZIP全体サイズ不一致');
+    }
     await equal(blob.size-22,this.end);
     let central=this.offset,log=null,manifest=null;
     for(let i=0;i<this.files.length;i++){
       const f=this.files[i];
-      $('exportStatus').textContent='読み戻し検証 '+(i+1)+' / '+this.files.length+'\n'+f.path;
-      await equal(f.offset,f.header);await equal(central,f.central);
+      $('exportStatus').textContent=
+        '読み戻し検証 '+(i+1)+' / '+this.files.length+'\n'+f.path;
+      await equal(f.offset,f.header);
+      await equal(central,f.central);
       central+=f.central.length;
       const start=f.offset+f.header.length;
       const payload=blob.slice(start,start+f.size),h=await hash(payload);
-      if(payload.size!==f.size||h.crc32!==f.crc32||h.sha256!==f.sha256)
+      if(payload.size!==f.size||h.crc32!==f.crc32||
+        h.sha256!==f.sha256){
         throw new Error('ZIP音声・JSONハッシュ不一致: '+f.path);
+      }
       if(f.path==='log.json')log=JSON.parse(await payload.text());
-      if(f.path==='manifest.json')manifest=JSON.parse(await payload.text());
+      if(f.path==='manifest.json'){
+        manifest=JSON.parse(await payload.text());
+      }
     }
     if(central!==blob.size-22||log?.session?.id!==sessionId||
-      manifest?.sessionId!==sessionId)throw new Error('ZIP構造・測定ID不一致');
+      manifest?.sessionId!==sessionId){
+      throw new Error('ZIP構造・測定ID不一致');
+    }
     const listed=this.files.filter(f=>f.path!=='manifest.json');
-    if(!Array.isArray(manifest.files)||manifest.files.length!==listed.length)
+    if(!Array.isArray(manifest.files)||
+      manifest.files.length!==listed.length){
       throw new Error('manifest件数不一致');
+    }
     listed.forEach((f,i)=>{
       const m=manifest.files[i];
-      if(m.path!==f.path||m.size!==f.size||m.crc32!==f.crc32||m.sha256!==f.sha256)
+      if(m.path!==f.path||m.size!==f.size||
+        m.crc32!==f.crc32||m.sha256!==f.sha256){
         throw new Error('manifest不一致');
+      }
     });
     const paths=new Map(this.files.map(f=>[f.path,f]));
     const base=log.session.startedAt;
     if(epoch(base)===null||seconds(log.session.durationSec)===null||
-      Math.abs(log.session.endedAt-base-log.session.durationSec*1000)>1)
+      Math.abs(
+        log.session.endedAt-base-log.session.durationSec*1000
+      )>1){
       throw new Error('セッション時刻不一致');
+    }
     for(const c of log.clips){
       if(!paths.has(c.audioFile)||seconds(c.startSec)===null||
         seconds(c.durationSec)===null||c.durationSec<=0||
         Math.abs(c.startedAt-base-c.startSec*1000)>1||
-        paths.get(c.audioFile).size!==c.byteLength)
+        paths.get(c.audioFile).size!==c.byteLength){
         throw new Error('音声対応・時刻不一致: '+c.audioFile);
+      }
     }
     for(const v of log.timeSeriesLogs){
-      if(seconds(v.sec)===null||Math.abs(v.epochMs-base-v.sec*1000)>1)
+      if(seconds(v.sec)===null||
+        Math.abs(v.epochMs-base-v.sec*1000)>1){
         throw new Error('1秒ログ時刻不一致');
+      }
     }
   }
 }
 
 function releasePrepared(){
   if(preparedURL)URL.revokeObjectURL(preparedURL);
-  preparedURL=null;prepared=null;
+  preparedURL=null;
+  prepared=null;
 }
+
 async function buildPart(index){
   const p=plan,part=p?.parts[index];
   if(!part)throw new Error('ZIP対象がありません');
@@ -705,33 +923,48 @@ async function buildPart(index){
   const z=new Zip();
   for(let i=0;i<part.refs.length;i++){
     const r=part.refs[i];
-    $('exportStatus').textContent='ZIP作成 '+(index+1)+' / '+p.parts.length+
+    $('exportStatus').textContent=
+      'ZIP作成 '+(index+1)+' / '+p.parts.length+
       '\n音声 '+(i+1)+' / '+part.refs.length;
     const v=await get(r.store,r.key);
-    if(!(v?.blob instanceof Blob)||v.blob.size!==r.size)
+    if(!(v?.blob instanceof Blob)||v.blob.size!==r.size){
       throw new Error('元音声欠落・変更: '+r.audioFile);
+    }
     await z.add(r.audioFile,v.blob,r.startedAt);
   }
+
   const clips=part.refs.map(clipOf);
   const exportInfo={
     part:index+1,totalParts:p.parts.length,kind:part.kind,
     sessionId:p.session.id,
-    audioFileCount:clips.length,totalAudioFileCount:p.session.audioFileCount,
-    files:p.parts.map(v=>({name:v.name,audioFileCount:v.refs.length})),
+    audioFileCount:clips.length,
+    totalAudioFileCount:p.session.audioFileCount,
+    files:p.parts.map(v=>({
+      name:v.name,audioFileCount:v.refs.length
+    })),
     warnings:p.warnings
   };
   const log={
-    schemaVersion:5,format:'zip-store-v1',appVersion:VERSION,buildId:BUILD,
-    session:p.session,interrupted:!!p.session.interrupted||p.session.status==='recording',
-    baselineDb:p.session.baselineDb??null,thresholdDb:p.session.thresholdDb??null,
+    schemaVersion:5,format:'zip-store-v1',
+    appVersion:VERSION,buildId:BUILD,
+    session:p.session,
+    interrupted:!!p.session.interrupted||
+      p.session.status==='recording',
+    baselineDb:p.session.baselineDb??null,
+    thresholdDb:p.session.thresholdDb??null,
     motionAvailable:!!p.session.motionAvailable,
     timeSeriesLogs:p.logs,profileBins:p.bins,clips,
     audioManifest:clips,exportInfo,
-    units:{sec:'seconds',startSec:'seconds',durationSec:'seconds',
-      startedAt:'UNIX milliseconds',endedAt:'UNIX milliseconds',epochMs:'UNIX milliseconds'},
-    timeInfo:{source:'session.startedAt + sec * 1000',
+    units:{
+      sec:'seconds',startSec:'seconds',durationSec:'seconds',
+      startedAt:'UNIX milliseconds',
+      endedAt:'UNIX milliseconds',epochMs:'UNIX milliseconds'
+    },
+    timeInfo:{
+      source:'session.startedAt + sec * 1000',
       silentIntervalsPreserved:true,prerollAppliedOnce:true,
-      zipTime:'DOS local time + extended UTC modification time'}
+      zipTime:'DOS local time + extended UTC modification time'
+    }
   };
   await z.add('log.json',JSON.stringify(log),p.createdAt);
   await z.add('README.txt',
@@ -743,110 +976,189 @@ async function buildPart(index){
     p.warnings.join('\n'),p.createdAt);
   const files=z.files.map(({header,central,offset,...f})=>f);
   await z.add('manifest.json',JSON.stringify({
-    sessionId:p.session.id,buildId:BUILD,part:index+1,totalParts:p.parts.length,
+    sessionId:p.session.id,buildId:BUILD,
+    part:index+1,totalParts:p.parts.length,
     hashAlgorithm:'SHA-256',files
   }),p.createdAt);
   const blob=z.finish();
   await z.verify(blob,p.session.id);
-  prepared={blob,name:part.name};preparedURL=URL.createObjectURL(blob);
+  prepared={blob,name:part.name};
+  preparedURL=URL.createObjectURL(blob);
   p.next=index+1;
-  $('exportStatus').textContent='検証合格 '+(index+1)+' / '+p.parts.length+
-    '\n'+part.name+'\n'+(blob.size/1048576).toFixed(2)+' MiB'+
+  $('exportStatus').textContent=
+    '検証合格 '+(index+1)+' / '+p.parts.length+
+    '\n'+part.name+
+    '\n'+(blob.size/1048576).toFixed(2)+' MiB'+
     '\n音声対応: '+clips.length+'件'+
     (p.warnings.length?'\n注意:\n'+p.warnings.join('\n'):'')+
     '\n下のボタンで端末へ保存してください。';
 }
+
 async function exportZIP(split){
   if(busy()||!selected)return;
-  if((plan||prepared)&&!confirm('現在のZIPを保存しましたか？ 作成し直します。'))return;
+  if((plan||prepared)&&
+    !confirm('現在のZIPを保存しましたか？ 作成し直します。'))return;
   if(selected.status==='recording'&&
-    !confirm('旧版・他タブの測定が停止していることを確認しましたか？'))return;
-  work=true;controls();releasePrepared();plan=null;
+    !confirm('旧版・他タブの測定が停止していることを確認しましたか？')){
+    return;
+  }
+  work=true;
+  controls();
+  releasePrepared();
+  plan=null;
   $('download').classList.remove('hidden');
   try{
-    await lock();plan=await buildPlan(split);await buildPart(0);
-    say('ZIP内部の時刻・音声対応・CRC32・SHA-256を検証しました。元記録は残っています。');
+    await lock();
+    plan=await buildPlan(split);
+    await buildPart(0);
+    say(
+      'ZIP内部の時刻・音声対応・CRC32・SHA-256を検証しました。元記録は残っています。'
+    );
   }catch(e){
-    releasePrepared();plan=null;
+    releasePrepared();
+    plan=null;
     $('exportStatus').textContent='出力中止: '+msg(e);
     say('未検証ZIPは出力しません。元記録は変更していません。');
-  }finally{unlock();work=false;controls();}
+  }finally{
+    unlock();
+    work=false;
+    controls();
+  }
 }
+
 async function nextZIP(){
   if(busy()||!plan||plan.next>=plan.parts.length)return;
   if(!confirm('現在のZIPを保存しましたか？'))return;
-  work=true;controls();
-  try{await lock();await buildPart(plan.next);}
-  catch(e){releasePrepared();say('次のZIP作成失敗: '+msg(e)+'。再試行できます。');}
-  finally{unlock();work=false;controls();}
+  work=true;
+  controls();
+  try{
+    await lock();
+    await buildPart(plan.next);
+  }catch(e){
+    releasePrepared();
+    say('次のZIP作成失敗: '+msg(e)+'。再試行できます。');
+  }finally{
+    unlock();
+    work=false;
+    controls();
+  }
 }
+
 async function saveFile(){
   if(busy()||!prepared)return;
   const file=prepared;
   if(!window.showSaveFilePicker){
     const a=document.createElement('a');
-    a.href=preparedURL;a.download=file.name;a.rel='noopener';
-    document.body.append(a);a.click();a.remove();
+    a.href=preparedURL;
+    a.download=file.name;
+    a.rel='noopener';
+    document.body.append(a);
+    a.click();
+    a.remove();
     say('保存要求を出しました。端末のダウンロード一覧で確認してください。');
     return;
   }
-  work=true;controls();
+  work=true;
+  controls();
   try{
-    const handle=await showSaveFilePicker({suggestedName:file.name,
-      types:[{description:'ZIP',accept:{'application/zip':['.zip']}}]});
+    const handle=await showSaveFilePicker({
+      suggestedName:file.name,
+      types:[{description:'ZIP',accept:{'application/zip':['.zip']}}]
+    });
     const writable=await handle.createWritable();
-    try{await writable.write(file.blob);await writable.close();}
-    catch(e){try{await writable.abort();}catch(_){}throw e;}
+    try{
+      await writable.write(file.blob);
+      await writable.close();
+    }catch(e){
+      try{await writable.abort();}catch(_){}
+      throw e;
+    }
     say('ファイル書き込み完了。保存先を確認してください。');
-  }catch(e){if(e.name!=='AbortError')say('保存失敗: '+msg(e));}
-  finally{work=false;controls();}
+  }catch(e){
+    if(e.name!=='AbortError')say('保存失敗: '+msg(e));
+  }finally{
+    work=false;
+    controls();
+  }
 }
+
 async function shareFile(){
   if(busy()||!prepared||!navigator.share)return;
-  const file=new File([prepared.blob],prepared.name,{type:'application/zip'});
+  const file=new File([prepared.blob],prepared.name,{
+    type:'application/zip'
+  });
   if(navigator.canShare&&!navigator.canShare({files:[file]})){
-    say('ファイル共有非対応です。通常保存か分割回収を使用してください。');return;
+    say('ファイル共有非対応です。通常保存か分割回収を使用してください。');
+    return;
   }
-  work=true;controls();
+  work=true;
+  controls();
   try{
     await navigator.share({files:[file],title:prepared.name});
     say('共有画面を終了しました。ファイルアプリで保存結果を確認してください。');
-  }catch(e){if(e.name!=='AbortError')say('共有失敗: '+msg(e));}
-  finally{work=false;controls();}
+  }catch(e){
+    if(e.name!=='AbortError')say('共有失敗: '+msg(e));
+  }finally{
+    work=false;
+    controls();
+  }
 }
 
 async function requestMotion(){
-  Object.assign(motion,{permission:'未要求',previous:null,peak:null,events:0,valid:0});
+  Object.assign(motion,{
+    permission:'未要求',previous:null,peak:null,events:0,valid:0
+  });
   try{
-    if(!window.DeviceMotionEvent){motion.permission='非対応';return;}
+    if(!window.DeviceMotionEvent){
+      motion.permission='非対応';
+      return;
+    }
     if(typeof DeviceMotionEvent.requestPermission==='function'&&
       await DeviceMotionEvent.requestPermission()!=='granted'){
-      motion.permission='拒否';return;
+      motion.permission='拒否';
+      return;
     }
     motion.permission='許可済み';
     window.addEventListener('devicemotion',onMotion,{passive:true});
-  }catch(e){motion.permission='取得失敗: '+msg(e);}
+  }catch(e){
+    motion.permission='取得失敗: '+msg(e);
+  }
 }
+
 function onMotion(e){
   if(!session||initializing||stopping)return;
   motion.events++;
   const a=e.accelerationIncludingGravity||e.acceleration;
   if(!a||![a.x,a.y,a.z].every(Number.isFinite))return;
-  const p=motion.previous;motion.previous={x:a.x,y:a.y,z:a.z};
+  const p=motion.previous;
+  motion.previous={x:a.x,y:a.y,z:a.z};
   if(!p)return;
   const value=Math.hypot(a.x-p.x,a.y-p.y,a.z-p.z)/9.80665;
-  motion.valid++;motion.peak=motion.peak===null?value:Math.max(motion.peak,value);
+  motion.valid++;
+  motion.peak=motion.peak===null?value:Math.max(motion.peak,value);
   session.motionAvailable=true;
 }
+
 async function requestWake(){
-  if(!session||wake||document.visibilityState!=='visible'||!navigator.wakeLock)return;
+  if(!session||wake||
+    document.visibilityState!=='visible'||!navigator.wakeLock)return;
   try{
     const w=await navigator.wakeLock.request('screen');
-    if(!session){await w.release();return;}
-    if(wake){await w.release();return;}
-    wake=w;w.addEventListener('release',()=>{if(wake===w)wake=null;},{once:true});
+    if(!session){
+      await w.release();
+      return;
+    }
+    if(wake){
+      await w.release();
+      return;
+    }
+    wake=w;
+    w.addEventListener('release',()=>{
+      if(wake===w)wake=null;
+    },{once:true});
   }catch(_){}
 }
+
 async function fullscreen(){
   try{
     const fn=document.documentElement.requestFullscreen||
@@ -854,90 +1166,148 @@ async function fullscreen(){
     if(fn)await fn.call(document.documentElement);
   }catch(_){}
 }
+
 function enterNight(){
   if(!session||initializing||stopping)return;
-  $('night').classList.remove('hidden');document.body.classList.add('dark');
+  $('night').classList.remove('hidden');
+  document.body.classList.add('dark');
   void fullscreen();
 }
+
 function exitNight(){
-  clearTimeout(hold);clearTimeout(peek);
-  $('night').classList.add('hidden');$('night').classList.remove('peek');
-  document.body.classList.remove('dark');pointer=null;
+  clearTimeout(hold);
+  clearTimeout(peek);
+  $('night').classList.add('hidden');
+  $('night').classList.remove('peek');
+  document.body.classList.remove('dark');
+  pointer=null;
 }
+
 $('night').onpointerdown=e=>{
   if(pointer!==null)return;
-  e.preventDefault();pointer=e.pointerId;point={x:e.clientX,y:e.clientY};moved=false;
+  e.preventDefault();
+  pointer=e.pointerId;
+  point={x:e.clientX,y:e.clientY};
+  moved=false;
   try{$('night').setPointerCapture(e.pointerId);}catch(_){}
-  hold=setTimeout(()=>{moved=true;exitNight();},800);
+  hold=setTimeout(()=>{
+    moved=true;
+    exitNight();
+  },800);
 };
+
 $('night').onpointermove=e=>{
-  if(e.pointerId===pointer&&Math.hypot(e.clientX-point.x,e.clientY-point.y)>20){
-    moved=true;clearTimeout(hold);
+  if(e.pointerId===pointer&&
+    Math.hypot(e.clientX-point.x,e.clientY-point.y)>20){
+    moved=true;
+    clearTimeout(hold);
   }
 };
+
 for(const name of ['pointerup','pointercancel']){
   $('night').addEventListener(name,e=>{
     if(e.pointerId!==pointer)return;
-    clearTimeout(hold);pointer=null;
+    clearTimeout(hold);
+    pointer=null;
     if(!moved&&e.type==='pointerup'){
-      $('nightClock').textContent=new Date().toLocaleTimeString('ja-JP');
-      $('night').classList.add('peek');clearTimeout(peek);
-      peek=setTimeout(()=>$('night').classList.remove('peek'),5000);
+      $('nightClock').textContent=
+        new Date().toLocaleTimeString('ja-JP');
+      $('night').classList.add('peek');
+      clearTimeout(peek);
+      peek=setTimeout(
+        ()=>$('night').classList.remove('peek'),5000
+      );
     }
   });
 }
 
 function newRecorder(){
-  if(!window.MediaRecorder)throw new Error('MediaRecorder非対応');
-  const types=['audio/mp4;codecs=mp4a.40.2','audio/mp4',
-    'audio/webm;codecs=opus','audio/webm','audio/ogg;codecs=opus'];
+  if(!window.MediaRecorder){
+    throw new Error('MediaRecorder非対応');
+  }
+  const types=[
+    'audio/mp4;codecs=mp4a.40.2','audio/mp4',
+    'audio/webm;codecs=opus','audio/webm','audio/ogg;codecs=opus'
+  ];
   const mime=types.find(v=>MediaRecorder.isTypeSupported(v));
-  return mime?new MediaRecorder(dest.stream,{mimeType:mime}):new MediaRecorder(dest.stream);
+  return mime
+    ?new MediaRecorder(dest.stream,{mimeType:mime})
+    :new MediaRecorder(dest.stream);
 }
+
 function capture(finish){
   const r=newRecorder(),parts=[];
   let resolve,reject,timer,deadline,finished=false;
   const entry={r,start:performance.now(),stopAt:null};
-  entry.done=new Promise((a,b)=>{resolve=a;reject=b;});
+  entry.done=new Promise((a,b)=>{
+    resolve=a;
+    reject=b;
+  });
   entry.done.catch(()=>{});
   entry.cancelTimer=()=>clearTimeout(timer);
   entry.dispose=()=>{
-    clearTimeout(timer);clearTimeout(deadline);
+    clearTimeout(timer);
+    clearTimeout(deadline);
     r.ondataavailable=r.onstop=r.onerror=null;
     try{if(r.state!=='inactive')r.stop();}catch(_){}
   };
   entry.stop=()=>{
-    clearTimeout(timer);entry.stopAt??=performance.now();
+    clearTimeout(timer);
+    entry.stopAt??=performance.now();
     if(!finished&&!deadline){
       deadline=setTimeout(()=>{
         if(finished)return;
-        finished=true;entry.dispose();reject(new Error('録音停止通知時間切れ'));
+        finished=true;
+        entry.dispose();
+        reject(new Error('録音停止通知時間切れ'));
       },10000);
     }
-    try{if(r.state!=='inactive')r.stop();}
-    catch(e){finished=true;entry.dispose();reject(e);}
+    try{
+      if(r.state!=='inactive')r.stop();
+    }catch(e){
+      finished=true;
+      entry.dispose();
+      reject(e);
+    }
     return entry.done;
   };
-  r.ondataavailable=e=>{if(e.data?.size)parts.push(e.data);};
-  r.onerror=e=>{entry.error=e.error||new Error('録音エラー');void entry.stop();};
+  r.ondataavailable=e=>{
+    if(e.data?.size)parts.push(e.data);
+  };
+  r.onerror=e=>{
+    entry.error=e.error||new Error('録音エラー');
+    void entry.stop();
+  };
   r.onstop=()=>{
     if(finished)return;
-    finished=true;clearTimeout(timer);clearTimeout(deadline);
+    finished=true;
+    clearTimeout(timer);
+    clearTimeout(deadline);
     entry.stopAt??=performance.now();
-    entry.blob=new Blob(parts,{type:r.mimeType||parts[0]?.type||''});
+    entry.blob=new Blob(parts,{
+      type:r.mimeType||parts[0]?.type||''
+    });
     parts.length=0;
-    Promise.resolve().then(()=>finish(entry)).then(()=>resolve(entry),reject);
+    Promise.resolve()
+      .then(()=>finish(entry))
+      .then(()=>resolve(entry),reject);
   };
-  r.start();timer=setTimeout(()=>{void entry.stop();},UNIT);
+  r.start();
+  timer=setTimeout(()=>{void entry.stop();},UNIT);
   return entry;
 }
+
 function startEvent(at){
   if(event||ending||stopping||saveError)return;
-  event={id:uid(),sessionId:session.id,status:'open',
+  event={
+    id:uid(),sessionId:session.id,status:'open',
     startSec:Math.max(0,at-PRE)/1000,
-    startedAt:session.startedAt+Math.max(0,at-PRE),units:0};
-  quietSince=null;recordUnit();
+    startedAt:session.startedAt+Math.max(0,at-PRE),units:0
+  };
+  quietSince=null;
+  recordUnit();
 }
+
 function recordUnit(){
   if(!event||recording||stopping||saveError)return;
   const owner=session,e=event,index=e.units++;
@@ -947,30 +1317,45 @@ function recordUnit(){
       if(!result.blob.size)throw new Error('録音0バイト');
       const startMs=Math.max(0,result.start-origin-PRE);
       const endMs=Math.max(startMs,result.stopAt-origin-PRE);
-      const startSec=startMs/1000,durationSec=(endMs-startMs)/1000;
-      if(durationSec<=0)throw new Error('音声継続時間が不正です');
+      const startSec=startMs/1000;
+      const durationSec=(endMs-startMs)/1000;
+      if(durationSec<=0){
+        throw new Error('音声継続時間が不正です');
+      }
       const row={
-        key:e.id+':'+String(index).padStart(6,'0'),sessionId:owner.id,
-        clipId:e.id,index,blob:result.blob,mimeType:result.blob.type,
-        byteLength:result.blob.size,independent:true,finalized:true,
+        key:e.id+':'+String(index).padStart(6,'0'),
+        sessionId:owner.id,clipId:e.id,index,
+        blob:result.blob,mimeType:result.blob.type,
+        byteLength:result.blob.size,
+        independent:true,finalized:true,
         startSec,startedAt:owner.startedAt+startMs,durationSec,
         endSec:endMs/1000,endedAt:owner.startedAt+endMs,
         startElapsedMs:startMs,endElapsedMs:endMs
       };
-      // 録音エラー時も、既に得られた非空Blobは先に保存する。
-      const metadata={...e,unitCount:e.units,lastAudioEndMs:endMs};
-      const saved=enqueue(()=>tx(['audioChunks','clips'],'readwrite',t=>{
-        t.objectStore('audioChunks').put(row);
-        t.objectStore('clips').put(metadata);
-      }));
-      if(!result.error&&session===owner&&!ending&&!stopping&&!saveError)
+      const metadata={
+        ...e,unitCount:e.units,lastAudioEndMs:endMs
+      };
+      const saved=enqueue(()=>tx(
+        ['audioChunks','clips'],'readwrite',t=>{
+          t.objectStore('audioChunks').put(row);
+          t.objectStore('clips').put(metadata);
+        }
+      ));
+      if(!result.error&&session===owner&&!ending&&
+        !stopping&&!saveError){
         recordUnit();
+      }
       await saved;
       if(result.error)throw result.error;
     });
-    recording=entry;owner.mimeType=entry.r.mimeType;entry.done.catch(fail);
-  }catch(e){fail(e);}
+    recording=entry;
+    owner.mimeType=entry.r.mimeType;
+    entry.done.catch(fail);
+  }catch(e){
+    fail(e);
+  }
 }
+
 function endEvent(at){
   if(ending)return ending;
   if(!event)return Promise.resolve();
@@ -978,264 +1363,535 @@ function endEvent(at){
   ending=Promise.resolve().then(async()=>{
     if(current)await current.stop();
     const endSec=Math.max(e.startSec,at/1000);
-    await enqueue(()=>put('clips',{...e,status:'closed',endSec,
+    await enqueue(()=>put('clips',{
+      ...e,status:'closed',endSec,
       durationSec:endSec-e.startSec,
-      endedAt:owner.startedAt+endSec*1000,unitCount:e.units}));
+      endedAt:owner.startedAt+endSec*1000,
+      unitCount:e.units
+    }));
   }).finally(()=>{
     if(event===e)event=null;
     if(recording===current)recording=null;
-    ending=null;quietSince=null;
+    ending=null;
+    quietSince=null;
   });
   return ending;
 }
+
 function flushSecond(){
   if(!second||!session)return;
-  const row=second;second=null;
-  row.motionG=motion.peak;row.motionValid=motion.peak!==null;motion.peak=null;
-  const checkpoint={...session,lastSavedAt:Date.now(),
-    lastElapsedMs:elapsed(),checkpointElapsedMs:row.sec*1000};
-  enqueue(()=>tx(['sessionLogs','sessions'],'readwrite',t=>{
-    t.objectStore('sessionLogs').put(row);
-    t.objectStore('sessions').put(checkpoint);
-  })).catch(()=>{});
+  const row=second;
+  second=null;
+  row.motionG=motion.peak;
+  row.motionValid=motion.peak!==null;
+  motion.peak=null;
+
+  // 表示専用。保存値・センサー計算は変更しない。
+  motionHistory.push({sec:row.sec,value:row.motionG});
+  while(motionHistory.length&&
+    motionHistory[0].sec<row.sec-119){
+    motionHistory.shift();
+  }
+
+  const checkpoint={
+    ...session,lastSavedAt:Date.now(),
+    lastElapsedMs:elapsed(),
+    checkpointElapsedMs:row.sec*1000
+  };
+  enqueue(()=>tx(
+    ['sessionLogs','sessions'],'readwrite',t=>{
+      t.objectStore('sessionLogs').put(row);
+      t.objectStore('sessions').put(checkpoint);
+    }
+  )).catch(()=>{});
 }
+
 function draw(){
   const canvas=$('graph'),ratio=Math.min(devicePixelRatio||1,2);
   const width=Math.max(1,canvas.clientWidth),height=100;
-  if(canvas.width!==Math.round(width*ratio)||canvas.height!==height*ratio){
-    canvas.width=Math.round(width*ratio);canvas.height=height*ratio;
+  if(canvas.width!==Math.round(width*ratio)||
+    canvas.height!==height*ratio){
+    canvas.width=Math.round(width*ratio);
+    canvas.height=height*ratio;
   }
-  const c=canvas.getContext('2d');if(!c)return;
-  c.setTransform(ratio,0,0,ratio,0,0);c.clearRect(0,0,width,height);
-  c.strokeStyle='#38bdf8';c.beginPath();let active=false;
+  const c=canvas.getContext('2d');
+  if(!c)return;
+  c.setTransform(ratio,0,0,ratio,0,0);
+  c.clearRect(0,0,width,height);
+  c.strokeStyle='#38bdf8';
+  c.beginPath();
+  let active=false;
   history.forEach((v,i)=>{
-    if(v===null){active=false;return;}
+    if(v===null){
+      active=false;
+      return;
+    }
     const x=i*width/Math.max(1,history.length-1);
     const y=height*(1-Math.max(0,Math.min(1,(v+100)/100)));
-    if(active)c.lineTo(x,y);else c.moveTo(x,y);active=true;
-  });c.stroke();
+    if(active)c.lineTo(x,y);
+    else c.moveTo(x,y);
+    active=true;
+  });
+  c.stroke();
 }
+
+function drawMotion(){
+  const canvas=$('motionGraph');
+  const ratio=Math.min(devicePixelRatio||1,2);
+  const width=Math.max(1,canvas.clientWidth),height=100;
+  if(canvas.width!==Math.round(width*ratio)||
+    canvas.height!==Math.round(height*ratio)){
+    canvas.width=Math.round(width*ratio);
+    canvas.height=Math.round(height*ratio);
+  }
+  const c=canvas.getContext('2d');
+  if(!c)return;
+  c.setTransform(ratio,0,0,ratio,0,0);
+  c.clearRect(0,0,width,height);
+
+  const end=motionHistory.length
+    ?motionHistory[motionHistory.length-1].sec:0;
+  const begin=end-119;
+  let ceiling=0.01,valid=0;
+  for(const p of motionHistory){
+    if(Number.isFinite(p.value)){
+      ceiling=Math.max(ceiling,p.value);
+      valid++;
+    }
+  }
+  ceiling*=1.1;
+  $('motionScale').textContent=
+    '体動：加速度変化量（G）／直近120秒／'+
+    (valid
+      ?'縦軸 0～'+ceiling.toPrecision(3)+' G（自動）'
+      :'有効データなし')+
+    '／欠測は空白';
+
+  c.strokeStyle='#24314a';
+  c.lineWidth=1;
+  c.beginPath();
+  for(const f of [0.25,0.5,0.75]){
+    c.moveTo(0,height*f);
+    c.lineTo(width,height*f);
+  }
+  c.stroke();
+
+  c.strokeStyle='#4ade80';
+  c.fillStyle='#4ade80';
+  c.lineWidth=1.5;
+  c.beginPath();
+  let previous=null;
+  for(const p of motionHistory){
+    if(!Number.isFinite(p.value)){
+      previous=null;
+      continue;
+    }
+    const x=(p.sec-begin)/119*width;
+    const y=height-2-
+      Math.min(1,Math.max(0,p.value)/ceiling)*(height-4);
+    if(previous!==null&&p.sec===previous+1)c.lineTo(x,y);
+    else c.moveTo(x,y);
+    previous=p.sec;
+  }
+  c.stroke();
+
+  for(const p of motionHistory){
+    if(!Number.isFinite(p.value))continue;
+    const x=(p.sec-begin)/119*width;
+    const y=height-2-
+      Math.min(1,Math.max(0,p.value)/ceiling)*(height-4);
+    c.fillRect(
+      Math.min(width-2,Math.max(0,x-1)),y-1,2,2
+    );
+  }
+}
+
 function tick(){
   if(!session||initializing||stopping)return;
   const at=elapsed();
   if(at-lastTick>5000){
     session.interrupted=true;
-    fail(new Error('5秒を超える処理中断を検出。無音時間を詰めず停止します'));return;
+    fail(new Error(
+      '5秒を超える処理中断を検出。無音時間を詰めず停止します'
+    ));
+    return;
   }
   lastTick=at;
-  if(seconds(at/1000)===null){fail(new Error('測定時間上限超過'));return;}
+  if(seconds(at/1000)===null){
+    fail(new Error('測定時間上限超過'));
+    return;
+  }
   let value=null;
   const track=stream?.getAudioTracks()[0];
-  if(ctx?.state==='running'&&track?.readyState==='live'&&!track.muted){
+  if(ctx?.state==='running'&&
+    track?.readyState==='live'&&!track.muted){
     analyser.getFloatTimeDomainData(input);
-    let sum=0;for(const v of input)sum+=v*v;
-    value=Math.max(-120,20*Math.log10(Math.max(1e-6,Math.sqrt(sum/input.length))));
+    let sum=0;
+    for(const v of input)sum+=v*v;
+    value=Math.max(
+      -120,20*Math.log10(
+        Math.max(1e-6,Math.sqrt(sum/input.length))
+      )
+    );
   }
   const sec=Math.floor(at/1000);
   if(!second||second.sec!==sec){
     flushSecond();
-    second={key:session.id+':'+String(sec).padStart(8,'0'),sessionId:session.id,
-      sec,elapsed_ms:sec*1000,epochMs:session.startedAt+sec*1000,
-      maxDb:null,audioValid:false};
+    second={
+      key:session.id+':'+String(sec).padStart(8,'0'),
+      sessionId:session.id,sec,
+      elapsed_ms:sec*1000,
+      epochMs:session.startedAt+sec*1000,
+      maxDb:null,audioValid:false
+    };
   }
   if(value!==null){
-    second.maxDb=second.maxDb===null?value:Math.max(second.maxDb,value);
+    second.maxDb=second.maxDb===null
+      ?value:Math.max(second.maxDb,value);
     second.audioValid=true;
-    if(at<calibrationUntil)calibration.push(value);
-    else if(baseline===null){
-      if(!calibration.length){fail(new Error('環境音計測が欠測'));return;}
+    if(at<calibrationUntil){
+      calibration.push(value);
+    }else if(baseline===null){
+      if(!calibration.length){
+        fail(new Error('環境音計測が欠測'));
+        return;
+      }
+      // 正本の20パーセンタイルを維持。
       calibration.sort((a,b)=>a-b);
-      baseline=calibration[Math.floor(calibration.length*.2)];calibration=[];
-      session.baselineDb=baseline;session.thresholdDb=baseline+6;
+      baseline=calibration[Math.floor(calibration.length*.2)];
+      calibration=[];
+      session.baselineDb=baseline;
+      session.thresholdDb=baseline+6;
     }else if(value>=baseline+6){
-      quietSince=null;if(!event&&!ending)startEvent(at);
+      quietSince=null;
+      if(!event&&!ending)startEvent(at);
     }else if(event&&!ending){
+      // 正本の4秒終了トリガーを維持。
       quietSince??=at;
-      if(at-quietSince>=PRE+1000)endEvent(at-PRE).catch(fail);
+      if(at-quietSince>=PRE+1000){
+        endEvent(at-PRE).catch(fail);
+      }
     }
   }
   if(at-lastPaint>=500){
-    lastPaint=at;history.push(value);if(history.length>120)history.shift();
+    lastPaint=at;
+    history.push(value);
+    if(history.length>120)history.shift();
     if(!document.body.classList.contains('dark')){
       $('timer').textContent=clock(at);
-      $('live').textContent=(at<calibrationUntil?'環境音計測':'測定中')+
-        '\n音量: '+(value===null?'欠測':value.toFixed(1)+' dBFS')+
-        '\n体動: '+(motion.peak===null?'欠測':motion.peak.toFixed(4)+' G')+
+      $('live').textContent=
+        (at<calibrationUntil?'環境音計測':'測定中')+
+        '\n音量: '+
+        (value===null?'欠測':value.toFixed(1)+' dBFS')+
+        '\n体動: '+
+        (motion.peak===null?'欠測':motion.peak.toFixed(4)+' G')+
         '\n体動許可: '+motion.permission+
         '\n保存待ち: '+pending+' / '+(event?'録音中':'待機');
       draw();
+      drawMotion();
     }
-    if($('night').classList.contains('peek'))
-      $('nightClock').textContent=new Date().toLocaleTimeString('ja-JP');
+    if($('night').classList.contains('peek')){
+      $('nightClock').textContent=
+        new Date().toLocaleTimeString('ja-JP');
+    }
   }
 }
+
 async function releaseAudio(){
-  clearInterval(ticker);clearTimeout(nightTimer);exitNight();
+  clearInterval(ticker);
+  clearTimeout(nightTimer);
+  exitNight();
   window.removeEventListener('devicemotion',onMotion);
-  recording?.dispose();recording=null;
+  recording?.dispose();
+  recording=null;
   if(ctx)ctx.onstatechange=null;
-  for(const n of [source,analyser,delay,dest]){try{n?.disconnect();}catch(_){}}
-  stream?.getTracks().forEach(t=>t.stop());stream=null;
+  for(const n of [source,analyser,delay,dest]){
+    try{n?.disconnect();}catch(_){}
+  }
+  stream?.getTracks().forEach(t=>t.stop());
+  stream=null;
   try{await ctx?.close();}catch(_){}
   ctx=source=analyser=delay=dest=input=null;
-  try{await wake?.release();}catch(_){}wake=null;
+  try{await wake?.release();}catch(_){}
+  wake=null;
   try{
-    if(document.fullscreenElement)await document.exitFullscreen();
-    else if(document.webkitFullscreenElement)document.webkitExitFullscreen?.();
+    if(document.fullscreenElement){
+      await document.exitFullscreen();
+    }else if(document.webkitFullscreenElement){
+      document.webkitExitFullscreen?.();
+    }
   }catch(_){}
 }
+
 async function start(){
   if(!ready||busy())return;
-  if(!navigator.mediaDevices?.getUserMedia){say('HTTPS・対応ブラウザで開いてください。');return;}
+  if(!navigator.mediaDevices?.getUserMedia){
+    say('HTTPS・対応ブラウザで開いてください。');
+    return;
+  }
   origin=performance.now();
   const startedAt=Date.now();
   initializing=true;
-  session={id:'st-'+startedAt+'-'+uid(),schemaVersion:5,
-    appVersion:VERSION,buildId:BUILD,startedAt,status:'recording',interrupted:false,
+  session={
+    id:'st-'+startedAt+'-'+uid(),schemaVersion:5,
+    appVersion:VERSION,buildId:BUILD,startedAt,
+    status:'recording',interrupted:false,
     motionAvailable:false,recordedTimeZone:timezone(),
     audioUnitTargetMs:UNIT,prerollMs:PRE,
-    recordingMethod:'MediaRecorder / DelayNode 3秒 / 独立音声'};
-  queue=Promise.resolve();pending=0;saveError=null;second=null;
-  recording=event=ending=null;baseline=null;calibration=[];history=[];lastPaint=0;
-  clearPlayers();controls();
+    recordingMethod:'MediaRecorder / DelayNode 3秒 / 独立音声'
+  };
+  queue=Promise.resolve();
+  pending=0;
+  saveError=null;
+  second=null;
+  recording=event=ending=null;
+  baseline=null;
+  calibration=[];
+  history=[];
+  motionHistory=[];
+  lastPaint=0;
+  drawMotion();
+  clearPlayers();
+  controls();
+
   const permission=requestMotion();
   let requested;
   try{
-    const AudioContext=window.AudioContext||window.webkitAudioContext;
+    const AudioContext=window.AudioContext||
+      window.webkitAudioContext;
     if(!AudioContext)throw new Error('Web Audio非対応');
     ctx=new AudioContext();
-    const resumed=ctx.resume();resumed.catch(()=>{});
+    const resumed=ctx.resume();
+    resumed.catch(()=>{});
     requested=navigator.mediaDevices.getUserMedia({
-      audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false},video:false
+      audio:{
+        echoCancellation:false,
+        noiseSuppression:false,
+        autoGainControl:false
+      },
+      video:false
     });
     requested.catch(()=>{});
-    void fullscreen();void requestWake();
-    await lock();stream=await requested;await resumed;await permission;
-    if(ctx.state!=='running')throw new Error('音声入力を開始できません');
+    void fullscreen();
+    void requestWake();
+    await lock();
+    stream=await requested;
+    await resumed;
+    await permission;
+    if(ctx.state!=='running'){
+      throw new Error('音声入力を開始できません');
+    }
     source=ctx.createMediaStreamSource(stream);
-    analyser=ctx.createAnalyser();analyser.fftSize=2048;
+    analyser=ctx.createAnalyser();
+    analyser.fftSize=2048;
     input=new Float32Array(analyser.fftSize);
-    delay=ctx.createDelay(4);delay.delayTime.value=PRE/1000;
+    delay=ctx.createDelay(4);
+    delay.delayTime.value=PRE/1000;
     dest=ctx.createMediaStreamDestination();
-    source.connect(analyser);source.connect(delay);delay.connect(dest);
+    source.connect(analyser);
+    source.connect(delay);
+    delay.connect(dest);
     session.motionPermission=motion.permission;
     calibrationUntil=elapsed()+30000;
     await put('sessions',{...session});
     for(const t of stream.getAudioTracks()){
       t.addEventListener('ended',()=>{
-        if(session&&!stopping&&!initializing)fail(new Error('マイク入力終了'));
+        if(session&&!stopping&&!initializing){
+          fail(new Error('マイク入力終了'));
+        }
       },{once:true});
     }
     ctx.onstatechange=()=>{
-      if(session&&!initializing&&!stopping&&ctx?.state!=='running'){
+      if(session&&!initializing&&!stopping&&
+        ctx?.state!=='running'){
         session.interrupted=true;
-        fail(new Error('音声時計が停止しました。同期を守るため測定を停止します'));
+        fail(new Error(
+          '音声時計が停止しました。同期を守るため測定を停止します'
+        ));
       }
     };
-    initializing=false;lastTick=elapsed();
-    ticker=setInterval(()=>{try{tick();}catch(e){fail(e);}},100);
-    nightTimer=setTimeout(enterNight,Math.max(0,60000-elapsed()));
+    initializing=false;
+    lastTick=elapsed();
+    ticker=setInterval(()=>{
+      try{tick();}catch(e){fail(e);}
+    },100);
+    nightTimer=setTimeout(
+      enterNight,Math.max(0,60000-elapsed())
+    );
     navigator.storage?.persist?.().catch(()=>{});
     controls();
-    say('測定開始。最初の30秒は環境音計測です。'+
-      (!navigator.locks?.request?'\nこのブラウザでは他タブ排他に非対応です。1タブだけで使用してください。':''));
+    say(
+      '測定開始。最初の30秒は環境音計測です。'+
+      (!navigator.locks?.request
+        ?'\nこのブラウザでは他タブ排他に非対応です。1タブだけで使用してください。'
+        :'')
+    );
   }catch(e){
-    if(requested&&!stream)
-      requested.then(s=>s.getTracks().forEach(t=>t.stop())).catch(()=>{});
+    if(requested&&!stream){
+      requested.then(
+        s=>s.getTracks().forEach(t=>t.stop())
+      ).catch(()=>{});
+    }
     await permission;
-    session.status='interrupted';session.interrupted=true;session.saveError=msg(e);
-    session.lastElapsedMs=elapsed();session.durationSec=session.lastElapsedMs/1000;
+    session.status='interrupted';
+    session.interrupted=true;
+    session.saveError=msg(e);
+    session.lastElapsedMs=elapsed();
+    session.durationSec=session.lastElapsedMs/1000;
     session.endedAt=session.startedAt+session.lastElapsedMs;
     try{await put('sessions',{...session});}catch(_){}
-    await releaseAudio();unlock();session=null;initializing=false;
-    say('開始失敗: '+msg(e));controls();
+    await releaseAudio();
+    unlock();
+    session=null;
+    initializing=false;
+    say('開始失敗: '+msg(e));
+    controls();
   }
 }
+
 function stop(error=false){
   if(stopping)return stopping;
   if(!session||initializing)return Promise.resolve();
   stopping=Promise.resolve().then(async()=>{
     const s=session,stopAt=elapsed();
-    clearInterval(ticker);clearTimeout(nightTimer);exitNight();controls();
+    clearInterval(ticker);
+    clearTimeout(nightTimer);
+    exitNight();
+    controls();
     say('停止・保存中。画面を閉じないでください。');
     try{
       flushSecond();
       if(ending)await ending;
       if(event){
         const track=stream?.getAudioTracks()[0];
-        const healthy=()=>ctx?.state==='running'&&track?.readyState==='live'&&!track.muted;
+        const healthy=()=>ctx?.state==='running'&&
+          track?.readyState==='live'&&!track.muted;
         if(!error&&!saveError&&recording&&healthy()){
-          recording.cancelTimer();await sleep(PRE);
+          recording.cancelTimer();
+          await sleep(PRE);
           if(!healthy())s.interrupted=true;
-        }else s.interrupted=true;
+        }else{
+          s.interrupted=true;
+        }
         await endEvent(stopAt);
       }
       await queue;
       if(saveError)throw saveError;
       s.status=error||s.interrupted?'interrupted':'completed';
     }catch(e){
-      s.status='interrupted';s.interrupted=true;s.saveError=msg(e);
+      s.status='interrupted';
+      s.interrupted=true;
+      s.saveError=msg(e);
     }finally{
       await queue;
-      s.endedAt=s.startedAt+stopAt;s.durationSec=stopAt/1000;s.lastElapsedMs=stopAt;
-      s.motionEvents=motion.events;s.motionValidCount=motion.valid;
+      s.endedAt=s.startedAt+stopAt;
+      s.durationSec=stopAt/1000;
+      s.lastElapsedMs=stopAt;
+      s.motionEvents=motion.events;
+      s.motionValidCount=motion.valid;
       try{
         await put('sessions',{...s});
         const saved=await get('sessions',s.id);
-        if(saved?.status!==s.status||saved?.endedAt!==s.endedAt)
+        if(saved?.status!==s.status||saved?.endedAt!==s.endedAt){
           throw new Error('停止状態の読み戻し不一致');
-      }catch(e){s.saveError=msg(e);}
-      await releaseAudio();unlock();session=null;event=ending=null;
-      $('timer').textContent=clock(stopAt);
-      say(s.saveError?'保存エラー: '+s.saveError+'。保存済み部分は残っています。':
-        '保存完了: '+s.status+'。ZIPを再出力できます。');
-      try{await refresh(s.id);}catch(e){say('一覧取得失敗: '+msg(e));}
-    }
-  }).finally(()=>{stopping=null;controls();});
-  return stopping;
-}
-
-async function recover(){
-  if(busy()||!ready)return;
-  if(!confirm('旧版・他タブの測定が停止していることを確認しましたか？'))return;
-  work=true;controls();
-  try{
-    await lock();let count=0;
-    for(const s of await rows('sessions')){
-      if(s.status!=='recording')continue;
-      const base=epoch(s.startedAt);
-      if(base===null)throw new Error('開始時刻不正: '+s.id);
-      const logs=normalizeLogs(await rows('sessionLogs',s.id),base);
-      const audio=await audioRefs(s);
-      let end=Math.max(millis(s.lastElapsedMs)||0,millis(s.checkpointElapsedMs)||0);
-      for(const v of logs)end=Math.max(end,(v.sec+1)*1000);
-      for(const r of audio){
-        if(r.startSec!==null&&r.durationSec!==null)
-          end=Math.max(end,(r.startSec+r.durationSec)*1000);
+        }
+      }catch(e){          s.saveError=msg(e);
+        }
+        await releaseAudio();
+        unlock();
+        session=null;
+        event=ending=null;
+        $('timer').textContent=clock(stopAt);
+        say(s.saveError
+          ?'保存エラー: '+s.saveError+'。保存済み部分は残っています。'
+          :'保存完了: '+s.status+'。ZIPを再出力できます。');
+        try{
+          await refresh(s.id);
+        }catch(e){
+          say('一覧取得失敗: '+msg(e));
+        }
       }
-      if(millis(end)===null)throw new Error('復元時間が範囲外: '+s.id);
-      await put('sessions',{...s,status:'interrupted',interrupted:true,
-                  endedAt:base+end,durationSec:end/1000,lastElapsedMs:end,
+    }).finally(()=>{
+      stopping=null;
+      controls();
+    });
+    return stopping;
+  }
+
+  async function recover(){
+    if(busy()||!ready)return;
+    if(!confirm(
+      '旧版・他タブの測定が停止していることを確認しましたか？'
+    ))return;
+    work=true;
+    controls();
+    try{
+      await lock();
+      let count=0;
+      for(const s of await rows('sessions')){
+        if(s.status!=='recording')continue;
+        const base=epoch(s.startedAt);
+        if(base===null){
+          throw new Error('開始時刻不正: '+s.id);
+        }
+        const logs=normalizeLogs(
+          await rows('sessionLogs',s.id),base
+        );
+        const audio=await audioRefs(s);
+        let end=Math.max(
+          millis(s.lastElapsedMs)||0,
+          millis(s.checkpointElapsedMs)||0
+        );
+        for(const v of logs){
+          end=Math.max(end,(v.sec+1)*1000);
+        }
+        for(const r of audio){
+          if(r.startSec!==null&&r.durationSec!==null){
+            end=Math.max(
+              end,(r.startSec+r.durationSec)*1000
+            );
+          }
+        }
+        if(millis(end)===null){
+          throw new Error('復元時間が範囲外: '+s.id);
+        }
+        await put('sessions',{
+          ...s,
+          status:'interrupted',
+          interrupted:true,
+          endedAt:base+end,
+          durationSec:end/1000,
+          lastElapsedMs:end,
           recoveredAt:Date.now(),
-          recoveryNote:'保存済み部分のみ復元。未保存音声は復元できません。'
+          recoveryNote:
+            '保存済み部分のみ復元。未保存音声は復元できません。'
         });
         count++;
       }
       await refresh();
-      say(count+'件を中断記録として復元しました。元音声は変更していません。');
+      say(
+        count+'件を中断記録として復元しました。元音声は変更していません。'
+      );
     }catch(e){
       say('復元処理を中止: '+msg(e));
     }finally{
-      unlock();work=false;controls();
+      unlock();
+      work=false;
+      controls();
     }
   }
 
   async function remove(){
     if(busy()||!selected||plan||prepared)return;
-    if(!confirm('保存したZIPを確認しましたか？ 選択記録を完全削除します。'))return;
-    if(!confirm('削除は取り消せません。続けますか？'))return;
+    if(!confirm(
+      '保存したZIPを確認しましたか？ 選択記録を完全削除します。'
+    ))return;
+    if(!confirm(
+      '削除は取り消せません。続けますか？'
+    ))return;
     const id=selected.id;
-    work=true;controls();
+    work=true;
+    controls();
     try{
       await lock();
       await tx(STORES,'readwrite',t=>{
@@ -1244,7 +1900,9 @@ async function recover(){
           if(name==='sessions')continue;
           const s=t.objectStore(name);
           const r=s.indexNames.contains('sessionId')
-            ?s.index('sessionId').openCursor(IDBKeyRange.only(id))
+            ?s.index('sessionId').openCursor(
+              IDBKeyRange.only(id)
+            )
             :s.openCursor();
           r.onsuccess=()=>{
             const c=r.result;
@@ -1259,63 +1917,109 @@ async function recover(){
     }catch(e){
       say('削除失敗: '+msg(e));
     }finally{
-      unlock();work=false;controls();
+      unlock();
+      work=false;
+      controls();
     }
   }
 
-  // GitHub更新。取得HTMLは実行せず、同じURLを再読み込みする。
+  // GitHub最新コミットからHTMLを動的取得する。
+  // 取得HTMLを直接実行せず、配信内容との一致確認後、
+  // 同じオリジン・同じパスの再読み込みで適用する。
   const Updater=(()=>{
     const KEY='ST-GitHubUpdate-v1';
     const EXPECTED='ST-update-expected-v1';
     const MAX_HTML=4*1024*1024;
-    let running=false,candidate=null,config=null,interval=null;
 
-    const status=t=>{$('updateStatus').textContent=t;};
+    let running=false;
+    let candidate=null;
+    let config=null;
+    let interval=null;
+
+    const status=t=>{
+      $('updateStatus').textContent=t;
+    };
 
     function defaults(){
       let repository='',path='index.html';
       const host=location.hostname.toLowerCase();
       if(host.endsWith('.github.io')){
         const owner=host.slice(0,-10);
-        const segments=location.pathname.split('/').filter(Boolean)
+        const segments=location.pathname
+          .split('/')
+          .filter(Boolean)
           .map(v=>decodeURIComponent(v));
-        const project=segments.length>0&&!segments[0].includes('.');
-        repository=owner+'/'+(project?segments[0]:owner+'.github.io');
+        const project=segments.length>0&&
+          !segments[0].includes('.');
+        repository=owner+'/'+(
+          project?segments[0]:owner+'.github.io'
+        );
         const rest=project?segments.slice(1):segments;
         path=rest.length?rest.join('/'):'index.html';
-        if(location.pathname.endsWith('/')&&rest.length)
+        if(location.pathname.endsWith('/')&&rest.length){
           path+='/index.html';
+        }
       }
-      return {repository,branch:'main',path,auto:true};
+      return {
+        repository,
+        branch:'main',
+        path,
+        auto:true
+      };
     }
 
     function normalize(raw){
       const value={
         repository:String(raw.repository||'').trim(),
         branch:String(raw.branch||'main').trim(),
-        path:String(raw.path||'index.html').trim().replace(/^\/+/,''),
+        path:String(raw.path||'index.html')
+          .trim()
+          .replace(/^\/+/,''),
         auto:raw.auto!==false
       };
       if(value.repository&&
-        !/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(value.repository))
-        throw new Error('リポジトリはowner/repository形式で指定してください');
-      if(!value.branch||/[\u0000-\u001f]/.test(value.branch))
+        !/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/
+          .test(value.repository)){
+        throw new Error(
+          'リポジトリはowner/repository形式で指定してください'
+        );
+      }
+      if(!value.branch||
+        /[\u0000-\u001f]/.test(value.branch)){
         throw new Error('ブランチが不正です');
+      }
       if(!value.path||
-        value.path.split('/').some(v=>!v||v==='.'||v==='..')||
-        /[\\\u0000-\u001f]/.test(value.path))
+        value.path.split('/').some(
+          v=>!v||v==='.'||v==='..'
+        )||
+        /[\\\u0000-\u001f]/.test(value.path)){
         throw new Error('HTMLパスが不正です');
+      }
       return value;
     }
 
     function readConfig(){
       let base;
-      try{base=defaults();}
-      catch(_){base={repository:'',branch:'main',path:'index.html',auto:true};}
       try{
-        const stored=JSON.parse(localStorage.getItem(KEY)||'null');
-        return normalize(stored?{...base,...stored}:base);
-      }catch(_){return normalize(base);}
+        base=defaults();
+      }catch(_){
+        base={
+          repository:'',
+          branch:'main',
+          path:'index.html',
+          auto:true
+        };
+      }
+      try{
+        const stored=JSON.parse(
+          localStorage.getItem(KEY)||'null'
+        );
+        return normalize(
+          stored?{...base,...stored}:base
+        );
+      }catch(_){
+        return normalize(base);
+      }
     }
 
     function populate(){
@@ -1325,41 +2029,74 @@ async function recover(){
       $('autoCheck').checked=config.auto;
     }
 
+    // API・コミット固定raw HTML・配信HTMLに
+    // 毎回異なるクエリを付ける。
+    function freshURL(value){
+      const url=new URL(value);
+      url.searchParams.set(
+        'st_check',Date.now()+'-'+uid()
+      );
+      return url;
+    }
+
     function deployedURL(){
-      if(!/^https?:$/.test(location.protocol))
-        throw new Error('更新はHTTPSの配信サイトで使用してください');
+      if(!/^https?:$/.test(location.protocol)){
+        throw new Error(
+          '更新はHTTP(S)の配信サイトで使用してください。HTTPSを推奨します'
+        );
+      }
       const url=new URL(location.href);
       url.hash='';
       url.searchParams.delete('st_update');
-      url.searchParams.set('st_check',Date.now()+'-'+uid());
-      return url;
+      url.searchParams.delete('st_commit');
+      return freshURL(url);
     }
 
     async function fetchText(url,sameOrigin=false){
       const controller=new AbortController();
-      const timeout=setTimeout(()=>controller.abort(),20000);
+      const timeout=setTimeout(
+        ()=>controller.abort(),20000
+      );
       try{
         const response=await fetch(url,{
           cache:'no-store',
           signal:controller.signal,
           credentials:sameOrigin?'same-origin':'omit',
-          headers:{Accept:'text/html, text/plain, application/json'}
+          headers:{
+            Accept:'text/html, text/plain, application/json'
+          }
         });
-        if(!response.ok)
-          throw new Error('取得失敗: HTTP '+response.status);
-        if(sameOrigin&&new URL(response.url).origin!==location.origin)
-          throw new Error('別サイトへの転送を検出しました');
-        if(Number(response.headers.get('content-length'))>MAX_HTML)
-          throw new Error('取得ファイルがサイズ上限を超えています');
+        if(!response.ok){
+          throw new Error(
+            '取得失敗: HTTP '+response.status
+          );
+        }
+        if(sameOrigin&&
+          new URL(response.url).origin!==location.origin){
+          throw new Error(
+            '別サイトへの転送を検出しました'
+          );
+        }
+        if(Number(
+          response.headers.get('content-length')
+        )>MAX_HTML){
+          throw new Error(
+            '取得ファイルがサイズ上限を超えています'
+          );
+        }
 
         if(!response.body?.getReader){
           const text=await response.text();
-          if(new TextEncoder().encode(text).length>MAX_HTML)
-            throw new Error('取得ファイルがサイズ上限を超えています');
+          if(new TextEncoder().encode(text).length>MAX_HTML){
+            throw new Error(
+              '取得ファイルがサイズ上限を超えています'
+            );
+          }
           return text;
         }
 
-        const reader=response.body.getReader(),chunks=[];
+        const reader=response.body.getReader();
+        const chunks=[];
         let total=0;
         try{
           for(;;){
@@ -1368,11 +2105,15 @@ async function recover(){
             total+=value.byteLength;
             if(total>MAX_HTML){
               await reader.cancel();
-              throw new Error('取得ファイルがサイズ上限を超えています');
+              throw new Error(
+                '取得ファイルがサイズ上限を超えています'
+              );
             }
             chunks.push(value);
           }
-        }finally{reader.releaseLock();}
+        }finally{
+          reader.releaseLock();
+        }
 
         const data=new Uint8Array(total);
         let offset=0;
@@ -1380,124 +2121,233 @@ async function recover(){
           data.set(chunk,offset);
           offset+=chunk.byteLength;
         }
-        return new TextDecoder('utf-8',{fatal:true}).decode(data);
+        return new TextDecoder(
+          'utf-8',{fatal:true}
+        ).decode(data);
       }catch(e){
-        if(e.name==='AbortError')
-          throw new Error('更新取得がタイムアウトしました');
+        if(e.name==='AbortError'){
+          throw new Error(
+            '更新取得がタイムアウトしました'
+          );
+        }
         throw e;
-      }finally{clearTimeout(timeout);}
+      }finally{
+        clearTimeout(timeout);
+      }
     }
 
     async function inspect(text){
-      const parsed=new DOMParser().parseFromString(text,'text/html');
-      const build=parsed.querySelector('meta[name="st-build-id"]')
-        ?.getAttribute('content')?.trim();
-      if(!build||!/^ST-V\d+-[A-Za-z0-9._-]+$/.test(build)||
-        !parsed.querySelector('script'))
-        throw new Error('SleepTrackerの更新HTMLではありません');
-      if(!crypto.subtle)
-        throw new Error('SHA-256対応のHTTPS環境が必要です');
+      const parsed=new DOMParser().parseFromString(
+        text,'text/html'
+      );
+      const build=parsed.querySelector(
+        'meta[name="st-build-id"]'
+      )?.getAttribute('content')?.trim();
+
+      if(!build||
+        !/^ST-V\d+-[A-Za-z0-9._-]+$/.test(build)||
+        !parsed.querySelector('script')){
+        throw new Error(
+          'SleepTrackerの更新HTMLではありません'
+        );
+      }
+      if(!crypto.subtle){
+        throw new Error(
+          'SHA-256対応のHTTPS環境が必要です'
+        );
+      }
       const digest=await crypto.subtle.digest(
-        'SHA-256',new TextEncoder().encode(text));
-      const sha256=Array.from(new Uint8Array(digest),
-        v=>v.toString(16).padStart(2,'0')).join('');
+        'SHA-256',
+        new TextEncoder().encode(text)
+      );
+      const sha256=Array.from(
+        new Uint8Array(digest),
+        v=>v.toString(16).padStart(2,'0')
+      ).join('');
       return {build,sha256};
     }
 
     async function githubSource(){
-      if(!config.repository)
-        throw new Error('更新設定で公開リポジトリを指定してください');
+      if(!config.repository){
+        throw new Error(
+          '更新設定で公開リポジトリを指定してください'
+        );
+      }
       const [owner,repo]=config.repository.split('/');
-      const root=encodeURIComponent(owner)+'/'+encodeURIComponent(repo);
-      const api='https://api.github.com/repos/'+root+
-        '/commits/'+encodeURIComponent(config.branch);
+      const root=encodeURIComponent(owner)+'/'+
+        encodeURIComponent(repo);
+
+      // 設定ブランチの最新コミットSHAを取得する。
+      const api=freshURL(
+        'https://api.github.com/repos/'+root+
+        '/commits/'+encodeURIComponent(config.branch)
+      );
       const data=JSON.parse(await fetchText(api));
-      if(!/^[a-f0-9]{40}$/i.test(data.sha||''))
-        throw new Error('GitHubコミット情報が不正です');
-      const url='https://raw.githubusercontent.com/'+root+'/'+data.sha+'/'+
-        config.path.split('/').map(encodeURIComponent).join('/');
-      return {...await inspect(await fetchText(url)),commit:data.sha};
+      if(!/^[a-f0-9]{40}$/i.test(data.sha||'')){
+        throw new Error(
+          'GitHubコミット情報が不正です'
+        );
+      }
+
+      // ブランチ名ではなく取得済みSHAでHTMLを固定取得。
+      const url=freshURL(
+        'https://raw.githubusercontent.com/'+root+
+        '/'+data.sha+'/'+
+        config.path.split('/')
+          .map(encodeURIComponent)
+          .join('/')
+      );
+      return {
+        ...await inspect(await fetchText(url)),
+        commit:data.sha
+      };
     }
 
-    const deployedSource=async()=>inspect(await fetchText(deployedURL(),true));
+    const deployedSource=async()=>inspect(
+      await fetchText(deployedURL(),true)
+    );
 
     async function check(manual=true){
       if(running||work||session||stopping||!ready)return;
-      running=true;candidate=null;controls();
+      running=true;
+      candidate=null;
+      controls();
       try{
-        status('GitHub更新を確認中…');
+        status('GitHub最新コミットを確認中…');
         const remote=await githubSource();
-        if(remote.build===BUILD){
-          status('実行ビルド: '+BUILD+
-            '\nGitHubも同じビルドです。'+
-            '\nコミット: '+remote.commit.slice(0,12)+
-            '\n公開更新時はst-build-idを変更してください。');
-          return;
-        }
+
         status('配信済みHTMLを確認中…');
         const deployed=await deployedSource();
+
         if(remote.build!==deployed.build||
           remote.sha256!==deployed.sha256){
-          status('GitHub: '+remote.build+'\n配信: '+deployed.build+
-            '\n配信内容が一致しません。公開設定・パス・配信完了を確認してください。');
+          status(
+            'GitHub: '+remote.build+
+            '\n配信: '+deployed.build+
+            '\n配信内容が一致しません。公開設定・パス・配信完了を確認してください。'
+          );
           return;
         }
+
+        if(remote.build===BUILD){
+          status(
+            '実行ビルド: '+BUILD+
+            '\nGitHub・配信HTMLのSHA-256一致。'+
+            '\nコミット: '+remote.commit.slice(0,12)+
+            '\n実行中HTML全体のハッシュは未照合です。'+
+            '\nコード変更時は必ずビルドIDを更新してください。'
+          );
+          return;
+        }
+
         candidate=remote;
-        status('更新可能: '+BUILD+' → '+remote.build+
+        status(
+          '更新可能: '+BUILD+' → '+remote.build+
+          '\n最新コミット: '+remote.commit.slice(0,12)+
           '\n配信HTMLとGitHubのSHA-256一致を確認。'+
-          '\n「更新を適用」で再読み込みします。');
+          '\n「更新を適用」で再読み込みします。'
+        );
       }catch(e){
-        status('更新確認失敗: '+msg(e)+'\n現在の版を維持しています。');
-        if(manual)say('更新確認に失敗しました。更新欄を確認してください。');
+        status(
+          '更新確認失敗: '+msg(e)+
+          '\n現在の版を維持しています。録音・保存はネットワーク不要です。'
+        );
+        if(manual){
+          say(
+            '更新確認に失敗しました。更新欄を確認してください。'
+          );
+        }
       }finally{
-        running=false;controls();
+        running=false;
+        controls();
       }
     }
 
     async function apply(){
-      if(running||work||session||stopping||!ready||!candidate)return;
+      if(running||work||session||stopping||
+        !ready||!candidate)return;
       const target={...candidate};
-      if((plan||prepared)&&
-        !confirm('更新で回収パネルが閉じます。現在のZIPを保存しましたか？'))return;
-      if(!confirm(target.build+'へ更新します。保存記録は削除しません。'))return;
-      running=true;controls();
+
+      if((plan||prepared)&&!confirm(
+        '更新で回収パネルが閉じます。現在のZIPを保存しましたか？'
+      ))return;
+      if(!confirm(
+        target.build+'へ更新します。保存記録は削除しません。'
+      ))return;
+
+      running=true;
+      controls();
       try{
         await lock();
         status('適用前に更新内容を再確認中…');
         const remote=await githubSource();
         const deployed=await deployedSource();
-        if(remote.build!==target.build||remote.sha256!==target.sha256||
-          deployed.build!==target.build||deployed.sha256!==target.sha256){
+
+        if(remote.commit!==target.commit||
+          remote.build!==target.build||
+          remote.sha256!==target.sha256||
+          deployed.build!==target.build||
+          deployed.sha256!==target.sha256){
           candidate=null;
-          throw new Error('更新内容が変わりました。更新を再確認してください');
+          throw new Error(
+            '更新内容が変わりました。更新を再確認してください'
+          );
         }
 
         await queue;
-        if(pending)throw new Error('保存処理が残っています');
+        if(pending){
+          throw new Error('保存処理が残っています');
+        }
 
         const url=new URL(location.href);
         url.hash='';
-        url.searchParams.delete('st_check');
-        url.searchParams.set('st_update',target.build+'-'+Date.now());
-        if(url.origin!==location.origin||url.pathname!==location.pathname)
-          throw new Error('更新先が現在のサイトと一致しません');
+        url.searchParams.set(
+          'st_check',Date.now()+'-'+uid()
+        );
+        url.searchParams.set(
+          'st_update',target.build+'-'+Date.now()
+        );
+        url.searchParams.set(
+          'st_commit',target.commit
+        );
+
+        if(url.origin!==location.origin||
+          url.pathname!==location.pathname){
+          throw new Error(
+            '更新先が現在のサイトと一致しません'
+          );
+        }
 
         sessionStorage.setItem(EXPECTED,JSON.stringify({
-          build:target.build,commit:target.commit
+          build:target.build,
+          commit:target.commit,
+          sha256:target.sha256
         }));
-        clearPlayers();releasePrepared();plan=null;
+
+        clearPlayers();
+        releasePrepared();
+        plan=null;
         status('同じサイトを再読み込みします…');
         location.replace(url.href);
 
         setTimeout(()=>{
           if(!running)return;
-          unlock();running=false;controls();
-          status('再読み込みが完了していません。手動で再読み込みしてください。'+
-            '\nサイトデータは削除しないでください。');
+          unlock();
+          running=false;
+          controls();
+          status(
+            '再読み込みが完了していません。手動で再読み込みしてください。'+
+            '\nサイトデータは削除しないでください。'
+          );
         },5000);
       }catch(e){
-        unlock();running=false;controls();
-        status('更新適用中止: '+msg(e)+'\n元記録は削除していません。');
+        unlock();
+        running=false;
+        controls();
+        status(
+          '更新適用中止: '+msg(e)+
+          '\n元記録は削除していません。'
+        );
       }
     }
 
@@ -1506,7 +2356,9 @@ async function recover(){
       interval=null;
       if(config.auto){
         interval=setInterval(()=>{
-          if(document.visibilityState==='visible')void check(false);
+          if(document.visibilityState==='visible'){
+            void check(false);
+          }
         },10*60*1000);
       }
     }
@@ -1520,38 +2372,66 @@ async function recover(){
           path:$('sourcePath').value,
           auto:$('autoCheck').checked
         });
-        localStorage.setItem(KEY,JSON.stringify(value));
-        config=value;candidate=null;
-        populate();schedule();controls();
-        status('設定を保存しました。「更新を確認」で確認できます。');
-      }catch(e){status('設定保存失敗: '+msg(e));}
+        localStorage.setItem(
+          KEY,JSON.stringify(value)
+        );
+        config=value;
+        candidate=null;
+        populate();
+        schedule();
+        controls();
+        status(
+          '設定を保存しました。「更新を確認」で確認できます。'
+        );
+      }catch(e){
+        status('設定保存失敗: '+msg(e));
+      }
     }
 
     function init(){
-      config=readConfig();populate();
-      $('checkUpdate').onclick=()=>{void check(true);};
-      $('applyUpdate').onclick=()=>{void apply();};
+      config=readConfig();
+      populate();
+      $('checkUpdate').onclick=()=>{
+        void check(true);
+      };
+      $('applyUpdate').onclick=()=>{
+        void apply();
+      };
       $('saveUpdateSettings').onclick=saveSettings;
 
       let expected=null;
       try{
-        expected=JSON.parse(sessionStorage.getItem(EXPECTED)||'null');
+        expected=JSON.parse(
+          sessionStorage.getItem(EXPECTED)||'null'
+        );
         sessionStorage.removeItem(EXPECTED);
       }catch(_){}
 
       if(expected){
         status(expected.build===BUILD
-          ?'更新後の起動確認: '+BUILD
-          :'更新が反映されていません。\n期待: '+expected.build+
+          ?'更新後のビルド起動確認: '+BUILD+
+            '\nコミット参照: '+
+            String(expected.commit||'').slice(0,12)+
+            '\n適用前にSHA-256照合済み。起動後の確認はビルドIDです。'
+          :'更新が反映されていません。'+
+            '\n期待: '+expected.build+
             '\n実行: '+BUILD+
             '\n配信・キャッシュ・Service Workerを確認してください。'+
-            '\nサイトデータは削除しないでください。');
-      }else status('実行ビルド: '+BUILD+
-        '\n同じサイトで更新します。保存記録は削除しません。');
+            '\nサイトデータは削除しないでください。'
+        );
+      }else{
+        status(
+          '実行ビルド: '+BUILD+
+          '\n同じサイトで更新します。保存記録は削除しません。'
+        );
+      }
 
       schedule();
-      if(!expected&&config.auto&&config.repository)
-        setTimeout(()=>{void check(false);},1500);
+      if(!expected&&config.auto&&config.repository){
+        setTimeout(()=>{
+          void check(false);
+        },1500);
+      }
     }
 
     return {
@@ -1561,45 +2441,78 @@ async function recover(){
     };
   })();
 
-  // 非測定の一覧操作も直列化して、選択・削除・出力との競合を防ぐ。
+  // 一覧操作も直列化し、選択・削除・出力との競合を防ぐ。
   async function browse(fn){
     if(busy()||!ready)return;
-    work=true;controls();
-    try{await fn();}
-    catch(e){say(msg(e));}
-    finally{work=false;controls();}
+    work=true;
+    controls();
+    try{
+      await fn();
+    }catch(e){
+      say(msg(e));
+    }finally{
+      work=false;
+      controls();
+    }
   }
 
-  $('start').onclick=()=>{void start();};
-  $('stop').onclick=()=>{void stop();};
+  $('start').onclick=()=>{
+    void start();
+  };
+  $('stop').onclick=()=>{
+    void stop();
+  };
   $('black').onclick=enterNight;
-  $('refresh').onclick=()=>{void browse(()=>refresh());};
-  $('recover').onclick=()=>{void recover();};
+  $('refresh').onclick=()=>{
+    void browse(()=>refresh());
+  };
+  $('recover').onclick=()=>{
+    void recover();
+  };
   $('sessions').onchange=()=>{
     const id=$('sessions').value;
     void browse(()=>refresh(id));
   };
   $('more').onclick=()=>{
-    // showPlayers内部のbusy判定に合わせ、表示処理自体は直接実行。
-    if(!busy())void showPlayers().catch(e=>say(msg(e)));
+    if(!busy()){
+      void showPlayers().catch(e=>say(msg(e)));
+    }
   };
-  $('export').onclick=()=>{void exportZIP(false);};
-  $('split').onclick=()=>{void exportZIP(true);};
-  $('remove').onclick=()=>{void remove();};
-  $('save').onclick=()=>{void saveFile();};
-  $('share').onclick=()=>{void shareFile();};
-  $('next').onclick=()=>{void nextZIP();};
+  $('export').onclick=()=>{
+    void exportZIP(false);
+  };
+  $('split').onclick=()=>{
+    void exportZIP(true);
+  };
+  $('remove').onclick=()=>{
+    void remove();
+  };
+  $('save').onclick=()=>{
+    void saveFile();
+  };
+  $('share').onclick=()=>{
+    void shareFile();
+  };
+  $('next').onclick=()=>{
+    void nextZIP();
+  };
   $('close').onclick=()=>{
     if(busy())return;
-    releasePrepared();plan=null;
+    releasePrepared();
+    plan=null;
     $('download').classList.add('hidden');
     controls();
   };
 
   document.addEventListener('visibilitychange',()=>{
-    if(session&&document.visibilityState==='hidden')
-      say('背景へ移行しました。前面へ戻してください。背景動作は保証できません。');
-    if(document.visibilityState==='visible')void requestWake();
+    if(session&&document.visibilityState==='hidden'){
+      say(
+        '背景へ移行しました。前面へ戻してください。背景動作は保証できません。'
+      );
+    }
+    if(document.visibilityState==='visible'){
+      void requestWake();
+    }
   });
 
   window.addEventListener('beforeunload',e=>{
@@ -1610,7 +2523,7 @@ async function recover(){
   });
 
   // 終了直前の非同期保存には依存しない。
-  // pagehideでは停止を要求し、復元は毎秒の保存済みチェックポイントを使用。
+  // 復元には保存済みチェックポイントを使用する。
   window.addEventListener('pagehide',()=>{
     if(session&&!initializing&&!stopping){
       session.interrupted=true;
@@ -1619,33 +2532,46 @@ async function recover(){
   });
 
   (async()=>{
-    work=true;controls();
+    work=true;
+    controls();
     try{
       db=await openDB();
-
       for(const name of STORES){
-        if(!db.objectStoreNames.contains(name))
-          throw new Error('必要なDBストアがありません: '+name);
+        if(!db.objectStoreNames.contains(name)){
+          throw new Error(
+            '必要なDBストアがありません: '+name
+          );
+        }
       }
 
       db.onversionchange=()=>{
         ready=false;
-        if(session)fail(new Error('別タブでDBの変更を検出しました'));
+        if(session){
+          fail(new Error(
+            '別タブでDBの変更を検出しました'
+          ));
+        }
         db.close();
-        say('DB変更を検出しました。測定停止後に再読み込みしてください。');
+        say(
+          'DB変更を検出しました。測定停止後に再読み込みしてください。'
+        );
         controls();
       };
 
       ready=true;
       await refresh();
       Updater.init();
-      say('準備完了。元記録は削除・変更していません。'+
-        '\n既存記録を選び、ZIPを再出力して確認してください。');
+      drawMotion();
+      say(
+        '準備完了。元記録は削除・変更していません。'+
+        '\n新規測定では音量と体動波形を表示します。'
+      );
     }catch(e){
       ready=false;
       say('初期化失敗: '+msg(e));
     }finally{
-      work=false;controls();
+      work=false;
+      controls();
     }
   })();
 
