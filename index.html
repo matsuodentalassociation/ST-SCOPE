@@ -7,9 +7,9 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <meta name="somnolog-app" content="SomnoLog">
-<meta name="somnolog-version" content="10">
-<meta name="somnolog-build" content="SomnoLog V10 文字化け・更新先修正版">
-<title>SomnoLog V10 文字化け・更新先修正版</title>
+<meta name="somnolog-version" content="11">
+<meta name="somnolog-build" content="SomnoLog V11 Android共有修正版">
+<title>SomnoLog V11 Android共有修正版</title>
 <style>
 :root{color-scheme:dark;--bg:#101419;--surface:#192029;--surface-3:#253c50;--line:#2f3b48;--line-strong:#506276;--text:#f0eee6;--muted:#aebbc9;--muted-2:#8392a2;--primary:#84b9cf;--primary-text:#10202a;--green:#bfdbd1;--yellow:#f3e7c9;--danger:#d8a6a1;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans JP",sans-serif}
 *{box-sizing:border-box}html,body{min-width:320px;min-height:100%;margin:0;background:var(--bg);color:var(--text)}
@@ -87,7 +87,7 @@ dialog p,dialog li{color:#c5cfd9;font-size:13px;line-height:1.8}.dialog-actions{
 .share-summary strong{display:block;margin-bottom:5px;color:var(--yellow);font-size:14px}.share-filename{overflow-wrap:anywhere;color:var(--muted);font-size:11px}
 .share-warning{margin-top:14px;padding:11px;border-left:3px solid #b9a67e;border-radius:0 8px 8px 0;background:#292820;color:var(--yellow);font-size:12px;line-height:1.7}
 .progress{width:100%;height:7px;margin-top:15px;accent-color:var(--primary)}
-#share-status{white-space:pre-wrap;overflow-wrap:anywhere}
+#share-status{white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px;color:var(--text)}
 #black-screen{position:fixed;inset:0;z-index:10;display:flex;align-items:center;justify-content:center;padding:24px;background:#000;touch-action:none}
 .black-inner{width:100%;text-align:center}.black-clock{display:block;color:#756f61;font-size:70px;font-weight:300;letter-spacing:2px;font-variant-numeric:tabular-nums}
 .black-help{margin-top:27px;color:#aaa18e;font-size:12px}
@@ -97,7 +97,7 @@ dialog p,dialog li{color:#c5cfd9;font-size:13px;line-height:1.8}.dialog-actions{
 </head>
 <body>
 <header class="version-bar">
-  <strong>SomnoLog V10 文字化け・更新先修正版</strong>
+  <strong>SomnoLog V11 Android共有修正版</strong>
   <p class="note">共有処理・患者情報連携・GitHub更新／計測値はモック</p>
 </header>
 
@@ -117,7 +117,7 @@ dialog p,dialog li{color:#c5cfd9;font-size:13px;line-height:1.8}.dialog-actions{
   <p id="test-label" class="share-warning" hidden>テスト用患者です。記録データはモックです。</p>
   <button id="patient-confirm-button" class="button button-primary" hidden>確認して記録画面へ</button>
   <button id="test-patient-button" class="button button-secondary" hidden>テスト用の患者情報で確認</button>
-  <p class="note">SomnoLog V10／V7・V8・V9の患者情報・履歴保存キーを継承します。</p>
+  <p class="note">SomnoLog V11／V7・V8・V9・V10の患者情報・履歴保存キーを継承します。</p>
 </main>
 
 <main id="capture-screen" class="screen" hidden>
@@ -136,7 +136,7 @@ dialog p,dialog li{color:#c5cfd9;font-size:13px;line-height:1.8}.dialog-actions{
         <div class="volume-label"><span>音量調整</span><output id="volume-value">0dB</output></div>
         <input id="volume-range" class="volume-range" type="range" min="-9" max="9" step="1" value="0">
         <div class="volume-scale"><span>−9 小さく</span><span>0</span><span>＋9 大きく</span></div>
-        <p class="note" style="margin-top:9px">記録中は音量を固定します。モック値の生成式はV7・V8と同じです。</p>
+        <p class="note" style="margin-top:9px">記録中は音量を固定します。モック値の生成式はV10と同じです。</p>
       </div>
     </div>
     <div class="meter">
@@ -204,9 +204,9 @@ dialog p,dialog li{color:#c5cfd9;font-size:13px;line-height:1.8}.dialog-actions{
 
 <dialog id="share-dialog">
   <h2>医師と共有</h2>
-  <p>患者情報と記録をZIPにまとめます。準備ができたら「共有画面を開く」を押してください。</p>
+  <p>この画面を開くと、アプリが患者情報と記録をZIPファイルにまとめます。ご自身でZIPを作る操作は不要です。</p>
   <div class="share-summary"><strong id="share-count">対象記録：0件</strong><p id="share-patient"></p><div id="share-filename" class="share-filename"></div></div>
-  <p class="share-warning">共有先はシステム画面で選びます。メールの場合は送信先アプリで送信を完了してください。共有できない場合は「診療所の窓口用に保存」でZIPを保存し、メールに手動添付できます。ZIPは暗号化されていません。</p>
+  <p class="share-warning">「共有画面を開く」で送信先アプリを選びます。メールの送信は選んだアプリで行ってください。共有できない場合は「診療所の窓口用に保存」でZIPを保存し、メールに手動添付できます。ZIPは暗号化されていません。検証にはテスト患者を使用してください。</p>
   <progress id="share-progress" class="progress" max="100" value="0" hidden></progress>
   <p id="share-status" class="note" style="margin-top:10px" aria-live="polite"></p>
   <div class="dialog-actions">
@@ -224,20 +224,20 @@ dialog p,dialog li{color:#c5cfd9;font-size:13px;line-height:1.8}.dialog-actions{
     <li>「記録開始」を押します。</li>
     <li>「停止」で終了します。履歴は停止時に保存します。</li>
     <li>カレンダーから日付・期間の記録を確認します。</li>
-    <li>共有画面を開くとZIPを準備します。準備完了後に「共有画面を開く」を押し、共有先を選びます。</li>
+    <li>「ログを医師と共有」または「この記録を医師と共有」を押すと、アプリが自動でZIPを作ります。</li>
+    <li>画面に「ZIPを作成しました」と表示されたら、「共有画面を開く」を押して送信先アプリを選びます。</li>
     <li>共有できない場合は「診療所の窓口用に保存」でZIPを保存し、メールアプリから手動添付します。</li>
     <li>GitHub更新欄で取得した版を確認し、記録などが終了してから更新を適用します。</li>
   </ol>
   <p class="note">この版の計測はモックです。OSへのマイク・センサー権限要求、実測、受付Gmailへの自動送信、受領計上は未実装です。診断用途には使用しないでください。検証にはテスト患者を使用してください。</p>
   <button class="button button-back" data-close-dialog>閉じる</button>
 </dialog>
-
 <dialog id="message-dialog"><h2 id="message-title"></h2><p id="message-body"></p><button class="button button-back" data-close-dialog>閉じる</button></dialog>
 
 <script>
 (() => {
   "use strict";
-  const VERSION="V10";
+  const VERSION="V11";
   const $=id=>document.getElementById(id);
   const pad=n=>String(n).padStart(2,"0");
   const dateKey=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
@@ -255,7 +255,7 @@ dialog p,dialog li{color:#c5cfd9;font-size:13px;line-height:1.8}.dialog-actions{
     return (h?`${h}<small>時間</small>`:"")+(h||m?`${m}<small>分</small>`:"")+`${s%60}<small>秒</small>`;
   }
 
-  // V7・V8・V9と同じ保存キーを使用する。
+  // V10以前と同じ保存キーを維持する。
   const PATIENT_KEY="SomnoLog.patient.v7";
   const fields=["clinicId","issueId","patientName","chartNo","plan"];
   let storageKey=null;
@@ -269,12 +269,8 @@ dialog p,dialog li{color:#c5cfd9;font-size:13px;line-height:1.8}.dialog-actions{
     sharingRecords:[],sharing:false,saving:false,unsaved:false,disposed:false,
     preparingShare:false
   };
-  const timers=new Set();
-  const timeouts=new Set();
-  const objectURLs=new Set();
-  let preparedShareFile=null;
-  let preparedShareRecords=null;
-  let sharePreparationToken=0;
+  const timers=new Set(),timeouts=new Set(),objectURLs=new Set();
+  let preparedShareFile=null,preparedShareRecords=null,sharePreparationToken=0;
 
   function interval(fn,ms){
     const id=setInterval(fn,ms);timers.add(id);return id;
@@ -621,58 +617,66 @@ dialog p,dialog li{color:#c5cfd9;font-size:13px;line-height:1.8}.dialog-actions{
     $("share-status").textContent=text;
   }
 
-  // V9から共有設計を維持：
-  // ZIPは共有ダイアログを開いた後に準備する。
-  // 実際の共有ボタンでは、ZIP生成・通信・awaitを挟まずshareを呼ぶ。
   function hasNativeShare(){
     return !!(window.NativeShare&&typeof window.NativeShare.shareFile==="function");
   }
-  function shareSupport(file){
+
+  // V11：ブラウザが共有関数を提供しているかだけ確認する。
+  // permissionsPolicy / featurePolicy / canShare の結果では停止しない。
+  // 実際の可否は、ユーザーのタップ内の navigator.share で確認する。
+  function shareSupport(){
     if(hasNativeShare())return {available:true,reason:""};
     if(!window.isSecureContext){
-      return {available:false,reason:"この実行環境ではHTTPSなどの安全なコンテキストが必要です。"};
+      return {available:false,reason:"この画面ではファイル共有に必要な安全な接続を確認できません。HTTPSの公開ページで試してください。"};
     }
     if(typeof navigator.share!=="function"){
-      return {available:false,reason:"この実行環境ではnavigator.shareを利用できません。"};
-    }
-    try{
-      const policy=document.permissionsPolicy||document.featurePolicy;
-      if(policy&&typeof policy.allowsFeature==="function"&&!policy.allowsFeature("web-share")){
-        return {available:false,reason:"このページの実行環境でWeb Shareが禁止されています。"};
-      }
-    }catch(_){}
-    if(typeof navigator.canShare==="function"){
-      try{
-        if(!navigator.canShare({files:[file]})){
-          return {
-            available:false,
-            reason:"navigator.canShareが今回のZIPに対してfalseを返しました。ブラウザ全体のZIP非対応と断定するものではありません。"
-          };
-        }
-      }catch(error){
-        return {
-          available:false,
-          reason:`今回のZIPの共有可否確認に失敗しました：${error.name}: ${error.message}`
-        };
-      }
+      return {available:false,reason:"このブラウザは、この画面に共有機能を提供していません。"};
     }
     return {available:true,reason:""};
   }
+
+  // 診断は実際の共有が失敗した後にのみ行う。共有前の停止条件には使わない。
+  function shareDiagnostics(file){
+    const rows=[
+      `版：SomnoLog ${VERSION}`,
+      `安全な接続：${window.isSecureContext?"あり":"なし"}`,
+      `共有関数：${typeof navigator.share==="function"?"あり":"なし"}`,
+      `ファイル：${file.name}（${file.size} bytes、${file.type}）`
+    ];
+    try{
+      if(typeof navigator.canShare==="function"){
+        rows.push(`canShare参考値：${navigator.canShare({files:[file]})}`);
+      }
+    }catch(error){rows.push(`canShare確認エラー：${error.name}`);}
+    try{
+      const policy=document.permissionsPolicy||document.featurePolicy;
+      // 未認識の機能名が false になる環境があるため、認識される場合のみ記録。
+      if(policy&&typeof policy.features==="function"&&typeof policy.allowsFeature==="function"){
+        if(Array.from(policy.features()).includes("web-share")){
+          rows.push(`web-shareポリシー参考値：${policy.allowsFeature("web-share")}`);
+        }else{
+          rows.push("web-shareポリシー：この環境の機能一覧にないため判定しません");
+        }
+      }
+    }catch(_){}
+    return rows.join("\n");
+  }
   function manualSendHelp(reason){
     return `${reason}\n\n`+
-      "代わりに次の手順で送れます。\n"+
+      "ZIPを保存して送る場合：\n"+
       "①「診療所の窓口用に保存」を押す\n"+
-      "② Gmailなどのメールアプリを開く\n"+
-      "③ ダウンロードフォルダーのZIPを添付する\n"+
+      "② 保存されたZIPを端末で確認する\n"+
+      "③ メールアプリを開き、そのZIPを添付する\n"+
       "④ 診療所から指定された宛先へ送信する\n\n"+
-      "この画面からの自動メール送信は行いません。";
+      "保存だけでは診療所へ送信されません。";
   }
   function refreshShareButtons(){
     const busy=state.sharing||state.saving||state.preparingShare;
-    $("share-start-button").disabled=busy||!preparedShareFile;
+    const support=shareSupport();
+    $("share-start-button").disabled=busy||!preparedShareFile||!support.available;
     $("clinic-download-button").disabled=busy||!preparedShareFile;
     $("share-cancel-button").disabled=state.sharing||state.saving;
-    $("share-start-button").textContent=state.sharing?"共有操作中…":"共有画面を開く";
+    $("share-start-button").textContent=state.preparingShare?"ZIPを作成中…":state.sharing?"共有操作中…":"共有画面を開く";
   }
   function clearSharePreparation(){
     sharePreparationToken++;
@@ -687,36 +691,32 @@ dialog p,dialog li{color:#c5cfd9;font-size:13px;line-height:1.8}.dialog-actions{
       showMessage("共有できる記録がありません","記録のある日付を選択してください。");
       return;
     }
-
-    // closeイベントの処理後に新しい共有対象を設定する。
     closeDialogs();
     state.sharingRecords=[...records];
-    preparedShareFile=null;
-    preparedShareRecords=null;
+    preparedShareFile=null;preparedShareRecords=null;
     state.preparingShare=true;
     const token=++sharePreparationToken;
 
     $("share-count").textContent=`対象記録：${records.length}件`;
     $("share-patient").textContent=patientText(records[0].patient);
     $("share-filename").textContent=shareFilename(records);
-    progress(10,"患者情報付きZIPを準備しています。");
+    progress(10,"アプリがZIPを作成しています。操作せずにお待ちください。");
     refreshShareButtons();
     $("share-dialog").showModal();
 
-    // ダイアログ描画後にZIPを生成。後の共有タップとは別の処理。
+    // ZIP作成は後の共有タップとは別に完了させる。
     later(()=>{
       if(token!==sharePreparationToken||!$("share-dialog").open)return;
       try{
         preparedShareFile=createShareFile(state.sharingRecords);
         preparedShareRecords=state.sharingRecords;
-        const support=shareSupport(preparedShareFile);
+        const support=shareSupport();
         const sizeKB=(preparedShareFile.size/1024).toFixed(1);
         progress(100,support.available
-          ? `ZIPの準備ができました（${sizeKB} KB）。\n「共有画面を開く」を押して送信先アプリを選んでください。`
-          : manualSendHelp(support.reason));
+          ? `ZIPを作成しました（${sizeKB} KB）。\n下の「共有画面を開く」を押してください。`
+          : manualSendHelp(`ZIPを作成しました（${sizeKB} KB）。\n${support.reason}`));
       }catch(error){
-        preparedShareFile=null;
-        preparedShareRecords=null;
+        preparedShareFile=null;preparedShareRecords=null;
         progress(0,`ZIPを作成できませんでした：${error.name}: ${error.message}`);
       }finally{
         state.preparingShare=false;
@@ -728,47 +728,53 @@ dialog p,dialog li{color:#c5cfd9;font-size:13px;line-height:1.8}.dialog-actions{
   async function shareWithSystem(records){
     if(state.sharing||state.saving||state.preparingShare||!records.length)return;
     if(!preparedShareFile||preparedShareRecords!==records){
-      progress(0,"共有するZIPを準備し直してください。一度閉じて共有画面を開き直してください。");
+      progress(0,"共有するZIPがありません。一度キャンセルして、共有画面を開き直してください。");
       return;
     }
-    const file=preparedShareFile;
-    const native=hasNativeShare();
-    if(!native){
-      const support=shareSupport(file);
-      if(!support.available){
-        progress(0,manualSendHelp(support.reason));return;
-      }
-      if(navigator.userActivation&&navigator.userActivation.isActive===false){
-        progress(0,"ユーザー操作の有効状態を確認できません。「共有画面を開く」を直接タップし直してください。");
-        return;
-      }
+    const file=preparedShareFile,native=hasNativeShare();
+    const support=shareSupport();
+    if(!support.available){
+      progress(0,manualSendHelp(support.reason));refreshShareButtons();return;
     }
 
     state.sharing=true;refreshShareButtons();
     try{
-      progress(70,"共有画面を開きます。");
+      progress(70,"送信先アプリを選ぶ画面を開いています。");
 
-      // この呼び出しより前にawait、通信、ZIP生成を入れない。
-      // 本文のみの共有に切り替えず、ZIPファイルだけを渡す。
+      // V11の修正箇所：
+      // この前に await・通信・ZIP生成・ポリシーによる停止を入れない。
+      // navigator.canShare や userActivation の値で事前に停止しない。
+      // ZIPファイルだけを、直接ユーザー操作の中で共有する。
       const operation=native
         ? window.NativeShare.shareFile(file)
         : navigator.share({files:[file]});
       await operation;
 
       progress(100,
-        "共有先アプリへの引き渡し操作が終了しました。\n"+
-        "メールの場合は、送信先アプリで送信を完了してください。\n"+
+        "共有操作が終了しました。\n"+
+        "メールの場合は、選んだアプリで送信を完了してください。\n"+
         "診療所への到着は、この画面では確認できません。");
     }catch(error){
       const name=error&&error.name?error.name:"Error";
       const detail=error&&error.message?error.message:"詳細なし";
       if(name==="AbortError"){
         progress(0,
-          `共有が中断されました。\n${name}: ${detail}\n\n`+
-          "キャンセル、または共有先が見つからなかった可能性があります。\n"+
-          "再度共有するか、「診療所の窓口用に保存」を利用してください。");
+          "共有が中断されました。\n"+
+          "キャンセルした、または利用できる共有先がなかった可能性があります。\n"+
+          "もう一度試すか、ZIPを保存してください。\n\n"+
+          `ブラウザの応答：${name}: ${detail}`);
       }else{
-        progress(0,manualSendHelp(`共有できませんでした。\n${name}: ${detail}`));
+        let explanation="ブラウザの共有機能を呼びましたが、共有画面を開けませんでした。";
+        if(name==="NotAllowedError"){
+          explanation="ブラウザが今回の共有要求を拒否しました。\n権限・ページの制限・操作の有効状態などが原因候補です。このエラーだけでは原因を一つに断定できません。";
+        }else if(name==="TypeError"){
+          explanation="ブラウザが今回のZIPファイルを共有用として受け付けませんでした。";
+        }else if(name==="InvalidStateError"){
+          explanation="ページの状態、または別の共有処理が原因で、今回の共有を開始できませんでした。";
+        }
+        progress(0,manualSendHelp(`${explanation}\n\nブラウザの応答：${name}: ${detail}`)+
+          "\n\n確認用情報（この部分も写るように画面写真を送ってください）：\n"+
+          shareDiagnostics(file));
       }
     }finally{
       state.sharing=false;refreshShareButtons();
@@ -892,8 +898,7 @@ dialog p,dialog li{color:#c5cfd9;font-size:13px;line-height:1.8}.dialog-actions{
   $("clinic-download-button").onclick=()=>saveForClinic(state.sharingRecords);
   $("share-cancel-button").onclick=()=>{
     if(!state.sharing&&!state.saving){
-      clearSharePreparation();
-      $("share-dialog").close();
+      clearSharePreparation();$("share-dialog").close();
     }
   };
   $("share-dialog").addEventListener("cancel",e=>{
@@ -901,7 +906,6 @@ dialog p,dialog li{color:#c5cfd9;font-size:13px;line-height:1.8}.dialog-actions{
     else clearSharePreparation();
   });
   $("share-dialog").addEventListener("close",()=>{
-    // 同一イベントループで再度開いた新しいダイアログは消さない。
     if(!$("share-dialog").open&&!state.sharing&&!state.saving)clearSharePreparation();
   });
   $("black-screen").addEventListener("pointerdown",e=>{
@@ -930,7 +934,7 @@ dialog p,dialog li{color:#c5cfd9;font-size:13px;line-height:1.8}.dialog-actions{
 <script>
 (() => {
   "use strict";
-  // 更新先を固定し、別リポジトリ・別アプリの誤適用を避ける。
+  // V10の更新先・取得検証・手動適用方式を維持する。
   const CONFIG=Object.freeze({
     owner:"matsuodentalassociation",repo:"ST-SCOPE",branch:"main",path:"index.html",
     publicURL:"https://matsuodentalassociation.github.io/ST-SCOPE/"
@@ -1073,7 +1077,6 @@ dialog p,dialog li{color:#c5cfd9;font-size:13px;line-height:1.8}.dialog-actions{
         throw new Error("この更新方式で確認できないスクリプト形式です。適用しません。");
       }
       try{
-        // 構文だけを検査する。候補コードはここでは実行しない。
         new Function(script.textContent);
       }catch(error){
         if(error.name==="SyntaxError"){
@@ -1087,8 +1090,7 @@ dialog p,dialog li{color:#c5cfd9;font-size:13px;line-height:1.8}.dialog-actions{
   async function check(manual=true){
     if(disposed||checking||applying)return;
     try{
-      ready();
-      requirePublicSite();
+      ready();requirePublicSite();
       if(!window.isSecureContext||!globalThis.crypto?.subtle){
         throw new Error("HTTPSの公開ページで更新確認してください。");
       }
@@ -1155,15 +1157,13 @@ dialog p,dialog li{color:#c5cfd9;font-size:13px;line-height:1.8}.dialog-actions{
   $("update-apply").onclick=()=>{
     if(!pending||checking||applying||disposed)return;
     try{
-      ready();
-      requirePublicSite();
+      ready();requirePublicSite();
       if(!confirm(`${pending.build} を適用しますか？\nコミット：${pending.commit.slice(0,12)}\n患者情報・履歴の保存領域は変更しません。適用後は患者情報を再確認してください。`)){
         return;
       }
       ready();requirePublicSite();app().prepareUpdate();
       const candidate=pending;
       applying=true;
-      // 更新先HTMLを実行するため、リポジトリの管理権限を厳格に保つこと。
       disposeUpdater();app().disposeForUpdate();
       window.__SomnoLogDynamicApplied={
         version:candidate.version,commit:candidate.commit,sha256:candidate.sha256
@@ -1179,14 +1179,12 @@ dialog p,dialog li{color:#c5cfd9;font-size:13px;line-height:1.8}.dialog-actions{
   $("update-reload").onclick=()=>{
     if(checking||applying||disposed)return;
     try{
-      ready();
-      requirePublicSite();
+      ready();requirePublicSite();
       if(!confirm("キャッシュ回避用のクエリを付けて、現在のURLを再読み込みしますか？\n動的適用中の版は、GitHub Pagesの配信版に切り替わります。")){
         return;
       }
       ready();requirePublicSite();app().prepareUpdate();
       const url=bust(location.href);
-      // 既存の患者クエリ・ハッシュを維持する。
       location.replace(url.href);
     }catch(error){status(`再読み込みできません。\n${error.message}`);}
   };
