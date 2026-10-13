@@ -7,9 +7,9 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <meta name="somnolog-app" content="SomnoLog">
-<meta name="somnolog-version" content="9">
-<meta name="somnolog-build" content="SomnoLog V9">
-<title>SomnoLog V9 test-1</title>
+<meta name="somnolog-version" content="10">
+<meta name="somnolog-build" content="SomnoLog V10 文字化け・更新先修正版">
+<title>SomnoLog V10 文字化け・更新先修正版</title>
 <style>
 :root{color-scheme:dark;--bg:#101419;--surface:#192029;--surface-3:#253c50;--line:#2f3b48;--line-strong:#506276;--text:#f0eee6;--muted:#aebbc9;--muted-2:#8392a2;--primary:#84b9cf;--primary-text:#10202a;--green:#bfdbd1;--yellow:#f3e7c9;--danger:#d8a6a1;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans JP",sans-serif}
 *{box-sizing:border-box}html,body{min-width:320px;min-height:100%;margin:0;background:var(--bg);color:var(--text)}
@@ -97,147 +97,147 @@ dialog p,dialog li{color:#c5cfd9;font-size:13px;line-height:1.8}.dialog-actions{
 </head>
 <body>
 <header class="version-bar">
-  <strong>SomnoLog V9</strong>
-  <p class="note">蜈ｱ譛牙・逅・ｿｮ豁｣迚医・謔｣閠・ュ蝣ｱ騾｣謳ｺ繝ｻGitHub譖ｴ譁ｰ・剰ｨ域ｸｬ蛟､縺ｯ繝｢繝・け</p>
+  <strong>SomnoLog V10 文字化け・更新先修正版</strong>
+  <p class="note">共有処理・患者情報連携・GitHub更新／計測値はモック</p>
 </header>
 
 <main id="patient-screen" class="screen">
   <header class="screen-header">
-    <div class="header-row"><h1>SomnoLog</h1><span class="badge">謔｣閠・ュ蝣ｱ</span></div>
-    <h2 id="patient-heading">謔｣閠・ュ蝣ｱ縺ｮ遒ｺ隱・/h2>
-    <p id="patient-hint" class="hint">險ｺ逋よ園縺九ｉ謠千､ｺ縺輔ｌ縺櫺R繧ｳ繝ｼ繝峨〒髢九＞縺ｦ縺上□縺輔＞縲・/p>
+    <div class="header-row"><h1>SomnoLog</h1><span class="badge">患者情報</span></div>
+    <h2 id="patient-heading">患者情報の確認</h2>
+    <p id="patient-hint" class="hint">診療所から提示されたQRコードで開いてください。</p>
   </header>
   <section id="patient-panel" class="panel" hidden>
-    <div class="summary-row"><span class="summary-label">謔｣閠・ｰ丞錐</span><strong id="display-patient-name" class="patient-value"></strong></div>
-    <div class="summary-row"><span class="summary-label">繧ｫ繝ｫ繝・o</span><span id="display-chart-no" class="patient-value"></span></div>
-    <div class="summary-row"><span class="summary-label">險ｺ逋よ園ID</span><span id="display-clinic-id" class="patient-value"></span></div>
-    <div class="summary-row"><span class="summary-label">蛻ｩ逕ｨ譁ｹ蠑・/span><span id="display-plan-type" class="patient-value"></span></div>
+    <div class="summary-row"><span class="summary-label">患者氏名</span><strong id="display-patient-name" class="patient-value"></strong></div>
+    <div class="summary-row"><span class="summary-label">カルテNo</span><span id="display-chart-no" class="patient-value"></span></div>
+    <div class="summary-row"><span class="summary-label">診療所ID</span><span id="display-clinic-id" class="patient-value"></span></div>
+    <div class="summary-row"><span class="summary-label">利用方式</span><span id="display-plan-type" class="patient-value"></span></div>
   </section>
   <p id="patient-error" class="empty-state" role="alert" hidden></p>
-  <p id="test-label" class="share-warning" hidden>繝・せ繝育畑謔｣閠・〒縺吶りｨ倬鹸繝・・繧ｿ縺ｯ繝｢繝・け縺ｧ縺吶・/p>
-  <button id="patient-confirm-button" class="button button-primary" hidden>遒ｺ隱阪＠縺ｦ險倬鹸逕ｻ髱｢縺ｸ</button>
-  <button id="test-patient-button" class="button button-secondary" hidden>繝・せ繝育畑縺ｮ謔｣閠・ュ蝣ｱ縺ｧ遒ｺ隱・/button>
-  <p class="note">SomnoLog V9・酬7繝ｻV8縺ｮ謔｣閠・ュ蝣ｱ繝ｻ螻･豁ｴ菫晏ｭ倥く繝ｼ繧堤ｶ呎価縺励∪縺吶・/p>
+  <p id="test-label" class="share-warning" hidden>テスト用患者です。記録データはモックです。</p>
+  <button id="patient-confirm-button" class="button button-primary" hidden>確認して記録画面へ</button>
+  <button id="test-patient-button" class="button button-secondary" hidden>テスト用の患者情報で確認</button>
+  <p class="note">SomnoLog V10／V7・V8・V9の患者情報・履歴保存キーを継承します。</p>
 </main>
 
 <main id="capture-screen" class="screen" hidden>
   <header class="screen-header">
-    <div class="header-row"><h1>SomnoLog</h1><span id="capture-status" class="badge">蠕・ｩ滉ｸｭ</span></div>
-    <p class="subtitle">蟆ｱ蟇昜ｸｭ縺ｮ髻ｳ蝨ｧ縺ｨ菴灘虚繧定ｨ倬鹸縺吶ｋUI縺ｧ縺吶・/p>
+    <div class="header-row"><h1>SomnoLog</h1><span id="capture-status" class="badge">待機中</span></div>
+    <p class="subtitle">就寝中の音圧と体動を記録するUIです。</p>
     <p id="capture-patient" class="hint"></p>
-    <p class="note">險域ｸｬ縺ｯ繝｢繝・け縺ｧ縺吶りｨｱ蜿ｯ繝懊ち繝ｳ縺ｯ讓｡謫ｬ迥ｶ諷九ｒ蛻・ｊ譖ｿ縺医＾S縺ｮ讓ｩ髯舌・隕∵ｱゅ＠縺ｾ縺帙ｓ縲１C縺ｧ繧ゆｽ灘虚繧呈怏蜉ｹ縺ｫ縺帙★險倬鹸髢句ｧ九〒縺阪∪縺吶・/p>
+    <p class="note">計測はモックです。許可ボタンは模擬状態を切り替え、OSの権限は要求しません。PCでも体動を有効にせず記録開始できます。</p>
   </header>
   <section class="meter-panel">
     <div class="meter">
-      <div id="microphone-title" class="meter-title">繝槭う繧ｯ</div>
+      <div id="microphone-title" class="meter-title">マイク</div>
       <div class="wave"><svg viewBox="0 0 320 72" preserveAspectRatio="none"><path d="M0 18H320M0 54H320" stroke="#202d3b" fill="none"/><path id="microphone-wave" d="M0 36H320" stroke="#7190a6" stroke-width="2" fill="none"/></svg></div>
-      <button id="microphone-button" class="permission-button">繝槭う繧ｯ繧定ｨｱ蜿ｯ・医Δ繝・け・・/button>
+      <button id="microphone-button" class="permission-button">マイクを許可（モック）</button>
       <div class="volume-box">
-        <div class="volume-label"><span>髻ｳ驥剰ｪｿ謨ｴ</span><output id="volume-value">0dB</output></div>
+        <div class="volume-label"><span>音量調整</span><output id="volume-value">0dB</output></div>
         <input id="volume-range" class="volume-range" type="range" min="-9" max="9" step="1" value="0">
-        <div class="volume-scale"><span>竏・ 蟆上＆縺・/span><span>0</span><span>・・ 螟ｧ縺阪￥</span></div>
-        <p class="note" style="margin-top:9px">險倬鹸荳ｭ縺ｯ髻ｳ驥上ｒ蝗ｺ螳壹＠縺ｾ縺吶ゅΔ繝・け蛟､縺ｮ逕滓・蠑上・V7繝ｻV8縺ｨ蜷後§縺ｧ縺吶・/p>
+        <div class="volume-scale"><span>−9 小さく</span><span>0</span><span>＋9 大きく</span></div>
+        <p class="note" style="margin-top:9px">記録中は音量を固定します。モック値の生成式はV7・V8と同じです。</p>
       </div>
     </div>
     <div class="meter">
-      <div id="motion-title" class="meter-title">菴灘虚</div>
+      <div id="motion-title" class="meter-title">体動</div>
       <div class="wave"><svg viewBox="0 0 320 72" preserveAspectRatio="none"><path d="M0 18H320M0 54H320" stroke="#202d3b" fill="none"/><path id="motion-wave" d="M0 36H320" stroke="#7190a6" stroke-width="2" fill="none"/></svg></div>
-      <button id="motion-button" class="permission-button">繝｢繝ｼ繧ｷ繝ｧ繝ｳ繧ｻ繝ｳ繧ｵ繝ｼ繧定ｨｱ蜿ｯ・医Δ繝・け繝ｻ莉ｻ諢擾ｼ・/button>
+      <button id="motion-button" class="permission-button">モーションセンサーを許可（モック・任意）</button>
     </div>
   </section>
   <section class="capture-actions">
-    <div class="button-row"><button id="start-button" class="button button-primary capture-button" disabled>險倬鹸髢句ｧ・/button><button id="stop-button" class="button button-dark capture-button" disabled>蛛懈ｭ｢</button></div>
-    <button id="black-button" class="button button-dark" disabled>鮟堤判髱｢縺ｫ蛻・ｊ譖ｿ縺・/button>
-    <button id="history-button" class="button button-secondary">螻･豁ｴ繧定ｦ九ｋ</button>
-    <button id="usage-button" class="button button-clinic">菴ｿ縺・婿繧定ｦ九ｋ</button>
+    <div class="button-row"><button id="start-button" class="button button-primary capture-button" disabled>記録開始</button><button id="stop-button" class="button button-dark capture-button" disabled>停止</button></div>
+    <button id="black-button" class="button button-dark" disabled>黒画面に切り替え</button>
+    <button id="history-button" class="button button-secondary">履歴を見る</button>
+    <button id="usage-button" class="button button-clinic">使い方を見る</button>
   </section>
 </main>
 
 <main id="result-screen" class="screen" hidden>
   <header class="screen-header">
-    <div class="header-row"><h1>SomnoLog</h1><span class="badge">險倬鹸邨ゆｺ・/span></div>
-    <h2>逹｡逵險倬鹸</h2><p id="result-patient" class="hint"></p>
-    <p id="result-range" class="record-range">險倬鹸縺ｪ縺・/p><p id="result-meta" class="note"></p>
+    <div class="header-row"><h1>SomnoLog</h1><span class="badge">記録終了</span></div>
+    <h2>睡眠記録</h2><p id="result-patient" class="hint"></p>
+    <p id="result-range" class="record-range">記録なし</p><p id="result-meta" class="note"></p>
   </header>
   <section class="panel">
-    <div class="summary-row"><span class="summary-label">險倬鹸譎る俣</span><span id="result-duration" class="summary-value">0<small>遘・/small></span></div>
+    <div class="summary-row"><span class="summary-label">記録時間</span><span id="result-duration" class="summary-value">0<small>秒</small></span></div>
     <p id="result-detail" class="note" style="margin-top:10px"></p>
-    <dl class="metrics"><dt>髻ｳ縺ｮ讀懷・譎る俣</dt><dd id="result-sound">0遘・/dd><dt>菴灘虚縺ｮ讀懷・譎る俣</dt><dd id="result-motion">0遘・/dd></dl>
+    <dl class="metrics"><dt>音の検出時間</dt><dd id="result-sound">0秒</dd><dt>体動の検出時間</dt><dd id="result-motion">0秒</dd></dl>
   </section>
-  <section class="stack"><button id="result-share-button" class="button button-primary">縺薙・險倬鹸繧貞現蟶ｫ縺ｨ蜈ｱ譛・/button><button id="result-calendar-button" class="button button-secondary">險倬鹸繧偵き繝ｬ繝ｳ繝繝ｼ縺ｫ險倬鹸</button></section>
-  <section class="screen-footer"><button id="result-back-button" class="button button-back">險倬鹸逕ｻ髱｢縺ｫ謌ｻ繧・/button><button class="button button-clinic" data-show-usage>菴ｿ縺・婿繧定ｦ九ｋ</button></section>
+  <section class="stack"><button id="result-share-button" class="button button-primary">この記録を医師と共有</button><button id="result-calendar-button" class="button button-secondary">記録をカレンダーに記録</button></section>
+  <section class="screen-footer"><button id="result-back-button" class="button button-back">記録画面に戻る</button><button class="button button-clinic" data-show-usage>使い方を見る</button></section>
 </main>
 
 <main id="calendar-screen" class="screen" hidden>
   <header class="screen-header">
-    <div class="header-row"><h1>SomnoLog</h1><span class="badge">菫晏ｭ倩ｨ倬鹸</span></div>
-    <h2>險倬鹸繧ｫ繝ｬ繝ｳ繝繝ｼ</h2><p class="subtitle">譛譁ｰ縺ｮ險倬鹸縲√∪縺溘・驕ｸ謚槭＠縺滓律莉倥・險倬鹸繧定｡ｨ遉ｺ縺励∪縺吶・/p>
+    <div class="header-row"><h1>SomnoLog</h1><span class="badge">保存記録</span></div>
+    <h2>記録カレンダー</h2><p class="subtitle">最新の記録、または選択した日付の記録を表示します。</p>
   </header>
   <section class="panel">
-    <div class="mode-switch"><button id="single-mode" class="is-active">1譌･</button><button id="range-mode">譛滄俣繧帝∈謚・/button></div>
+    <div class="mode-switch"><button id="single-mode" class="is-active">1日</button><button id="range-mode">期間を選択</button></div>
     <p id="calendar-hint" class="hint" style="margin-top:12px"></p>
-    <div class="month-navigation"><button id="previous-month" class="month-arrow" aria-label="蜑肴怦">窶ｹ</button><h3 id="month-title" class="month-title"></h3><button id="next-month" class="month-arrow" aria-label="鄙梧怦">窶ｺ</button></div>
-    <div class="weekdays"><span class="sun">譌･</span><span>譛・/span><span>轣ｫ</span><span>豌ｴ</span><span>譛ｨ</span><span>驥・/span><span class="sat">蝨・/span></div>
+    <div class="month-navigation"><button id="previous-month" class="month-arrow" aria-label="前月">‹</button><h3 id="month-title" class="month-title"></h3><button id="next-month" class="month-arrow" aria-label="翌月">›</button></div>
+    <div class="weekdays"><span class="sun">日</span><span>月</span><span>火</span><span>水</span><span>木</span><span>金</span><span class="sat">土</span></div>
     <div id="calendar-days" class="days"></div>
-    <div class="legend"><span class="record-dot"></span>菫晏ｭ倩ｨ倬鹸縺ゅｊ<span class="today-mark"></span>莉頑律</div>
-    <div id="range-tools" class="range-tools" hidden><span id="range-label" class="range-label">譛滄俣譛ｪ驕ｸ謚・/span><button id="reset-range" class="reset-button">驕ｸ縺ｳ逶ｴ縺・/button></div>
+    <div class="legend"><span class="record-dot"></span>保存記録あり<span class="today-mark"></span>今日</div>
+    <div id="range-tools" class="range-tools" hidden><span id="range-label" class="range-label">期間未選択</span><button id="reset-range" class="reset-button">選び直す</button></div>
   </section>
-  <section><h3 id="records-title" style="margin-bottom:11px">險倬鹸</h3><div id="record-list" class="stack"></div></section>
-  <section class="calendar-share-panel"><p class="calendar-share-description">驕ｸ謚槭＠縺滓律莉倥・譛滄俣縺ｮ繝ｭ繧ｰ繧貞現蟶ｫ縺ｨ蜈ｱ譛峨＠縺ｾ縺吶・/p><button id="calendar-share-button" class="button button-primary" disabled>繝ｭ繧ｰ繧貞現蟶ｫ縺ｨ蜈ｱ譛・/button></section>
-  <p class="note">蜷・ｨ倬鹸縺ｮ髢句ｧ九°繧牙●豁｢縺ｾ縺ｧ縺ｮ繝｢繝・け繝ｭ繧ｰ繧定｡ｨ遉ｺ縺励∪縺吶・/p>
-  <section class="screen-footer"><button id="calendar-back-button" class="button button-back">險倬鹸逕ｻ髱｢縺ｫ謌ｻ繧・/button><button class="button button-clinic" data-show-usage>菴ｿ縺・婿繧定ｦ九ｋ</button></section>
+  <section><h3 id="records-title" style="margin-bottom:11px">記録</h3><div id="record-list" class="stack"></div></section>
+  <section class="calendar-share-panel"><p class="calendar-share-description">選択した日付・期間のログを医師と共有します。</p><button id="calendar-share-button" class="button button-primary" disabled>ログを医師と共有</button></section>
+  <p class="note">各記録の開始から停止までのモックログを表示します。</p>
+  <section class="screen-footer"><button id="calendar-back-button" class="button button-back">記録画面に戻る</button><button class="button button-clinic" data-show-usage>使い方を見る</button></section>
 </main>
 
 <section id="update-panel" class="panel updater">
-  <h3>GitHub譖ｴ譁ｰ</h3>
-  <p class="note">matsuodentalassociation/sleep_track ・・main ・・index.html</p>
-  <p id="update-status" class="hint update-status" aria-live="polite">襍ｷ蜍墓凾縺ｫ譖ｴ譁ｰ繧堤｢ｺ隱阪＠縺ｾ縺吶・/p>
+  <h3>GitHub更新</h3>
+  <p class="note">matsuodentalassociation/ST-SCOPE ／ main ／ index.html</p>
+  <p id="update-status" class="hint update-status" aria-live="polite">起動時に更新を確認します。</p>
   <div class="stack" style="margin-top:12px">
-    <button id="update-check" class="button button-secondary">譖ｴ譁ｰ繧堤｢ｺ隱・/button>
-    <button id="update-apply" class="button button-primary" disabled>譖ｴ譁ｰ繧帝←逕ｨ</button>
-    <button id="update-reload" class="button button-back">繧ｭ繝｣繝・す繝･蝗樣∩縺ｧ蜀崎ｪｭ縺ｿ霎ｼ縺ｿ</button>
+    <button id="update-check" class="button button-secondary">更新を確認</button>
+    <button id="update-apply" class="button button-primary" disabled>更新を適用</button>
+    <button id="update-reload" class="button button-back">キャッシュ回避で再読み込み</button>
   </div>
-  <p class="note" style="margin-top:12px">襍ｷ蜍墓凾縺ｨ10蛻・＃縺ｨ縺ｫ遒ｺ隱阪＠縺ｾ縺吶ょ叙蠕玲凾縺ｯ繧ｭ繝｣繝・す繝･繧貞屓驕ｿ縺励∪縺吶よ峩譁ｰ縺ｯ謇句虚驕ｩ逕ｨ縺ｧ縲∬ｨ倬鹸繝ｻ菫晏ｭ倥・蜈ｱ譛我ｸｭ縺ｯ驕ｩ逕ｨ縺励∪縺帙ｓ縲ょ虚逧・←逕ｨ縺ｯ迴ｾ蝨ｨ縺ｮ繝壹・繧ｸ蜀・□縺代〒縺吶ょ・隱ｭ縺ｿ霎ｼ縺ｿ蠕後・迚医・GitHub Pages縺ｸ縺ｮ蜿肴丐迥ｶ豕√↓萓晏ｭ倥＠縺ｾ縺吶・/p>
+  <p class="note" style="margin-top:12px">起動時と10分ごとに確認します。取得時はキャッシュを回避します。更新は手動適用で、記録・保存・共有中は適用しません。動的適用は現在のページ内だけです。再読み込み後の版はGitHub Pagesへの反映状況に依存します。</p>
 </section>
 
-<section id="black-screen" hidden tabindex="0"><div class="black-inner"><time id="black-clock" class="black-clock">00:00</time><p class="black-help">逕ｻ髱｢繧・.5遘帝聞謚ｼ縺励☆繧九→謌ｻ繧翫∪縺・/p></div></section>
+<section id="black-screen" hidden tabindex="0"><div class="black-inner"><time id="black-clock" class="black-clock">00:00</time><p class="black-help">画面を1.5秒長押しすると戻ります</p></div></section>
 
 <dialog id="share-dialog">
-  <h2>蛹ｻ蟶ｫ縺ｨ蜈ｱ譛・/h2>
-  <p>謔｣閠・ュ蝣ｱ縺ｨ險倬鹸繧短IP縺ｫ縺ｾ縺ｨ繧√∪縺吶よｺ門ｙ縺後〒縺阪◆繧峨悟・譛臥判髱｢繧帝幕縺上阪ｒ謚ｼ縺励※縺上□縺輔＞縲・/p>
-  <div class="share-summary"><strong id="share-count">蟇ｾ雎｡險倬鹸・・莉ｶ</strong><p id="share-patient"></p><div id="share-filename" class="share-filename"></div></div>
-  <p class="share-warning">蜈ｱ譛牙・縺ｯ繧ｷ繧ｹ繝・Β逕ｻ髱｢縺ｧ驕ｸ縺ｳ縺ｾ縺吶ゅΓ繝ｼ繝ｫ縺ｮ蝣ｴ蜷医・騾∽ｿ｡蜈医い繝励Μ縺ｧ騾∽ｿ｡繧貞ｮ御ｺ・＠縺ｦ縺上□縺輔＞縲ょ・譛峨〒縺阪↑縺・ｴ蜷医・縲瑚ｨｺ逋よ園縺ｮ遯灘哨逕ｨ縺ｫ菫晏ｭ倥阪〒ZIP繧剃ｿ晏ｭ倥＠縲√Γ繝ｼ繝ｫ縺ｫ謇句虚豺ｻ莉倥〒縺阪∪縺吶・IP縺ｯ證怜捷蛹悶＆繧後※縺・∪縺帙ｓ縲・/p>
+  <h2>医師と共有</h2>
+  <p>患者情報と記録をZIPにまとめます。準備ができたら「共有画面を開く」を押してください。</p>
+  <div class="share-summary"><strong id="share-count">対象記録：0件</strong><p id="share-patient"></p><div id="share-filename" class="share-filename"></div></div>
+  <p class="share-warning">共有先はシステム画面で選びます。メールの場合は送信先アプリで送信を完了してください。共有できない場合は「診療所の窓口用に保存」でZIPを保存し、メールに手動添付できます。ZIPは暗号化されていません。</p>
   <progress id="share-progress" class="progress" max="100" value="0" hidden></progress>
   <p id="share-status" class="note" style="margin-top:10px" aria-live="polite"></p>
   <div class="dialog-actions">
-    <button id="share-start-button" class="button button-primary" disabled>蜈ｱ譛臥判髱｢繧帝幕縺・/button>
-    <button id="clinic-download-button" class="button button-clinic" disabled>險ｺ逋よ園縺ｮ遯灘哨逕ｨ縺ｫ菫晏ｭ・/button>
-    <button id="share-cancel-button" class="button button-back">繧ｭ繝｣繝ｳ繧ｻ繝ｫ</button>
+    <button id="share-start-button" class="button button-primary" disabled>共有画面を開く</button>
+    <button id="clinic-download-button" class="button button-clinic" disabled>診療所の窓口用に保存</button>
+    <button id="share-cancel-button" class="button button-back">キャンセル</button>
   </div>
 </dialog>
 
 <dialog id="usage-dialog">
-  <h2>菴ｿ縺・婿</h2>
+  <h2>使い方</h2>
   <ol>
-    <li>謔｣閠・ュ蝣ｱ繧堤｢ｺ隱阪＠縺ｾ縺吶・/li>
-    <li>繝槭う繧ｯ縺ｮ繝｢繝・け險ｱ蜿ｯ繝懊ち繝ｳ繧呈款縺励∪縺吶ゆｽ灘虚縺ｮ譛牙柑蛹悶・莉ｻ諢上〒縺吶・/li>
-    <li>縲瑚ｨ倬鹸髢句ｧ九阪ｒ謚ｼ縺励∪縺吶・/li>
-    <li>縲悟●豁｢縲阪〒邨ゆｺ・＠縺ｾ縺吶ょｱ･豁ｴ縺ｯ蛛懈ｭ｢譎ゅ↓菫晏ｭ倥＠縺ｾ縺吶・/li>
-    <li>繧ｫ繝ｬ繝ｳ繝繝ｼ縺九ｉ譌･莉倥・譛滄俣縺ｮ險倬鹸繧堤｢ｺ隱阪＠縺ｾ縺吶・/li>
-    <li>蜈ｱ譛臥判髱｢繧帝幕縺上→ZIP繧呈ｺ門ｙ縺励∪縺吶よｺ門ｙ螳御ｺ・ｾ後↓縲悟・譛臥判髱｢繧帝幕縺上阪ｒ謚ｼ縺励∝・譛牙・繧帝∈縺ｳ縺ｾ縺吶・/li>
-    <li>蜈ｱ譛峨〒縺阪↑縺・ｴ蜷医・縲瑚ｨｺ逋よ園縺ｮ遯灘哨逕ｨ縺ｫ菫晏ｭ倥阪〒ZIP繧剃ｿ晏ｭ倥＠縲√Γ繝ｼ繝ｫ繧｢繝励Μ縺九ｉ謇句虚豺ｻ莉倥＠縺ｾ縺吶・/li>
-    <li>GitHub譖ｴ譁ｰ谺・〒蜿門ｾ励＠縺溽沿繧堤｢ｺ隱阪＠縲∬ｨ倬鹸縺ｪ縺ｩ縺檎ｵゆｺ・＠縺ｦ縺九ｉ譖ｴ譁ｰ繧帝←逕ｨ縺励∪縺吶・/li>
+    <li>患者情報を確認します。</li>
+    <li>マイクのモック許可ボタンを押します。体動の有効化は任意です。</li>
+    <li>「記録開始」を押します。</li>
+    <li>「停止」で終了します。履歴は停止時に保存します。</li>
+    <li>カレンダーから日付・期間の記録を確認します。</li>
+    <li>共有画面を開くとZIPを準備します。準備完了後に「共有画面を開く」を押し、共有先を選びます。</li>
+    <li>共有できない場合は「診療所の窓口用に保存」でZIPを保存し、メールアプリから手動添付します。</li>
+    <li>GitHub更新欄で取得した版を確認し、記録などが終了してから更新を適用します。</li>
   </ol>
-  <p class="note">縺薙・迚医・險域ｸｬ縺ｯ繝｢繝・け縺ｧ縺吶０S縺ｸ縺ｮ繝槭う繧ｯ繝ｻ繧ｻ繝ｳ繧ｵ繝ｼ讓ｩ髯占ｦ∵ｱゅ∝ｮ滓ｸｬ縲∝女莉賂mail縺ｸ縺ｮ閾ｪ蜍暮∽ｿ｡縲∝女鬆倩ｨ井ｸ翫・譛ｪ螳溯｣・〒縺吶りｨｺ譁ｭ逕ｨ騾斐↓縺ｯ菴ｿ逕ｨ縺励↑縺・〒縺上□縺輔＞縲よ､懆ｨｼ縺ｫ縺ｯ繝・せ繝域ぅ閠・ｒ菴ｿ逕ｨ縺励※縺上□縺輔＞縲・/p>
-  <button class="button button-back" data-close-dialog>髢峨§繧・/button>
+  <p class="note">この版の計測はモックです。OSへのマイク・センサー権限要求、実測、受付Gmailへの自動送信、受領計上は未実装です。診断用途には使用しないでください。検証にはテスト患者を使用してください。</p>
+  <button class="button button-back" data-close-dialog>閉じる</button>
 </dialog>
 
-<dialog id="message-dialog"><h2 id="message-title"></h2><p id="message-body"></p><button class="button button-back" data-close-dialog>髢峨§繧・/button></dialog>
+<dialog id="message-dialog"><h2 id="message-title"></h2><p id="message-body"></p><button class="button button-back" data-close-dialog>閉じる</button></dialog>
 
 <script>
 (() => {
   "use strict";
-  const VERSION="V9";
+  const VERSION="V10";
   const $=id=>document.getElementById(id);
   const pad=n=>String(n).padStart(2,"0");
   const dateKey=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
@@ -248,14 +248,15 @@ dialog p,dialog li{color:#c5cfd9;font-size:13px;line-height:1.8}.dialog-actions{
 
   function simpleDuration(ms){
     const s=Math.max(0,Math.floor(ms/1000)),m=Math.floor(s/60);
-    return m?`${m}蛻・{s%60}遘蛋:`${s}遘蛋;
+    return m?`${m}分${s%60}秒`:`${s}秒`;
   }
   function durationHtml(ms){
     const s=Math.max(0,Math.floor(ms/1000)),h=Math.floor(s/3600),m=Math.floor(s%3600/60);
-    return (h?`${h}<small>譎る俣</small>`:"")+(h||m?`${m}<small>蛻・/small>`:"")+`${s%60}<small>遘・/small>`;
+    return (h?`${h}<small>時間</small>`:"")+(h||m?`${m}<small>分</small>`:"")+`${s%60}<small>秒</small>`;
   }
 
-  // V7繝ｻV8縺ｨ蜷後§菫晏ｭ倥く繝ｼ繧剃ｽｿ逕ｨ縺吶ｋ縲・  const PATIENT_KEY="SomnoLog.patient.v7";
+  // V7・V8・V9と同じ保存キーを使用する。
+  const PATIENT_KEY="SomnoLog.patient.v7";
   const fields=["clinicId","issueId","patientName","chartNo","plan"];
   let storageKey=null;
   const state={
@@ -284,10 +285,10 @@ dialog p,dialog li{color:#c5cfd9;font-size:13px;line-height:1.8}.dialog-actions{
   }
   function validatePatient(data){
     if(!data||fields.some(k=>typeof data[k]!=="string"||!data[k].trim())){
-      throw new Error("謔｣閠・ュ蝣ｱ縺後≠繧翫∪縺帙ｓ縲√∪縺溘・荳崎ｶｳ縺励※縺・∪縺吶りｨｺ逋よ園縺ｮQR繧ｳ繝ｼ繝峨ｒ隱ｭ縺ｿ逶ｴ縺励※縺上□縺輔＞縲・);
+      throw new Error("患者情報がありません、または不足しています。診療所のQRコードを読み直してください。");
     }
     if(!["per_use","subscription"].includes(data.plan)){
-      throw new Error("蛻ｩ逕ｨ譁ｹ蠑上ｒ遒ｺ隱阪〒縺阪∪縺帙ｓ縲・);
+      throw new Error("利用方式を確認できません。");
     }
     return Object.fromEntries(fields.map(k=>[k,data[k]]));
   }
@@ -309,7 +310,7 @@ dialog p,dialog li{color:#c5cfd9;font-size:13px;line-height:1.8}.dialog-actions{
     catch(_){return false;}
     finally{state.saving=false;}
   }
-  function patientText(p){return p?`${p.patientName} ・・繧ｫ繝ｫ繝・o・・{p.chartNo}`:"";}
+  function patientText(p){return p?`${p.patientName} ／ カルテNo：${p.chartNo}`:"";}
   function usePatient(data,isTest=false){
     state.patient=validatePatient(data);state.isTest=isTest;state.confirmed=false;
     storageKey=`SomnoLog.history.v7:${isTest?"test":"patient"}:${encodeURIComponent(state.patient.clinicId)}:${encodeURIComponent(state.patient.issueId)}`;
@@ -318,32 +319,32 @@ dialog p,dialog li{color:#c5cfd9;font-size:13px;line-height:1.8}.dialog-actions{
     $("patient-panel").hidden=false;$("patient-error").hidden=true;
     $("patient-confirm-button").hidden=false;$("test-patient-button").hidden=true;
     $("test-label").hidden=!isTest;
-    $("patient-heading").textContent="謔｣閠・ュ蝣ｱ縺ｮ遒ｺ隱・;
-    $("patient-hint").textContent="縺碑・霄ｫ縺ｮ豌丞錐縺ｨ繧ｫ繝ｫ繝・o縺ｧ縺ゅｋ縺薙→繧堤｢ｺ隱阪＠縺ｦ縺上□縺輔＞縲・;
+    $("patient-heading").textContent="患者情報の確認";
+    $("patient-hint").textContent="ご自身の氏名とカルテNoであることを確認してください。";
     $("display-patient-name").textContent=state.patient.patientName;
     $("display-chart-no").textContent=state.patient.chartNo;
     $("display-clinic-id").textContent=state.patient.clinicId;
-    $("display-plan-type").textContent=state.patient.plan==="subscription"?"繧ｵ繝悶せ繧ｯ繝ｪ繝励す繝ｧ繝ｳ":"蝗樊焚蛻ｶ";
+    $("display-plan-type").textContent=state.patient.plan==="subscription"?"サブスクリプション":"回数制";
     $("capture-patient").textContent=patientText(state.patient);
     renderCalendar();updateControls();
   }
   function initPatient(){
     const q=new URLSearchParams(location.search);
     try{
-      if(q.has("serial"))throw new Error("繧ｷ繝ｪ繧｢繝ｫ逡ｪ蜿ｷ譁ｹ蠑上・謗･邯壹・縺ｾ縺螳御ｺ・＠縺ｦ縺・∪縺帙ｓ縲・);
+      if(q.has("serial"))throw new Error("シリアル番号方式の接続はまだ完了していません。");
       if(fields.some(k=>q.has(k))){
         usePatient(Object.fromEntries(fields.map(k=>[k,q.get(k)])));return;
       }
       let saved=null;
       try{saved=sessionStorage.getItem(PATIENT_KEY);}catch(_){}
       if(saved){const p=JSON.parse(saved);usePatient(p.patient,p.isTest===true);return;}
-      throw new Error("險ｺ逋よ園縺九ｉ謠千､ｺ縺輔ｌ縺櫺R繧ｳ繝ｼ繝峨〒髢九＞縺ｦ縺上□縺輔＞縲・);
+      throw new Error("診療所から提示されたQRコードで開いてください。");
     }catch(error){
       state.patient=null;state.confirmed=false;state.history=[];
       try{sessionStorage.removeItem(PATIENT_KEY);}catch(_){}
       $("patient-panel").hidden=true;$("patient-confirm-button").hidden=true;
       $("patient-error").hidden=false;
-      $("patient-error").textContent=error instanceof SyntaxError?"菫晏ｭ俶ュ蝣ｱ繧定ｪｭ縺ｿ蜿悶ｌ縺ｾ縺帙ｓ縲２R繧ｳ繝ｼ繝峨ｒ隱ｭ縺ｿ逶ｴ縺励※縺上□縺輔＞縲・:error.message;
+      $("patient-error").textContent=error instanceof SyntaxError?"保存情報を読み取れません。QRコードを読み直してください。":error.message;
       $("test-patient-button").hidden=fields.some(k=>q.has(k))||q.has("serial");
     }
   }
@@ -367,7 +368,7 @@ dialog p,dialog li{color:#c5cfd9;font-size:13px;line-height:1.8}.dialog-actions{
     $("microphone-button").disabled=state.recording;$("motion-button").disabled=state.recording;
     $("volume-range").disabled=state.recording;
     $("history-button").disabled=state.recording||!state.confirmed;
-    $("capture-status").textContent=state.recording?"險倬鹸荳ｭ":"蠕・ｩ滉ｸｭ";
+    $("capture-status").textContent=state.recording?"記録中":"待機中";
   }
   function wave(amplitude,phase=0){
     const now=Date.now()/240;let p="";
@@ -381,8 +382,8 @@ dialog p,dialog li{color:#c5cfd9;font-size:13px;line-height:1.8}.dialog-actions{
     if(state.disposed)return;
     $("microphone-wave").setAttribute("d",state.microphone?wave(state.recording?24:8):"M0 36H320");
     $("motion-wave").setAttribute("d",state.motion?wave(state.recording?20:7,1.8):"M0 36H320");
-    $("microphone-title").textContent=state.recording?`繝槭う繧ｯ / 繝｢繝・け繝ｭ繧ｰ ${state.session.logs.length}轤ｹ`:`繝槭う繧ｯ / 髻ｳ驥・${dbText(state.gain)}`;
-    $("motion-title").textContent=state.recording?(state.motion?"菴灘虚 / 繝｢繝・け險倬鹸荳ｭ":"菴灘虚 / 辟｡蜉ｹ繝ｻ髻ｳ縺ｮ縺ｿ險倬鹸"):"菴灘虚";
+    $("microphone-title").textContent=state.recording?`マイク / モックログ ${state.session.logs.length}点`:`マイク / 音量 ${dbText(state.gain)}`;
+    $("motion-title").textContent=state.recording?(state.motion?"体動 / モック記録中":"体動 / 無効・音のみ記録"):"体動";
   }
   function createLog(elapsed){
     return {
@@ -422,17 +423,17 @@ dialog p,dialog li{color:#c5cfd9;font-size:13px;line-height:1.8}.dialog-actions{
     const saved=saveHistory();state.unsaved=!saved;
     updateControls();updateMeters();renderResult(state.currentSession);showScreen("result-screen");
     if(!saved){
-      showMessage("遶ｯ譛ｫ縺ｫ菫晏ｭ倥〒縺阪∪縺帙ｓ縺ｧ縺励◆","險倬鹸縺ｯ迴ｾ蝨ｨ縺ｮ逕ｻ髱｢縺ｫ谿九▲縺ｦ縺・∪縺吶る哩縺倥ｋ蜑阪↓ZIP繧貞屓蜿弱＠縺ｦ縺上□縺輔＞縲よ悴菫晏ｭ倩ｨ倬鹸縺後≠繧矩俣縺ｯ譖ｴ譁ｰ繧帝←逕ｨ縺ｧ縺阪∪縺帙ｓ縲・);
+      showMessage("端末に保存できませんでした","記録は現在の画面に残っています。閉じる前にZIPを回収してください。未保存記録がある間は更新を適用できません。");
     }
   }
   function renderResult(s){
     $("result-patient").textContent=patientText(s.patient);
-    $("result-range").textContent=`${dateText(s.startTimeMs)} 竊・${dateText(s.stopTimeMs)}`;
-    $("result-meta").textContent=`繝ｭ繧ｰ ${s.logs.length}轤ｹ / 髻ｳ驥剰ｪｿ謨ｴ ${dbText(s.gainDb)} / 繝｢繝・け繝・・繧ｿ`;
+    $("result-range").textContent=`${dateText(s.startTimeMs)} → ${dateText(s.stopTimeMs)}`;
+    $("result-meta").textContent=`ログ ${s.logs.length}点 / 音量調整 ${dbText(s.gainDb)} / モックデータ`;
     $("result-duration").innerHTML=durationHtml(s.durationMs);
     $("result-sound").textContent=simpleDuration(s.soundDetectedMs);
     $("result-motion").textContent=simpleDuration(s.motionDetectedMs);
-    $("result-detail").textContent="險倬鹸髢句ｧ九°繧芽ｨ倬鹸蛛懈ｭ｢縺ｾ縺ｧ縺ｮ繝｢繝・け繝ｭ繧ｰ繧定｡ｨ遉ｺ縺励※縺・∪縺吶・;
+    $("result-detail").textContent="記録開始から記録停止までのモックログを表示しています。";
   }
   function bounds(){
     return state.calendarMode==="single"?[state.selectedDate,state.selectedDate]:[state.rangeStart,state.rangeEnd];
@@ -448,19 +449,19 @@ dialog p,dialog li{color:#c5cfd9;font-size:13px;line-height:1.8}.dialog-actions{
     }).join(" ");
   }
   function graphMarkup(s,type){
-    const sound=type==="sound",title=sound?"髻ｳ蝨ｧ dBFS":"菴灘虚 g";
+    const sound=type==="sound",title=sound?"音圧 dBFS":"体動 g";
     const values=s.logs
       .filter(l=>sound?Number.isFinite(l.soundDbFS):Number.isFinite(l.motionG))
       .map(l=>Math.max(0,Math.min(1,sound?(l.soundDbFS+60)/40:l.motionG/.5)));
     if(!values.length){
-      return `<div class="empty-state">${sound?"髻ｳ蝨ｧ":"菴灘虚繧ｻ繝ｳ繧ｵ繝ｼ"}縺ｮ險倬鹸縺後≠繧翫∪縺帙ｓ縲・/div>`;
+      return `<div class="empty-state">${sound?"音圧":"体動センサー"}の記録がありません。</div>`;
     }
-    return `<div class="graph-label"><strong>${title}</strong><span>${sound?"竏・0縲懌・20":"0縲・.5"}</span></div>
-      <div class="chart"><svg viewBox="0 0 360 80" aria-label="${title}縺ｮ繧ｿ繧､繝繝ｩ繧､繝ｳ"><path d="M6 7H354M6 40H354M6 73H354" stroke="#263442" fill="none"/><path d="${linePath(values)}" stroke="${sound?"#84b9cf":"#bfdbd1"}" stroke-width="2" fill="none" vector-effect="non-scaling-stroke"/></svg></div>
-      <div class="chart-axis"><span>險倬鹸髢句ｧ・/span><span>${simpleDuration(s.durationMs)}</span><span>險倬鹸蛛懈ｭ｢</span></div>`;
+    return `<div class="graph-label"><strong>${title}</strong><span>${sound?"−60〜−20":"0〜0.5"}</span></div>
+      <div class="chart"><svg viewBox="0 0 360 80" aria-label="${title}のタイムライン"><path d="M6 7H354M6 40H354M6 73H354" stroke="#263442" fill="none"/><path d="${linePath(values)}" stroke="${sound?"#84b9cf":"#bfdbd1"}" stroke-width="2" fill="none" vector-effect="non-scaling-stroke"/></svg></div>
+      <div class="chart-axis"><span>記録開始</span><span>${simpleDuration(s.durationMs)}</span><span>記録停止</span></div>`;
   }
   function timelineMarkup(s){
-    return `<figure class="timeline"><div class="timeline-header"><figcaption class="timeline-title">險倬鹸繧ｿ繧､繝繝ｩ繧､繝ｳ</figcaption><span class="log-count">${s.logs.length}繝ｭ繧ｰ轤ｹ</span></div><div class="graph-block">${graphMarkup(s,"sound")}</div><div class="graph-block">${graphMarkup(s,"motion")}</div><div class="endpoint-row"><div>險倬鹸髢句ｧ・strong>${dateText(s.startTimeMs)}</strong></div><div>險倬鹸蛛懈ｭ｢<strong>${dateText(s.stopTimeMs)}</strong></div></div></figure>`;
+    return `<figure class="timeline"><div class="timeline-header"><figcaption class="timeline-title">記録タイムライン</figcaption><span class="log-count">${s.logs.length}ログ点</span></div><div class="graph-block">${graphMarkup(s,"sound")}</div><div class="graph-block">${graphMarkup(s,"motion")}</div><div class="endpoint-row"><div>記録開始<strong>${dateText(s.startTimeMs)}</strong></div><div>記録停止<strong>${dateText(s.stopTimeMs)}</strong></div></div></figure>`;
   }
   function openCalendar(from,preferred=null){
     state.screenBeforeCalendar=from;
@@ -471,17 +472,17 @@ dialog p,dialog li{color:#c5cfd9;font-size:13px;line-height:1.8}.dialog-actions{
       const d=new Date(s.startTimeMs);
       state.calendarMonth=new Date(d.getFullYear(),d.getMonth(),1);
     }else state.selectedDate=dateKey(new Date());
-    $("calendar-back-button").textContent=from==="result-screen"?"險倬鹸邨ゆｺ・判髱｢縺ｫ謌ｻ繧・:"險倬鹸逕ｻ髱｢縺ｫ謌ｻ繧・;
+    $("calendar-back-button").textContent=from==="result-screen"?"記録終了画面に戻る":"記録画面に戻る";
     renderCalendar();showScreen("calendar-screen");
   }
   function renderCalendar(){
     const y=state.calendarMonth.getFullYear(),m=state.calendarMonth.getMonth();
-    $("month-title").textContent=`${y}蟷ｴ${m+1}譛・;
+    $("month-title").textContent=`${y}年${m+1}月`;
     $("single-mode").classList.toggle("is-active",state.calendarMode==="single");
     $("range-mode").classList.toggle("is-active",state.calendarMode==="range");
-    $("calendar-hint").textContent=state.calendarMode==="single"?"譌･莉倥ｒ驕ｸ縺ｶ縺ｨ縲√◎縺ｮ譌･縺ｮ險倬鹸繧定｡ｨ遉ｺ縺励∪縺吶・:!state.rangeStart?"髢句ｧ区律繧帝∈繧薙〒縺上□縺輔＞縲・:!state.rangeEnd?"邨ゆｺ・律繧帝∈繧薙〒縺上□縺輔＞縲・:"驕ｸ謚樊悄髢薙・險倬鹸繧定｡ｨ遉ｺ縺励※縺・∪縺吶・;
+    $("calendar-hint").textContent=state.calendarMode==="single"?"日付を選ぶと、その日の記録を表示します。":!state.rangeStart?"開始日を選んでください。":!state.rangeEnd?"終了日を選んでください。":"選択期間の記録を表示しています。";
     $("range-tools").hidden=state.calendarMode!=="range";
-    $("range-label").textContent=state.rangeStart?`${state.rangeStart}縲・{state.rangeEnd||""}`:"譛滄俣譛ｪ驕ｸ謚・;
+    $("range-label").textContent=state.rangeStart?`${state.rangeStart}〜${state.rangeEnd||""}`:"期間未選択";
     const days=$("calendar-days");days.replaceChildren();
     for(let i=0;i<new Date(y,m,1).getDay();i++)days.append(document.createElement("span"));
     for(let n=1;n<=new Date(y,m+1,0).getDate();n++){
@@ -496,7 +497,7 @@ dialog p,dialog li{color:#c5cfd9;font-size:13px;line-height:1.8}.dialog-actions{
       if(selected)button.classList.add("selected");
       const has=state.history.some(s=>s.date===v);
       button.innerHTML=`<span>${n}</span><span class="record-dot${has?"":" empty"}"></span>`;
-      button.setAttribute("aria-label",`${v} 菫晏ｭ倩ｨ倬鹸${has?"縺ゅｊ":"縺ｪ縺・}`);
+      button.setAttribute("aria-label",`${v} 保存記録${has?"あり":"なし"}`);
       button.onclick=()=>{
         if(state.calendarMode==="single")state.selectedDate=v;
         else if(!state.rangeStart||state.rangeEnd){state.rangeStart=v;state.rangeEnd=null;}
@@ -514,18 +515,18 @@ dialog p,dialog li{color:#c5cfd9;font-size:13px;line-height:1.8}.dialog-actions{
   }
   function renderRecordList(){
     const records=selectedRecords(),[a,b]=bounds(),list=$("record-list");
-    $("records-title").textContent=a&&b?`${a}${a===b?"":`縲・{b}`}縺ｮ險倬鹸・・{records.length}莉ｶ・荏:"譌･莉倥ｒ驕ｸ謚槭＠縺ｦ縺上□縺輔＞";
+    $("records-title").textContent=a&&b?`${a}${a===b?"":`〜${b}`}の記録（${records.length}件）`:"日付を選択してください";
     list.replaceChildren();$("calendar-share-button").disabled=!records.length;
     if(!records.length){
       const empty=document.createElement("div");empty.className="empty-state";
-      empty.textContent="縺薙・譌･莉倥↓縺ｯ菫晏ｭ倥＆繧後◆險倬鹸縺後≠繧翫∪縺帙ｓ縲・;list.append(empty);return;
+      empty.textContent="この日付には保存された記録がありません。";list.append(empty);return;
     }
     records.forEach(s=>{
       const card=document.createElement("article");card.className="card";
-      card.innerHTML=`<p class="note">菫晏ｭ倩ｨ倬鹸 / 髻ｳ驥剰ｪｿ謨ｴ ${dbText(s.gainDb)} / 繝｢繝・け繝・・繧ｿ</p><p class="hint">${escapeHtml(patientText(s.patient))}</p>
-        <p style="margin-top:9px;color:#f3e7c9;font-size:13px;line-height:1.8">${dateText(s.startTimeMs)} 竊・${dateText(s.stopTimeMs)}</p>
-        <div class="summary-row" style="margin-top:13px"><span class="summary-label">險倬鹸譎る俣</span><span class="summary-value">${durationHtml(s.durationMs)}</span></div>
-        <p class="note" style="margin-top:9px">髻ｳ ${simpleDuration(s.soundDetectedMs)} / 菴灘虚 ${simpleDuration(s.motionDetectedMs)} / 谺貂ｬ ${simpleDuration(s.missingMs)}</p>${timelineMarkup(s)}`;
+      card.innerHTML=`<p class="note">保存記録 / 音量調整 ${dbText(s.gainDb)} / モックデータ</p><p class="hint">${escapeHtml(patientText(s.patient))}</p>
+        <p style="margin-top:9px;color:#f3e7c9;font-size:13px;line-height:1.8">${dateText(s.startTimeMs)} → ${dateText(s.stopTimeMs)}</p>
+        <div class="summary-row" style="margin-top:13px"><span class="summary-label">記録時間</span><span class="summary-value">${durationHtml(s.durationMs)}</span></div>
+        <p class="note" style="margin-top:9px">音 ${simpleDuration(s.soundDetectedMs)} / 体動 ${simpleDuration(s.motionDetectedMs)} / 欠測 ${simpleDuration(s.missingMs)}</p>${timelineMarkup(s)}`;
       card.tabIndex=0;
       const open=()=>{state.currentSession=s;renderResult(s);showScreen("result-screen");};
       card.onclick=open;
@@ -553,13 +554,13 @@ dialog p,dialog li{color:#c5cfd9;font-size:13px;line-height:1.8}.dialog-actions{
     return (crc^0xffffffff)>>>0;
   }
   function createZip(files){
-    if(files.length>65535)throw new Error("ZIP縺ｮ繝輔ぃ繧､繝ｫ謨ｰ荳企剞繧定ｶ・∴縺ｦ縺・∪縺吶よ悄髢薙ｒ遏ｭ縺上＠縺ｦ縺上□縺輔＞縲・);
+    if(files.length>65535)throw new Error("ZIPのファイル数上限を超えています。期間を短くしてください。");
     const encoder=new TextEncoder(),localParts=[],centralParts=[];let offset=0;
     files.forEach(f=>{
       const name=encoder.encode(f.name),data=encoder.encode(f.data),crc=crc32(data);
-      if(name.length>65535)throw new Error("ZIP蜀・・繝輔ぃ繧､繝ｫ蜷阪′髟ｷ縺吶℃縺ｾ縺吶・);
+      if(name.length>65535)throw new Error("ZIP内のファイル名が長すぎます。");
       if(offset+data.length+name.length+30>0xffffffff){
-        throw new Error("ZIP縺悟､ｧ縺阪☆縺弱∪縺吶よ悄髢薙ｒ遏ｭ縺上＠縺ｦ縺上□縺輔＞縲・);
+        throw new Error("ZIPが大きすぎます。期間を短くしてください。");
       }
       const local=concat(
         u32(0x04034b50),u16(20),u16(0x0800),u16(0),u16(0),u16(33),
@@ -573,7 +574,7 @@ dialog p,dialog li{color:#c5cfd9;font-size:13px;line-height:1.8}.dialog-actions{
       localParts.push(local);centralParts.push(central);offset+=local.length;
     });
     const size=centralParts.reduce((s,a)=>s+a.length,0);
-    if(offset+size+22>0xffffffff)throw new Error("ZIP縺悟､ｧ縺阪☆縺弱∪縺吶・);
+    if(offset+size+22>0xffffffff)throw new Error("ZIPが大きすぎます。");
     const end=concat(
       u32(0x06054b50),u16(0),u16(0),u16(files.length),u16(files.length),
       u32(size),u32(offset),u16(0)
@@ -582,12 +583,12 @@ dialog p,dialog li{color:#c5cfd9;font-size:13px;line-height:1.8}.dialog-actions{
   }
   function createZipFiles(records){
     if(!records.length||records.some(r=>!samePatient(r.patient,state.patient))){
-      throw new Error("蜈ｱ譛牙ｯｾ雎｡縺ｮ謔｣閠・ュ蝣ｱ縺御ｸ閾ｴ縺励∪縺帙ｓ縲・);
+      throw new Error("共有対象の患者情報が一致しません。");
     }
     const files=[
       {
         name:"README.txt",
-        data:`SomnoLog ${VERSION} 謔｣閠・ュ蝣ｱ騾｣謳ｺ迚・r\n險域ｸｬ繝・・繧ｿ縺ｯ繝｢繝・け・・imulation・峨〒縺吶・r\npatient.json 縺ｫ謔｣閠・・險ｺ逋よ園諠・ｱ繧呈ｼ邏阪＠縺ｦ縺・∪縺吶・r\n蜈ｱ譛峨・菫晏ｭ倥〒縺ｯ菴ｿ逕ｨ謨ｰ繧定ｨ井ｸ翫＠縺ｾ縺帙ｓ縲・r\nZIP縺ｯ證怜捷蛹悶＆繧後※縺・∪縺帙ｓ縲・r\n`
+        data:`SomnoLog ${VERSION} 患者情報連携版\r\n計測データはモック（simulation）です。\r\npatient.json に患者・診療所情報を格納しています。\r\n共有・保存では使用数を計上しません。\r\nZIPは暗号化されていません。\r\n`
       },
       {
         name:"patient.json",
@@ -620,21 +621,24 @@ dialog p,dialog li{color:#c5cfd9;font-size:13px;line-height:1.8}.dialog-actions{
     $("share-status").textContent=text;
   }
 
-  // V9蜈ｱ譛我ｿｮ豁｣・・  // ZIP縺ｯ蜈ｱ譛峨ム繧､繧｢繝ｭ繧ｰ繧帝幕縺・◆蠕後↓貅門ｙ縺吶ｋ縲・  // 螳滄圀縺ｮ蜈ｱ譛峨・繧ｿ繝ｳ縺ｧ縺ｯ縲〇IP逕滓・繝ｻ騾壻ｿ｡繝ｻawait繧呈検縺ｾ縺嘖hare繧貞他縺ｶ縲・  function hasNativeShare(){
+  // V9から共有設計を維持：
+  // ZIPは共有ダイアログを開いた後に準備する。
+  // 実際の共有ボタンでは、ZIP生成・通信・awaitを挟まずshareを呼ぶ。
+  function hasNativeShare(){
     return !!(window.NativeShare&&typeof window.NativeShare.shareFile==="function");
   }
   function shareSupport(file){
     if(hasNativeShare())return {available:true,reason:""};
     if(!window.isSecureContext){
-      return {available:false,reason:"縺薙・螳溯｡檎腸蠅・〒縺ｯHTTPS縺ｪ縺ｩ縺ｮ螳牙・縺ｪ繧ｳ繝ｳ繝・く繧ｹ繝医′蠢・ｦ√〒縺吶・};
+      return {available:false,reason:"この実行環境ではHTTPSなどの安全なコンテキストが必要です。"};
     }
     if(typeof navigator.share!=="function"){
-      return {available:false,reason:"縺薙・螳溯｡檎腸蠅・〒縺ｯnavigator.share繧貞茜逕ｨ縺ｧ縺阪∪縺帙ｓ縲・};
+      return {available:false,reason:"この実行環境ではnavigator.shareを利用できません。"};
     }
     try{
       const policy=document.permissionsPolicy||document.featurePolicy;
       if(policy&&typeof policy.allowsFeature==="function"&&!policy.allowsFeature("web-share")){
-        return {available:false,reason:"縺薙・繝壹・繧ｸ縺ｮ螳溯｡檎腸蠅・〒Web Share縺檎ｦ∵ｭ｢縺輔ｌ縺ｦ縺・∪縺吶・};
+        return {available:false,reason:"このページの実行環境でWeb Shareが禁止されています。"};
       }
     }catch(_){}
     if(typeof navigator.canShare==="function"){
@@ -642,13 +646,13 @@ dialog p,dialog li{color:#c5cfd9;font-size:13px;line-height:1.8}.dialog-actions{
         if(!navigator.canShare({files:[file]})){
           return {
             available:false,
-            reason:"navigator.canShare縺御ｻ雁屓縺ｮZIP縺ｫ蟇ｾ縺励※false繧定ｿ斐＠縺ｾ縺励◆縲ゅヶ繝ｩ繧ｦ繧ｶ蜈ｨ菴薙・ZIP髱槫ｯｾ蠢懊→譁ｭ螳壹☆繧九ｂ縺ｮ縺ｧ縺ｯ縺ゅｊ縺ｾ縺帙ｓ縲・
+            reason:"navigator.canShareが今回のZIPに対してfalseを返しました。ブラウザ全体のZIP非対応と断定するものではありません。"
           };
         }
       }catch(error){
         return {
           available:false,
-          reason:`莉雁屓縺ｮZIP縺ｮ蜈ｱ譛牙庄蜷ｦ遒ｺ隱阪↓螟ｱ謨励＠縺ｾ縺励◆・・{error.name}: ${error.message}`
+          reason:`今回のZIPの共有可否確認に失敗しました：${error.name}: ${error.message}`
         };
       }
     }
@@ -656,19 +660,19 @@ dialog p,dialog li{color:#c5cfd9;font-size:13px;line-height:1.8}.dialog-actions{
   }
   function manualSendHelp(reason){
     return `${reason}\n\n`+
-      "莉｣繧上ｊ縺ｫ谺｡縺ｮ謇矩・〒騾√ｌ縺ｾ縺吶・n"+
-      "竭縲瑚ｨｺ逋よ園縺ｮ遯灘哨逕ｨ縺ｫ菫晏ｭ倥阪ｒ謚ｼ縺兔n"+
-      "竭｡ Gmail縺ｪ縺ｩ縺ｮ繝｡繝ｼ繝ｫ繧｢繝励Μ繧帝幕縺十n"+
-      "竭｢ 繝繧ｦ繝ｳ繝ｭ繝ｼ繝峨ヵ繧ｩ繝ｫ繝繝ｼ縺ｮZIP繧呈ｷｻ莉倥☆繧欺n"+
-      "竭｣ 險ｺ逋よ園縺九ｉ謖・ｮ壹＆繧後◆螳帛・縺ｸ騾∽ｿ｡縺吶ｋ\n\n"+
-      "縺薙・逕ｻ髱｢縺九ｉ縺ｮ閾ｪ蜍輔Γ繝ｼ繝ｫ騾∽ｿ｡縺ｯ陦後＞縺ｾ縺帙ｓ縲・;
+      "代わりに次の手順で送れます。\n"+
+      "①「診療所の窓口用に保存」を押す\n"+
+      "② Gmailなどのメールアプリを開く\n"+
+      "③ ダウンロードフォルダーのZIPを添付する\n"+
+      "④ 診療所から指定された宛先へ送信する\n\n"+
+      "この画面からの自動メール送信は行いません。";
   }
   function refreshShareButtons(){
     const busy=state.sharing||state.saving||state.preparingShare;
     $("share-start-button").disabled=busy||!preparedShareFile;
     $("clinic-download-button").disabled=busy||!preparedShareFile;
     $("share-cancel-button").disabled=state.sharing||state.saving;
-    $("share-start-button").textContent=state.sharing?"蜈ｱ譛画桃菴應ｸｭ窶ｦ":"蜈ｱ譛臥判髱｢繧帝幕縺・;
+    $("share-start-button").textContent=state.sharing?"共有操作中…":"共有画面を開く";
   }
   function clearSharePreparation(){
     sharePreparationToken++;
@@ -680,25 +684,27 @@ dialog p,dialog li{color:#c5cfd9;font-size:13px;line-height:1.8}.dialog-actions{
   function openShareDialog(records){
     if(!state.confirmed||state.sharing||state.saving)return;
     if(!records.length){
-      showMessage("蜈ｱ譛峨〒縺阪ｋ險倬鹸縺後≠繧翫∪縺帙ｓ","險倬鹸縺ｮ縺ゅｋ譌･莉倥ｒ驕ｸ謚槭＠縺ｦ縺上□縺輔＞縲・);
+      showMessage("共有できる記録がありません","記録のある日付を選択してください。");
       return;
     }
 
-    // close繧､繝吶Φ繝医・蜃ｦ逅・ｾ後↓譁ｰ縺励＞蜈ｱ譛牙ｯｾ雎｡繧定ｨｭ螳壹☆繧九・    closeDialogs();
+    // closeイベントの処理後に新しい共有対象を設定する。
+    closeDialogs();
     state.sharingRecords=[...records];
     preparedShareFile=null;
     preparedShareRecords=null;
     state.preparingShare=true;
     const token=++sharePreparationToken;
 
-    $("share-count").textContent=`蟇ｾ雎｡險倬鹸・・{records.length}莉ｶ`;
+    $("share-count").textContent=`対象記録：${records.length}件`;
     $("share-patient").textContent=patientText(records[0].patient);
     $("share-filename").textContent=shareFilename(records);
-    progress(10,"謔｣閠・ュ蝣ｱ莉倥″ZIP繧呈ｺ門ｙ縺励※縺・∪縺吶・);
+    progress(10,"患者情報付きZIPを準備しています。");
     refreshShareButtons();
     $("share-dialog").showModal();
 
-    // 繝繧､繧｢繝ｭ繧ｰ謠冗判蠕後↓ZIP繧堤函謌舌ょｾ後・蜈ｱ譛峨ち繝・・縺ｨ縺ｯ蛻･縺ｮ蜃ｦ逅・・    later(()=>{
+    // ダイアログ描画後にZIPを生成。後の共有タップとは別の処理。
+    later(()=>{
       if(token!==sharePreparationToken||!$("share-dialog").open)return;
       try{
         preparedShareFile=createShareFile(state.sharingRecords);
@@ -706,12 +712,12 @@ dialog p,dialog li{color:#c5cfd9;font-size:13px;line-height:1.8}.dialog-actions{
         const support=shareSupport(preparedShareFile);
         const sizeKB=(preparedShareFile.size/1024).toFixed(1);
         progress(100,support.available
-          ? `ZIP縺ｮ貅門ｙ縺後〒縺阪∪縺励◆・・{sizeKB} KB・峨・n縲悟・譛臥判髱｢繧帝幕縺上阪ｒ謚ｼ縺励※騾∽ｿ｡蜈医い繝励Μ繧帝∈繧薙〒縺上□縺輔＞縲Ａ
+          ? `ZIPの準備ができました（${sizeKB} KB）。\n「共有画面を開く」を押して送信先アプリを選んでください。`
           : manualSendHelp(support.reason));
       }catch(error){
         preparedShareFile=null;
         preparedShareRecords=null;
-        progress(0,`ZIP繧剃ｽ懈・縺ｧ縺阪∪縺帙ｓ縺ｧ縺励◆・・{error.name}: ${error.message}`);
+        progress(0,`ZIPを作成できませんでした：${error.name}: ${error.message}`);
       }finally{
         state.preparingShare=false;
         refreshShareButtons();
@@ -722,7 +728,7 @@ dialog p,dialog li{color:#c5cfd9;font-size:13px;line-height:1.8}.dialog-actions{
   async function shareWithSystem(records){
     if(state.sharing||state.saving||state.preparingShare||!records.length)return;
     if(!preparedShareFile||preparedShareRecords!==records){
-      progress(0,"蜈ｱ譛峨☆繧技IP繧呈ｺ門ｙ縺礼峩縺励※縺上□縺輔＞縲ゆｸ蠎ｦ髢峨§縺ｦ蜈ｱ譛臥判髱｢繧帝幕縺咲峩縺励※縺上□縺輔＞縲・);
+      progress(0,"共有するZIPを準備し直してください。一度閉じて共有画面を開き直してください。");
       return;
     }
     const file=preparedShareFile;
@@ -733,34 +739,36 @@ dialog p,dialog li{color:#c5cfd9;font-size:13px;line-height:1.8}.dialog-actions{
         progress(0,manualSendHelp(support.reason));return;
       }
       if(navigator.userActivation&&navigator.userActivation.isActive===false){
-        progress(0,"繝ｦ繝ｼ繧ｶ繝ｼ謫堺ｽ懊・譛牙柑迥ｶ諷九ｒ遒ｺ隱阪〒縺阪∪縺帙ｓ縲ゅ悟・譛臥判髱｢繧帝幕縺上阪ｒ逶ｴ謗･繧ｿ繝・・縺礼峩縺励※縺上□縺輔＞縲・);
+        progress(0,"ユーザー操作の有効状態を確認できません。「共有画面を開く」を直接タップし直してください。");
         return;
       }
     }
 
     state.sharing=true;refreshShareButtons();
     try{
-      progress(70,"蜈ｱ譛臥判髱｢繧帝幕縺阪∪縺吶・);
+      progress(70,"共有画面を開きます。");
 
-      // 縺薙・蜻ｼ縺ｳ蜃ｺ縺励ｈ繧雁燕縺ｫawait縲・壻ｿ｡縲〇IP逕滓・繧貞・繧後↑縺・・      // 譛ｬ譁・・縺ｿ縺ｮ蜈ｱ譛峨↓蛻・ｊ譖ｿ縺医★縲〇IP繝輔ぃ繧､繝ｫ縺縺代ｒ貂｡縺吶・      const operation=native
+      // この呼び出しより前にawait、通信、ZIP生成を入れない。
+      // 本文のみの共有に切り替えず、ZIPファイルだけを渡す。
+      const operation=native
         ? window.NativeShare.shareFile(file)
         : navigator.share({files:[file]});
       await operation;
 
       progress(100,
-        "蜈ｱ譛牙・繧｢繝励Μ縺ｸ縺ｮ蠑輔″貂｡縺玲桃菴懊′邨ゆｺ・＠縺ｾ縺励◆縲・n"+
-        "繝｡繝ｼ繝ｫ縺ｮ蝣ｴ蜷医・縲・∽ｿ｡蜈医い繝励Μ縺ｧ騾∽ｿ｡繧貞ｮ御ｺ・＠縺ｦ縺上□縺輔＞縲・n"+
-        "險ｺ逋よ園縺ｸ縺ｮ蛻ｰ逹縺ｯ縲√％縺ｮ逕ｻ髱｢縺ｧ縺ｯ遒ｺ隱阪〒縺阪∪縺帙ｓ縲・);
+        "共有先アプリへの引き渡し操作が終了しました。\n"+
+        "メールの場合は、送信先アプリで送信を完了してください。\n"+
+        "診療所への到着は、この画面では確認できません。");
     }catch(error){
       const name=error&&error.name?error.name:"Error";
-      const detail=error&&error.message?error.message:"隧ｳ邏ｰ縺ｪ縺・;
+      const detail=error&&error.message?error.message:"詳細なし";
       if(name==="AbortError"){
         progress(0,
-          `蜈ｱ譛峨′荳ｭ譁ｭ縺輔ｌ縺ｾ縺励◆縲・n${name}: ${detail}\n\n`+
-          "繧ｭ繝｣繝ｳ繧ｻ繝ｫ縲√∪縺溘・蜈ｱ譛牙・縺瑚ｦ九▽縺九ｉ縺ｪ縺九▲縺溷庄閭ｽ諤ｧ縺後≠繧翫∪縺吶・n"+
-          "蜀榊ｺｦ蜈ｱ譛峨☆繧九°縲√瑚ｨｺ逋よ園縺ｮ遯灘哨逕ｨ縺ｫ菫晏ｭ倥阪ｒ蛻ｩ逕ｨ縺励※縺上□縺輔＞縲・);
+          `共有が中断されました。\n${name}: ${detail}\n\n`+
+          "キャンセル、または共有先が見つからなかった可能性があります。\n"+
+          "再度共有するか、「診療所の窓口用に保存」を利用してください。");
       }else{
-        progress(0,manualSendHelp(`蜈ｱ譛峨〒縺阪∪縺帙ｓ縺ｧ縺励◆縲・n${name}: ${detail}`));
+        progress(0,manualSendHelp(`共有できませんでした。\n${name}: ${detail}`));
       }
     }finally{
       state.sharing=false;refreshShareButtons();
@@ -777,13 +785,13 @@ dialog p,dialog li{color:#c5cfd9;font-size:13px;line-height:1.8}.dialog-actions{
       a.href=url;a.download=file.name;document.body.append(a);a.click();a.remove();
       later(()=>{URL.revokeObjectURL(url);objectURLs.delete(url);},60000);
       progress(100,
-        "ZIP縺ｮ菫晏ｭ倥ｒ髢句ｧ九＠縺ｾ縺励◆縲・n"+
-        `繝輔ぃ繧､繝ｫ蜷搾ｼ・{file.name}\n\n`+
-        "遶ｯ譛ｫ縺ｮ菫晏ｭ伜・縺ｨ繝輔ぃ繧､繝ｫ繧堤｢ｺ隱阪＠縺ｦ縺上□縺輔＞縲・n"+
-        "繝｡繝ｼ繝ｫ縺ｧ騾√ｋ蝣ｴ蜷医・縲√Γ繝ｼ繝ｫ繧｢繝励Μ縺九ｉ縺薙・ZIP繧呈ｷｻ莉倥＠縺ｦ縺上□縺輔＞縲・n"+
-        "菫晏ｭ倥□縺代〒縺ｯ險ｺ逋よ園縺ｸ騾∽ｿ｡縺輔ｌ縺ｾ縺帙ｓ縲・);
+        "ZIPの保存を開始しました。\n"+
+        `ファイル名：${file.name}\n\n`+
+        "端末の保存先とファイルを確認してください。\n"+
+        "メールで送る場合は、メールアプリからこのZIPを添付してください。\n"+
+        "保存だけでは診療所へ送信されません。");
     }catch(error){
-      progress(0,`菫晏ｭ倥〒縺阪∪縺帙ｓ縺ｧ縺励◆・・{error.name}: ${error.message}`);
+      progress(0,`保存できませんでした：${error.name}: ${error.message}`);
     }finally{
       state.saving=false;refreshShareButtons();
     }
@@ -807,10 +815,10 @@ dialog p,dialog li{color:#c5cfd9;font-size:13px;line-height:1.8}.dialog-actions{
     return state.recording||state.saving||state.sharing||state.preparingShare||!!document.querySelector("dialog[open]");
   }
   function prepareUpdate(){
-    if(isUpdateBusy())throw new Error("險倬鹸繝ｻ菫晏ｭ倥・蜈ｱ譛峨・繝繧､繧｢繝ｭ繧ｰ繧堤ｵゆｺ・＠縺ｦ縺上□縺輔＞縲・);
+    if(isUpdateBusy())throw new Error("記録・保存・共有・ダイアログを終了してください。");
     if(state.unsaved){
       if(!saveHistory()){
-        throw new Error("譛ｪ菫晏ｭ倩ｨ倬鹸縺後≠繧翫∪縺吶・IP繧貞屓蜿弱＠縲∫ｫｯ譛ｫ菫晏ｭ倥・蝠城｡後ｒ隗｣豸医☆繧九∪縺ｧ譖ｴ譁ｰ縺ｧ縺阪∪縺帙ｓ縲・);
+        throw new Error("未保存記録があります。ZIPを回収し、端末保存の問題を解消するまで更新できません。");
       }
       state.unsaved=false;
     }
@@ -833,7 +841,7 @@ dialog p,dialog li{color:#c5cfd9;font-size:13px;line-height:1.8}.dialog-actions{
 
   $("test-patient-button").onclick=()=>usePatient({
     clinicId:"TEST-CLINIC",issueId:"TEST-ISSUE-001",
-    patientName:"繝・せ繝域ぅ閠・,chartNo:"TEST-0001",plan:"per_use"
+    patientName:"テスト患者",chartNo:"TEST-0001",plan:"per_use"
   },true);
   $("patient-confirm-button").onclick=()=>{
     if(!state.patient)return;
@@ -841,13 +849,13 @@ dialog p,dialog li{color:#c5cfd9;font-size:13px;line-height:1.8}.dialog-actions{
   };
   $("microphone-button").onclick=()=>{
     if(state.recording)return;state.microphone=!state.microphone;
-    $("microphone-button").textContent=state.microphone?"繝槭う繧ｯ險ｱ蜿ｯ貂医∩・医Δ繝・け・・:"繝槭う繧ｯ繧定ｨｱ蜿ｯ・医Δ繝・け・・;
+    $("microphone-button").textContent=state.microphone?"マイク許可済み（モック）":"マイクを許可（モック）";
     $("microphone-button").classList.toggle("is-enabled",state.microphone);
     updateControls();updateMeters();
   };
   $("motion-button").onclick=()=>{
     if(state.recording)return;state.motion=!state.motion;
-    $("motion-button").textContent=state.motion?"繝｢繝ｼ繧ｷ繝ｧ繝ｳ繧ｻ繝ｳ繧ｵ繝ｼ險ｱ蜿ｯ貂医∩・医Δ繝・け・・:"繝｢繝ｼ繧ｷ繝ｧ繝ｳ繧ｻ繝ｳ繧ｵ繝ｼ繧定ｨｱ蜿ｯ・医Δ繝・け繝ｻ莉ｻ諢擾ｼ・;
+    $("motion-button").textContent=state.motion?"モーションセンサー許可済み（モック）":"モーションセンサーを許可（モック・任意）";
     $("motion-button").classList.toggle("is-enabled",state.motion);updateMeters();
   };
   $("volume-range").oninput=e=>{
@@ -893,7 +901,8 @@ dialog p,dialog li{color:#c5cfd9;font-size:13px;line-height:1.8}.dialog-actions{
     else clearSharePreparation();
   });
   $("share-dialog").addEventListener("close",()=>{
-    // 蜷御ｸ繧､繝吶Φ繝医Ν繝ｼ繝励〒蜀榊ｺｦ髢九＞縺滓眠縺励＞繝繧､繧｢繝ｭ繧ｰ縺ｯ豸医＆縺ｪ縺・・    if(!$("share-dialog").open&&!state.sharing&&!state.saving)clearSharePreparation();
+    // 同一イベントループで再度開いた新しいダイアログは消さない。
+    if(!$("share-dialog").open&&!state.sharing&&!state.saving)clearSharePreparation();
   });
   $("black-screen").addEventListener("pointerdown",e=>{
     e.preventDefault();if(state.blackHolding)return;state.blackHolding=true;
@@ -921,9 +930,10 @@ dialog p,dialog li{color:#c5cfd9;font-size:13px;line-height:1.8}.dialog-actions{
 <script>
 (() => {
   "use strict";
-  // 譖ｴ譁ｰ蜈医ｒ蝗ｺ螳壹＠縲∝挨繝ｪ繝昴ず繝医Μ繝ｻ蛻･繧｢繝励Μ縺ｮ隱､驕ｩ逕ｨ繧帝∩縺代ｋ縲・  const CONFIG=Object.freeze({
-    owner:"matsuodentalassociation",repo:"sleep_track",branch:"main",path:"index.html",
-    publicURL:"https://matsuodentalassociation.github.io/sleep_track/"
+  // 更新先を固定し、別リポジトリ・別アプリの誤適用を避ける。
+  const CONFIG=Object.freeze({
+    owner:"matsuodentalassociation",repo:"ST-SCOPE",branch:"main",path:"index.html",
+    publicURL:"https://matsuodentalassociation.github.io/ST-SCOPE/"
   });
   const LIMIT=2*1024*1024;
   const $=id=>document.getElementById(id);
@@ -938,9 +948,17 @@ dialog p,dialog li{color:#c5cfd9;font-size:13px;line-height:1.8}.dialog-actions{
   function ready(){
     const a=app();
     if(!a||a.updateBridgeVersion!==1||typeof a.prepareUpdate!=="function"||typeof a.disposeForUpdate!=="function"){
-      throw new Error("繧｢繝励Μ縺ｮ譖ｴ譁ｰ騾｣謳ｺ蜃ｦ逅・ｒ遒ｺ隱阪〒縺阪∪縺帙ｓ縲・);
+      throw new Error("アプリの更新連携処理を確認できません。");
     }
-    if(a.isUpdateBusy())throw new Error("險倬鹸繝ｻ菫晏ｭ倥・蜈ｱ譛峨・繝繧､繧｢繝ｭ繧ｰ繧堤ｵゆｺ・＠縺ｦ縺上□縺輔＞縲・);
+    if(a.isUpdateBusy())throw new Error("記録・保存・共有・ダイアログを終了してください。");
+  }
+  function requirePublicSite(){
+    const expected=new URL(CONFIG.publicURL);
+    if(location.origin!==expected.origin||
+      !(location.pathname===expected.pathname||
+        location.pathname===expected.pathname+CONFIG.path)){
+      throw new Error("更新確認・適用はST-SCOPEの公開ページで行ってください。ローカルファイルや別サイトでは適用しません。");
+    }
   }
   function bust(value){
     const url=new URL(value);
@@ -958,16 +976,16 @@ dialog p,dialog li{color:#c5cfd9;font-size:13px;line-height:1.8}.dialog-actions{
       });
       if(!response.ok){
         if(response.status===403||response.status===429){
-          throw new Error("GitHub API蛻ｶ髯舌〒縺吶よ凾髢薙ｒ鄂ｮ縺・※蜀咲｢ｺ隱阪＠縺ｦ縺上□縺輔＞縲・);
+          throw new Error("GitHub API制限です。時間を置いて再確認してください。");
         }
         if(response.status===404){
-          throw new Error("main繝悶Λ繝ｳ繝√∪縺溘・index.html縺瑚ｦ九▽縺九ｊ縺ｾ縺帙ｓ縲・);
+          throw new Error("mainブランチまたはindex.htmlが見つかりません。");
         }
-        throw new Error(`蜿門ｾ励お繝ｩ繝ｼ・唏TTP ${response.status}`);
+        throw new Error(`取得エラー：HTTP ${response.status}`);
       }
       if(json)return await response.json();
       const contentLength=Number(response.headers.get("content-length")||0);
-      if(contentLength>LIMIT)throw new Error("譖ｴ譁ｰHTML縺・MiB繧定ｶ・∴縺ｦ縺・∪縺吶・);
+      if(contentLength>LIMIT)throw new Error("更新HTMLが2MiBを超えています。");
       if(response.body&&typeof response.body.getReader==="function"){
         const reader=response.body.getReader();const chunks=[];let size=0;
         try{
@@ -975,7 +993,7 @@ dialog p,dialog li{color:#c5cfd9;font-size:13px;line-height:1.8}.dialog-actions{
             const {done,value}=await reader.read();if(done)break;
             size+=value.length;
             if(size>LIMIT){
-              await reader.cancel();throw new Error("譖ｴ譁ｰHTML縺・MiB繧定ｶ・∴縺ｦ縺・∪縺吶・);
+              await reader.cancel();throw new Error("更新HTMLが2MiBを超えています。");
             }
             chunks.push(value);
           }
@@ -985,7 +1003,7 @@ dialog p,dialog li{color:#c5cfd9;font-size:13px;line-height:1.8}.dialog-actions{
         return bytes;
       }
       const bytes=new Uint8Array(await response.arrayBuffer());
-      if(bytes.length>LIMIT)throw new Error("譖ｴ譁ｰHTML縺・MiB繧定ｶ・∴縺ｦ縺・∪縺吶・);
+      if(bytes.length>LIMIT)throw new Error("更新HTMLが2MiBを超えています。");
       return bytes;
     }finally{
       clearTimeout(timeout);controllers.delete(controller);
@@ -1000,32 +1018,69 @@ dialog p,dialog li{color:#c5cfd9;font-size:13px;line-height:1.8}.dialog-actions{
     const all=new Uint8Array(header.length+bytes.length);
     all.set(header);all.set(bytes,header.length);
     if(await digest("SHA-1",all)!==sha){
-      throw new Error("GitHub blob繝上ャ繧ｷ繝･縺御ｸ閾ｴ縺励∪縺帙ｓ縲る←逕ｨ縺励∪縺帙ｓ縲・);
+      throw new Error("GitHub blobハッシュが一致しません。適用しません。");
     }
   }
   function inspect(html){
-    if(!/^\s*<!doctype html>/i.test(html))throw new Error("HTML譁・嶌縺ｧ縺ｯ縺ゅｊ縺ｾ縺帙ｓ縲・);
+    if(!/^\s*<!doctype html>/i.test(html))throw new Error("HTML文書ではありません。");
+    if(!/<title(?:\s[^>]*)?>[^<]*<\/title\s*>/i.test(html)||
+      !/<\/html\s*>\s*$/i.test(html)){
+      throw new Error("タイトル閉じタグまたはHTML末尾が破損しています。適用しません。");
+    }
+    if(/[\uFFFD\u0080-\u009F]/.test(html)){
+      throw new Error("文字化けの疑いがある文字を検出しました。適用しません。");
+    }
     const doc=new DOMParser().parseFromString(html,"text/html");
+    if(doc.querySelector("meta[charset]")?.getAttribute("charset")?.toLowerCase()!=="utf-8"){
+      throw new Error("UTF-8の文字コード指定を確認できません。適用しません。");
+    }
     if(doc.querySelector('meta[name="somnolog-app"]')?.content!=="SomnoLog"){
-      throw new Error("SomnoLog莉･螟悶・HTML縺ｯ驕ｩ逕ｨ縺励∪縺帙ｓ縲・);
+      throw new Error("SomnoLog以外のHTMLは適用しません。");
     }
     const versionText=doc.querySelector('meta[name="somnolog-version"]')?.content||"";
     const build=doc.querySelector('meta[name="somnolog-build"]')?.content||"";
     if(!/^[1-9]\d*$/.test(versionText)||!build.trim()){
-      throw new Error("繝舌・繧ｸ繝ｧ繝ｳ隴伜挨諠・ｱ縺御ｸ崎ｶｳ縺励※縺・∪縺吶・);
+      throw new Error("バージョン識別情報が不足しています。");
     }
     const version=Number(versionText);
-    if(!Number.isSafeInteger(version))throw new Error("繝舌・繧ｸ繝ｧ繝ｳ逡ｪ蜿ｷ縺御ｸ肴ｭ｣縺ｧ縺吶・);
+    if(!Number.isSafeInteger(version))throw new Error("バージョン番号が不正です。");
+    const versionBar=doc.querySelector(".version-bar strong")?.textContent||"";
+    if(!versionBar.includes(`SomnoLog V${version}`)){
+      throw new Error("最上部のバージョン表示が内部番号と一致しません。");
+    }
     for(const id of ["patient-screen","capture-screen","result-screen","calendar-screen","update-check","update-apply"]){
-      if(!doc.getElementById(id))throw new Error(`蠢・ｦ√↑隕∫ｴ縺後≠繧翫∪縺帙ｓ・・{id}`);
+      if(!doc.getElementById(id))throw new Error(`必要な要素がありません：${id}`);
     }
-    if(doc.querySelector("base"))throw new Error("base繧ｿ繧ｰ莉倥″HTML縺ｯ驕ｩ逕ｨ縺励∪縺帙ｓ縲・);
+    if(doc.querySelector("base"))throw new Error("baseタグ付きHTMLは適用しません。");
     if(doc.querySelector("script[src]")){
-      throw new Error("螟夜ΚJavaScript莉倥″HTML縺ｯ縺薙・譁ｹ蠑上〒縺ｯ驕ｩ逕ｨ縺ｧ縺阪∪縺帙ｓ縲・);
+      throw new Error("外部JavaScript付きHTMLはこの方式では適用できません。");
     }
-    const scripts=Array.from(doc.querySelectorAll("script")).map(s=>s.textContent).join("\n");
+    const scriptElements=Array.from(doc.querySelectorAll("script"));
+    const scripts=scriptElements.map(s=>s.textContent).join("\n");
     if(!scripts.includes("updateBridgeVersion")||!scripts.includes("disposeForUpdate")||!scripts.includes("prepareUpdate")){
-      throw new Error("譖ｴ譁ｰ逕ｨ縺ｮ騾｣謳ｺ繧ｳ繝ｼ繝峨′縺ゅｊ縺ｾ縺帙ｓ縲・);
+      throw new Error("更新用の連携コードがありません。");
+    }
+    if(!/\brepo\s*:\s*["']ST-SCOPE["']/.test(scripts)||
+      !/\bowner\s*:\s*["']matsuodentalassociation["']/.test(scripts)||
+      !/\bbranch\s*:\s*["']main["']/.test(scripts)||
+      !/\bpath\s*:\s*["']index\.html["']/.test(scripts)||
+      !scripts.includes(CONFIG.publicURL)){
+      throw new Error("更新候補の更新先設定がST-SCOPEと一致しません。適用しません。");
+    }
+    for(const script of scriptElements){
+      const type=(script.getAttribute("type")||"").trim().toLowerCase();
+      if(type&&type!=="text/javascript"&&type!=="application/javascript"){
+        throw new Error("この更新方式で確認できないスクリプト形式です。適用しません。");
+      }
+      try{
+        // 構文だけを検査する。候補コードはここでは実行しない。
+        new Function(script.textContent);
+      }catch(error){
+        if(error.name==="SyntaxError"){
+          throw new Error("更新HTMLのJavaScriptが破損しています。適用しません。");
+        }
+        throw new Error("この環境では更新コードの構文検査ができません。適用しません。");
+      }
     }
     return {version,build};
   }
@@ -1033,8 +1088,9 @@ dialog p,dialog li{color:#c5cfd9;font-size:13px;line-height:1.8}.dialog-actions{
     if(disposed||checking||applying)return;
     try{
       ready();
+      requirePublicSite();
       if(!window.isSecureContext||!globalThis.crypto?.subtle){
-        throw new Error("HTTPS縺ｮ蜈ｬ髢九・繝ｼ繧ｸ縺ｧ譖ｴ譁ｰ遒ｺ隱阪＠縺ｦ縺上□縺輔＞縲・);
+        throw new Error("HTTPSの公開ページで更新確認してください。");
       }
     }catch(error){if(manual)status(error.message);return;}
 
@@ -1043,43 +1099,43 @@ dialog p,dialog li{color:#c5cfd9;font-size:13px;line-height:1.8}.dialog-actions{
     $("update-reload").disabled=true;
     try{
       const api=`https://api.github.com/repos/${CONFIG.owner}/${CONFIG.repo}`;
-      status("GitHub縺ｮ譛譁ｰ繧ｳ繝溘ャ繝医ｒ遒ｺ隱阪＠縺ｦ縺・∪縺吶・);
+      status("GitHubの最新コミットを確認しています。");
       const commit=await request(`${api}/commits/${encodeURIComponent(CONFIG.branch)}`,true);
       if(!/^[a-f0-9]{40}$/.test(commit.sha||"")){
-        throw new Error("繧ｳ繝溘ャ繝・HA繧堤｢ｺ隱阪〒縺阪∪縺帙ｓ縲・);
+        throw new Error("コミットSHAを確認できません。");
       }
       const infoURL=new URL(`${api}/contents/${CONFIG.path}`);
       infoURL.searchParams.set("ref",commit.sha);
       const info=await request(infoURL,true);
       if(info.type!=="file"||!/^[a-f0-9]{40}$/.test(info.sha||"")){
-        throw new Error("index.html縺ｮ諠・ｱ縺御ｸ肴ｭ｣縺ｧ縺吶・);
+        throw new Error("index.htmlの情報が不正です。");
       }
       if(!Number.isFinite(info.size)||info.size<=0||info.size>LIMIT){
-        throw new Error("譖ｴ譁ｰHTML縺ｮ繧ｵ繧､繧ｺ縺御ｸ肴ｭ｣縺ｧ縺吶ゆｸ企剞縺ｯ2MiB縺ｧ縺吶・);
+        throw new Error("更新HTMLのサイズが不正です。上限は2MiBです。");
       }
-      status(`繧ｳ繝溘ャ繝・${commit.sha.slice(0,12)} 縺ｮHTML繧貞叙蠕励・讀懆ｨｼ縺励※縺・∪縺吶Ａ);
+      status(`コミット ${commit.sha.slice(0,12)} のHTMLを取得・検証しています。`);
       const raw=`https://raw.githubusercontent.com/${CONFIG.owner}/${CONFIG.repo}/${commit.sha}/${CONFIG.path}`;
       const bytes=await request(raw);
-      if(bytes.length!==info.size)throw new Error("蜿門ｾ幽TML縺ｮ繧ｵ繧､繧ｺ縺御ｸ閾ｴ縺励∪縺帙ｓ縲・);
+      if(bytes.length!==info.size)throw new Error("取得HTMLのサイズが一致しません。");
       await verifyBlob(bytes,info.sha);
       const html=new TextDecoder("utf-8",{fatal:true}).decode(bytes);
       const meta=inspect(html);
       const sha256=await digest("SHA-256",bytes);
       if(meta.version<currentVersion){
-        status(`GitHub蛛ｴ縺ｯ ${meta.build}縲∫樟蝨ｨ縺ｯV${currentVersion}縺ｧ縺吶よ立迚医∈縺ｮ譖ｴ譁ｰ縺ｯ驕ｩ逕ｨ縺励∪縺帙ｓ縲Ａ);
+        status(`GitHub側は ${meta.build}、現在はV${currentVersion}です。旧版への更新は適用しません。`);
         return;
       }
       if(meta.version===currentVersion){
-        status(`迴ｾ蝨ｨ・售omnoLog V${currentVersion}\nGitHub・・{meta.build}\n繧ｳ繝溘ャ繝茨ｼ・{commit.sha.slice(0,12)}\n蜷後§繝舌・繧ｸ繝ｧ繝ｳ縺ｮ縺溘ａ驕ｩ逕ｨ縺励∪縺帙ｓ縲ゆｿｮ豁｣縺励◆HTML縺ｯ繝舌・繧ｸ繝ｧ繝ｳ繧・縺､荳翫￡縺ｦ縺上□縺輔＞縲Ａ);
+        status(`現在：SomnoLog V${currentVersion}\nGitHub：${meta.build}\nコミット：${commit.sha.slice(0,12)}\n同じバージョンのため適用しません。修正したHTMLはバージョンを1つ上げてください。`);
         return;
       }
       pending={html,...meta,sha256,commit:commit.sha};
       $("update-apply").disabled=false;
-      status(`譖ｴ譁ｰ蛟呵｣懶ｼ・{meta.build}\n繧ｳ繝溘ャ繝茨ｼ・{commit.sha.slice(0,12)}\nSHA-256・・{sha256}\n蜿門ｾ幽TML縺ｨGitHub blob縺ｮ荳閾ｴ繧堤｢ｺ隱阪＠縺ｾ縺励◆縲ゅ梧峩譁ｰ繧帝←逕ｨ縲阪〒蜀崎ｵｷ蜍輔＠縺ｾ縺吶Ａ);
+      status(`更新候補：${meta.build}\nコミット：${commit.sha.slice(0,12)}\nSHA-256：${sha256}\n取得HTMLとGitHub blobの一致、コード構文を確認しました。「更新を適用」で再起動します。`);
     }catch(error){
       pending=null;
-      const message=error.name==="AbortError"?"騾壻ｿ｡縺御ｸｭ譁ｭ繝ｻ繧ｿ繧､繝繧｢繧ｦ繝医＠縺ｾ縺励◆縲・:error.message;
-      if(!disposed)status(`譖ｴ譁ｰ遒ｺ隱阪↓螟ｱ謨励＠縺ｾ縺励◆縲ら樟蝨ｨ縺ｮ迚医ｒ邯ｭ謖√＠縺ｾ縺吶・n${message}`);
+      const message=error.name==="AbortError"?"通信が中断・タイムアウトしました。":error.message;
+      if(!disposed)status(`更新確認に失敗しました。現在の版を維持します。\n${message}`);
     }finally{
       checking=false;
       if(!disposed){
@@ -1100,13 +1156,15 @@ dialog p,dialog li{color:#c5cfd9;font-size:13px;line-height:1.8}.dialog-actions{
     if(!pending||checking||applying||disposed)return;
     try{
       ready();
-      if(!confirm(`${pending.build} 繧帝←逕ｨ縺励∪縺吶°・歃n繧ｳ繝溘ャ繝茨ｼ・{pending.commit.slice(0,12)}\n謔｣閠・ュ蝣ｱ繝ｻ螻･豁ｴ縺ｮ菫晏ｭ倬伜沺縺ｯ螟画峩縺励∪縺帙ｓ縲る←逕ｨ蠕後・謔｣閠・ュ蝣ｱ繧貞・遒ｺ隱阪＠縺ｦ縺上□縺輔＞縲Ａ)){
+      requirePublicSite();
+      if(!confirm(`${pending.build} を適用しますか？\nコミット：${pending.commit.slice(0,12)}\n患者情報・履歴の保存領域は変更しません。適用後は患者情報を再確認してください。`)){
         return;
       }
-      ready();app().prepareUpdate();
+      ready();requirePublicSite();app().prepareUpdate();
       const candidate=pending;
       applying=true;
-      // 譖ｴ譁ｰ蜈・TML繧貞ｮ溯｡後☆繧九◆繧√√Μ繝昴ず繝医Μ縺ｮ邂｡逅・ｨｩ髯舌ｒ蜴ｳ譬ｼ縺ｫ菫昴▽縺薙→縲・      disposeUpdater();app().disposeForUpdate();
+      // 更新先HTMLを実行するため、リポジトリの管理権限を厳格に保つこと。
+      disposeUpdater();app().disposeForUpdate();
       window.__SomnoLogDynamicApplied={
         version:candidate.version,commit:candidate.commit,sha256:candidate.sha256
       };
@@ -1115,26 +1173,28 @@ dialog p,dialog li{color:#c5cfd9;font-size:13px;line-height:1.8}.dialog-actions{
       document.close();
     }catch(error){
       applying=false;
-      if(!disposed)status(`譖ｴ譁ｰ繧帝←逕ｨ縺ｧ縺阪∪縺帙ｓ縲ら樟蝨ｨ縺ｮ迚医ｒ邯ｭ謖√＠縺ｾ縺吶・n${error.message}`);
+      if(!disposed)status(`更新を適用できません。現在の版を維持します。\n${error.message}`);
     }
   };
   $("update-reload").onclick=()=>{
     if(checking||applying||disposed)return;
     try{
       ready();
-      if(!confirm("繧ｭ繝｣繝・す繝･蝗樣∩逕ｨ縺ｮ繧ｯ繧ｨ繝ｪ繧剃ｻ倥￠縺ｦ縲∫樟蝨ｨ縺ｮURL繧貞・隱ｭ縺ｿ霎ｼ縺ｿ縺励∪縺吶°・歃n蜍慕噪驕ｩ逕ｨ荳ｭ縺ｮ迚医・縲；itHub Pages縺ｮ驟堺ｿ｡迚医↓蛻・ｊ譖ｿ繧上ｊ縺ｾ縺吶・)){
+      requirePublicSite();
+      if(!confirm("キャッシュ回避用のクエリを付けて、現在のURLを再読み込みしますか？\n動的適用中の版は、GitHub Pagesの配信版に切り替わります。")){
         return;
       }
-      ready();app().prepareUpdate();
+      ready();requirePublicSite();app().prepareUpdate();
       const url=bust(location.href);
-      // 譌｢蟄倥・謔｣閠・け繧ｨ繝ｪ繝ｻ繝上ャ繧ｷ繝･繧堤ｶｭ謖√☆繧九・      location.replace(url.href);
-    }catch(error){status(`蜀崎ｪｭ縺ｿ霎ｼ縺ｿ縺ｧ縺阪∪縺帙ｓ縲・n${error.message}`);}
+      // 既存の患者クエリ・ハッシュを維持する。
+      location.replace(url.href);
+    }catch(error){status(`再読み込みできません。\n${error.message}`);}
   };
 
   if(applied&&applied.version===currentVersion){
-    status(`SomnoLog V${currentVersion} 繧貞虚逧・←逕ｨ縺励∪縺励◆縲・n繧ｳ繝溘ャ繝茨ｼ・{String(applied.commit).slice(0,12)}\n謔｣閠・ュ蝣ｱ繧貞・遒ｺ隱阪＠縺ｦ縺上□縺輔＞縲Ａ);
+    status(`SomnoLog V${currentVersion} を動的適用しました。\nコミット：${String(applied.commit).slice(0,12)}\n患者情報を再確認してください。`);
   }else{
-    status(`迴ｾ蝨ｨ・售omnoLog V${currentVersion}\n襍ｷ蜍墓凾縺ｫGitHub縺ｮ譖ｴ譁ｰ繧堤｢ｺ隱阪＠縺ｾ縺吶Ａ);
+    status(`現在：SomnoLog V${currentVersion}\n起動時にGitHubの更新を確認します。`);
   }
   startupTimer=setTimeout(()=>check(false),1500);
   periodicTimer=setInterval(()=>{
