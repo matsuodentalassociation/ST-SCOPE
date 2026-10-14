@@ -7,9 +7,9 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <meta name="somnolog-app" content="SomnoLog">
-<meta name="somnolog-version" content="12">
-<meta name="somnolog-build" content="SomnoLog V12 GAS送信テスト版">
-<title>SomnoLog V12 GAS送信テスト版</title>
+<meta name="somnolog-version" content="13">
+<meta name="somnolog-build" content="SomnoLog V13 iPhone ZIP共有復元版">
+<title>SomnoLog V13 iPhone ZIP共有復元版</title>
 <style>
 :root{color-scheme:dark;--bg:#101419;--surface:#192029;--surface-3:#253c50;--line:#2f3b48;--line-strong:#506276;--text:#f0eee6;--muted:#aebbc9;--muted-2:#8392a2;--primary:#84b9cf;--primary-text:#10202a;--green:#bfdbd1;--yellow:#f3e7c9;--danger:#d8a6a1;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans JP",sans-serif}
 *{box-sizing:border-box}html,body{min-width:320px;min-height:100%;margin:0;background:var(--bg);color:var(--text)}body.is-locked{overflow:hidden}
@@ -90,8 +90,8 @@ dialog p,dialog li{color:#c5cfd9;font-size:13px;line-height:1.8}.dialog-actions{
 </head>
 <body>
 <header class="version-bar">
-  <strong>SomnoLog V12 GAS送信テスト版</strong>
-  <p class="note">テスト患者のみGASへ送信／計測はモック／結果は別タブ</p>
+  <strong>SomnoLog V13 iPhone ZIP共有復元版</strong>
+  <p id="platform-note" class="note">iPhone：従来のZIP共有／Android：GASテスト送信／計測はモック</p>
 </header>
 <main id="patient-screen" class="screen">
   <header class="screen-header">
@@ -106,10 +106,10 @@ dialog p,dialog li{color:#c5cfd9;font-size:13px;line-height:1.8}.dialog-actions{
     <div class="summary-row"><span class="summary-label">利用方式</span><span id="display-plan-type" class="patient-value"></span></div>
   </section>
   <p id="patient-error" class="empty-state" role="alert" hidden></p>
-  <p id="test-label" class="share-warning" hidden>テスト患者です。計測はモックです。GAS送信は1記録・3分以内に限定します。</p>
+  <p id="test-label" class="share-warning" hidden>テスト患者です。計測はモックです。テスト記録は3分以内に限定します。</p>
   <button id="patient-confirm-button" class="button button-primary" hidden>確認して記録画面へ</button>
   <button id="test-patient-button" class="button button-secondary" hidden>テスト用の患者情報で確認</button>
-  <p class="note">V7〜V11の患者情報・履歴保存キーを継承します。実患者のGAS送信は禁止しています。</p>
+  <p class="note">従来の患者情報・履歴保存キーを継承します。実患者のGAS送信は禁止しています。ZIPもテスト患者で検証してください。</p>
 </main>
 <main id="capture-screen" class="screen" hidden>
   <header class="screen-header">
@@ -127,7 +127,7 @@ dialog p,dialog li{color:#c5cfd9;font-size:13px;line-height:1.8}.dialog-actions{
         <div class="volume-label"><span>音量調整</span><output id="volume-value">0dB</output></div>
         <input id="volume-range" class="volume-range" type="range" min="-9" max="9" step="1" value="0">
         <div class="volume-scale"><span>−9 小さく</span><span>0</span><span>＋9 大きく</span></div>
-        <p class="note" style="margin-top:9px">記録中は音量を固定します。モック値の生成式はV11と同じです。</p>
+        <p class="note" style="margin-top:9px">記録中は音量を固定します。モック値の生成式は従来と同じです。</p>
       </div>
     </div>
     <div class="meter">
@@ -155,9 +155,9 @@ dialog p,dialog li{color:#c5cfd9;font-size:13px;line-height:1.8}.dialog-actions{
     <dl class="metrics"><dt>音の検出時間</dt><dd id="result-sound">0秒</dd><dt>体動の検出時間</dt><dd id="result-motion">0秒</dd></dl>
   </section>
   <section class="stack">
-    <button id="result-share-button" class="button button-primary">テスト記録を診療所へ送信</button>
+    <button id="result-share-button" class="button button-primary">記録を共有</button>
     <p id="result-send-status" class="send-status" role="status"></p>
-    <p class="note">GASに数値ログだけ送ります。氏名・カルテNo・記録日時は送信しません。受付結果は新しいタブに表示します。</p>
+    <p id="result-share-note" class="note"></p>
     <button id="result-zip-button" class="button button-clinic">ZIP共有・端末保存（従来方式）</button>
     <button id="result-calendar-button" class="button button-secondary">記録をカレンダーで確認</button>
   </section>
@@ -179,8 +179,8 @@ dialog p,dialog li{color:#c5cfd9;font-size:13px;line-height:1.8}.dialog-actions{
   </section>
   <section><h3 id="records-title" style="margin-bottom:11px">記録</h3><div id="record-list" class="stack"></div></section>
   <section class="calendar-share-panel stack">
-    <p class="hint">GASのテスト送信は1記録ずつです。複数件の場合は記録カードを押し、個別に送信してください。</p>
-    <button id="calendar-share-button" class="button button-primary" disabled>テスト記録を診療所へ送信</button>
+    <p id="calendar-share-note" class="hint"></p>
+    <button id="calendar-share-button" class="button button-primary" disabled>選択記録を共有</button>
     <p id="calendar-send-status" class="send-status" role="status"></p>
     <button id="calendar-zip-button" class="button button-clinic" disabled>選択記録のZIP共有・端末保存</button>
   </section>
@@ -200,7 +200,7 @@ dialog p,dialog li{color:#c5cfd9;font-size:13px;line-height:1.8}.dialog-actions{
 <section id="black-screen" hidden tabindex="0"><div class="black-inner"><time id="black-clock" class="black-clock">00:00</time><p class="black-help">画面を1.5秒長押しすると戻ります</p></div></section>
 <dialog id="share-dialog">
   <h2>ZIP共有・端末保存</h2>
-  <p>従来方式です。アプリが患者情報と記録をZIPにまとめます。GAS送信とは別の機能です。</p>
+  <p id="share-dialog-note">アプリが患者情報と記録をZIPにまとめます。共有先は端末の共有画面で選びます。</p>
   <div class="share-summary"><strong id="share-count">対象記録：0件</strong><p id="share-patient"></p><div id="share-filename" class="share-filename"></div></div>
   <p class="share-warning">ZIPは暗号化されていません。検証はテスト患者で行ってください。共有の場合は、選んだメールアプリなどで送信を完了してください。端末保存だけでは診療所に届きません。</p>
   <progress id="share-progress" class="progress" max="100" value="0" hidden></progress>
@@ -213,28 +213,21 @@ dialog p,dialog li{color:#c5cfd9;font-size:13px;line-height:1.8}.dialog-actions{
 </dialog>
 <dialog id="usage-dialog">
   <h2>使い方</h2>
-  <ol>
-    <li>「テスト用の患者情報で確認」を押し、患者情報を確認します。</li>
-    <li>マイクのモック許可ボタンを押します。体動は任意です。</li>
-    <li>「記録開始」を押し、10秒程度で「停止」を押します。</li>
-    <li>「テスト記録を診療所へ送信」を押します。</li>
-    <li>新しいタブに表示されたGAS受付結果を確認します。</li>
-    <li>結果タブを閉じると元の画面に戻れます。</li>
-    <li>過去の記録はカレンダーから開けます。GAS送信は1記録ずつです。</li>
-    <li>従来のZIP共有・端末保存も使用できます。</li>
-    <li>GitHub更新は、記録などを終了してから手動で適用します。</li>
-  </ol>
-  <p class="share-warning">GASのアクセス権限が「自分のみ」の場合、設定に使ったGoogleアカウントでログインしたブラウザで試してください。ログイン画面やアクセス拒否になった場合は保存成功とは判断しないでください。</p>
-  <p class="note">実測・診断・患者向け本番運用・ログイン不要の送信・受領計上は未実装です。GASのテスト上限は1日10回です。同じ記録の再送は同じ送信IDを使いますが、GASの重複履歴は直近50件までです。</p>
+  <ol id="usage-steps"></ol>
+  <p id="usage-warning" class="share-warning"></p>
+  <p id="usage-note" class="note"></p>
   <button class="button button-back" data-close-dialog>閉じる</button>
 </dialog>
 <dialog id="message-dialog"><h2 id="message-title"></h2><p id="message-body"></p><button class="button button-back" data-close-dialog>閉じる</button></dialog>
 <script>
 (() => {
   "use strict";
-  const VERSION="V12";
-  // 既存デプロイの /exec。デプロイを新規作成した場合は変更が必要。
-  const GAS_URL="https://script.google.com/macros/s/AKfycbzNHyp1E2hN56f65eJvC15-Sp94K-hAEeHQlrZunLIOwQ47uFSg6UhnDiYTwPooG5CU/exec";
+  const VERSION="V13";
+  // AndroidなどのGAS送信先は添付されたV12から変更していません。
+  const GAS_URL="https://script.google.com/macros/s/AKfycbzNHyp1E2hN56f65eJvC15-Sp94K-hAEeHQIrZunLIOwQ47uFSg6UhnDiYTwPooG5CU/exec";
+  // iPadOSのデスクトップ表示も対象にする。iOS上の他ブラウザもZIP方式。
+  const IS_IOS=/iPad|iPhone|iPod/i.test(navigator.userAgent)||
+    (/Mac/i.test(navigator.platform||"")&&navigator.maxTouchPoints>1);
   const TEST_PATIENT=Object.freeze({
     clinicId:"TEST-CLINIC",issueId:"TEST-ISSUE-001",
     patientName:"テスト患者",chartNo:"TEST-0001",plan:"per_use"
@@ -261,6 +254,56 @@ dialog p,dialog li{color:#c5cfd9;font-size:13px;line-height:1.8}.dialog-actions{
   };
   const timers=new Set(),timeouts=new Set(),objectURLs=new Set(),sendIds=new Map();
   let preparedShareFile=null,preparedShareRecords=null,sharePreparationToken=0;
+  function configurePlatformUI(){
+    $("platform-note").textContent=IS_IOS
+      ?"iPhone／iPad：従来のZIP共有に復元／GAS送信なし／計測はモック"
+      :"Androidなど：GASテスト送信を維持／従来ZIP共有も利用可能／計測はモック";
+    $("result-share-button").textContent=IS_IOS?"記録を共有（ZIP）":"テスト記録を診療所へ送信";
+    $("calendar-share-button").textContent=IS_IOS?"選択記録を共有（ZIP）":"テスト記録を診療所へ送信";
+    $("result-zip-button").hidden=IS_IOS;
+    $("calendar-zip-button").hidden=IS_IOS;
+    $("result-send-status").hidden=IS_IOS;
+    $("calendar-send-status").hidden=IS_IOS;
+    $("result-share-note").textContent=IS_IOS
+      ?"従来のZIP共有を開きます。ZIP作成後に「共有画面を開く」を押してください。Googleへのログインは不要です。選んだアプリで送信を完了してください。"
+      :"GASに数値ログだけ送ります。氏名・カルテNo・記録日時は送信しません。受付結果は新しいタブに表示します。";
+    $("calendar-share-note").textContent=IS_IOS
+      ?"選択した日付・期間の記録を、従来のZIP方式でまとめて共有できます。"
+      :"GASのテスト送信は1記録ずつです。複数件の場合は記録カードを押し、個別に送信してください。";
+    $("share-dialog-note").textContent=IS_IOS
+      ?"従来方式です。患者情報と記録をZIPにまとめ、iPhone／iPadの共有画面を開きます。GAS送信は行いません。"
+      :"従来方式です。アプリが患者情報と記録をZIPにまとめます。GAS送信とは別の機能です。";
+    const steps=[
+      "「テスト用の患者情報で確認」を押し、患者情報を確認します。",
+      "マイクのモック許可ボタンを押します。体動は任意です。",
+      "「記録開始」を押し、「停止」で記録を終了します。"
+    ];
+    if(IS_IOS){
+      steps.push(
+        "「記録を共有（ZIP）」を押します。Googleの画面には移動しません。",
+        "ZIPの作成後、「共有画面を開く」を押します。",
+        "メールなどの共有先を選び、そのアプリで送信を完了します。",
+        "端末に保存する場合は「診療所の窓口用に保存」を使用します。",
+        "過去の記録はカレンダーから共有できます。期間内の複数記録もZIPにまとめられます。",
+        "GitHub更新は、記録などを終了してから手動で適用します。"
+      );
+      $("usage-warning").textContent="iPhone／iPadではGAS送信を行いません。ZIPは暗号化されていません。テスト患者で検証してください。共有操作や端末保存だけでは、診療所への到着を確認できません。";
+      $("usage-note").textContent="実測・診断・患者向け本番運用・受領計上は未実装です。AndroidなどのGASテスト送信は従来の設定を維持しています。";
+    }else{
+      steps.push(
+        "「テスト記録を診療所へ送信」を押します。",
+        "新しいタブに表示されたGAS受付結果を確認します。",
+        "結果タブを閉じると元の画面に戻れます。",
+        "過去の記録はカレンダーから開けます。GAS送信は1記録ずつです。",
+        "従来のZIP共有・端末保存も使用できます。",
+        "GitHub更新は、記録などを終了してから手動で適用します。"
+      );
+      $("usage-warning").textContent="GASのアクセス権限が「自分のみ」の場合、設定に使ったGoogleアカウントでログインしたブラウザで試してください。ログイン画面やアクセス拒否になった場合は保存成功とは判断しないでください。";
+      $("usage-note").textContent="実測・診断・患者向け本番運用・ログイン不要の送信・受領計上は未実装です。GASのテスト上限は1日10回です。同じ記録の再送は同じ送信IDを使いますが、GASの重複履歴は直近50件までです。";
+    }
+    $("usage-steps").replaceChildren();
+    steps.forEach(text=>{const li=document.createElement("li");li.textContent=text;$("usage-steps").append(li);});
+  }
   function interval(fn,ms){const id=setInterval(fn,ms);timers.add(id);return id;}
   function later(fn,ms){
     const id=setTimeout(()=>{timeouts.delete(id);if(!state.disposed)fn();},ms);
@@ -389,7 +432,6 @@ dialog p,dialog li{color:#c5cfd9;font-size:13px;line-height:1.8}.dialog-actions{
     const e=state.isTest?Math.min(elapsed,MAX_DURATION):elapsed;
     Object.assign(state.session,{durationMs:e,stopTimeMs:state.recordingStartedAt+e,
       soundDetectedMs:Math.floor(e*.32),motionDetectedMs:state.motion?Math.floor(e*.18):0,status:"completed"});
-    // 時計が戻った場合でも、受信側に逆順ログを送らない。
     state.session.logs=state.session.logs.filter(l=>l.offsetMs<=e);
     state.session.logs.push(createLog(e));state.history.push(state.session);
     state.currentSession=state.session;state.session=null;state.recording=false;
@@ -490,7 +532,7 @@ dialog p,dialog li{color:#c5cfd9;font-size:13px;line-height:1.8}.dialog-actions{
     });
   }
 
-  // GAS送信用UUIDは必ずv4。端末履歴のsessionIdとは別管理。
+  // GAS用ID・形式・制限はV12から継承。
   function uuidV4(){
     if(globalThis.crypto?.randomUUID)return crypto.randomUUID();
     if(!globalThis.crypto?.getRandomValues)throw new Error("安全な送信IDを作成できません。HTTPSの公開ページで開いてください。");
@@ -506,9 +548,7 @@ dialog p,dialog li{color:#c5cfd9;font-size:13px;line-height:1.8}.dialog-actions{
     let id;try{id=localStorage.getItem(key);}catch(_){}
     if(!valid(id))id=uuidV4();
     sendIds.set(key,id);
-    try{localStorage.setItem(key,id);}catch(_){
-      // このページ内では同じIDを維持。再読み込み後の維持は保証しない。
-    }
+    try{localStorage.setItem(key,id);}catch(_){}
     return id;
   }
   function gasPayload(records){
@@ -531,11 +571,12 @@ dialog p,dialog li{color:#c5cfd9;font-size:13px;line-height:1.8}.dialog-actions{
       previous=l.offsetMs;
       return{offsetMs:l.offsetMs,soundDbFS:l.soundDbFS,motionG:l.motionG};
     });
-    // 患者情報や既存のsessionオブジェクトを丸ごと送らない。
     return{mode:"somnolog-test-v12",requestId:requestIdFor(r),
       record:{durationMs:r.durationMs,gainDb:r.gainDb,logs}};
   }
   function submitToGas(records,statusId){
+    // iOSではここが呼ばれても外部POSTを行わず、従来ZIPに戻す。
+    if(IS_IOS){openShareDialog(records);return;}
     if(state.submitting||state.recording||state.sharing||state.saving||state.preparingShare)return;
     const out=$(statusId);
     let form=null;
@@ -557,8 +598,6 @@ dialog p,dialog li{color:#c5cfd9;font-size:13px;line-height:1.8}.dialog-actions{
       input.type="hidden";input.name="payload";input.value=text;form.append(input);
       document.body.append(form);
       state.submitting=true;$("result-share-button").disabled=true;$("calendar-share-button").disabled=true;
-      // fetch/no-corsではなく、ユーザー操作内のトップレベルフォームPOST。
-      // 応答はGASの結果タブで確認し、本体で保存成功を推測しない。
       form.submit();
       out.textContent=`受付結果を新しいタブで確認してください。\n送信ID：${payload.requestId}\nこの画面では保存結果を確認できません。\n結果タブが開かない・ログイン画面になる場合は、送信成功と判断しないでください。`;
       later(()=>{
@@ -570,12 +609,15 @@ dialog p,dialog li{color:#c5cfd9;font-size:13px;line-height:1.8}.dialog-actions{
       state.submitting=false;$("result-share-button").disabled=false;
       $("calendar-share-button").disabled=!selectedRecords().length;
     }finally{
-      // 送信したフォームは少し後に除去。
       if(form)later(()=>form.remove(),1000);
     }
   }
+  function shareOrSend(records,statusId){
+    if(IS_IOS)openShareDialog(records);
+    else submitToGas(records,statusId);
+  }
 
-  // 従来ZIP機能。
+  // 従来のZIP生成・事前準備・ユーザー操作内の共有呼び出しを維持。
   function shareFilename(records){
     const sorted=[...records].sort((a,b)=>a.startTimeMs-b.startTimeMs),a=sorted[0],b=sorted[sorted.length-1];
     return`SomnoLog_${a.date}${a.date===b.date?"":`_${b.date}`}.zip`;
@@ -683,7 +725,7 @@ dialog p,dialog li{color:#c5cfd9;font-size:13px;line-height:1.8}.dialog-actions{
     state.sharing=true;refreshShareButtons();
     try{
       progress(70,"送信先アプリを選ぶ画面を開いています。");
-      // ZIP生成やawaitを挟まずユーザー操作内で呼ぶ。
+      // 事前生成済みZIPを、クリック内で直ちに共有。ここより前にawaitを入れない。
       const operation=hasNativeShare()?window.NativeShare.shareFile(file):navigator.share({files:[file]});
       await operation;
       progress(100,"共有操作が終了しました。\n選んだアプリで送信を完了してください。\n診療所への到着は、この画面では確認できません。");
@@ -746,12 +788,12 @@ dialog p,dialog li{color:#c5cfd9;font-size:13px;line-height:1.8}.dialog-actions{
   $("volume-range").oninput=e=>{state.gain=Number(e.target.value);$("volume-value").textContent=dbText(state.gain);updateMeters();};
   $("start-button").onclick=startRecording;$("stop-button").onclick=stopRecording;$("black-button").onclick=enterBlack;
   $("history-button").onclick=()=>openCalendar("capture-screen");
-  $("result-share-button").onclick=()=>submitToGas(state.currentSession?[state.currentSession]:[],"result-send-status");
+  $("result-share-button").onclick=()=>shareOrSend(state.currentSession?[state.currentSession]:[],"result-send-status");
   $("result-zip-button").onclick=()=>openShareDialog(state.currentSession?[state.currentSession]:[]);
   $("result-calendar-button").onclick=()=>openCalendar("result-screen",state.currentSession);
   $("result-back-button").onclick=()=>showScreen("capture-screen");
   $("calendar-back-button").onclick=()=>showScreen(state.screenBeforeCalendar);
-  $("calendar-share-button").onclick=()=>submitToGas(selectedRecords(),"calendar-send-status");
+  $("calendar-share-button").onclick=()=>shareOrSend(selectedRecords(),"calendar-send-status");
   $("calendar-zip-button").onclick=()=>openShareDialog(selectedRecords());
   $("single-mode").onclick=()=>{state.calendarMode="single";state.rangeStart=null;state.rangeEnd=null;$("calendar-send-status").textContent="";renderCalendar();};
   $("range-mode").onclick=()=>{state.calendarMode="range";state.rangeStart=null;state.rangeEnd=null;$("calendar-send-status").textContent="";renderCalendar();};
@@ -775,7 +817,7 @@ dialog p,dialog li{color:#c5cfd9;font-size:13px;line-height:1.8}.dialog-actions{
   $("black-screen").addEventListener("contextmenu",e=>e.preventDefault());
   $("black-screen").addEventListener("keydown",e=>{if(e.key==="Escape")leaveBlack();});
   window.addEventListener("beforeunload",onBeforeUnload);
-  initPatient();updateControls();updateMeters();renderCalendar();
+  configurePlatformUI();initPatient();updateControls();updateMeters();renderCalendar();
   interval(updateMeters,180);interval(()=>{if(!$("black-screen").hidden)updateBlackClock();},1000);
   window.SomnoLogApp=Object.freeze({
     version:VERSION,updateBridgeVersion:1,isUpdateBusy,prepareUpdate,disposeForUpdate:dispose,
@@ -788,7 +830,7 @@ dialog p,dialog li{color:#c5cfd9;font-size:13px;line-height:1.8}.dialog-actions{
 <script>
 (() => {
   "use strict";
-  // V11の更新先・固定コミット取得・blob検証・手動適用を継承。
+  // 更新先・固定コミット取得・blob検証・手動適用は添付版から継承。
   const CONFIG=Object.freeze({
     owner:"matsuodentalassociation",repo:"ST-SCOPE",branch:"main",path:"index.html",
     publicURL:"https://matsuodentalassociation.github.io/ST-SCOPE/"
