@@ -4,1499 +4,1045 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#101419">
+<meta name="somnolog-app" content="somnolog-v6-test">
+<meta name="somnolog-build" content="V6-test-compat-02">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
-<meta name="somnolog-app" content="SomnoLog">
-<meta name="somnolog-version" content="14">
-<meta name="somnolog-build" content="SomnoLog V14 iPhone・Android共通GAS送信版">
-<title>SomnoLog V14 iPhone・Android共通GAS送信版</title>
+<title>SomnoLog V6 試験・更新対応版02</title>
 <style>
-:root{color-scheme:dark;--bg:#101419;--surface:#192029;--line:#2f3b48;--text:#f0eee6;--muted:#aebbc9;--primary:#84b9cf;--yellow:#f3e7c9;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans JP",sans-serif}
+:root{color-scheme:dark;--bg:#101419;--surface:#192029;--line:#2f3b48;--text:#f0eee6;--muted:#aebbc9;--primary:#84b9cf;--green:#bfdbd1;--yellow:#f3e7c9;font-family:system-ui,-apple-system,"Noto Sans JP",sans-serif}
 *{box-sizing:border-box}
-html,body{min-width:320px;min-height:100%;margin:0;background:var(--bg);color:var(--text)}
-body.is-locked{overflow:hidden}
-button,input{font:inherit}
-button{cursor:pointer}
-button:disabled{cursor:not-allowed;opacity:.45}
+html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text)}
+body.locked{overflow:hidden;background:#000}
+button,input{font:inherit}button{cursor:pointer}
+button:disabled{opacity:.45;cursor:not-allowed}
 [hidden]{display:none!important}
 button:focus-visible,input:focus-visible{outline:3px solid #9bd5ff;outline-offset:3px}
-.version-bar{max-width:480px;margin:auto;padding:max(12px,env(safe-area-inset-top)) 18px 12px;border-bottom:1px solid var(--line);background:var(--surface)}
-.version-bar strong{display:block;color:var(--primary);font-size:18px}
-.screen{width:100%;max-width:480px;min-height:85svh;margin:auto;padding:22px 18px max(24px,env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:22px}
-.screen-header{display:grid;gap:8px}
-.header-row{display:flex;align-items:center;justify-content:space-between;gap:12px}
-h1{margin:0;font-size:24px}
-h2{margin:0;font-size:21px}
-h3{margin:0;font-size:17px}
-p{margin:0}
-.subtitle,.hint,.note{color:var(--muted);font-size:13px;line-height:1.8}
-.note{color:#8392a2;font-size:11px}
-.badge{padding:7px 11px;border:1px solid #3e6159;border-radius:999px;background:#263b38;color:#bfdbd1;font-size:12px;white-space:nowrap}
-.panel,.card{padding:17px;border:1px solid var(--line);border-radius:17px;background:var(--surface)}
-.button{width:100%;min-height:54px;padding:13px 16px;border:1px solid #506276;border-radius:15px;color:var(--text);font-size:15px;font-weight:650}
-.button-primary{border-color:var(--primary);background:var(--primary);color:#10202a}
-.button-secondary{border-color:#4d6b84;background:#253c50;color:#e5f1fb}
-.button-dark{border-color:#3c4b5b;background:#151b23;color:var(--muted)}
-.button-back{background:#1b232d;color:#d3dde7}
-.button-clinic{border-color:#726b59;background:#343129;color:var(--yellow)}
-.button-row{display:grid;grid-template-columns:2fr 1fr;gap:10px}
+.screen{max-width:480px;min-height:100svh;margin:auto;padding:max(24px,env(safe-area-inset-top)) 18px max(24px,env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:20px}
+h1,h2,h3,p{margin:0}h1{font-size:24px}h2{font-size:21px}h3{font-size:17px}
+p{line-height:1.8}
+.row{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.hint,.note{font-size:12px;color:var(--muted);line-height:1.8}
+.note{font-size:11px}
+.badge{padding:7px 11px;background:#263b38;border:1px solid #3e6159;border-radius:30px;color:var(--green);font-size:12px}
+.warning{padding:12px;background:#292820;border-left:3px solid #b9a67e;color:var(--yellow);font-size:12px;line-height:1.8}
+.panel,.card{padding:17px;background:var(--surface);border:1px solid var(--line);border-radius:17px}
+.button{width:100%;min-height:51px;padding:12px;border:1px solid #506276;border-radius:13px;background:#1b232d;color:var(--text);font-weight:600}
+.primary{background:var(--primary);border-color:var(--primary);color:#10202a}
+.secondary{background:#253c50;color:#e5f1fb}
+.clinic{background:#343129;color:var(--yellow);border-color:#726b59}
 .stack{display:grid;gap:11px}
-.screen-footer{margin-top:auto;padding-top:8px;display:grid;gap:10px}
-.record-range{overflow-x:auto;padding:13px 10px;border-left:3px solid var(--primary);border-radius:0 11px 11px 0;background:var(--surface);color:var(--yellow);font-size:12px;line-height:1.8;white-space:nowrap}
-.meter-panel{padding:18px;border:1px solid var(--line);border-radius:20px;background:var(--surface)}
+.pair{display:grid;grid-template-columns:2fr 1fr;gap:10px}
+.footer{margin-top:auto;display:grid;gap:11px}
 .meter+.meter{margin-top:22px}
-.meter-title{margin-bottom:9px;color:#bec8d3;font-size:14px}
-.wave{height:72px;overflow:hidden;border-radius:12px;background:#111820}
-.wave svg{width:100%;height:100%;display:block}
-.permission-button{width:100%;min-height:47px;margin-top:10px;padding:10px;border:1px solid #4a7596;border-radius:12px;background:#253c50;color:#e5f1fb;font-size:13px;font-weight:600}
-.permission-button.is-enabled{border-color:#3e6159;background:#263b38;color:#bfdbd1}
-.volume-box{margin-top:18px;padding-top:17px;border-top:1px solid var(--line)}
-.volume-label,.volume-scale{display:flex;justify-content:space-between;font-size:13px}
-.volume-scale{color:var(--muted);font-size:11px}
-.volume-range{width:100%;margin:13px 0 7px;accent-color:var(--primary)}
-.capture-actions{margin-top:auto;display:grid;gap:11px}
-.capture-button{min-height:60px;font-size:16px}
-.summary-row{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
-.summary-row+.summary-row{margin-top:16px}
-.summary-label{color:var(--muted);font-size:13px}
-.summary-value{color:var(--yellow);font-size:22px;font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
-.summary-value small{font-size:12px;font-weight:400}
-.patient-value{max-width:65%;text-align:right;overflow-wrap:anywhere;line-height:1.7;color:var(--yellow)}
-.metrics{display:grid;grid-template-columns:1fr auto;gap:15px 10px;margin:18px 0 0;padding-top:16px;border-top:1px solid var(--line)}
-.metrics dt{color:#c5cfd9;font-size:13px}
-.metrics dd{margin:0;color:var(--yellow);font-size:15px;text-align:right}
-.mode-switch{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:4px;border:1px solid var(--line);border-radius:13px;background:#101923}
-.mode-switch button{min-height:41px;border:0;border-radius:9px;background:transparent;color:var(--muted);font-size:13px}
-.mode-switch button.is-active{background:#253c50;color:#e5f1fb}
-.month-navigation{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:17px}
-.month-title{font-size:19px}
-.month-arrow{width:43px;min-height:43px;border:1px solid #506276;border-radius:12px;background:#25313e;color:#d3dde7;font-size:24px}
-.weekdays,.days{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
-.weekdays{margin-top:15px}
-.weekdays span{padding:4px 0;color:var(--muted);text-align:center;font-size:11px}
-.weekdays .sun,.calendar-day.sun{color:#d8a6a1}
-.weekdays .sat,.calendar-day.sat{color:var(--primary)}
-.days{margin-top:6px}
-.calendar-day{min-height:46px;padding:5px 0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;border:1px solid transparent;border-radius:10px;background:transparent;color:#e0e6ec;font-size:14px}
-.calendar-day.today{border-color:#64798b}
-.calendar-day.in-range{background:#253c50;color:#e5f1fb}
-.calendar-day.selected{border-color:var(--primary);background:var(--primary);color:#10202a;font-weight:700}
-.record-dot{width:5px;height:5px;border-radius:50%;background:var(--primary)}
-.record-dot.empty{background:transparent}
-.selected .record-dot:not(.empty){background:#10202a}
-.legend{display:flex;align-items:center;gap:7px;margin-top:15px;padding-top:13px;border-top:1px solid var(--line);color:var(--muted);font-size:11px}
-.range-tools{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:14px}
-.range-label{color:#bfdbd1;font-size:12px}
-.reset-button{min-height:35px;padding:7px 10px;border:1px solid #506276;border-radius:8px;background:#1b232d;color:var(--muted);font-size:11px}
-.calendar-share-panel{margin-top:16px;padding:16px;border:1px solid var(--line);border-radius:16px;background:var(--surface)}
-.timeline{margin:17px 0 0;padding-top:15px;border-top:1px solid var(--line)}
-.timeline-header{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px}
-.timeline-title{color:#c5cfd9;font-size:14px;font-weight:600}
-.log-count{padding:3px 6px;border-radius:5px;background:#343129;color:#c9bea6;font-size:10px}
-.graph-block+.graph-block{margin-top:12px}
-.graph-label{display:flex;justify-content:space-between;margin-bottom:5px;color:var(--muted);font-size:11px}
-.chart{overflow:hidden;padding:7px 5px 5px;border:1px solid var(--line);border-radius:11px;background:#101923}
-.chart svg{width:100%;height:auto;display:block}
-.chart-axis{display:flex;justify-content:space-between;margin-top:4px;color:#8392a2;font-size:10px}
-.empty-state{padding:23px 14px;border:1px dashed #3c495a;border-radius:15px;color:var(--muted);text-align:center;font-size:13px;line-height:1.8}
-dialog{width:calc(100% - 28px);max-width:440px;max-height:88svh;overflow-y:auto;padding:22px;border:1px solid #3c495a;border-radius:20px;background:var(--surface);color:var(--text)}
-dialog::backdrop{background:rgba(0,0,0,.76)}
+.meter-title{font-size:14px;color:#bec8d3;margin-bottom:9px}
+.wave{width:100%;height:72px;background:#111820;border-radius:12px;display:block;margin-bottom:10px}
+.permission{min-height:47px;background:#253c50}
+.enabled{background:#263b38;color:var(--green)}
+.volume{margin:18px 0;padding-top:17px;border-top:1px solid var(--line)}
+input[type=range]{width:100%;accent-color:var(--primary)}
+input[type=url],input[type=text]{width:100%;padding:12px;border-radius:8px;border:1px solid #506276;background:#101923;color:var(--text)}
+label{display:block;font-size:13px;line-height:1.8}
+.range{padding:12px;background:var(--surface);border-left:3px solid var(--primary);font-size:12px;color:var(--yellow);overflow-wrap:anywhere}
+.summary{display:flex;justify-content:space-between;gap:12px;margin:12px 0}
+.value{color:var(--yellow);font-size:22px}
+.switch{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+.switch button{min-height:43px;border:1px solid var(--line);border-radius:10px;background:#101923;color:var(--muted)}
+.switch .active{background:#253c50;color:#e5f1fb}
+.month{display:flex;justify-content:space-between;align-items:center;margin:17px 0}
+.arrow{width:43px;height:43px;background:#25313e;color:#d3dde7;border:1px solid #506276;border-radius:10px;font-size:24px}
+.week,.days{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+.week{text-align:center;color:var(--muted);font-size:11px;margin-bottom:8px}
+.day{min-height:46px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;border:1px solid transparent;border-radius:10px;background:transparent;color:#e0e6ec}
+.sun{color:#d8a6a1}.sat{color:var(--primary)}
+.day.today{border-color:#64798b}
+.day.inrange{background:#253c50}
+.day.selected{background:var(--primary);color:#10202a}
+.dot{width:5px;height:5px;border-radius:50%;background:var(--primary)}
+.selected .dot{background:#10202a}.dot.empty{background:transparent}
+.empty{padding:22px;border:1px dashed #3c495a;border-radius:13px;color:var(--muted);font-size:13px;line-height:1.8;text-align:center}
+.card{margin-bottom:12px}
+.chart{width:100%;height:100px;display:block;background:#101923;border:1px solid var(--line);border-radius:10px;margin:6px 0}
+.graph{margin-top:16px}
+.text-button{background:transparent;color:var(--primary);border:1px solid #506276;border-radius:7px;padding:7px}
+dialog{width:calc(100% - 28px);max-width:440px;max-height:88svh;overflow:auto;padding:22px;border:1px solid #3c495a;border-radius:18px;background:var(--surface);color:var(--text)}
+dialog::backdrop{background:#000b}
 dialog h2{margin-bottom:15px}
-dialog p,dialog li{color:#c5cfd9;font-size:13px;line-height:1.8}
-.dialog-actions{display:grid;gap:10px;margin-top:18px}
-.share-summary{margin:15px 0;padding:13px;border-radius:12px;background:#101923}
-.share-summary strong{display:block;margin-bottom:5px;color:var(--yellow);font-size:14px}
-.share-filename{overflow-wrap:anywhere;color:var(--muted);font-size:11px}
-.share-warning{margin-top:14px;padding:11px;border-left:3px solid #b9a67e;border-radius:0 8px 8px 0;background:#292820;color:var(--yellow);font-size:12px;line-height:1.7}
-.progress{width:100%;height:7px;margin-top:15px;accent-color:var(--primary)}
-#share-status,.send-status,.update-status{white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px;line-height:1.8}
-#black-screen{position:fixed;inset:0;z-index:10;display:flex;align-items:center;justify-content:center;padding:24px;background:#000;touch-action:none}
-.black-inner{width:100%;text-align:center}
-.black-clock{display:block;color:#756f61;font-size:70px;font-weight:300;letter-spacing:2px;font-variant-numeric:tabular-nums}
-.black-help{margin-top:27px;color:#aaa18e;font-size:12px}
-.updater{max-width:444px;margin:0 auto 24px}
-@media(max-width:360px){.screen{padding-left:14px;padding-right:14px}.panel,.card,.meter-panel{padding:14px}.black-clock{font-size:58px}}
+dialog p,dialog li{font-size:13px;line-height:1.8}
+dialog .stack{margin-top:18px}
+#share-status,#update-status{white-space:pre-wrap;overflow-wrap:anywhere}
+#black-screen{position:fixed;inset:0;z-index:20;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;touch-action:none}
+#black-clock{color:#756f61;font-size:70px;font-weight:300;font-variant-numeric:tabular-nums}
+#black-screen p{color:#aaa18e;font-size:12px;margin-top:27px}
+.small{font-size:11px;color:var(--muted)}
+@media(max-width:360px){.screen{padding-left:14px;padding-right:14px}#black-clock{font-size:58px}}
 </style>
 </head>
 <body>
-<header class="version-bar">
-  <strong>SomnoLog V14 iPhone・Android共通GAS送信版</strong>
-  <p class="note">両端末ともGASへ送信／計測はモック／自動更新停止</p>
-</header>
-
-<main id="patient-screen" class="screen">
-  <header class="screen-header">
-    <div class="header-row"><h1>SomnoLog</h1><span class="badge">患者情報</span></div>
-    <h2 id="patient-heading">患者情報の確認</h2>
-    <p id="patient-hint" class="hint">診療所から提示されたQRコードで開いてください。</p>
+<main id="capture-screen" class="screen">
+  <header class="stack">
+    <div class="row"><h1>SomnoLog</h1><span id="capture-status" class="badge">待機中</span></div>
+    <p class="hint">音と体動の見本ログを作成します。</p>
+    <p class="warning">架空情報専用の試験版です。実際のマイク・センサーの許可取得、計測、録音はありません。実患者には使用しないでください。</p>
+    <p class="small">V6-test-compat-02 ／ 患者QRとの紐づけ：未実装</p>
   </header>
-  <section id="patient-panel" class="panel" hidden>
-    <div class="summary-row"><span class="summary-label">患者氏名</span><strong id="display-patient-name" class="patient-value"></strong></div>
-    <div class="summary-row"><span class="summary-label">カルテNo</span><span id="display-chart-no" class="patient-value"></span></div>
-    <div class="summary-row"><span class="summary-label">診療所ID</span><span id="display-clinic-id" class="patient-value"></span></div>
-    <div class="summary-row"><span class="summary-label">利用方式</span><span id="display-plan-type" class="patient-value"></span></div>
-  </section>
-  <p id="patient-error" class="empty-state" role="alert" hidden></p>
-  <p id="test-label" class="share-warning" hidden>テスト患者です。GAS送信は1記録・3分以内に限定します。</p>
-  <button id="patient-confirm-button" class="button button-primary" hidden>確認して記録画面へ</button>
-  <button id="test-patient-button" class="button button-secondary" hidden>テスト用の患者情報で確認</button>
-  <p class="note">既存の患者情報・履歴保存キーを継承します。実患者のGAS送信は禁止しています。</p>
-</main>
-
-<main id="capture-screen" class="screen" hidden>
-  <header class="screen-header">
-    <div class="header-row"><h1>SomnoLog</h1><span id="capture-status" class="badge">待機中</span></div>
-    <p class="subtitle">就寝中の音圧と体動を記録するUIです。</p>
-    <p id="capture-patient" class="hint"></p>
-    <p class="note">計測・許可はモックです。OSの権限は要求しません。テスト記録は3分で自動停止します。</p>
-  </header>
-  <section class="meter-panel">
+  <section class="panel">
     <div class="meter">
-      <div id="microphone-title" class="meter-title">マイク</div>
-      <div class="wave"><svg viewBox="0 0 320 72" preserveAspectRatio="none"><path d="M0 18H320M0 54H320" stroke="#202d3b" fill="none"/><path id="microphone-wave" d="M0 36H320" stroke="#7190a6" stroke-width="2" fill="none"/></svg></div>
-      <button id="microphone-button" class="permission-button">マイクを許可（モック）</button>
-      <div class="volume-box">
-        <div class="volume-label"><span>音量調整</span><output id="volume-value">0dB</output></div>
-        <input id="volume-range" class="volume-range" type="range" min="-9" max="9" step="1" value="0">
-        <div class="volume-scale"><span>−9 小さく</span><span>0</span><span>＋9 大きく</span></div>
-        <p class="note" style="margin-top:9px">記録中は音量を固定します。</p>
+      <div id="microphone-title" class="meter-title">見本マイク</div>
+      <svg class="wave" viewBox="0 0 320 72" preserveAspectRatio="none"><path d="M0 18H320M0 54H320" stroke="#202d3b"/><path id="microphone-wave" d="M0 36H320" fill="none" stroke="#84b9cf" stroke-width="2"/></svg>
+      <button id="microphone-button" class="button permission">見本マイクを有効にする</button>
+      <div class="volume">
+        <div class="row"><span class="hint">見本の音量調整</span><output id="volume-value">0dB</output></div>
+        <input id="volume-range" aria-label="見本の音量調整" type="range" min="-9" max="9" step="1" value="0">
+        <div class="row small"><span>−9 小さく</span><span>0</span><span>＋9 大きく</span></div>
+        <p class="note">記録中は固定します。音声の増幅処理はありません。</p>
       </div>
     </div>
     <div class="meter">
-      <div id="motion-title" class="meter-title">体動</div>
-      <div class="wave"><svg viewBox="0 0 320 72" preserveAspectRatio="none"><path d="M0 18H320M0 54H320" stroke="#202d3b" fill="none"/><path id="motion-wave" d="M0 36H320" stroke="#7190a6" stroke-width="2" fill="none"/></svg></div>
-      <button id="motion-button" class="permission-button">モーションセンサーを許可（モック・任意）</button>
+      <div id="motion-title" class="meter-title">見本体動</div>
+      <svg class="wave" viewBox="0 0 320 72" preserveAspectRatio="none"><path d="M0 18H320M0 54H320" stroke="#202d3b"/><path id="motion-wave" d="M0 36H320" fill="none" stroke="#bfdbd1" stroke-width="2"/></svg>
+      <button id="motion-button" class="button permission">見本体動を有効にする</button>
     </div>
   </section>
-  <section class="capture-actions">
-    <div class="button-row">
-      <button id="start-button" class="button button-primary capture-button" disabled>記録開始</button>
-      <button id="stop-button" class="button button-dark capture-button" disabled>停止</button>
-    </div>
-    <button id="black-button" class="button button-dark" disabled>黒画面に切り替え</button>
-    <button id="history-button" class="button button-secondary">履歴を見る</button>
-    <button id="usage-button" class="button button-clinic">使い方を見る</button>
+  <section class="stack">
+    <div class="pair"><button id="start-button" class="button primary" disabled>記録開始</button><button id="stop-button" class="button" disabled>停止</button></div>
+    <button id="black-button" class="button" disabled>黒画面に切り替え</button>
+    <button id="history-button" class="button secondary">履歴を見る</button>
+    <button class="button clinic" data-usage>使い方を見る</button>
+  </section>
+  <section class="panel stack">
+    <h3>アプリの更新</h3>
+    <p id="update-status" class="note" role="status" aria-live="polite">GitHubの更新を確認します。</p>
+    <button id="update-check-button" class="button secondary">GitHubの最新版を確認</button>
+    <button id="update-apply-button" class="button primary" hidden>取得した最新版を適用</button>
+    <button id="update-settings-button" class="text-button">更新設定</button>
+    <p class="note">最新コミットを固定して取得します。記録中・未保存記録がある場合は適用できません。公開リポジトリ専用です。</p>
   </section>
 </main>
 
 <main id="result-screen" class="screen" hidden>
-  <header class="screen-header">
-    <div class="header-row"><h1>SomnoLog</h1><span class="badge">記録終了</span></div>
-    <h2>睡眠記録</h2>
-    <p id="result-patient" class="hint"></p>
-    <p id="result-range" class="record-range">記録なし</p>
-    <p id="result-meta" class="note"></p>
+  <header class="stack">
+    <div class="row"><h1>SomnoLog</h1><span class="badge">見本記録終了</span></div>
+    <h2>睡眠記録</h2><p id="result-range" class="range"></p><p id="result-meta" class="note"></p>
   </header>
   <section class="panel">
-    <div class="summary-row"><span class="summary-label">記録時間</span><span id="result-duration" class="summary-value">0<small>秒</small></span></div>
-    <p class="note" style="margin-top:10px">記録開始から停止までのモックログです。</p>
-    <dl class="metrics"><dt>音の検出時間</dt><dd id="result-sound">0秒</dd><dt>体動の検出時間</dt><dd id="result-motion">0秒</dd></dl>
+    <div class="summary"><span>記録時間</span><span id="result-duration" class="value"></span></div>
+    <p id="result-detail" class="note"></p>
+    <div class="summary"><span class="hint">音の検出時間（見本）</span><span id="result-sound"></span></div>
+    <div class="summary"><span class="hint">体動の検出時間（見本）</span><span id="result-motion"></span></div>
   </section>
   <section class="stack">
-    <button id="result-share-button" class="button button-primary">テスト記録を診療所へ送信（GAS）</button>
-    <p id="result-send-status" class="send-status" role="status"></p>
-    <button id="result-same-tab-button" class="button button-secondary" hidden>同じタブでGASへ送信</button>
-    <p class="note">iPhone・Android共通です。数値ログのみ送信します。受付結果はGASの画面に表示されます。</p>
-    <button id="result-zip-button" class="button button-clinic">ZIP共有・端末保存（補助）</button>
-    <button id="result-calendar-button" class="button button-secondary">記録をカレンダーで確認</button>
+    <button id="result-share-button" class="button primary">この記録を送信・共有</button>
+    <button id="result-calendar-button" class="button secondary">記録をカレンダーに記録</button>
   </section>
-  <section class="screen-footer">
-    <button id="result-back-button" class="button button-back">記録画面に戻る</button>
-    <button class="button button-clinic" data-show-usage>使い方を見る</button>
-  </section>
+  <section class="footer"><button id="result-back-button" class="button">記録画面に戻る</button><button class="button clinic" data-usage>使い方を見る</button></section>
 </main>
 
 <main id="calendar-screen" class="screen" hidden>
-  <header class="screen-header">
-    <div class="header-row"><h1>SomnoLog</h1><span class="badge">保存記録</span></div>
-    <h2>記録カレンダー</h2>
-    <p class="subtitle">カードを押すと、その記録の終了画面を開きます。</p>
-  </header>
+  <header class="stack"><div class="row"><h1>SomnoLog</h1><span class="badge">保存記録</span></div><h2>記録カレンダー</h2><p class="hint">選択した日付・期間の見本記録を表示します。</p></header>
   <section class="panel">
-    <div class="mode-switch"><button id="single-mode" class="is-active">1日</button><button id="range-mode">期間を選択</button></div>
+    <div class="switch"><button id="single-mode" class="active">1日</button><button id="range-mode">期間を選択</button></div>
     <p id="calendar-hint" class="hint" style="margin-top:12px"></p>
-    <div class="month-navigation"><button id="previous-month" class="month-arrow" aria-label="前月">‹</button><h3 id="month-title" class="month-title"></h3><button id="next-month" class="month-arrow" aria-label="翌月">›</button></div>
-    <div class="weekdays"><span class="sun">日</span><span>月</span><span>火</span><span>水</span><span>木</span><span>金</span><span class="sat">土</span></div>
+    <div class="month"><button id="previous-month" class="arrow" aria-label="前月">‹</button><h3 id="month-title"></h3><button id="next-month" class="arrow" aria-label="翌月">›</button></div>
+    <div class="week"><span class="sun">日</span><span>月</span><span>火</span><span>水</span><span>木</span><span>金</span><span class="sat">土</span></div>
     <div id="calendar-days" class="days"></div>
-    <div class="legend"><span class="record-dot"></span>保存記録あり</div>
-    <div id="range-tools" class="range-tools" hidden><span id="range-label" class="range-label"></span><button id="reset-range" class="reset-button">選び直す</button></div>
+    <p class="note" style="margin-top:12px">● 保存記録あり ／ 枠：今日</p>
+    <div id="range-tools" hidden><p id="range-label" class="hint"></p><button id="reset-range" class="text-button">選び直す</button></div>
   </section>
-  <section><h3 id="records-title" style="margin-bottom:11px">記録</h3><div id="record-list" class="stack"></div></section>
-  <section class="calendar-share-panel stack">
-    <p class="hint">GAS送信は1記録ずつです。複数件ある場合は記録カードを開いて送信してください。</p>
-    <button id="calendar-share-button" class="button button-primary" disabled>テスト記録を診療所へ送信（GAS）</button>
-    <p id="calendar-send-status" class="send-status" role="status"></p>
-    <button id="calendar-same-tab-button" class="button button-secondary" hidden>同じタブでGASへ送信</button>
-    <button id="calendar-zip-button" class="button button-clinic" disabled>選択記録のZIP共有・端末保存（補助）</button>
-  </section>
-  <section class="screen-footer">
-    <button id="calendar-back-button" class="button button-back">記録画面に戻る</button>
-    <button class="button button-clinic" data-show-usage>使い方を見る</button>
-  </section>
+  <section><h3 id="records-title" style="margin-bottom:11px">記録</h3><div id="record-list"></div></section>
+  <section class="panel stack"><p class="hint">選択した日のログを送信・共有します。④用ZIPは1記録ずつ作成します。</p><button id="calendar-share-button" class="button primary" disabled>ログを送信・共有</button></section>
+  <p class="note">グラフは経過時間の位置に見本値を表示します。2秒を超える中断・欠測部分は線をつなぎません。</p>
+  <section class="footer"><button id="calendar-back-button" class="button">記録画面に戻る</button><button class="button clinic" data-usage>使い方を見る</button></section>
 </main>
 
-<section id="update-panel" class="panel updater">
-  <h3>配信版の確認</h3>
-  <p id="update-status" class="hint update-status">現在：SomnoLog V14
-自動更新・動的更新は停止しています。</p>
-  <div class="stack" style="margin-top:12px">
-    <button id="update-check" class="button button-secondary">現在の版を確認</button>
-    <button id="update-apply" class="button button-primary" disabled hidden>更新を適用</button>
-    <button id="update-reload" class="button button-back">公開ページを再読み込み</button>
-  </div>
-  <p class="note" style="margin-top:12px">このHTMLから別バージョンを取得・適用する処理はありません。</p>
-</section>
-
-<section id="black-screen" hidden tabindex="0"><div class="black-inner"><time id="black-clock" class="black-clock">00:00</time><p class="black-help">画面を1.5秒長押しすると戻ります</p></div></section>
+<section id="black-screen" hidden tabindex="0" aria-label="黒画面"><time id="black-clock">00:00</time><p>画面を1.5秒長押しすると戻ります</p><p>ロック中・背景での継続は保証しません</p></section>
 
 <dialog id="share-dialog">
-  <h2>ZIP共有・端末保存</h2>
-  <p>GAS送信とは別の補助機能です。</p>
-  <div class="share-summary"><strong id="share-count"></strong><p id="share-patient"></p><div id="share-filename" class="share-filename"></div></div>
-  <p class="share-warning">ZIPは暗号化されていません。患者情報を含みます。端末保存だけでは診療所へ届きません。</p>
-  <progress id="share-progress" class="progress" max="100" value="0" hidden></progress>
-  <p id="share-status" style="margin-top:10px" aria-live="polite"></p>
-  <div class="dialog-actions">
-    <button id="share-start-button" class="button button-primary" disabled>共有画面を開く</button>
-    <button id="clinic-download-button" class="button button-clinic" disabled>ZIPを端末に保存</button>
-    <button id="share-cancel-button" class="button button-back">閉じる</button>
+  <h2>試験送信・ZIP回収</h2>
+  <p class="warning">架空患者・見本ログ専用です。試験受付への送信は3分以内・2,000点以内・音声なし。業務の使用数は計上しません。</p>
+  <p id="share-count" style="margin-top:12px"></p>
+  <p id="share-status" class="note" role="status" aria-live="polite"></p>
+  <div id="share-records" class="stack"></div>
+  <div class="stack">
+    <button id="endpoint-button" class="button">試験受付URLを確認・変更</button>
+    <button class="button" data-close>閉じる</button>
   </div>
+</dialog>
+
+<dialog id="endpoint-dialog">
+  <h2>試験受付URL</h2>
+  <p>PCで送信確認した試験受付URLを標準設定として組み込んでいます。</p>
+  <form id="endpoint-form" class="stack">
+    <label>受付URL<input id="endpoint-input" type="url" required></label>
+    <button class="button primary" type="submit">設定を保存</button>
+    <button class="button" type="button" data-close>戻る</button>
+  </form>
+</dialog>
+
+<dialog id="update-settings-dialog">
+  <h2>GitHub更新設定</h2>
+  <p>GitHub Pagesの通常URLでは自動判定します。独自ドメインなどでは公開リポジトリの情報を指定してください。</p>
+  <form id="update-settings-form" class="stack">
+    <label>GitHub所有者<input id="github-owner" type="text" placeholder="ユーザー名または組織名"></label>
+    <label>リポジトリ名<input id="github-repo" type="text" placeholder="リポジトリ名"></label>
+    <label>ブランチ<input id="github-branch" type="text" placeholder="空欄：リポジトリの既定ブランチ"></label>
+    <label>リポジトリ内のHTMLパス<input id="github-path" type="text" placeholder="例：index.html または docs/index.html"></label>
+    <p class="note">GitHub Pagesの公開元がdocsフォルダーの場合、パスにはdocs/を含めます。トークンやパスワードは入力しません。</p>
+    <button class="button primary" type="submit">設定を保存して確認</button>
+    <button id="update-auto-button" class="button" type="button">保存した設定を消して自動判定に戻す</button>
+    <button class="button" type="button" data-close>閉じる</button>
+  </form>
+  <p id="update-settings-error" class="warning" hidden></p>
 </dialog>
 
 <dialog id="usage-dialog">
-  <h2>使い方</h2>
+  <h2>使い方（見本記録の試験）</h2>
   <ol>
-    <li>テスト用の患者情報を選び、確認します。</li>
-    <li>マイクを許可（モック）を押します。</li>
-    <li>記録開始を押し、10秒程度で停止します。</li>
-    <li>「テスト記録を診療所へ送信（GAS）」を押します。iPhone・Android共通です。</li>
-    <li>新しいタブのGAS受付結果を確認します。</li>
-    <li>新しいタブが開かない場合は「同じタブでGASへ送信」を使います。</li>
-    <li>同じタブで送信した場合、ブラウザの戻る操作で戻れます。</li>
+    <li>見本マイクと、必要なら見本体動を有効にします。</li>
+    <li>「記録開始」を押します。試験送信は3分以内で止めてください。</li>
+    <li>「停止」で端末保存します。記録中も定期保存します。</li>
+    <li>結果またはカレンダーから送信・共有を開きます。</li>
+    <li>試験送信は別タブの受付結果を確認します。受付到着と御社の受領登録は別です。</li>
+    <li>④では、③から保存した分析用ZIPを1記録ずつ読み込みます。</li>
+    <li>更新は記録を停止・保存してから適用してください。</li>
   </ol>
-  <p class="share-warning">テスト専用です。実測・診断・実患者のGAS送信は対象外です。</p>
-  <button class="button button-back" data-close-dialog>閉じる</button>
+  <p class="warning">分析用ZIPに音声はありません。④の青い音響波形・区間再生・音量低下候補は、この試験では確認できません。受付が保存するZIPは別形式です。</p>
+  <p class="note">履歴は同じ公開場所・同じブラウザーの保存領域に残ります。別ドメインへ移しても自動移行しません。サイトデータを削除しないでください。</p>
+  <div class="stack"><button class="button" data-close>閉じる</button></div>
 </dialog>
 
-<dialog id="message-dialog">
-  <h2 id="message-title"></h2>
-  <p id="message-body"></p>
-  <button class="button button-back" data-close-dialog>閉じる</button>
-</dialog>
+<dialog id="message-dialog"><h2 id="message-title"></h2><p id="message-body"></p><div class="stack"><button class="button" data-close>閉じる</button></div></dialog>
 
-<script>
+<script data-somnolog-updater>
 (() => {
   "use strict";
-
-  const VERSION = "V14";
-
-  // 添付されたV12と同じウェブアプリ送信先。
-  // ライブラリURLではなく /macros/s/.../exec を使用する。
-  const GAS_URL = "https://script.google.com/macros/s/AKfycbzNHyp1E2hN56f65eJvC15-Sp94K-hAEeHQIrZunLIOwQ47uFSg6UhnDiYTwPooG5CU/exec";
-
-  // 旧版の更新検証との互換情報のみ。取得・動的適用は行わない。
-  const CONFIG = Object.freeze({
-    owner:"matsuodentalassociation",
-    repo:"ST-SCOPE",
-    branch:"main",
-    path:"index.html",
-    publicURL:"https://matsuodentalassociation.github.io/ST-SCOPE/"
-  });
-
-  const TEST_PATIENT = Object.freeze({
-    clinicId:"TEST-CLINIC",
-    issueId:"TEST-ISSUE-001",
-    patientName:"テスト患者",
-    chartNo:"TEST-0001",
-    plan:"per_use"
-  });
-
-  const PATIENT_KEY = "SomnoLog.patient.v7";
-  const MAX_DURATION = 180000;
-  const MAX_LOGS = 2000;
-  const MAX_BODY = 512000;
-  const fields = ["clinicId","issueId","patientName","chartNo","plan"];
+  // GitHub上の同じHTMLを、最新の対象コミットに固定して取得する。
+  // セッション中の適用は同じoriginを維持。履歴や他サイトのキャッシュは消さない。
+  if (window.SomnoLogUpdater) return;
+  const CONFIG_KEY = "SomnoLog.github.update.config.v1";
+  const APPLIED_KEY = "SomnoLog.github.update.applied.v1";
+  const MAX_HTML_BYTES = 2 * 1024 * 1024;
   const $ = id => document.getElementById(id);
-  const pad = n => String(n).padStart(2,"0");
-  const dateKey = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
-  const dateText = value => new Date(value).toLocaleString("ja-JP");
-  const dbText = value => `${value>0?"+":""}${value}dB`;
-  const makeId = () => globalThis.crypto?.randomUUID?.() ||
-    `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-  const escapeHtml = value => String(value).replace(/[&<>"']/g,
-    c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-
-  let storageKey = null;
-  let preparedShareFile = null;
-  let sharePreparationToken = 0;
-  let sendUnlockTimer = null;
-
-  const sendIds = new Map();
-  const timers = new Set();
-  const timeouts = new Set();
-  const objectURLs = new Set();
-
   const state = {
-    patient:null, confirmed:false, isTest:false,
-    microphone:false, motion:false, recording:false, gain:0,
-    recordingStartedAt:0, recordingTimer:null,
-    session:null, currentSession:null, history:[],
-    screenBeforeCalendar:"capture-screen",
-    calendarMonth:new Date(new Date().getFullYear(),new Date().getMonth(),1),
-    calendarMode:"single", selectedDate:dateKey(new Date()),
-    rangeStart:null, rangeEnd:null,
-    blackHoldTimer:null, blackHolding:false,
-    sharingRecords:[], sharing:false, preparingShare:false,
-    saving:false, unsaved:false, submitting:false, disposed:false
+    busy:false, applying:false, candidate:null,
+    status:"GitHubの更新を確認します。", currentSHA:"",
+    currentSource:"", initialChecked:false, rollbackHTML:""
   };
-
-  function interval(fn,ms) {
-    const id = setInterval(fn,ms);
-    timers.add(id);
-    return id;
+  let uiAbort = null;
+  function text(value) {
+    state.status = value;
+    if ($("update-status")) $("update-status").textContent = value;
   }
-
-  function later(fn,ms) {
-    const id = setTimeout(() => {
-      timeouts.delete(id);
-      if (!state.disposed) fn();
-    },ms);
-    timeouts.add(id);
-    return id;
-  }
-
-  function simpleDuration(ms) {
-    const seconds = Math.max(0,Math.floor(ms/1000));
-    const minutes = Math.floor(seconds/60);
-    return minutes ? `${minutes}分${seconds%60}秒` : `${seconds}秒`;
-  }
-
-  function durationHtml(ms) {
-    const seconds = Math.max(0,Math.floor(ms/1000));
-    const hours = Math.floor(seconds/3600);
-    const minutes = Math.floor(seconds%3600/60);
-    return (hours ? `${hours}<small>時間</small>` : "") +
-      (hours || minutes ? `${minutes}<small>分</small>` : "") +
-      `${seconds%60}<small>秒</small>`;
-  }
-
-  function validatePatient(data) {
-    if (!data || fields.some(key =>
-      typeof data[key] !== "string" || !data[key].trim())) {
-      throw new Error("患者情報が不足しています。診療所のQRコードを読み直してください。");
+  function render() {
+    if ($("update-check-button")) $("update-check-button").disabled = state.busy || state.applying;
+    if ($("update-apply-button")) {
+      $("update-apply-button").hidden = !state.candidate;
+      $("update-apply-button").disabled = state.busy || state.applying ||
+        !!(window.SomnoLogApp && !window.SomnoLogApp.canApplyUpdate());
     }
-    if (!["per_use","subscription"].includes(data.plan)) {
-      throw new Error("利用方式を確認できません。");
-    }
-    return Object.fromEntries(fields.map(key => [key,data[key]]));
+    if ($("update-status")) $("update-status").textContent = state.status;
   }
-
-  function samePatient(a,b) {
-    return !!(a && b && fields.every(key => a[key] === b[key]));
-  }
-
-  function patientText(patient) {
-    return patient ? `${patient.patientName} ／ カルテNo：${patient.chartNo}` : "";
-  }
-
-  function loadHistory() {
-    state.history = [];
-    if (!storageKey) return;
+  function savedConfig() {
     try {
-      const rows = JSON.parse(localStorage.getItem(storageKey) || "[]");
-      if (Array.isArray(rows)) {
-        state.history = rows.filter(row => row &&
-          samePatient(row.patient,state.patient) &&
-          Array.isArray(row.logs) &&
-          Number.isFinite(row.startTimeMs) &&
-          Number.isFinite(row.durationMs));
+      const value = JSON.parse(localStorage.getItem(CONFIG_KEY) || "null");
+      return value && typeof value === "object" ? value : null;
+    } catch (_) { return null; }
+  }
+  function inferConfig() {
+    const host = location.hostname.toLowerCase();
+    if (!host.endsWith(".github.io")) return null;
+    const owner = host.slice(0, -".github.io".length);
+    const parts = location.pathname.split("/").filter(Boolean).map(decodeURIComponent);
+    let repo, path;
+    if (!parts.length) {
+      repo = owner + ".github.io"; path = "index.html";
+    } else if (parts.length === 1 && /\.html?$/i.test(parts[0])) {
+      repo = owner + ".github.io"; path = parts[0];
+    } else {
+      repo = parts.shift();
+      path = parts.join("/");
+      if (!path || location.pathname.endsWith("/")) {
+        path = path ? path + "/index.html" : "index.html";
       }
+    }
+    return {owner, repo, branch:"", path};
+  }
+  function validate(c) {
+    if (!c || !/^[A-Za-z0-9-]+$/.test(c.owner || "") ||
+        !/^[A-Za-z0-9_.-]+$/.test(c.repo || "") ||
+        c.repo === "." || c.repo === "..") {
+      throw Error("GitHub所有者とリポジトリ名を指定してください。");
+    }
+    if (typeof c.branch !== "string" || /[\s\\?#]/.test(c.branch)) {
+      throw Error("ブランチ名を確認してください。");
+    }
+    if (typeof c.path !== "string" || !/\.html?$/i.test(c.path) ||
+        c.path.startsWith("/") || c.path.includes("\\") ||
+        c.path.includes("?") || c.path.includes("#") ||
+        c.path.split("/").some(p => !p || p === "." || p === "..")) {
+      throw Error("リポジトリ内のHTMLパスを指定してください。");
+    }
+    return c;
+  }
+  function sourceKey(c) {
+    return JSON.stringify([c.owner.toLowerCase(), c.repo.toLowerCase(), c.branch, c.path]);
+  }
+  async function fetchFresh(url, asJSON) {
+    const u = new URL(url);
+    u.searchParams.set("_sl_cb", Date.now().toString() + "-" + Math.random().toString(16).slice(2));
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 20000);
+    try {
+      const response = await fetch(u.href, {
+        cache:"no-store", credentials:"omit",
+        headers:asJSON ? {Accept:"application/vnd.github+json"} : {},
+        signal:controller.signal, referrerPolicy:"no-referrer"
+      });
+      if (!response.ok) {
+        if (response.status === 403 || response.status === 429) {
+          throw Error("GitHub APIの制限またはアクセス拒否です。時間を置いて再確認してください。");
+        }
+        if (response.status === 404) {
+          throw Error("対象が見つかりません。公開リポジトリ・ブランチ・HTMLパスを確認してください。");
+        }
+        throw Error("GitHub取得エラー：" + response.status);
+      }
+      if (asJSON) return await response.json();
+      const length = Number(response.headers.get("content-length"));
+      if (length > MAX_HTML_BYTES) throw Error("更新HTMLが容量上限を超えています。");
+      const content = await response.text();
+      if (new TextEncoder().encode(content).length > MAX_HTML_BYTES) {
+        throw Error("更新HTMLが容量上限を超えています。");
+      }
+      return content;
+    } catch (e) {
+      if (e.name === "AbortError") throw Error("GitHub取得がタイムアウトしました。");
+      throw e;
+    } finally { clearTimeout(timeout); }
+  }
+  function parseUpdate(html) {
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    if (doc.querySelector('meta[name="somnolog-app"]')?.content !== "somnolog-v6-test" ||
+        !doc.querySelector('meta[name="somnolog-build"]')?.content ||
+        !doc.querySelector("script[data-somnolog-app]") ||
+        !doc.querySelector("script[data-somnolog-updater]")) {
+      throw Error("対応するSomnoLogのHTMLではありません。更新は適用しません。");
+    }
+    for (const id of ["capture-screen","result-screen","calendar-screen",
+                      "share-dialog","update-status","update-apply-button"]) {
+      if (doc.querySelectorAll("#" + id).length !== 1) {
+        throw Error("更新HTMLの画面構造を確認できません。");
+      }
+    }
+    // この単独HTML用の更新機構。外部スクリプトや別形式は適用しない。
+    if (doc.querySelector("base,script[src],script[type=module]")) {
+      throw Error("外部スクリプトなどを含む更新には対応していません。");
+    }
+    return doc;
+  }
+  function equivalent(a, b) {
+    const clean = html => {
+      const d = new DOMParser().parseFromString(html, "text/html");
+      d.querySelectorAll('meta[name="somnolog-commit"]').forEach(n => n.remove());
+      return d.documentElement.outerHTML.replace(/\r\n/g, "\n");
+    };
+    return clean(a) === clean(b);
+  }
+  async function check() {
+    if (state.busy || state.applying) return;
+    state.busy = true; state.candidate = null;
+    text("GitHubの最新コミットを確認中…"); render();
+    try {
+      const c = validate(savedConfig() || inferConfig());
+      const root = "https://api.github.com/repos/" +
+        encodeURIComponent(c.owner) + "/" + encodeURIComponent(c.repo);
+      let branch = c.branch;
+      if (!branch) {
+        const repoInfo = await fetchFresh(root, true);
+        branch = repoInfo.default_branch;
+        if (!branch) throw Error("既定ブランチを確認できません。");
+      }
+      const u = new URL(root + "/commits");
+      u.searchParams.set("sha", branch);
+      u.searchParams.set("path", c.path);
+      u.searchParams.set("per_page", "1");
+      const commits = await fetchFresh(u.href, true);
+      const latest = Array.isArray(commits) ? commits[0] : null;
+      if (!latest || !/^[a-f0-9]{40}$/i.test(latest.sha || "")) {
+        throw Error("対象HTMLのコミットが見つかりません。");
+      }
+      const sha = latest.sha, key = sourceKey(c);
+      if (state.currentSHA === sha && state.currentSource === key) {
+        text("確認済みの最新版を実行中です。\nコミット：" + sha.slice(0,12)); return;
+      }
+      const rawURL = "https://raw.githubusercontent.com/" +
+        encodeURIComponent(c.owner) + "/" + encodeURIComponent(c.repo) + "/" +
+        sha + "/" + c.path.split("/").map(encodeURIComponent).join("/");
+      const html = await fetchFresh(rawURL, false);
+      const doc = parseUpdate(html);
+      const build = doc.querySelector('meta[name="somnolog-build"]').content;
+      // 起動直後のソースと内容が同じなら、不要な適用を避ける。
+      if (state.rollbackHTML && equivalent(state.rollbackHTML, html)) {
+        state.currentSHA = sha; state.currentSource = key;
+        saveApplied(key, sha);
+        text("GitHubの最新HTMLと一致しています。\n" + build +
+          " ／ " + sha.slice(0,12)); return;
+      }
+      state.candidate = {html, sha, key, build, config:c};
+      text("最新版を取得しました（まだ適用していません）。\n" +
+        build + " ／ " + sha.slice(0,12) +
+        "\n記録を停止・保存してから「適用」を押してください。");
+    } catch (e) {
+      text("更新確認できませんでした。現在のアプリはそのまま使えます。\n" +
+        e.message + "\n必要なら「更新設定」を確認してください。");
+    } finally { state.busy = false; render(); }
+  }
+  function saveApplied(key, sha) {
+    try {
+      sessionStorage.setItem(APPLIED_KEY, JSON.stringify({key,sha}));
     } catch (_) {}
   }
-
-  function saveHistory() {
-    if (!storageKey) return false;
-    state.saving = true;
-    try {
-      localStorage.setItem(storageKey,JSON.stringify(state.history));
-      return true;
-    } catch (_) {
-      return false;
-    } finally {
-      state.saving = false;
+  function installDocument(html) {
+    const doc = parseUpdate(html);
+    const scripts = [...doc.querySelectorAll("script")].map(s => ({
+      code:s.textContent, updater:s.hasAttribute("data-somnolog-updater"),
+      app:s.hasAttribute("data-somnolog-app"),
+      type:s.getAttribute("type") || ""
+    }));
+    doc.querySelectorAll("script").forEach(s => s.remove());
+    // 旧アプリのタイマー・イベントを必ず解除してから画面を置き換える。
+    window.SomnoLogApp?.dispose();
+    uiAbort?.abort();
+    document.querySelectorAll("dialog[open]").forEach(d => d.close());
+    document.documentElement.lang = doc.documentElement.lang || "ja";
+    const head = document.importNode(doc.head, true);
+    const body = document.importNode(doc.body, true);
+    document.head.replaceWith(head);
+    document.body.replaceWith(body);
+    delete window.SomnoLogApp;
+    for (const item of scripts) {
+      if (item.updater) continue; // 更新管理は現在のものを維持
+      const executable = !item.type || item.type === "text/javascript" ||
+        item.type === "application/javascript";
+      if (!executable) continue;
+      const script = document.createElement("script");
+      if (item.app) script.setAttribute("data-somnolog-app", "");
+      script.textContent = item.code;
+      document.body.append(script);
     }
-  }
-
-  function savePatient() {
-    if (!state.patient) return;
-    sessionStorage.setItem(PATIENT_KEY,
-      JSON.stringify({patient:state.patient,isTest:state.isTest}));
-  }
-
-  function usePatient(data,isTest=false) {
-    state.patient = validatePatient(data);
-    state.isTest = isTest;
-    state.confirmed = false;
-    storageKey = `SomnoLog.history.v7:${isTest?"test":"patient"}:${encodeURIComponent(state.patient.clinicId)}:${encodeURIComponent(state.patient.issueId)}`;
-    loadHistory();
-    try { savePatient(); } catch (_) {}
-
-    $("patient-panel").hidden = false;
-    $("patient-error").hidden = true;
-    $("patient-confirm-button").hidden = false;
-    $("test-patient-button").hidden = true;
-    $("test-label").hidden = !isTest;
-    $("patient-heading").textContent = "患者情報の確認";
-    $("patient-hint").textContent = isTest ?
-      "テスト患者であることを確認してください。" :
-      "ご自身の氏名とカルテNoを確認してください。";
-    $("display-patient-name").textContent = state.patient.patientName;
-    $("display-chart-no").textContent = state.patient.chartNo;
-    $("display-clinic-id").textContent = state.patient.clinicId;
-    $("display-plan-type").textContent = state.patient.plan === "subscription" ?
-      "サブスクリプション" : "回数制";
-    $("capture-patient").textContent = patientText(state.patient);
-    renderCalendar();
-    updateControls();
-  }
-
-  function initPatient() {
-    const query = new URLSearchParams(location.search);
-    try {
-      if (query.has("serial")) {
-        throw new Error("シリアル番号方式の接続はまだ完了していません。");
-      }
-      if (fields.some(key => query.has(key))) {
-        usePatient(Object.fromEntries(fields.map(key => [key,query.get(key)])));
-        return;
-      }
-
-      let saved = null;
-      try { saved = sessionStorage.getItem(PATIENT_KEY); } catch (_) {}
-      if (saved) {
-        const data = JSON.parse(saved);
-        usePatient(data.patient,data.isTest === true);
-        return;
-      }
-      throw new Error("診療所のQRコードで開いてください。テストは下のボタンから開始できます。");
-    } catch (error) {
-      state.patient = null;
-      state.confirmed = false;
-      state.history = [];
-      try { sessionStorage.removeItem(PATIENT_KEY); } catch (_) {}
-      $("patient-panel").hidden = true;
-      $("patient-confirm-button").hidden = true;
-      $("patient-error").hidden = false;
-      $("patient-error").textContent = error instanceof SyntaxError ?
-        "保存情報を読み取れません。QRコードを読み直してください。" : error.message;
-      $("test-patient-button").hidden =
-        fields.some(key => query.has(key)) || query.has("serial");
+    if (!window.SomnoLogApp || typeof window.SomnoLogApp.dispose !== "function") {
+      throw Error("更新後のアプリを起動できませんでした。");
     }
-  }
-
-  function closeDialogs() {
-    document.querySelectorAll("dialog[open]").forEach(dialog => dialog.close());
-  }
-
-  function openDialog(dialog) {
-    closeDialogs();
-    dialog.showModal();
-  }
-
-  function showMessage(title,body) {
-    $("message-title").textContent = title;
-    $("message-body").textContent = body;
-    openDialog($("message-dialog"));
-  }
-
-  function showScreen(id) {
-    if (id !== "patient-screen" && !state.confirmed) return;
-    closeDialogs();
-    leaveBlack(false);
-    ["patient-screen","capture-screen","result-screen","calendar-screen"]
-      .forEach(key => { $(key).hidden = key !== id; });
     window.scrollTo(0,0);
   }
-
-  function updateSendButtons() {
-    const busy = state.submitting || state.recording ||
-      state.sharing || state.preparingShare || state.saving;
-    $("result-share-button").disabled = busy || !state.currentSession;
-    $("result-same-tab-button").disabled = busy || !state.currentSession;
-    const selected = selectedRecords();
-    $("calendar-share-button").disabled = busy || !selected.length;
-    $("calendar-same-tab-button").disabled = busy || !selected.length;
-    $("result-share-button").textContent = state.submitting ?
-      "GASへ送信中…" : "テスト記録を診療所へ送信（GAS）";
-    $("calendar-share-button").textContent = state.submitting ?
-      "GASへ送信中…" : "テスト記録を診療所へ送信（GAS）";
-  }
-
-  function updateControls() {
-    $("start-button").disabled = !state.confirmed || !state.microphone || state.recording;
-    $("stop-button").disabled = !state.recording;
-    $("black-button").disabled = !state.recording;
-    $("microphone-button").disabled = state.recording;
-    $("motion-button").disabled = state.recording;
-    $("volume-range").disabled = state.recording;
-    $("history-button").disabled = state.recording || !state.confirmed;
-    $("capture-status").textContent = state.recording ? "記録中" : "待機中";
-    updateSendButtons();
-  }
-
-  function wave(amplitude,phase=0) {
-    const now = Date.now()/240;
-    let path = "";
-    for (let i=0;i<160;i++) {
-      const x = i*320/159;
-      const y = 36 + Math.sin(i*.25+now+phase)*amplitude +
-        Math.sin(i*.06+now)*amplitude*.3;
-      path += `${i?"L":"M"}${x.toFixed(1)} ${y.toFixed(1)}`;
+  async function apply() {
+    if (!state.candidate || state.busy || state.applying) return;
+    if (!window.SomnoLogApp?.canApplyUpdate()) {
+      text("記録中、未保存記録、または保存領域の問題があるため適用できません。");
+      render(); return;
     }
-    return path;
-  }
-
-  function updateMeters() {
-    if (state.disposed) return;
-    $("microphone-wave").setAttribute("d",
-      state.microphone ? wave(state.recording?24:8) : "M0 36H320");
-    $("motion-wave").setAttribute("d",
-      state.motion ? wave(state.recording?20:7,1.8) : "M0 36H320");
-    $("microphone-title").textContent = state.recording ?
-      `マイク / モックログ ${state.session.logs.length}点` :
-      `マイク / 音量 ${dbText(state.gain)}`;
-    $("motion-title").textContent = state.recording ?
-      (state.motion ? "体動 / モック記録中" : "体動 / 無効・音のみ記録") :
-      "体動";
-  }
-
-  function createLog(elapsed) {
-    return {
-      offsetMs:elapsed,
-      soundDbFS:-42+Math.sin(elapsed/700)*8+Math.sin(elapsed/170)*2,
-      motionG:state.motion ? Math.min(.5,Math.abs(Math.sin(elapsed/900))*.2) : null
-    };
-  }
-
-  function startRecording() {
-    if (state.disposed || !state.confirmed || !state.patient ||
-      !state.microphone || state.recording || state.submitting) return;
-
-    state.recording = true;
-    state.recordingStartedAt = Date.now();
-    state.session = {
-      patient:{...state.patient},
-      isTestPatient:state.isTest,
-      dataSource:"simulation",
-      sessionId:makeId(),
-      date:dateKey(new Date()),
-      startTimeMs:state.recordingStartedAt,
-      stopTimeMs:0, durationMs:0,
-      soundDetectedMs:0, motionDetectedMs:0, missingMs:0,
-      gainDb:state.gain, status:"recording", logs:[]
-    };
-
-    state.recordingTimer = setInterval(() => {
-      const elapsed = Math.max(0,Date.now()-state.recordingStartedAt);
-      if (state.isTest && elapsed >= MAX_DURATION) {
-        stopRecording();
-        return;
-      }
-      state.session.durationMs = elapsed;
-      state.session.soundDetectedMs = Math.floor(elapsed*.32);
-      state.session.motionDetectedMs = state.motion ? Math.floor(elapsed*.18) : 0;
-      state.session.logs.push(createLog(elapsed));
-      updateMeters();
-    },100);
-    updateControls();
-    updateMeters();
-  }
-
-  function stopRecording() {
-    if (!state.recording || !state.session) return;
-    clearInterval(state.recordingTimer);
-    state.recordingTimer = null;
-    const elapsed = Math.max(0,Date.now()-state.recordingStartedAt);
-    const duration = state.isTest ? Math.min(elapsed,MAX_DURATION) : elapsed;
-
-    Object.assign(state.session,{
-      durationMs:duration,
-      stopTimeMs:state.recordingStartedAt+duration,
-      soundDetectedMs:Math.floor(duration*.32),
-      motionDetectedMs:state.motion?Math.floor(duration*.18):0,
-      status:"completed"
-    });
-
-    // 時刻変更による逆順値は保存前に整列。
-    state.session.logs = state.session.logs
-      .filter(log => log.offsetMs <= duration)
-      .sort((a,b) => a.offsetMs-b.offsetMs);
-    state.session.logs.push(createLog(duration));
-
-    state.history.push(state.session);
-    state.currentSession = state.session;
-    state.session = null;
-    state.recording = false;
-    state.unsaved = !saveHistory();
-    updateControls();
-    updateMeters();
-    renderResult(state.currentSession);
-    showScreen("result-screen");
-
-    if (state.unsaved) {
-      showMessage("端末に保存できませんでした",
-        "記録は現在の画面に残っています。閉じる前にZIPを保存してください。同じタブでのGAS送信は、端末保存ができるまで行いません。");
-    }
-  }
-
-  function renderResult(record) {
-    $("result-patient").textContent = patientText(record.patient);
-    $("result-range").textContent =
-      `${dateText(record.startTimeMs)} → ${dateText(record.stopTimeMs)}`;
-    $("result-meta").textContent =
-      `ログ ${record.logs.length}点 / 音量調整 ${dbText(record.gainDb)} / モックデータ`;
-    $("result-duration").innerHTML = durationHtml(record.durationMs);
-    $("result-sound").textContent = simpleDuration(record.soundDetectedMs);
-    $("result-motion").textContent = simpleDuration(record.motionDetectedMs);
-    $("result-send-status").textContent = "";
-    $("result-same-tab-button").hidden = true;
-    updateSendButtons();
-  }
-
-  function bounds() {
-    return state.calendarMode === "single" ?
-      [state.selectedDate,state.selectedDate] : [state.rangeStart,state.rangeEnd];
-  }
-
-  function selectedRecords() {
-    const [start,end] = bounds();
-    return start && end ? state.history
-      .filter(record => record.date >= start && record.date <= end)
-      .sort((a,b) => a.startTimeMs-b.startTimeMs) : [];
-  }
-
-  function linePath(values) {
-    return values.map((value,index) =>
-      `${index?"L":"M"}${(6+(values.length===1?0:index/(values.length-1))*348).toFixed(2)} ${(7+(1-value)*66).toFixed(2)}`
-    ).join(" ");
-  }
-
-  function graphMarkup(record,type) {
-    const sound = type === "sound";
-    const title = sound ? "音圧 dBFS" : "体動 g";
-    const values = record.logs
-      .filter(log => log && Number.isFinite(sound?log.soundDbFS:log.motionG))
-      .map(log => Math.max(0,Math.min(1,
-        sound ? (log.soundDbFS+60)/40 : log.motionG/.5)));
-
-    if (!values.length) {
-      return `<div class="empty-state">${sound?"音圧":"体動センサー"}の記録がありません。</div>`;
-    }
-    return `<div class="graph-label"><strong>${title}</strong><span>${sound?"−60〜−20":"0〜0.5"}</span></div>
-      <div class="chart"><svg viewBox="0 0 360 80" aria-label="${title}のタイムライン"><path d="M6 7H354M6 40H354M6 73H354" stroke="#263442" fill="none"/><path d="${linePath(values)}" stroke="${sound?"#84b9cf":"#bfdbd1"}" stroke-width="2" fill="none" vector-effect="non-scaling-stroke"/></svg></div>
-      <div class="chart-axis"><span>記録開始</span><span>${simpleDuration(record.durationMs)}</span><span>記録停止</span></div>`;
-  }
-
-  function timelineMarkup(record) {
-    return `<figure class="timeline">
-      <div class="timeline-header"><figcaption class="timeline-title">記録タイムライン</figcaption><span class="log-count">${record.logs.length}ログ点</span></div>
-      <div class="graph-block">${graphMarkup(record,"sound")}</div>
-      <div class="graph-block">${graphMarkup(record,"motion")}</div>
-    </figure>`;
-  }
-
-  function openCalendar(from,preferred=null) {
-    state.screenBeforeCalendar = from;
-    const record = preferred ||
-      [...state.history].sort((a,b) => b.startTimeMs-a.startTimeMs)[0];
-    state.calendarMode = "single";
-    state.rangeStart = null;
-    state.rangeEnd = null;
-
-    if (record) {
-      state.selectedDate = record.date;
-      const date = new Date(record.startTimeMs);
-      state.calendarMonth = new Date(date.getFullYear(),date.getMonth(),1);
-    } else {
-      state.selectedDate = dateKey(new Date());
-    }
-    $("calendar-back-button").textContent = from === "result-screen" ?
-      "記録終了画面に戻る" : "記録画面に戻る";
-    clearCalendarSendStatus();
-    renderCalendar();
-    showScreen("calendar-screen");
-  }
-
-  function clearCalendarSendStatus() {
-    $("calendar-send-status").textContent = "";
-    $("calendar-same-tab-button").hidden = true;
-  }
-
-  function renderCalendar() {
-    const year = state.calendarMonth.getFullYear();
-    const month = state.calendarMonth.getMonth();
-    $("month-title").textContent = `${year}年${month+1}月`;
-    $("single-mode").classList.toggle("is-active",state.calendarMode === "single");
-    $("range-mode").classList.toggle("is-active",state.calendarMode === "range");
-    $("calendar-hint").textContent = state.calendarMode === "single" ?
-      "日付を選ぶと、その日の記録を表示します。" :
-      !state.rangeStart ? "開始日を選んでください。" :
-      !state.rangeEnd ? "終了日を選んでください。" : "選択期間の記録を表示しています。";
-    $("range-tools").hidden = state.calendarMode !== "range";
-    $("range-label").textContent = state.rangeStart ?
-      `${state.rangeStart}〜${state.rangeEnd||""}` : "期間未選択";
-
-    const days = $("calendar-days");
-    days.replaceChildren();
-    for (let i=0;i<new Date(year,month,1).getDay();i++) {
-      days.append(document.createElement("span"));
-    }
-
-    for (let number=1;number<=new Date(year,month+1,0).getDate();number++) {
-      const date = new Date(year,month,number);
-      const value = dateKey(date);
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = "calendar-day";
-      if (date.getDay() === 0) button.classList.add("sun");
-      if (date.getDay() === 6) button.classList.add("sat");
-      if (value === dateKey(new Date())) button.classList.add("today");
-
-      const selected = state.calendarMode === "single" ?
-        value === state.selectedDate : value === state.rangeStart || value === state.rangeEnd;
-      if (state.calendarMode === "range" && state.rangeStart && state.rangeEnd &&
-        value >= state.rangeStart && value <= state.rangeEnd) {
-        button.classList.add("in-range");
-      }
-      if (selected) button.classList.add("selected");
-
-      const has = state.history.some(record => record.date === value);
-      button.innerHTML = `<span>${number}</span><span class="record-dot${has?"":" empty"}"></span>`;
-      button.setAttribute("aria-label",`${value} 保存記録${has?"あり":"なし"}`);
-      button.onclick = () => {
-        if (state.calendarMode === "single") {
-          state.selectedDate = value;
-        } else if (!state.rangeStart || state.rangeEnd) {
-          state.rangeStart = value;
-          state.rangeEnd = null;
-        } else {
-          state.rangeEnd = value;
-          if (state.rangeEnd < state.rangeStart) {
-            [state.rangeStart,state.rangeEnd] = [state.rangeEnd,state.rangeStart];
-          }
-        }
-        clearCalendarSendStatus();
-        renderCalendar();
-      };
-      days.append(button);
-    }
-    renderRecordList();
-  }
-
-  function renderRecordList() {
-    const records = selectedRecords();
-    const [start,end] = bounds();
-    const list = $("record-list");
-    $("records-title").textContent = start && end ?
-      `${start}${start===end?"":`〜${end}`}の記録（${records.length}件）` :
-      "日付を選択してください";
-    list.replaceChildren();
-    $("calendar-zip-button").disabled = !records.length;
-    updateSendButtons();
-
-    if (!records.length) {
-      const empty = document.createElement("div");
-      empty.className = "empty-state";
-      empty.textContent = "この日付には保存された記録がありません。";
-      list.append(empty);
-      return;
-    }
-
-    records.forEach(record => {
-      const card = document.createElement("article");
-      card.className = "card";
-      card.innerHTML = `<p class="note">保存記録 / 音量調整 ${dbText(record.gainDb)} / モックデータ</p>
-        <p class="hint">${escapeHtml(patientText(record.patient))}</p>
-        <p style="margin-top:9px;color:#f3e7c9;font-size:13px;line-height:1.8">${dateText(record.startTimeMs)} → ${dateText(record.stopTimeMs)}</p>
-        <div class="summary-row" style="margin-top:13px"><span class="summary-label">記録時間</span><span class="summary-value">${durationHtml(record.durationMs)}</span></div>
-        <p class="note" style="margin-top:9px">音 ${simpleDuration(record.soundDetectedMs)} / 体動 ${simpleDuration(record.motionDetectedMs)} / 欠測 ${simpleDuration(record.missingMs)}</p>
-        ${timelineMarkup(record)}`;
-      card.tabIndex = 0;
-      card.setAttribute("role","button");
-      const open = () => {
-        state.currentSession = record;
-        renderResult(record);
-        showScreen("result-screen");
-      };
-      card.onclick = open;
-      card.onkeydown = event => {
-        if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault();
-          open();
-        }
-      };
-      list.append(card);
-    });
-  }
-
-  // GAS側の既存スキーマと互換。modeはV12のまま維持する。
-  function uuidV4() {
-    if (globalThis.crypto?.randomUUID) return crypto.randomUUID();
-    if (!globalThis.crypto?.getRandomValues) {
-      throw new Error("安全な送信IDを作成できません。HTTPSの公開ページで開いてください。");
-    }
-    const bytes = crypto.getRandomValues(new Uint8Array(16));
-    bytes[6] = (bytes[6]&15)|64;
-    bytes[8] = (bytes[8]&63)|128;
-    const hex = Array.from(bytes,value => value.toString(16).padStart(2,"0"));
-    return `${hex.slice(0,4).join("")}-${hex.slice(4,6).join("")}-${hex.slice(6,8).join("")}-${hex.slice(8,10).join("")}-${hex.slice(10).join("")}`;
-  }
-
-  function requestIdFor(record) {
-    if (typeof record.sessionId !== "string" || !record.sessionId) {
-      throw new Error("記録IDがありません。新しいテスト記録を作成してください。");
-    }
-    // V12と同じ保存キーで、切り替え前後も同じ送信IDを利用。
-    const key = `SomnoLog.gas-test.request.v12:${storageKey}:${record.sessionId}`;
-    const valid = value => typeof value === "string" &&
-      /^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(value);
-    if (sendIds.has(key)) return sendIds.get(key);
-
-    let id;
-    try { id = localStorage.getItem(key); } catch (_) {}
-    if (!valid(id)) id = uuidV4();
-    sendIds.set(key,id);
-    try { localStorage.setItem(key,id); } catch (_) {}
-    return id;
-  }
-
-  function gasPayload(records) {
-    if (records.length !== 1) {
-      throw new Error("GAS送信は1記録ずつです。記録カードを開いて送信してください。");
-    }
-
-    const record = records[0];
-    if (!state.isTest || !samePatient(state.patient,TEST_PATIENT) ||
-      record.isTestPatient !== true || !samePatient(record.patient,TEST_PATIENT) ||
-      record.dataSource !== "simulation") {
-      throw new Error("固定のテスト患者で作成したモック記録だけ送信できます。");
-    }
-
-    if (!Number.isFinite(record.durationMs) || record.durationMs <= 0 ||
-      record.durationMs > MAX_DURATION || !Number.isInteger(record.gainDb) ||
-      record.gainDb < -9 || record.gainDb > 9 || !Array.isArray(record.logs) ||
-      !record.logs.length || record.logs.length > MAX_LOGS) {
-      throw new Error("送信対象は3分以内・2000ログ点以内です。10秒程度の新しい記録で試してください。");
-    }
-
-    let previous = -1;
-    const logs = record.logs.map(log => {
-      if (!log || !Number.isFinite(log.offsetMs) ||
-        log.offsetMs < previous || log.offsetMs < 0 ||
-        log.offsetMs > record.durationMs ||
-        !Number.isFinite(log.soundDbFS) || log.soundDbFS < -100 || log.soundDbFS > 0 ||
-        !(log.motionG === null ||
-          (Number.isFinite(log.motionG) && log.motionG >= 0 && log.motionG <= .5))) {
-        throw new Error("ログの数値形式が不正です。新しいテスト記録を作成してください。");
-      }
-      previous = log.offsetMs;
-      return {offsetMs:log.offsetMs,soundDbFS:log.soundDbFS,motionG:log.motionG};
-    });
-
-    return {
-      mode:"somnolog-test-v12",
-      requestId:requestIdFor(record),
-      record:{durationMs:record.durationMs,gainDb:record.gainDb,logs}
-    };
-  }
-
-  function validateGasURL() {
-    const url = new URL(GAS_URL);
-    if (url.origin !== "https://script.google.com" ||
-      !/^\/macros\/s\/[A-Za-z0-9_-]+\/exec$/.test(url.pathname) ||
-      url.search || url.hash) {
-      throw new Error("GAS送信先が正しくありません。ウェブアプリの /exec URLが必要です。");
-    }
-    return url.href;
-  }
-
-  function makePostForm(text,target) {
-    const form = document.createElement("form");
-    form.method = "POST";
-    form.action = validateGasURL();
-    form.target = target;
-    form.enctype = "application/x-www-form-urlencoded";
-    form.acceptCharset = "UTF-8";
-    form.style.display = "none";
-    const input = document.createElement("input");
-    input.type = "hidden";
-    input.name = "payload";
-    input.value = text;
-    form.append(input);
-    document.body.append(form);
-    return form;
-  }
-
-  function unlockSend() {
-    if (sendUnlockTimer !== null) {
-      clearTimeout(sendUnlockTimer);
-      timeouts.delete(sendUnlockTimer);
-      sendUnlockTimer = null;
-    }
-    state.submitting = false;
-    updateControls();
-  }
-
-  function ensureSavedBeforeNavigation() {
-    if (state.unsaved) {
-      if (!saveHistory()) {
-        throw new Error("記録を端末に保存できません。同じタブで移動する前にZIPを保存してください。");
-      }
-      state.unsaved = false;
-    }
-    try { savePatient(); } catch (_) {}
-  }
-
-  function submitToGas(records,statusId,sameTab=false) {
-    if (state.submitting || state.recording || state.sharing ||
-      state.saving || state.preparingShare) return;
-
-    const output = $(statusId);
-    const fallbackId = statusId === "result-send-status" ?
-      "result-same-tab-button" : "calendar-same-tab-button";
-    let form = null;
-    let resultTab = null;
-
+    const c = state.candidate;
+    if (!confirm("GitHubから取得した最新版を適用します。\n" +
+      c.config.owner + "/" + c.config.repo + "\n" + c.config.path +
+      "\nコミット：" + c.sha.slice(0,12) +
+      "\n\nこのリポジトリのコードを信頼できる場合のみ適用してください。\n" +
+      "履歴は残し、画面を記録開始前の状態へ戻します。\n適用しますか？")) return;
+    // 確認ダイアログ後にも再チェック。
+    if (!window.SomnoLogApp?.canApplyUpdate()) return;
+    state.applying = true; render();
+    const oldHTML = state.rollbackHTML;
     try {
-      if (!state.confirmed) throw new Error("患者情報を確認してください。");
-      if (!window.isSecureContext) {
-        throw new Error("HTTPSのSomnoLog公開ページで送信してください。");
-      }
-
-      const payload = gasPayload(records);
-      const text = JSON.stringify(payload);
-      const encoded = "payload="+encodeURIComponent(text);
-      if (new TextEncoder().encode(encoded).length > MAX_BODY) {
-        throw new Error("送信データが大きすぎます。短いテスト記録で試してください。");
-      }
-      validateGasURL();
-
-      let target = "_self";
-      if (sameTab) {
-        ensureSavedBeforeNavigation();
-      } else {
-        // タップの同期処理内で先に結果タブを確保。
-        // async/await・fetch・タイマーを挟まずフォームPOSTする。
-        target = "SomnoLogGas_"+makeId().replace(/[^A-Za-z0-9_]/g,"");
-        resultTab = window.open("about:blank",target);
-
-        if (!resultTab) {
-          output.textContent =
-            "新しいタブを開けませんでした。まだ送信していません。\n下の「同じタブでGASへ送信」を押してください。";
-          $(fallbackId).hidden = false;
-          return;
-        }
-
-        try {
-          resultTab.document.title = "SomnoLog GAS送信";
-          resultTab.document.body.textContent = "GASへ送信しています。受付結果を表示します。";
-          resultTab.opener = null;
-        } catch (_) {}
-      }
-
-      form = makePostForm(text,target);
-      state.submitting = true;
-      updateControls();
-
-      output.textContent =
-        `GASへ送信します。\n送信ID：${payload.requestId}\n受付結果はGASの画面で確認してください。`;
-      $(fallbackId).hidden = sameTab;
-      // 同じタブへの明示的な送信はbeforeunload警告の対象にしない。
-      if (sameTab) state.submitting = false;
-
-      HTMLFormElement.prototype.submit.call(form);
-
-      if (!sameTab) {
-        output.textContent =
-          `GASへの送信操作を実行しました。\n送信ID：${payload.requestId}\n新しいタブの受付結果を確認してください。`;
-        sendUnlockTimer = later(() => {
-          sendUnlockTimer = null;
-          state.submitting = false;
-          updateControls();
-        },4000);
-      }
-    } catch (error) {
-      if (resultTab) {
-        try { resultTab.close(); } catch (_) {}
-      }
-      output.textContent =
-        `送信できませんでした：${error.name || "Error"}\n${error.message || String(error)}`;
-      unlockSend();
-    } finally {
-      if (form) later(() => form.remove(),30000);
-    }
-  }
-
-  // ZIPは両端末共通の補助機能。主送信はGAS。
-  function shareFilename(records) {
-    const sorted = [...records].sort((a,b) => a.startTimeMs-b.startTimeMs);
-    const first = sorted[0],last = sorted[sorted.length-1];
-    return `SomnoLog_${first.date}${first.date===last.date?"":`_${last.date}`}.zip`;
-  }
-
-  function concat(...arrays) {
-    const result = new Uint8Array(arrays.reduce((sum,array) => sum+array.length,0));
-    let offset = 0;
-    arrays.forEach(array => { result.set(array,offset); offset += array.length; });
-    return result;
-  }
-
-  function u16(value) {
-    const bytes = new Uint8Array(2);
-    new DataView(bytes.buffer).setUint16(0,value,true);
-    return bytes;
-  }
-
-  function u32(value) {
-    const bytes = new Uint8Array(4);
-    new DataView(bytes.buffer).setUint32(0,value>>>0,true);
-    return bytes;
-  }
-
-  function crc32(bytes) {
-    let crc = 0xffffffff;
-    for (const byte of bytes) {
-      crc ^= byte;
-      for (let i=0;i<8;i++) {
-        crc = (crc>>>1)^((crc&1)?0xedb88320:0);
-      }
-    }
-    return (crc^0xffffffff)>>>0;
-  }
-
-  function createZip(files) {
-    if (files.length > 65535) throw new Error("ZIPのファイル数上限を超えています。");
-    const encoder = new TextEncoder();
-    const locals = [],centrals = [];
-    let offset = 0;
-
-    files.forEach(file => {
-      const name = encoder.encode(file.name);
-      const data = encoder.encode(file.data);
-      const crc = crc32(data);
-      if (name.length > 65535 || offset+data.length+name.length+30 > 0xffffffff) {
-        throw new Error("ZIPが大きすぎます。期間を短くしてください。");
-      }
-
-      const local = concat(
-        u32(0x04034b50),u16(20),u16(0x0800),u16(0),u16(0),u16(33),
-        u32(crc),u32(data.length),u32(data.length),u16(name.length),u16(0),name,data);
-      const central = concat(
-        u32(0x02014b50),u16(20),u16(20),u16(0x0800),u16(0),u16(0),u16(33),
-        u32(crc),u32(data.length),u32(data.length),u16(name.length),
-        u16(0),u16(0),u16(0),u16(0),u32(0),u32(offset),name);
-      locals.push(local);
-      centrals.push(central);
-      offset += local.length;
-    });
-
-    const centralSize = centrals.reduce((sum,array) => sum+array.length,0);
-    if (offset+centralSize+22 > 0xffffffff) throw new Error("ZIPが大きすぎます。");
-    const end = concat(u32(0x06054b50),u16(0),u16(0),u16(files.length),
-      u16(files.length),u32(centralSize),u32(offset),u16(0));
-    return new Blob([...locals,...centrals,end],{type:"application/zip"});
-  }
-
-  function createZipFiles(records) {
-    if (!records.length || records.some(record =>
-      !samePatient(record.patient,state.patient))) {
-      throw new Error("共有対象の患者情報が一致しません。");
-    }
-    const files = [
-      {name:"README.txt",data:`SomnoLog ${VERSION}\r\n計測はモックです。\r\nZIPは暗号化されていません。\r\npatient.jsonに患者情報を格納しています。\r\n共有・保存では利用数を計上しません。\r\n`},
-      {name:"patient.json",data:JSON.stringify({
-        ...records[0].patient,isTestPatient:records[0].isTestPatient
-      },null,2)},
-      {name:"manifest.json",data:JSON.stringify({
-        app:"SomnoLog",version:VERSION,dataSource:"simulation",
-        createdAt:new Date().toISOString(),recordCount:records.length,
-        records:records.map(record => ({
-          patient:record.patient,isTestPatient:record.isTestPatient,
-          sessionId:record.sessionId,date:record.date,
-          startTimeMs:record.startTimeMs,stopTimeMs:record.stopTimeMs,
-          durationMs:record.durationMs
-        }))
-      },null,2)}
-    ];
-    records.forEach((record,index) => {
-      files.push({name:`record_${index+1}/session.json`,
-        data:JSON.stringify(record,null,2)});
-      files.push({name:`record_${index+1}/timeline-log.json`,
-        data:JSON.stringify(record.logs,null,2)});
-    });
-    return files;
-  }
-
-  function createShareFile(records) {
-    return new File([createZip(createZipFiles(records))],
-      shareFilename(records),{type:"application/zip"});
-  }
-
-  function progress(value,text) {
-    $("share-progress").hidden = false;
-    $("share-progress").value = value;
-    $("share-status").textContent = text;
-  }
-
-  function hasNativeShare() {
-    return !!(window.NativeShare &&
-      typeof window.NativeShare.shareFile === "function");
-  }
-
-  function refreshShareButtons() {
-    const busy = state.sharing || state.saving || state.preparingShare;
-    const available = hasNativeShare() ||
-      (window.isSecureContext && typeof navigator.share === "function");
-    $("share-start-button").disabled = busy || !preparedShareFile || !available;
-    $("clinic-download-button").disabled = busy || !preparedShareFile;
-    $("share-cancel-button").disabled = state.sharing || state.saving;
-    $("share-start-button").textContent = state.preparingShare ?
-      "ZIPを作成中…" : state.sharing ? "共有操作中…" : "共有画面を開く";
-    updateSendButtons();
-  }
-
-  function clearSharePreparation() {
-    sharePreparationToken++;
-    preparedShareFile = null;
-    state.preparingShare = false;
-    state.sharingRecords = [];
-  }
-
-  function openShareDialog(records) {
-    if (!state.confirmed || state.sharing || state.saving || state.submitting) return;
-    if (!records.length) {
-      showMessage("共有できる記録がありません","記録のある日付を選択してください。");
-      return;
-    }
-    closeDialogs();
-    state.sharingRecords = [...records];
-    preparedShareFile = null;
-    state.preparingShare = true;
-    const token = ++sharePreparationToken;
-
-    $("share-count").textContent = `対象記録：${records.length}件`;
-    $("share-patient").textContent = patientText(records[0].patient);
-    $("share-filename").textContent = shareFilename(records);
-    progress(10,"ZIPを作成しています。");
-    refreshShareButtons();
-    $("share-dialog").showModal();
-
-    later(() => {
-      if (token !== sharePreparationToken || !$("share-dialog").open) return;
+      installDocument(c.html);
+      state.rollbackHTML = c.html;
+      state.currentSHA = c.sha; state.currentSource = c.key;
+      state.candidate = null; saveApplied(c.key,c.sha);
+      text("最新版を適用しました。\n" + c.build + " ／ " + c.sha.slice(0,12));
+    } catch (e) {
       try {
-        preparedShareFile = createShareFile(state.sharingRecords);
-        const available = hasNativeShare() ||
-          (window.isSecureContext && typeof navigator.share === "function");
-        progress(100,`ZIPを作成しました（${(preparedShareFile.size/1024).toFixed(1)} KB）。\n`+
-          (available ? "共有画面を開くか、端末に保存できます。" :
-            "このブラウザでは共有機能を使えません。ZIPを端末に保存してください。"));
-      } catch (error) {
-        preparedShareFile = null;
-        progress(0,`ZIPを作成できませんでした：${error.name}: ${error.message}`);
-      } finally {
-        state.preparingShare = false;
-        refreshShareButtons();
+        if (oldHTML) installDocument(oldHTML);
+        text("更新の起動に失敗しました。元の画面へ戻しました。\n" + e.message);
+      } catch (_) {
+        alert("更新に失敗しました。履歴は削除していません。ページを再読み込みしてください。");
       }
-    },50);
+    } finally { state.applying = false; render(); }
   }
-
-  async function shareWithSystem() {
-    if (state.sharing || state.saving || state.preparingShare || !preparedShareFile) return;
-    const file = preparedShareFile;
-    state.sharing = true;
-    refreshShareButtons();
-
-    try {
-      progress(70,"共有画面を開いています。");
-      const operation = hasNativeShare() ?
-        window.NativeShare.shareFile(file) : navigator.share({files:[file]});
-      await operation;
-      progress(100,"共有操作が終了しました。\n選んだアプリで送信を完了してください。");
-    } catch (error) {
-      progress(0,error.name === "AbortError" ?
-        "共有が中断されました。再度共有するか、ZIPを保存してください。" :
-        `共有画面を開けませんでした：${error.name}: ${error.message}\nZIPを端末に保存できます。`);
-    } finally {
-      state.sharing = false;
-      refreshShareButtons();
+  function openSettings() {
+    const c = savedConfig() || inferConfig() || {owner:"",repo:"",branch:"",path:"index.html"};
+    $("github-owner").value = c.owner || "";
+    $("github-repo").value = c.repo || "";
+    $("github-branch").value = c.branch || "";
+    $("github-path").value = c.path || "";
+    $("update-settings-error").hidden = true;
+    document.querySelectorAll("dialog[open]").forEach(d => d.close());
+    $("update-settings-dialog").showModal();
+  }
+  function bindUI() {
+    uiAbort?.abort(); uiAbort = new AbortController();
+    const on = (id,event,fn) => $(id)?.addEventListener(event,fn,{signal:uiAbort.signal});
+    on("update-check-button","click",check);
+    on("update-apply-button","click",apply);
+    on("update-settings-button","click",openSettings);
+    on("update-settings-form","submit",e => {
+      e.preventDefault();
+      try {
+        const c = validate({
+          owner:$("github-owner").value.trim(),
+          repo:$("github-repo").value.trim(),
+          branch:$("github-branch").value.trim(),
+          path:$("github-path").value.trim()
+        });
+        localStorage.setItem(CONFIG_KEY,JSON.stringify(c));
+        state.candidate = null;
+        $("update-settings-dialog").close(); check();
+      } catch (error) {
+        $("update-settings-error").textContent = error.message;
+        $("update-settings-error").hidden = false;
+      }
+    });
+    on("update-auto-button","click",() => {
+      try {
+        localStorage.removeItem(CONFIG_KEY);
+        state.candidate = null;
+        $("update-settings-dialog").close(); check();
+      } catch (_) {
+        $("update-settings-error").textContent = "設定を保存できません。";
+        $("update-settings-error").hidden = false;
+      }
+    });
+    render();
+    if (!state.initialChecked) {
+      state.initialChecked = true;
+      // 実行前の元HTMLを復元用に保持。永続保存はしない。
+      state.rollbackHTML = "<!DOCTYPE html>\n" + document.documentElement.outerHTML;
+      if (location.protocol === "https:" && (savedConfig() || inferConfig())) {
+        setTimeout(check,500);
+      } else {
+        text("GitHub Pagesで公開すると更新を確認します。\n" +
+          "独自ドメイン・プレビューでは「更新設定」で公開リポジトリを指定してください。");
+      }
     }
   }
+  // セッションのSHAは参考値。初回確認では必ずHTMLを取得して照合する。
+  window.SomnoLogUpdater = Object.freeze({bindUI, check, apply, render});
+})();
+</script>
 
-  function saveForClinic() {
-    if (state.sharing || state.saving || state.preparingShare || !preparedShareFile) return;
-    state.saving = true;
-    refreshShareButtons();
-    try {
-      const file = preparedShareFile;
-      const url = URL.createObjectURL(file);
-      objectURLs.add(url);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = file.name;
-      document.body.append(link);
-      link.click();
-      link.remove();
-      later(() => {
-        URL.revokeObjectURL(url);
-        objectURLs.delete(url);
-      },60000);
-      progress(100,`ZIPの保存を開始しました。\n${file.name}\n端末の保存先を確認してください。`);
-    } catch (error) {
-      progress(0,`保存できませんでした：${error.name}: ${error.message}`);
-    } finally {
-      state.saving = false;
-      refreshShareButtons();
+<script data-somnolog-app>
+(() => {
+  "use strict";
+  window.SomnoLogApp?.dispose();
+  const VERSION="V6-test-compat-02";
+  const STORAGE_KEY="SomnoLog.mock.history.v6";
+  const ACTIVE_KEY="SomnoLog.mock.active.v6";
+  const REQUEST_KEY="SomnoLog.test.requestIds.v1";
+  const ENDPOINT_KEY="SomnoLog.test.endpoint";
+  const DEFAULT_ENDPOINT="https://script.google.com/macros/s/AKfycbzNHyp1E2hN56f65eJvC15-Sp94K-hAEeHQlrZunLIOwQ47uFSg6UhnDiYTwPooG5CU/exec";
+  const abort=new AbortController(),intervals=new Set(),timeouts=new Set();
+  let disposed=false;
+  const $=id=>document.getElementById(id);
+  const on=(target,event,fn)=>target.addEventListener(event,fn,{signal:abort.signal});
+  const every=(fn,ms)=>{const id=setInterval(()=>{if(!disposed)fn()},ms);intervals.add(id);return id};
+  const later=(fn,ms)=>{const id=setTimeout(()=>{timeouts.delete(id);if(!disposed)fn()},ms);timeouts.add(id);return id};
+  const pad=n=>String(n).padStart(2,"0");
+  const dateKey=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+  const dt=n=>new Date(n).toLocaleString("ja-JP");
+  const durationText=n=>{
+    const s=Math.max(0,Math.floor(Number(n)/1000)||0);
+    return `${Math.floor(s/3600)}時間${Math.floor(s%3600/60)}分${s%60}秒`;
+  };
+  const dbText=n=>`${n>0?"+":""}${n}dB`;
+  function uuid(){
+    if(typeof crypto.randomUUID==="function")return crypto.randomUUID();
+    const b=crypto.getRandomValues(new Uint8Array(16));
+    b[6]=(b[6]&15)|64;b[8]=(b[8]&63)|128;
+    const h=Array.from(b,n=>n.toString(16).padStart(2,"0")).join("");
+    return `${h.slice(0,8)}-${h.slice(8,12)}-${h.slice(12,16)}-${h.slice(16,20)}-${h.slice(20)}`;
+  }
+  const state={
+    microphone:false,motion:false,recording:false,gain:0,
+    session:null,currentSession:null,history:[],readable:true,unsaved:false,
+    timer:null,lastSave:0,saveError:false,shareBusy:false,
+    calendarMode:"single",selectedDate:dateKey(new Date()),
+    month:new Date(new Date().getFullYear(),new Date().getMonth(),1),
+    rangeStart:null,rangeEnd:null,calendarFrom:"capture-screen",
+    sharingRecords:[],holding:null,black:false,fullOwned:false
+  };
+  function openDialog(id){
+    document.querySelectorAll("dialog[open]").forEach(d=>d.close());
+    $(id).showModal();
+  }
+  function message(title,body){
+    $("message-title").textContent=title;$("message-body").textContent=body;
+    openDialog("message-dialog");
+  }
+  function screen(id){
+    document.querySelectorAll("dialog[open]").forEach(d=>d.close());
+    leaveBlack();
+    ["capture-screen","result-screen","calendar-screen"].forEach(k=>$(k).hidden=k!==id);
+    window.scrollTo(0,0);
+  }
+  function validStored(r){
+    return r&&typeof r==="object"&&Array.isArray(r.logs)&&
+      Number.isFinite(r.startTimeMs)&&Number.isFinite(r.durationMs)&&r.durationMs>=0;
+  }
+  function loadHistory(){
+    try{
+      const h=JSON.parse(localStorage.getItem(STORAGE_KEY)||"[]");
+      if(!Array.isArray(h)||h.some(r=>!validStored(r)))throw Error("履歴形式");
+      state.history=h;
+      const active=JSON.parse(localStorage.getItem(ACTIVE_KEY)||"null");
+      if(active!==null){
+        if(!validStored(active)||!active.sessionId)throw Error("中断記録形式");
+        if(!state.history.some(r=>r.sessionId===active.sessionId)){
+          active.status="interrupted";
+          active.stopTimeMs=active.startTimeMs+active.durationMs;
+          state.history.push(active);
+          localStorage.setItem(STORAGE_KEY,JSON.stringify(state.history));
+        }
+        localStorage.removeItem(ACTIVE_KEY);
+        message("中断した見本記録を復元しました",
+          "最後に保存できたところまでを履歴へ戻しました。保存後から中断までの部分は復元できません。");
+      }
+    }catch(e){
+      state.readable=false;
+      message("保存済み記録を確認できません",
+        "既存データは削除しません。上書きを防ぐため、新しい記録と更新適用を停止しています。");
     }
   }
-
-  function updateBlackClock() {
-    const date = new Date();
-    $("black-clock").textContent = `${pad(date.getHours())}:${pad(date.getMinutes())}`;
-  }
-
-  function enterBlack() {
-    if (!state.recording) return;
-    closeDialogs();
-    $("black-screen").hidden = false;
-    document.body.classList.add("is-locked");
-    updateBlackClock();
-    $("black-screen").focus();
-  }
-
-  function leaveBlack(focus=true) {
-    clearTimeout(state.blackHoldTimer);
-    state.blackHolding = false;
-    $("black-screen").hidden = true;
-    document.body.classList.remove("is-locked");
-    if (focus && state.recording) $("black-button").focus();
-  }
-
-  function endHold() {
-    clearTimeout(state.blackHoldTimer);
-    state.blackHolding = false;
-  }
-
-  function isUpdateBusy() {
-    return state.recording || state.saving || state.sharing ||
-      state.preparingShare || state.submitting ||
-      !!document.querySelector("dialog[open]");
-  }
-
-  function prepareUpdate() {
-    if (isUpdateBusy()) {
-      throw new Error("記録・保存・共有・送信・ダイアログを終了してください。");
-    }
-    ensureSavedBeforeNavigation();
-  }
-
-  function onBeforeUnload(event) {
-    if (state.recording || state.sharing || state.unsaved) {
-      event.preventDefault();
-      event.returnValue = "";
+  function writeActive(){
+    if(!state.session)return false;
+    try{
+      localStorage.setItem(ACTIVE_KEY,JSON.stringify(state.session));
+      state.lastSave=Date.now();state.saveError=false;return true;
+    }catch(e){
+      state.saveError=true;$("capture-status").textContent="保存失敗";return false;
     }
   }
-
-  function dispose() {
-    state.disposed = true;
-    timers.forEach(clearInterval);
-    timers.clear();
-    timeouts.forEach(clearTimeout);
-    timeouts.clear();
-    clearInterval(state.recordingTimer);
-    clearTimeout(state.blackHoldTimer);
-    window.removeEventListener("beforeunload",onBeforeUnload);
-    objectURLs.forEach(url => URL.revokeObjectURL(url));
-    objectURLs.clear();
-    clearSharePreparation();
+  function controls(){
+    $("start-button").disabled=!state.readable||!state.microphone||state.recording||state.unsaved;
+    $("stop-button").disabled=!state.recording;
+    $("black-button").disabled=!state.recording;
+    ["microphone-button","motion-button","volume-range","history-button"].forEach(id=>$(id).disabled=state.recording);
+    $("capture-status").textContent=state.recording?(state.saveError?"保存失敗":"見本記録中"):state.unsaved?"未保存記録あり":"待機中";
+    $("microphone-button").textContent=state.microphone?"見本マイク有効（実許可なし）":"見本マイクを有効にする";
+    $("motion-button").textContent=state.motion?"見本体動有効（実許可なし）":"見本体動を有効にする";
+    $("microphone-button").classList.toggle("enabled",state.microphone);
+    $("motion-button").classList.toggle("enabled",state.motion);
+    window.SomnoLogUpdater?.render();
+  }
+  function simulatedLog(ms){
+    return {offsetMs:ms,
+      soundDbFS:-42+Math.sin(ms/700)*8+Math.sin(ms/170)*2,
+      motionG:state.motion?Math.min(.5,Math.abs(Math.sin(ms/900))*.2):null};
+  }
+  function tick(){
+    if(!state.recording)return;
+    const r=state.session,elapsed=Math.max(r.durationMs,Date.now()-r.startTimeMs);
+    const last=r.logs.at(-1);
+    if(last&&elapsed-last.offsetMs>2000){
+      r.missingMs=(r.missingMs||0)+(elapsed-last.offsetMs-100);
+      r.interruptions=r.interruptions||[];
+      r.interruptions.push({fromMs:last.offsetMs,toMs:elapsed});
+    }
+    r.durationMs=elapsed;r.stopTimeMs=r.startTimeMs+elapsed;
+    r.soundDetectedMs=Math.floor((elapsed-r.missingMs)*.32);
+    r.motionDetectedMs=state.motion?Math.floor((elapsed-r.missingMs)*.18):0;
+    if(!last||elapsed>last.offsetMs)r.logs.push(simulatedLog(elapsed));
+    if(Date.now()-state.lastSave>=1000)writeActive();
+    controls();
+  }
+  function start(){
+    if(state.recording||!state.readable||!state.microphone||state.unsaved)return;
+    const now=Date.now();
+    state.session={
+      sessionId:uuid(),date:dateKey(new Date(now)),startTimeMs:now,
+      stopTimeMs:now,durationMs:0,soundDetectedMs:0,motionDetectedMs:0,
+      missingMs:0,gainDb:state.gain,status:"recording",
+      dataSource:"simulation",logs:[simulatedLog(0)]
+    };
+    if(!writeActive()){
+      state.session=null;
+      message("記録を開始できません","端末保存に失敗しました。既存記録は削除していません。");return;
+    }
+    state.recording=true;state.timer=every(tick,100);controls();
+  }
+  function stop(){
+    if(!state.recording)return;
+    tick();clearInterval(state.timer);intervals.delete(state.timer);state.timer=null;
+    const r=state.session;r.status="completed";
+    state.history.push(r);state.currentSession=r;
+    let saved=false;
+    try{
+      localStorage.setItem(STORAGE_KEY,JSON.stringify(state.history));
+      saved=true;try{localStorage.removeItem(ACTIVE_KEY)}catch(e){}
+    }catch(e){}
+    state.unsaved=!saved;state.recording=false;state.session=null;state.saveError=false;
+    controls();renderResult(r);screen("result-screen");
+    if(!saved)$("result-detail").textContent="端末への保存に失敗しました。画面を閉じず、ZIP回収を試してください。未保存の間は更新できません。";
+  }
+  function wave(enabled,phase){
+    if(!enabled)return "M0 36H320";
+    let d="",time=Date.now()/240;
+    for(let i=0;i<160;i++){
+      const x=i*320/159,a=state.recording?20:7;
+      const y=36+Math.sin(i*.25+time+phase)*a+Math.sin(i*.06+time)*a*.3;
+      d+=`${i?"L":"M"}${x.toFixed(1)} ${y.toFixed(1)}`;
+    }
+    return d;
+  }
+  function meters(){
+    if(state.black)return;
+    $("microphone-wave").setAttribute("d",wave(state.microphone,0));
+    $("motion-wave").setAttribute("d",wave(state.motion,1.8));
+    $("microphone-title").textContent=state.recording?`見本マイク / ${state.session.logs.length}点`:`見本マイク / ${dbText(state.gain)}`;
+    $("motion-title").textContent=state.recording?"見本体動 / "+(state.motion?"記録中":"無効"):"見本体動";
+  }
+  function renderResult(r){
+    $("result-range").textContent=`${dt(r.startTimeMs)} → ${dt(r.stopTimeMs)}`;
+    $("result-meta").textContent=`見本ログ ${r.logs.length}点 ／ 音量調整 ${dbText(r.gainDb)} ／ ${r.status==="interrupted"?"中断記録":"実測ではありません"}`;
+    $("result-duration").textContent=durationText(r.durationMs);
+    $("result-sound").textContent=durationText(r.soundDetectedMs);
+    $("result-motion").textContent=durationText(r.motionDetectedMs);
+    $("result-detail").textContent="音声はありません。欠測 "+durationText(r.missingMs||0);
+  }
+  function bounds(){
+    return state.calendarMode==="single"?[state.selectedDate,state.selectedDate]:[state.rangeStart,state.rangeEnd];
+  }
+  function selected(){
+    const [a,b]=bounds();
+    return a&&b?state.history.filter(r=>(r.date||dateKey(new Date(r.startTimeMs)))>=a&&
+      (r.date||dateKey(new Date(r.startTimeMs)))<=b).sort((x,y)=>x.startTimeMs-y.startTimeMs):[];
+  }
+  function calendar(from,r){
+    state.calendarFrom=from;state.calendarMode="single";state.rangeStart=state.rangeEnd=null;
+    const latest=r||[...state.history].sort((a,b)=>b.startTimeMs-a.startTimeMs)[0];
+    if(latest){
+      state.selectedDate=latest.date||dateKey(new Date(latest.startTimeMs));
+      const d=new Date(latest.startTimeMs);state.month=new Date(d.getFullYear(),d.getMonth(),1);
+    }
+    $("calendar-back-button").textContent=from==="result-screen"?"記録終了画面に戻る":"記録画面に戻る";
+    renderCalendar();screen("calendar-screen");
+  }
+  function graph(r,motion){
+    const svg=document.createElementNS("http://www.w3.org/2000/svg","svg");
+    svg.setAttribute("viewBox","0 0 360 100");svg.setAttribute("class","chart");
+    svg.setAttribute("aria-label",motion?"見本体動の経過時間グラフ":"見本デジタル音量の経過時間グラフ");
+    const grid=document.createElementNS(svg.namespaceURI,"path");
+    grid.setAttribute("d","M6 10H354M6 50H354M6 90H354");grid.setAttribute("stroke","#263442");svg.append(grid);
+    let d="",previous=null;
+    for(const x of r.logs){
+      const v=motion?x.motionG:x.soundDbFS;
+      if(!Number.isFinite(v)||!Number.isFinite(x.offsetMs)){previous=null;continue}
+      const px=6+Math.min(1,Math.max(0,x.offsetMs/Math.max(1,r.durationMs)))*348;
+      const ratio=motion?v/.5:(v+60)/40;
+      const py=90-Math.min(1,Math.max(0,ratio))*80;
+      const connected=previous&&x.offsetMs-previous.offsetMs<=2000&&x.offsetMs>=previous.offsetMs;
+      d+=`${connected?"L":"M"}${px.toFixed(2)} ${py.toFixed(2)}`;previous=x;
+    }
+    const line=document.createElementNS(svg.namespaceURI,"path");
+    line.setAttribute("d",d);line.setAttribute("fill","none");
+    line.setAttribute("stroke",motion?"#bfdbd1":"#84b9cf");line.setAttribute("stroke-width","2");
+    svg.append(line);return svg;
+  }
+  function renderCalendar(){
+    const y=state.month.getFullYear(),m=state.month.getMonth();
+    $("month-title").textContent=`${y}年${m+1}月`;
+    $("single-mode").classList.toggle("active",state.calendarMode==="single");
+    $("range-mode").classList.toggle("active",state.calendarMode==="range");
+    $("range-tools").hidden=state.calendarMode!=="range";
+    $("calendar-hint").textContent=state.calendarMode==="single"?"日付を選んでください。":!state.rangeStart?"開始日を選んでください。":!state.rangeEnd?"終了日を選んでください。":"選択期間の記録です。";
+    $("range-label").textContent=state.rangeStart?`${state.rangeStart}〜${state.rangeEnd||""}`:"期間未選択";
+    const days=$("calendar-days");days.replaceChildren();
+    for(let i=0;i<new Date(y,m,1).getDay();i++)days.append(document.createElement("span"));
+    for(let n=1;n<=new Date(y,m+1,0).getDate();n++){
+      const date=new Date(y,m,n),key=dateKey(date),b=document.createElement("button");
+      b.className="day";b.type="button";b.textContent=n;
+      if(date.getDay()===0)b.classList.add("sun");
+      if(date.getDay()===6)b.classList.add("sat");
+      if(key===dateKey(new Date()))b.classList.add("today");
+      const [a,z]=bounds();
+      if(state.calendarMode==="range"&&a&&z&&key>=a&&key<=z)b.classList.add("inrange");
+      if(key===a||key===z)b.classList.add("selected");
+      const has=state.history.some(r=>(r.date||dateKey(new Date(r.startTimeMs)))===key);
+      const dot=document.createElement("span");dot.className="dot"+(has?"":" empty");b.append(dot);
+      b.setAttribute("aria-label",key+(has?" 保存記録あり":" 保存記録なし"));
+      on(b,"click",()=>{
+        if(state.calendarMode==="single")state.selectedDate=key;
+        else if(!state.rangeStart||state.rangeEnd){state.rangeStart=key;state.rangeEnd=null}
+        else{state.rangeEnd=key;if(state.rangeEnd<state.rangeStart)[state.rangeStart,state.rangeEnd]=[state.rangeEnd,state.rangeStart]}
+        renderCalendar();
+      });
+      days.append(b);
+    }
+    const records=selected(),[a,z]=bounds();
+    $("records-title").textContent=a&&z?`${a}${a===z?"":"〜"+z}の記録（${records.length}件）`:"日付を選択してください";
+    $("calendar-share-button").disabled=!records.length;
+    const list=$("record-list");list.replaceChildren();
+    if(!records.length){const e=document.createElement("p");e.className="empty";e.textContent="選択した日付に保存記録がありません。";list.append(e)}
+    records.forEach(r=>{
+      const card=document.createElement("article");card.className="card";
+      const p=document.createElement("p");p.className="hint";p.textContent=`${dt(r.startTimeMs)} → ${dt(r.stopTimeMs)}`;
+      const summary=document.createElement("p");summary.className="hint";summary.textContent=`見本記録 ${durationText(r.durationMs)} ／ 欠測 ${durationText(r.missingMs||0)}`;
+      card.append(p,summary);
+      for(const motion of [false,true]){
+        const block=document.createElement("div");block.className="graph";
+        const label=document.createElement("p");label.className="note";
+        label.textContent=motion?"見本体動 G ／ 0〜0.5":"相対デジタル音量 dBFS（見本）／ −60〜−20";
+        block.append(label,graph(r,motion));card.append(block);
+      }
+      const axis=document.createElement("p");axis.className="note";axis.textContent="左：記録開始 ／ 右：記録停止";
+      const open=document.createElement("button");open.className="button";open.style.marginTop="12px";open.textContent="この記録の結果を見る";
+      on(open,"click",()=>{state.currentSession=r;renderResult(r);screen("result-screen")});
+      card.append(axis,open);list.append(card);
+    });
   }
 
-  $("test-patient-button").onclick = () => usePatient({...TEST_PATIENT},true);
-  $("patient-confirm-button").onclick = () => {
-    if (!state.patient) return;
-    state.confirmed = true;
-    updateControls();
-    showScreen("capture-screen");
-  };
-
-  $("microphone-button").onclick = () => {
-    if (state.recording) return;
-    state.microphone = !state.microphone;
-    $("microphone-button").textContent = state.microphone ?
-      "マイク許可済み（モック）" : "マイクを許可（モック）";
-    $("microphone-button").classList.toggle("is-enabled",state.microphone);
-    updateControls();
-    updateMeters();
-  };
-
-  $("motion-button").onclick = () => {
-    if (state.recording) return;
-    state.motion = !state.motion;
-    $("motion-button").textContent = state.motion ?
-      "モーションセンサー許可済み（モック）" :
-      "モーションセンサーを許可（モック・任意）";
-    $("motion-button").classList.toggle("is-enabled",state.motion);
-    updateMeters();
-  };
-
-  $("volume-range").oninput = event => {
-    state.gain = Number(event.target.value);
-    $("volume-value").textContent = dbText(state.gain);
-    updateMeters();
-  };
-
-  $("start-button").onclick = startRecording;
-  $("stop-button").onclick = stopRecording;
-  $("black-button").onclick = enterBlack;
-  $("history-button").onclick = () => openCalendar("capture-screen");
-
-  // iPhone・Androidで同じGAS送信処理を使用する。
-  $("result-share-button").onclick = () =>
-    submitToGas(state.currentSession?[state.currentSession]:[],"result-send-status");
-  $("result-same-tab-button").onclick = () =>
-    submitToGas(state.currentSession?[state.currentSession]:[],"result-send-status",true);
-  $("calendar-share-button").onclick = () =>
-    submitToGas(selectedRecords(),"calendar-send-status");
-  $("calendar-same-tab-button").onclick = () =>
-    submitToGas(selectedRecords(),"calendar-send-status",true);
-
-  $("result-zip-button").onclick = () =>
-    openShareDialog(state.currentSession?[state.currentSession]:[]);
-  $("calendar-zip-button").onclick = () => openShareDialog(selectedRecords());
-  $("result-calendar-button").onclick = () =>
-    openCalendar("result-screen",state.currentSession);
-  $("result-back-button").onclick = () => showScreen("capture-screen");
-  $("calendar-back-button").onclick = () => showScreen(state.screenBeforeCalendar);
-
-  $("single-mode").onclick = () => {
-    state.calendarMode = "single";
-    state.rangeStart = null;
-    state.rangeEnd = null;
-    clearCalendarSendStatus();
-    renderCalendar();
-  };
-  $("range-mode").onclick = () => {
-    state.calendarMode = "range";
-    state.rangeStart = null;
-    state.rangeEnd = null;
-    clearCalendarSendStatus();
-    renderCalendar();
-  };
-  $("previous-month").onclick = () => {
-    state.calendarMonth = new Date(
-      state.calendarMonth.getFullYear(),state.calendarMonth.getMonth()-1,1);
-    renderCalendar();
-  };
-  $("next-month").onclick = () => {
-    state.calendarMonth = new Date(
-      state.calendarMonth.getFullYear(),state.calendarMonth.getMonth()+1,1);
-    renderCalendar();
-  };
-  $("reset-range").onclick = () => {
-    state.rangeStart = null;
-    state.rangeEnd = null;
-    clearCalendarSendStatus();
-    renderCalendar();
-  };
-
-  $("usage-button").onclick = () => openDialog($("usage-dialog"));
-  document.querySelectorAll("[data-show-usage]").forEach(button => {
-    button.onclick = () => openDialog($("usage-dialog"));
+  // 非暗号化・格納方式のZIP。外部ZIPライブラリー不要。
+  const u16=n=>{const b=new Uint8Array(2);new DataView(b.buffer).setUint16(0,n,true);return b};
+  const u32=n=>{const b=new Uint8Array(4);new DataView(b.buffer).setUint32(0,n>>>0,true);return b};
+  function join(arrays){
+    const out=new Uint8Array(arrays.reduce((n,a)=>n+a.length,0));let p=0;
+    arrays.forEach(a=>{out.set(a,p);p+=a.length});return out;
+  }
+  function crc32(bytes){
+    let c=0xffffffff;
+    for(const b of bytes){c^=b;for(let i=0;i<8;i++)c=(c>>>1)^((c&1)?0xedb88320:0)}
+    return(c^0xffffffff)>>>0;
+  }
+  function zip(files){
+    const enc=new TextEncoder(),locals=[],centers=[];let offset=0;
+    for(const f of files){
+      const name=enc.encode(f.name),data=enc.encode(f.data),crc=crc32(data);
+      const local=join([u32(0x04034b50),u16(20),u16(0x800),u16(0),u16(0),u16(33),u32(crc),u32(data.length),u32(data.length),u16(name.length),u16(0),name,data]);
+      const central=join([u32(0x02014b50),u16(20),u16(20),u16(0x800),u16(0),u16(0),u16(33),u32(crc),u32(data.length),u32(data.length),u16(name.length),u16(0),u16(0),u16(0),u16(0),u32(0),u32(offset),name]);
+      locals.push(local);centers.push(central);offset+=local.length;
+    }
+    const size=centers.reduce((n,c)=>n+c.length,0);
+    return new Blob([...locals,...centers,join([u32(0x06054b50),u16(0),u16(0),u16(files.length),u16(files.length),u32(size),u32(offset),u16(0)])],{type:"application/zip"});
+  }
+  function analysisFile(r){
+    if(!validStored(r)||r.durationMs<=0)throw Error("記録の時刻・内容を確認できません。");
+    let previous=-1;
+    const outputLogs=r.logs.map(x=>{
+      if(!Number.isFinite(x.offsetMs)||x.offsetMs<previous||x.offsetMs<0||x.offsetMs>r.durationMs)throw Error("経過時間が不正です。");
+      previous=x.offsetMs;return {...x,sec:x.offsetMs/1000};
+    });
+    const data={
+      ...r,app:"SomnoLog",version:VERSION,dataSource:"simulation",isTestPatient:true,
+      startedAt:new Date(r.startTimeMs).toISOString(),durationSec:r.durationMs/1000,
+      patient:{clinic:"モック診療所（架空・未紐づけ）",chartNo:"TEST",name:"見本記録（架空・未紐づけ）"},
+      audioIncluded:false,soundUnit:"dBFS",logs:outputLogs
+    };
+    const readme="見本ログ専用。実測・患者QR紐づけ・音声なし。\r\n"+
+      "④では開始時刻・体動・架空の表示情報を照合してください。\r\n"+
+      "soundDbFSは④のdbへ変換していません。音響波形・区間再生・音量低下候補は確認できません。\r\n"+
+      "表示期間の終端は④の計算方式との照合が必要です。\r\n"+
+      "session.jsonに元の開始・停止時刻を保持しています。\r\n";
+    const blob=zip([{name:"README.txt",data:readme},{name:"session.json",data:JSON.stringify(data,null,2)}]);
+    const suffix=String(r.sessionId||r.startTimeMs).replace(/[^A-Za-z0-9_-]/g,"").slice(0,48);
+    return new File([blob],`SomnoLog_TEST_${r.date||dateKey(new Date(r.startTimeMs))}_${suffix}.zip`,{type:"application/zip"});
+  }
+  function status(text){if(!disposed)$("share-status").textContent=text}
+  function download(r){
+    try{
+      const file=analysisFile(r),url=URL.createObjectURL(file),a=document.createElement("a");
+      a.href=url;a.download=file.name;document.body.append(a);a.click();a.remove();
+      // URL破棄は更新後も実行してよい。履歴やDOMには触れない。
+      setTimeout(()=>URL.revokeObjectURL(url),60000);
+      status("ZIPの保存操作を開始しました。保存先でファイルを確認してください。端末の元記録は削除していません。");
+    }catch(e){status("ZIP作成失敗："+e.message)}
+  }
+  async function share(r){
+    if(state.shareBusy)return;
+    state.shareBusy=true;window.SomnoLogUpdater?.render();
+    try{
+      const file=analysisFile(r);
+      if(window.NativeShare&&typeof window.NativeShare.shareFile==="function"){
+        await window.NativeShare.shareFile(file);
+      }else if(navigator.share&&navigator.canShare&&navigator.canShare({files:[file]})){
+        await navigator.share({title:"SomnoLog 見本記録",text:"架空情報・見本ログ専用です。",files:[file]});
+      }else{status("この端末ではファイル共有に対応していません。ZIP保存をご利用ください。");return}
+      status("共有操作を終了しました。送信先への到着や御社の受領登録は確認していません。");
+    }catch(e){status(e.name==="AbortError"?"共有をキャンセルしました。":"共有できませんでした："+e.message)}
+    finally{state.shareBusy=false;window.SomnoLogUpdater?.render()}
+  }
+  function endpoint(){
+    try{return localStorage.getItem(ENDPOINT_KEY)||DEFAULT_ENDPOINT}catch(e){return DEFAULT_ENDPOINT}
+  }
+  function validEndpoint(value){
+    try{const u=new URL(value);return u.protocol==="https:"&&u.hostname==="script.google.com"&&/^\/macros\/s\/[A-Za-z0-9_-]+\/exec$/.test(u.pathname)&&!u.search&&!u.hash&&!u.username&&!u.password}catch(e){return false}
+  }
+  function testPayload(r){
+    if(!r.sessionId)throw Error("記録の識別情報がありません。");
+    if(r.dataSource&&r.dataSource!=="simulation")throw Error("見本ログ以外は送信できません。");
+    if(!Number.isFinite(r.durationMs)||r.durationMs<=0||r.durationMs>180000||
+      !Number.isInteger(r.gainDb)||r.gainDb< -9||r.gainDb>9||
+      !Array.isArray(r.logs)||!r.logs.length||r.logs.length>2000)
+      throw Error("試験送信は3分以内・2000点以内の見本記録が対象です。");
+    let previous=-1;
+    const logs=r.logs.map(x=>{
+      if(!Number.isFinite(x.offsetMs)||x.offsetMs<previous||x.offsetMs<0||x.offsetMs>r.durationMs||
+        !Number.isFinite(x.soundDbFS)||x.soundDbFS< -100||x.soundDbFS>0||
+        !(x.motionG===null||(Number.isFinite(x.motionG)&&x.motionG>=0&&x.motionG<=.5)))
+        throw Error("見本ログの形式が試験受付の条件に合いません。");
+      previous=x.offsetMs;
+      return {offsetMs:x.offsetMs,soundDbFS:x.soundDbFS,motionG:x.motionG};
+    });
+    const record={durationMs:r.durationMs,gainDb:r.gainDb,logs},body=JSON.stringify(record);
+    let map;
+    try{
+      map=JSON.parse(localStorage.getItem(REQUEST_KEY)||"{}");
+      if(!map||typeof map!=="object"||Array.isArray(map))throw Error();
+    }catch(e){throw Error("再送履歴を確認できないため、送信を停止しました。")}
+    const key=String(r.sessionId);let requestId;
+    if(Object.prototype.hasOwnProperty.call(map,key)){
+      if(!map[key]||map[key].body!==body)throw Error("同じ記録の内容が変わっています。重複保存を避けるため送信を停止しました。");
+      requestId=map[key].requestId;
+    }else{
+      requestId=uuid();
+      Object.defineProperty(map,key,{value:{requestId,body},enumerable:true,writable:true,configurable:true});
+      try{localStorage.setItem(REQUEST_KEY,JSON.stringify(map))}catch(e){throw Error("再送用IDを保存できません。送信していません。")}
+    }
+    if(!/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(requestId))throw Error("送信IDを確認できません。");
+    const payload=JSON.stringify({mode:"somnolog-test-v12",requestId,record});
+    if(new TextEncoder().encode(new URLSearchParams({payload}).toString()).length>512000)throw Error("試験受付の容量上限を超えます。");
+    return {payload,requestId};
+  }
+  function send(r){
+    try{
+      const url=endpoint();
+      if(!validEndpoint(url)){openEndpoint();return}
+      const {payload,requestId}=testPayload(r);
+      if(!confirm("架空情報・見本ログを試験受付へ送ります。\n実患者情報・音声は送りません。\n受付結果は別タブで確認してください。\n\n送信しますか？"))return;
+      const target="SomnoLogTest_"+uuid().replaceAll("-","");
+      const tab=window.open("about:blank",target);
+      if(!tab)throw Error("別タブを開けませんでした。送信していません。");
+      try{tab.opener=null}catch(e){}
+      const form=document.createElement("form");
+      form.method="POST";form.action=url;form.target=target;
+      form.enctype="application/x-www-form-urlencoded";form.acceptCharset="UTF-8";
+      const input=document.createElement("input");input.type="hidden";input.name="payload";input.value=payload;
+      form.append(input);document.body.append(form);
+      try{form.submit()}finally{form.remove()}
+      status("送信操作を開始しました。\n別タブの受付結果を確認してください。\n送信ID："+requestId+
+        "\nこの画面では受付到着・受領登録を確認していません。再送時は同じIDを使います。");
+    }catch(e){status(e.message)}
+  }
+  function openShare(records){
+    if(!records.length){message("対象記録がありません","記録のある日付を選択してください。");return}
+    state.sharingRecords=[...records];
+    $("share-count").textContent=`対象記録：${records.length}件`;
+    status("1記録ずつ操作してください。送信後も元記録は残ります。");
+    const list=$("share-records");list.replaceChildren();
+    records.forEach((r,i)=>{
+      const box=document.createElement("section");box.className="panel stack";
+      const p=document.createElement("p");p.textContent=`${i+1}．${dt(r.startTimeMs)} ／ ${durationText(r.durationMs)}`;box.append(p);
+      for(const [label,fn,css] of [
+        ["見本ログを試験受付へ送信",()=>send(r),"primary"],
+        ["④・窓口用ZIPを保存",()=>download(r),"clinic"],
+        ["補助：端末の共有画面を開く",()=>share(r),""]
+      ]){
+        const b=document.createElement("button");b.className="button "+css;b.textContent=label;on(b,"click",fn);box.append(b);
+      }
+      list.append(box);
+    });
+    openDialog("share-dialog");
+  }
+  function openEndpoint(){$("endpoint-input").value=endpoint();openDialog("endpoint-dialog")}
+  on($("endpoint-form"),"submit",e=>{
+    e.preventDefault();const value=$("endpoint-input").value.trim();
+    if(!validEndpoint(value)){
+      $("endpoint-input").setCustomValidity("試験GASのHTTPS /exec URLを入力してください。");
+      $("endpoint-input").reportValidity();return;
+    }
+    try{localStorage.setItem(ENDPOINT_KEY,value)}catch(e){message("設定できません","端末への保存に失敗しました。");return}
+    openShare(state.sharingRecords);status("試験受付URLを保存しました。対象記録の送信ボタンを押してください。");
   });
-  document.querySelectorAll("[data-close-dialog]").forEach(button => {
-    button.onclick = () => button.closest("dialog").close();
-  });
+  on($("endpoint-input"),"input",()=> $("endpoint-input").setCustomValidity(""));
 
-  $("share-start-button").onclick = shareWithSystem;
-  $("clinic-download-button").onclick = saveForClinic;
-  $("share-cancel-button").onclick = () => {
-    if (state.sharing || state.saving) return;
-    clearSharePreparation();
-    $("share-dialog").close();
-  };
-  $("share-dialog").addEventListener("cancel",event => {
-    if (state.sharing || state.saving) event.preventDefault();
-    else clearSharePreparation();
+  function blackClock(){
+    const d=new Date();$("black-clock").textContent=`${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+  function enterBlack(){
+    if(!state.recording)return;
+    state.black=true;$("black-screen").hidden=false;document.body.classList.add("locked");
+    document.querySelector('meta[name="theme-color"]').content="#000";
+    blackClock();$("black-screen").focus();
+    const target=$("black-screen");
+    if(!document.fullscreenElement&&target.requestFullscreen){
+      target.requestFullscreen().then(()=>{
+        if(disposed)return;
+        state.fullOwned=true;
+        if(!state.black&&document.fullscreenElement===target)document.exitFullscreen().catch(()=>{});
+      }).catch(()=>{});
+    }
+  }
+  function leaveBlack(){
+    clearTimeout(state.holding);timeouts.delete(state.holding);state.holding=null;state.black=false;
+    $("black-screen").hidden=true;document.body.classList.remove("locked");
+    document.querySelector('meta[name="theme-color"]').content="#101419";
+    if(state.fullOwned&&document.fullscreenElement===$("black-screen")&&document.exitFullscreen)document.exitFullscreen().catch(()=>{});
+    state.fullOwned=false;
+  }
+  on($("black-screen"),"pointerdown",e=>{
+    e.preventDefault();
+    try{$("black-screen").setPointerCapture(e.pointerId)}catch(e){}
+    clearTimeout(state.holding);timeouts.delete(state.holding);
+    state.holding=later(leaveBlack,1500);
   });
-  $("share-dialog").addEventListener("close",() => {
-    if (!state.sharing && !state.saving) {
-      clearSharePreparation();
-      updateSendButtons();
+  const cancelHold=()=>{clearTimeout(state.holding);timeouts.delete(state.holding);state.holding=null};
+  on($("black-screen"),"pointerup",cancelHold);
+  on($("black-screen"),"pointercancel",cancelHold);
+  on($("black-screen"),"lostpointercapture",cancelHold);
+  on($("black-screen"),"contextmenu",e=>e.preventDefault());
+
+  on($("microphone-button"),"click",()=>{state.microphone=!state.microphone;controls();meters()});
+  on($("motion-button"),"click",()=>{state.motion=!state.motion;controls();meters()});
+  on($("volume-range"),"input",e=>{state.gain=Number(e.target.value);$("volume-value").textContent=dbText(state.gain)});
+  on($("start-button"),"click",start);on($("stop-button"),"click",stop);
+  on($("black-button"),"click",enterBlack);
+  on($("history-button"),"click",()=>calendar("capture-screen"));
+  on($("result-share-button"),"click",()=>openShare(state.currentSession?[state.currentSession]:[]));
+  on($("result-calendar-button"),"click",()=>calendar("result-screen",state.currentSession));
+  on($("result-back-button"),"click",()=>screen("capture-screen"));
+  on($("calendar-back-button"),"click",()=>screen(state.calendarFrom));
+  on($("calendar-share-button"),"click",()=>openShare(selected()));
+  on($("endpoint-button"),"click",openEndpoint);
+  on($("single-mode"),"click",()=>{state.calendarMode="single";state.rangeStart=state.rangeEnd=null;renderCalendar()});
+  on($("range-mode"),"click",()=>{state.calendarMode="range";state.rangeStart=state.rangeEnd=null;renderCalendar()});
+  on($("reset-range"),"click",()=>{state.rangeStart=state.rangeEnd=null;renderCalendar()});
+  on($("previous-month"),"click",()=>{state.month=new Date(state.month.getFullYear(),state.month.getMonth()-1,1);renderCalendar()});
+  on($("next-month"),"click",()=>{state.month=new Date(state.month.getFullYear(),state.month.getMonth()+1,1);renderCalendar()});
+  document.querySelectorAll("[data-usage]").forEach(b=>on(b,"click",()=>openDialog("usage-dialog")));
+  document.querySelectorAll("[data-close]").forEach(b=>on(b,"click",()=>{
+    const id=b.closest("dialog").id;b.closest("dialog").close();
+    if(id==="endpoint-dialog"&&state.sharingRecords.length)openShare(state.sharingRecords);
+  }));
+  on(window,"pagehide",()=>{if(state.recording)writeActive()});
+  on(document,"visibilitychange",()=>{if(state.recording)writeActive()});
+  on(window,"beforeunload",e=>{
+    if(state.recording||state.unsaved){
+      if(state.recording)writeActive();e.preventDefault();e.returnValue="";
     }
   });
-
-  $("black-screen").addEventListener("pointerdown",event => {
-    event.preventDefault();
-    if (state.blackHolding) return;
-    state.blackHolding = true;
-    state.blackHoldTimer = setTimeout(() => {
-      if (state.blackHolding) leaveBlack();
-    },1500);
-  });
-  $("black-screen").addEventListener("pointerup",event => {
-    event.preventDefault();
-    endHold();
-  });
-  $("black-screen").addEventListener("pointercancel",endHold);
-  $("black-screen").addEventListener("contextmenu",event => event.preventDefault());
-  $("black-screen").addEventListener("keydown",event => {
-    if (event.key === "Escape") leaveBlack();
-  });
-
-  // GitHub API取得・定期更新・document.writeによる動的適用を廃止。
-  $("update-check").onclick = () => {
-    $("update-status").textContent =
-      `現在：SomnoLog ${VERSION}\nビルド：${document.querySelector('meta[name="somnolog-build"]').content}\n自動更新・動的更新は停止しています。`;
-  };
-  $("update-apply").onclick = null;
-  $("update-reload").onclick = () => {
-    try {
-      prepareUpdate();
-      if (!confirm("公開ページを再読み込みしますか？")) return;
-      const url = new URL(CONFIG.publicURL+"index.html");
-      url.search = location.search;
-      url.searchParams.set("_slcb",String(Date.now()));
-      location.replace(url.href);
-    } catch (error) {
-      $("update-status").textContent = `再読み込みできません。\n${error.message}`;
-    }
-  };
-
-  window.addEventListener("beforeunload",onBeforeUnload);
-  window.addEventListener("pageshow",() => {
-    if (!state.disposed) unlockSend();
-  });
-
-  initPatient();
-  updateControls();
-  updateMeters();
-  renderCalendar();
-
-  interval(updateMeters,180);
-  interval(() => {
-    if (!$("black-screen").hidden) updateBlackClock();
-  },1000);
-
-  window.SomnoLogApp = Object.freeze({
+  function dispose(){
+    if(disposed)return;
+    if(state.recording)writeActive();
+    leaveBlack();disposed=true;abort.abort();
+    intervals.forEach(clearInterval);intervals.clear();
+    timeouts.forEach(clearTimeout);timeouts.clear();
+  }
+  window.SomnoLogApp=Object.freeze({
     version:VERSION,
-    updateBridgeVersion:1,
-    isUpdateBusy,
-    prepareUpdate,
-    disposeForUpdate:dispose,
-    openDoctorShare:() => openShareDialog(
-      state.currentSession?[state.currentSession]:selectedRecords()),
-    openCalendarShare:() => openShareDialog(selectedRecords()),
-    getHistory:() => JSON.parse(JSON.stringify(state.history))
+    openDoctorShare:()=>openShare(state.currentSession?[state.currentSession]:selected()),
+    openCalendarShare:()=>openShare(selected()),
+    getHistory:()=>JSON.parse(JSON.stringify(state.history)),
+    canApplyUpdate:()=>!disposed&&!state.recording&&!state.unsaved&&state.readable&&!state.shareBusy,
+    dispose
   });
+  loadHistory();controls();meters();renderCalendar();
+  every(meters,180);every(()=>{if(state.black)blackClock()},1000);
+  window.SomnoLogUpdater?.bindUI();
 })();
 </script>
 </body>
