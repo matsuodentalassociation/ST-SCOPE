@@ -4,11 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#101419">
-<meta name="somnolog-app" content="somnolog-real-v7">
-<meta name="somnolog-build" content="SomnoLog-03-V7-real-06">
+<meta name="somnolog-app" content="somnolog-real-v8">
+<meta name="somnolog-build" content="SomnoLog-03-V8-qr-01">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
-<title>SomnoLog V7-real-06</title>
+<title>SomnoLog V8</title>
 <style>
 :root{color-scheme:dark;--bg:#101419;--surface:#192029;--line:#2f3b48;--primary:#84b9cf;--text:#f0eee6;--muted:#aebbc9;--green:#bfdbd1;--yellow:#f3e7c9;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans JP",sans-serif}
 *{box-sizing:border-box}
@@ -69,6 +69,20 @@ input[type=text]{width:100%;padding:11px;border:1px solid #506276;border-radius:
 a{color:var(--primary);overflow-wrap:anywhere}
 .download-link{display:block;padding:15px;border:1px solid #726b59;border-radius:12px;background:#343129;color:var(--yellow);text-align:center;font-size:14px}
 
+/* 患者QR読取画面 */
+.qr-screen{justify-content:flex-start;padding-top:max(16px,env(safe-area-inset-top))}
+.qr-panel{display:grid;gap:13px}
+.qr-video{width:100%;max-height:44svh;object-fit:cover;border:1px solid var(--line);border-radius:13px;background:#080b0e}
+.qr-preview{display:grid;gap:13px}
+.qr-field{padding:13px;border:1px solid var(--line);border-radius:11px;background:#101923}
+.qr-field-label{margin-bottom:5px;color:var(--muted);font-size:12px}
+.qr-field-value{font-size:19px;overflow-wrap:anywhere;white-space:pre-wrap}
+.qr-file{position:relative;display:block}
+.qr-file input{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden}
+.qr-status{min-height:2.8em}
+.qr-empty{padding:19px 12px;border:1px dashed #3c495a;border-radius:13px;color:var(--muted);text-align:center}
+.qr-actions{display:grid;gap:10px}
+
 /* 黒画面：オーバーレイの背後も黒にする */
 html.sleep-mode,html.sleep-mode body{
   background:#000000!important;
@@ -110,9 +124,46 @@ html.sleep-mode body{touch-action:none}
 </style>
 </head>
 <body>
-<main id="capture-screen" class="screen">
+<main id="qr-screen" class="screen qr-screen">
   <header class="stack">
-    <div class="header-row"><div class="brand"><h1>SomnoLog</h1><span class="version">V7-real-06</span><span class="commit"></span></div><span id="capture-status" class="badge">待機中</span></div>
+    <div class="header-row">
+      <div class="brand"><h1>SomnoLog</h1><span class="version">V8</span><span class="commit"></span></div>
+      <span class="badge">患者情報確認</span>
+    </div>
+    <p class="hint">②が発行した患者用QRを読み取ってください。</p>
+  </header>
+  <section class="panel qr-panel">
+    <button id="qr-camera-button" class="button secondary" type="button">カメラを起動</button>
+    <video id="qr-video" class="qr-video" autoplay playsinline muted hidden></video>
+    <label class="button secondary qr-file">
+      QR画像を選択
+      <input id="qr-image-input" type="file" accept="image/*" aria-label="共有された患者QR画像を選択">
+    </label>
+    <p id="qr-read-status" class="note qr-status" role="status" aria-live="polite">患者用QRをカメラで読み取るか、画像を選択してください。</p>
+  </section>
+  <section id="qr-patient-preview" class="panel qr-preview" hidden>
+    <h2>患者情報の確認</h2>
+    <div class="qr-field">
+      <p class="qr-field-label">診療所名</p>
+      <p id="qr-clinic-name" class="qr-field-value"></p>
+    </div>
+    <div class="qr-field">
+      <p class="qr-field-label">患者名</p>
+      <p id="qr-patient-name" class="qr-field-value"></p>
+    </div>
+    <div class="qr-actions">
+      <button id="qr-start-button" class="button primary" type="button" disabled>始める</button>
+      <button id="qr-retry-button" class="button clinic" type="button">情報が間違っています</button>
+    </div>
+  </section>
+  <section class="panel stack">
+    <p class="hint">患者名が空欄のQRは利用できません。QRを再発行してもらってください。</p>
+  </section>
+</main>
+
+<main id="capture-screen" class="screen" hidden>
+  <header class="stack">
+    <div class="header-row"><div class="brand"><h1>SomnoLog</h1><span class="version">V8</span><span class="commit"></span></div><span id="capture-status" class="badge">待機中</span></div>
     <p class="hint">就寝中の音と体動を記録します。</p>
   </header>
   <section class="meter-panel">
@@ -120,7 +171,7 @@ html.sleep-mode body{touch-action:none}
       <div id="microphone-title" class="meter-title">マイク</div>
       <svg class="wave" viewBox="0 0 320 72" preserveAspectRatio="none" aria-label="実マイク波形"><path d="M0 18H320M0 54H320" stroke="#202d3b" fill="none"/><path id="microphone-wave" d="M0 36H320" stroke="#84b9cf" stroke-width="2" fill="none"/></svg>
       <button id="microphone-button" class="button secondary permission" disabled>マイクを許可</button>
-      <p id="microphone-status" class="note" role="status" style="margin-top:8px">最初に患者情報を確認してください。</p>
+      <p id="microphone-status" class="note" role="status" style="margin-top:8px">患者QRを読み込んでください。</p>
       <div class="volume">
         <div class="row hint"><span>音量調整</span><output id="volume-value">0dB</output></div>
         <input id="volume-range" aria-label="録音音量調整" type="range" min="-9" max="9" step="1" value="0">
@@ -140,8 +191,8 @@ html.sleep-mode body{touch-action:none}
     <button id="black-button" class="button dark" disabled>黒画面に切り替え</button>
     <button id="history-button" class="button secondary">履歴を見る</button>
     <button class="button clinic" data-usage>使い方を見る</button>
-    <p id="status" class="note" role="status" aria-live="polite">最初に患者情報を確認してください。</p>
-    <button id="patient-edit" class="small-button">患者情報を確認・変更</button>
+    <p id="status" class="note" role="status" aria-live="polite">患者QRを読み込んでください。</p>
+    <button id="patient-edit" class="small-button">患者QRを読み直す</button>
   </section>
   <section class="panel stack">
     <h3>アプリの更新</h3>
@@ -153,7 +204,7 @@ html.sleep-mode body{touch-action:none}
 
 <main id="result-screen" class="screen" hidden>
   <header class="stack">
-    <div class="header-row"><div class="brand"><h1>SomnoLog</h1><span class="version">V7-real-06</span><span class="commit"></span></div><span class="badge">記録終了</span></div>
+    <div class="header-row"><div class="brand"><h1>SomnoLog</h1><span class="version">V8</span><span class="commit"></span></div><span class="badge">記録終了</span></div>
     <h2>睡眠記録</h2><p id="result-range" class="range"></p><p id="result-meta" class="note"></p>
   </header>
   <section class="panel">
@@ -173,7 +224,7 @@ html.sleep-mode body{touch-action:none}
 
 <main id="calendar-screen" class="screen" hidden>
   <header class="stack">
-    <div class="header-row"><div class="brand"><h1>SomnoLog</h1><span class="version">V7-real-06</span><span class="commit"></span></div><span class="badge">保存記録</span></div>
+    <div class="header-row"><div class="brand"><h1>SomnoLog</h1><span class="version">V8</span><span class="commit"></span></div><span class="badge">保存記録</span></div>
     <h2>記録カレンダー</h2><p class="hint">日付を選び、記録の確認・共有を行います。</p>
   </header>
   <section class="panel">
@@ -197,7 +248,7 @@ html.sleep-mode body{touch-action:none}
 </section>
 
 <dialog id="patient-dialog">
-  <div class="brand" style="margin-bottom:15px"><h1>SomnoLog</h1><span class="version">V7-real-06</span></div>
+  <div class="brand" style="margin-bottom:15px"><h1>SomnoLog</h1><span class="version">V8</span></div>
   <h2>患者情報の確認</h2>
   <p class="hint">最初に内容を確認してください。その後にマイク・体動を許可します。</p>
   <form id="patient-form" class="stack">
@@ -231,8 +282,8 @@ html.sleep-mode body{touch-action:none}
 <dialog id="usage-dialog">
   <h2>使い方</h2>
   <ol>
-    <li>起動直後に患者情報を確認します。</li>
-    <li>マイクを許可します。体動の許可は任意です。</li>
+    <li>患者QRを読み込み、診療所名・患者名を確認します。</li>
+    <li>「始める」を押してからマイク・体動を許可します。</li>
     <li>音量を調整し、記録開始を押します。</li>
     <li>黒画面は任意の場所を1.5秒長押しで戻ります。「通常画面に戻る」でも戻れます。</li>
     <li>停止後、共有ファイルを自動準備します。</li>
@@ -273,14 +324,14 @@ html.sleep-mode body{touch-action:none}
   function parse(html,rollback=false){
     const d=new DOMParser().parseFromString(html,"text/html");
     const build=d.querySelector('meta[name="somnolog-build"]')?.content||"";
-    const n=build.match(/^SomnoLog-03-V7-real-(\d+)$/);
-    const local=document.querySelector('meta[name="somnolog-build"]')?.content.match(/real-(\d+)$/);
-    if(!n||d.querySelector('meta[name="somnolog-app"]')?.content!=="somnolog-real-v7"||
+    const n=build.match(/^SomnoLog-03-V8-qr-(\d+)$/);
+    const local=document.querySelector('meta[name="somnolog-build"]')?.content.match(/qr-(\d+)$/);
+    if(!n||d.querySelector('meta[name="somnolog-app"]')?.content!=="somnolog-real-v8"||
       d.querySelector("base,script[src],script[type=module]")||d.querySelectorAll("script").length!==2||
       d.querySelectorAll("script[data-somnolog-app]").length!==1||
       d.querySelectorAll("script[data-somnolog-updater]").length!==1)throw Error("対応する単独HTMLではありません。");
     if(!rollback&&local&&+n[1]<+local[1])throw Error("古い版の適用を停止しました。");
-    for(const id of ["capture-screen","start-button","patient-dialog","history-button","update-check","update-apply","update-status"])
+    for(const id of ["qr-screen","qr-camera-button","qr-image-input","qr-start-button","capture-screen","start-button","history-button","update-check","update-apply","update-status"])
       if(d.querySelectorAll("#"+id).length!==1)throw Error("画面要素が欠損・重複しています。");
     return {d,build};
   }
@@ -334,7 +385,7 @@ html.sleep-mode body{touch-action:none}
 (()=>{
   "use strict";
   window.SomnoLogReal?.dispose();
-  const VERSION="SomnoLog-03-V7-real-06",RATE=16000,MAX=1800;
+  const VERSION="SomnoLog-03-V8-qr-01",RATE=16000,MAX=1800;
   const $=id=>document.getElementById(id),events=new AbortController();
   const on=(t,e,f,extra={})=>t.addEventListener(e,f,{...extra,signal:events.signal});
   const round=(n,d)=>Number(n.toFixed(d)),pad=n=>String(n).padStart(2,"0");
@@ -351,6 +402,9 @@ html.sleep-mode body{touch-action:none}
   let motionEvents=0,motionValidEvents=0,motionStarted=0,gravity=null,gravityAt=0,motionSamples=[];
   let visualPeak=.001;
   let month=new Date(new Date().getFullYear(),new Date().getMonth(),1),mode="single",selected=day(Date.now()),from=null,to=null,calendarBack="capture-screen";
+
+  /* 患者QR読取 */
+  let qrStream=null,qrFrame=0,qrReading=false,qrPendingPatient=null,jsQrPromise=null;
 
   /* 黒画面管理 */
   let blackActive=false,holdTimer=null,holding=false,holdX=0,holdY=0,holdStarted=0;
@@ -376,6 +430,7 @@ html.sleep-mode body{touch-action:none}
     $("microphone-button").classList.toggle("enabled",micReady());
     $("motion-button").textContent=motionPending?"センサー許可を確認中…":motionAllowed?"モーションセンサー許可済み":"モーションセンサーを許可";
     $("motion-button").classList.toggle("enabled",motionAllowed);
+    $("qr-start-button").disabled=!ready||active||!qrPendingPatient;
     $("result-share").disabled=active||!bufferFile||bufferId!==current?.id;
     $("result-retry").disabled=active;
     $("result-back").disabled=preparing||sharing;
@@ -409,13 +464,13 @@ html.sleep-mode body{touch-action:none}
       const d=await request(open);if(disposed){d.close();return}db=d;
       db.onversionchange=()=>{ready=false;db.close();controls();say("保存領域変更。再読み込みしてください。")};
       await recover();ready=true;await reload();controls();
-      say(patientConfirmed?"患者情報確認済み。マイクを許可してください。":"最初に患者情報を確認してください。");
+      say(patientConfirmed?"患者情報確認済み。マイクを許可してください。":"患者QRを読み込んでください。");
     }catch(e){say("保存領域を利用できません。\n"+e.message);controls()}
   }
   function dialog(id){document.querySelectorAll("dialog[open]").forEach(d=>d.close());$(id).showModal()}
   function screen(id){
     leaveBlack();document.querySelectorAll("dialog[open]").forEach(d=>d.close());
-    ["capture-screen","result-screen","calendar-screen"].forEach(k=>$(k).hidden=k!==id);window.scrollTo(0,0);
+    ["qr-screen","capture-screen","result-screen","calendar-screen"].forEach(k=>$(k).hidden=k!==id);window.scrollTo(0,0);
   }
   function confirmPatient(e){
     e.preventDefault();
@@ -433,6 +488,163 @@ html.sleep-mode body{touch-action:none}
     if(data.serialNumber!=null&&(typeof data.serialNumber!=="string"||data.serialNumber.length>80))throw Error("シリアル番号が不正です。");
     $("clinic").value=data.clinic;$("chart").value=data.chartNo;$("patient").value=data.name;$("serial").value=data.serialNumber||"";
     linked=true;patientConfirmed=false;controls();$("patient-source").textContent="①②から受領。内容を確認してください。";dialog("patient-dialog");
+  }
+  function qrStatus(message){$("qr-read-status").textContent=message}
+  function stopPatientQrCamera(){
+    qrReading=false;
+    if(qrFrame){cancelAnimationFrame(qrFrame);qrFrame=0}
+    if(qrStream){qrStream.getTracks().forEach(track=>track.stop());qrStream=null}
+    const video=$("qr-video");if(video)video.srcObject=null;
+  }
+  function loadJsQR(){
+    if(typeof window.jsQR==="function")return Promise.resolve();
+    if(jsQrPromise)return jsQrPromise;
+    jsQrPromise=new Promise((resolve,reject)=>{
+      const script=document.createElement("script");
+      script.src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js";
+      script.referrerPolicy="no-referrer";
+      script.onload=()=>typeof window.jsQR==="function"?resolve():reject(Error("QR読取ライブラリを利用できません。"));
+      script.onerror=()=>reject(Error("QR読取ライブラリの読み込みに失敗しました。"));
+      document.head.append(script);
+    });
+    return jsQrPromise;
+  }
+  function resetPatientQr(){
+    stopPatientQrCamera();qrPendingPatient=null;
+    $("qr-patient-preview").hidden=true;$("qr-start-button").disabled=true;
+    $("qr-image-input").value="";
+    $("qr-video").hidden=true;
+    qrStatus("患者用QRをカメラで読み取るか、画像を選択してください。");
+  }
+  function decodePatientQr(text){
+    let url;
+    try{url=new URL(text)}catch(_){throw Error("②が発行した患者用QRではありません。")}
+    if(url.protocol!=="https:"||url.username||url.password)throw Error("患者QRのURLを確認できません。");
+    const match=url.hash.match(/(?:^#|&)slp=([A-Za-z0-9_-]+)/);
+    if(!match)throw Error("②が発行した患者用QRではありません。");
+    const encoded=match[1];
+    if(encoded.length>16000||encoded.length%4===1)throw Error("患者QRの形式が不正です。");
+    let payload;
+    try{
+      const binary=atob(encoded.replace(/-/g,"+").replace(/_/g,"/")+"=".repeat((4-encoded.length%4)%4));
+      const bytes=Uint8Array.from(binary,c=>c.charCodeAt(0));
+      payload=JSON.parse(new TextDecoder("utf-8",{fatal:true}).decode(bytes));
+    }catch(_){throw Error("患者QRの情報を読み取れません。")}
+    if(!payload||Array.isArray(payload)||typeof payload!=="object")throw Error("患者QRの情報が不正です。");
+    const clinic=typeof payload.clinicName==="string"?payload.clinicName.trim():"";
+    const name=typeof payload.patientName==="string"?payload.patientName.trim():"";
+    if(!name)throw Error("患者名がありません。患者情報を確認し、QRを再発行してください。");
+    if(!clinic)throw Error("診療所名がありません。QRを再発行してください。");
+    if(clinic.length>100||name.length>100)throw Error("患者QRの情報が長すぎます。");
+    const chartNo=typeof payload.chartNo==="string"?payload.chartNo.trim():"";
+    const serialNumber=typeof payload.serial==="string"?payload.serial.trim():"";
+    if(chartNo.length>100||serialNumber.length>80)throw Error("患者QRの情報が不正です。");
+    return{clinic,name,chartNo,serialNumber,payload};
+  }
+  function acceptPatientQrText(text){
+    try{
+      const patient=decodePatientQr(text);
+      stopPatientQrCamera();
+      qrPendingPatient=patient;
+      $("qr-clinic-name").textContent=patient.clinic;
+      $("qr-patient-name").textContent=patient.name;
+      $("qr-patient-preview").hidden=false;
+      $("qr-start-button").disabled=!ready;
+      qrStatus("診療所名と患者名を確認してください。");
+    }catch(error){
+      qrPendingPatient=null;
+      $("qr-patient-preview").hidden=true;
+      $("qr-start-button").disabled=true;
+      qrStatus(error.message);
+    }
+  }
+  async function startPatientQrCamera(){
+    resetPatientQr();
+    if(!window.isSecureContext){qrStatus("カメラを使うにはHTTPSでページを開いてください。");return}
+    if(!navigator.mediaDevices?.getUserMedia){qrStatus("このブラウザではカメラを利用できません。QR画像を選択してください。");return}
+    try{
+      await loadJsQR();
+      qrStream=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:"environment"}}});
+      const video=$("qr-video");video.hidden=false;video.srcObject=qrStream;await video.play();
+      const canvas=document.createElement("canvas"),context=canvas.getContext("2d",{willReadFrequently:true});
+      if(!context)throw Error("カメラ画像を処理できません。");
+      qrReading=true;qrStatus("患者用QRをカメラに映してください。");
+      const scan=()=>{
+        if(!qrReading)return;
+        qrFrame=requestAnimationFrame(scan);
+        if(video.readyState<HTMLMediaElement.HAVE_CURRENT_DATA||!video.videoWidth||!video.videoHeight)return;
+        const scale=Math.min(1,1280/Math.max(video.videoWidth,video.videoHeight));
+        canvas.width=Math.max(1,Math.round(video.videoWidth*scale));canvas.height=Math.max(1,Math.round(video.videoHeight*scale));
+        context.drawImage(video,0,0,canvas.width,canvas.height);
+        try{
+          const image=context.getImageData(0,0,canvas.width,canvas.height);
+          const code=window.jsQR(image.data,image.width,image.height,{inversionAttempts:"attemptBoth"});
+          if(code?.data)acceptPatientQrText(code.data);
+        }catch(_){
+          qrStatus("カメラ画像を処理できません。QR画像を選択するか、カメラを再起動してください。");
+          stopPatientQrCamera();
+        }
+      };
+      scan();
+    }catch(error){
+      stopPatientQrCamera();$("qr-video").hidden=true;
+      qrStatus(error?.name==="NotAllowedError"
+        ?"カメラが許可されていません。ブラウザの設定を確認するか、QR画像を選択してください。"
+        :"カメラを起動できません。HTTPS接続を確認するか、QR画像を選択してください。");
+    }
+  }
+  async function readPatientQrImage(file){
+    if(!file)return;
+    try{
+      await loadJsQR();
+      let bitmap;
+      if("createImageBitmap" in window)bitmap=await createImageBitmap(file);
+      else bitmap=await new Promise((resolve,reject)=>{
+        const image=new Image(),objectUrl=URL.createObjectURL(file);
+        image.onload=()=>{URL.revokeObjectURL(objectUrl);resolve(image)};
+        image.onerror=()=>{URL.revokeObjectURL(objectUrl);reject(Error("画像を開けません。"))};
+        image.src=objectUrl;
+      });
+      const scale=Math.min(1,2000/Math.max(bitmap.width,bitmap.height));
+      const canvas=document.createElement("canvas");
+      canvas.width=Math.max(1,Math.round(bitmap.width*scale));canvas.height=Math.max(1,Math.round(bitmap.height*scale));
+      const context=canvas.getContext("2d",{willReadFrequently:true});
+      if(!context)throw Error("画像を処理できません。");
+      context.drawImage(bitmap,0,0,canvas.width,canvas.height);
+      if(bitmap.close)bitmap.close();
+      const image=context.getImageData(0,0,canvas.width,canvas.height);
+      const code=window.jsQR(image.data,image.width,image.height,{inversionAttempts:"attemptBoth"});
+      if(!code?.data)throw Error("画像からQRを検出できません。");
+      acceptPatientQrText(code.data);
+    }catch(error){
+      qrPendingPatient=null;$("qr-patient-preview").hidden=true;$("qr-start-button").disabled=true;
+      qrStatus(error.message||"QR画像を読み取れません。");
+    }
+  }
+  function beginFromPatientQr(){
+    if(!qrPendingPatient||!ready||occupied())return;
+    const p=qrPendingPatient;
+    patientData={clinic:p.clinic,chartNo:p.chartNo||"未指定",name:p.name,serialNumber:p.serialNumber||""};
+    $("clinic").value=patientData.clinic;$("chart").value=patientData.chartNo;
+    $("patient").value=patientData.name;$("serial").value=patientData.serialNumber;
+    linked=!!patientData.serialNumber;patientConfirmed=true;
+    $("patient-source").textContent="②の患者用QRから受領。";
+    $("patient-error").textContent="";
+    $("microphone-status").textContent="患者情報確認済み。マイクを許可してください。";
+    say("患者情報確認済み。マイク・体動を許可してから記録開始してください。");
+    screen("capture-screen");controls();
+  }
+  function initPatientQrReader(){
+    on($("qr-camera-button"),"click",startPatientQrCamera);
+    on($("qr-image-input"),"change",e=>readPatientQrImage(e.target.files?.[0]));
+    on($("qr-retry-button"),"click",resetPatientQr);
+    on($("qr-start-button"),"click",beginFromPatientQr);
+    on($("qr-screen"),"dragover",e=>e.preventDefault());
+    on($("qr-screen"),"drop",e=>{
+      e.preventDefault();
+      const file=Array.from(e.dataTransfer?.files||[]).find(f=>f.type.startsWith("image/"));
+      if(file)readPatientQrImage(file);
+    });
   }
   function micError(e){
     const reasons={NotAllowedError:"マイクが拒否されています。サイト設定と端末のマイク許可を確認してください。",
@@ -946,10 +1158,11 @@ html.sleep-mode body{touch-action:none}
   function clock(){const d=new Date();$("black-clock").textContent=pad(d.getHours())+":"+pad(d.getMinutes())}
   const clockTimer=setInterval(clock,1000),meterTimer=setInterval(meters,80);clock();
 
+  initPatientQrReader();
   on($("patient-form"),"submit",confirmPatient);
   on($("patient-form"),"input",()=>{linked=false;$("patient-source").textContent="暫定入力：確認後に使用します。"});
   on($("patient-cancel"),"click",()=>{$("patient-dialog").close();controls();say(patientConfirmed?"前回確認した患者情報を維持します。":"患者情報を確認するまで録音を開始できません。")});
-  on($("patient-edit"),"click",()=>{if(!occupied())dialog("patient-dialog")});
+  on($("patient-edit"),"click",()=>{if(!occupied()){resetPatientQr();screen("qr-screen")}});
   on($("microphone-button"),"click",permission);
   on($("motion-button"),"click",motionPermission);
   on($("volume-range"),"input",e=>{gain=Number(e.target.value);$("volume-value").textContent=(gain>0?"+":"")+gain+"dB"});
@@ -976,7 +1189,7 @@ html.sleep-mode body{touch-action:none}
     gravity=null;gravityAt=0;if(ac?.state==="suspended")ac.resume().catch(()=>say("音声再開失敗。マイクを再許可してください。"));
   });
   on(window,"beforeunload",e=>{if(running||starting||finishing||preparing){e.preventDefault();e.returnValue=""}});
-  on(window,"pagehide",()=>{cancelHold();if(running){running=false;cleanupAudio()}});
+  on(window,"pagehide",()=>{stopPatientQrCamera();cancelHold();if(running){running=false;cleanupAudio()}});
   on(window,"pageshow",e=>{
     if(e.persisted&&!starting&&!finishing&&!preparing){
       leaveBlack();ready=false;controls();
@@ -985,13 +1198,13 @@ html.sleep-mode body{touch-action:none}
   });
   function dispose(){
     if(disposed)return;
-    disposed=true;running=false;ready=false;leaveBlack();cleanupAudio();events.abort();
+    disposed=true;running=false;ready=false;stopPatientQrCamera();leaveBlack();cleanupAudio();events.abort();
     clearInterval(meterTimer);clearInterval(clockTimer);clearFile();if(db)db.close();db=null;
   }
   window.SomnoLogReal={version:VERSION,setPatientContext,
     canUpdate:()=>!disposed&&ready&&!occupied()&&!blackActive&&!fullscreenPending&&!document.querySelector("dialog[open]"),dispose};
+  screen("qr-screen");
   controls();
-  dialog("patient-dialog");
   initialize();
   window.SomnoLogRealUpdater?.bind();
 })();
