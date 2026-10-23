@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#101419">
 <meta name="somnolog-app" content="somnolog-real-v8">
-<meta name="somnolog-build" content="SomnoLog-03-V8-qr-02">
+<meta name="somnolog-build" content="SomnoLog-03-V8-qr-03">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
-<title>SomnoLog V8 SomnoLog-03-V8-qr-02</title>
+<title>SomnoLog V8 SomnoLog-03-V8-qr-03</title>
 <style>
 :root{color-scheme:dark;--bg:#101419;--surface:#192029;--line:#2f3b48;--primary:#84b9cf;--text:#f0eee6;--muted:#aebbc9;--green:#bfdbd1;--yellow:#f3e7c9;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans JP",sans-serif}
 *{box-sizing:border-box}
@@ -96,7 +96,7 @@ html.sleep-mode body{touch-action:none}
 </style>
 </head>
 <body>
-<div id="build-bar" class="build-bar">SomnoLog V8 ｜ SomnoLog-03-V8-qr-02</div>
+<div id="build-bar" class="build-bar">SomnoLog V8 ｜ SomnoLog-03-V8-qr-03</div>
 
 <main id="qr-screen" class="screen qr-screen">
   <header class="stack">
@@ -366,7 +366,7 @@ window.SomnoLogRealUpdater={bind,render};
 (()=>{
 "use strict";
 window.SomnoLogReal?.dispose();
-const VERSION="SomnoLog-03-V8-qr-02",RATE=16000,MAX=1800;
+const VERSION="SomnoLog-03-V8-qr-03",RATE=16000,MAX=1800,DB_NAME="SomnoLog.real.v7",DB_VERSION=2;
 const $=id=>document.getElementById(id),events=new AbortController();
 const on=(t,e,f,extra={})=>t.addEventListener(e,f,{...extra,signal:events.signal});
 const round=(n,d)=>Number(n.toFixed(d)),pad=n=>String(n).padStart(2,"0");
@@ -395,7 +395,8 @@ const occupied=()=>running||starting||finishing||micPending||motionPending||prep
 function controls(){
   if(disposed)return;
   const active=occupied();
-  $("start-button").disabled=!ready||active||!patientConfirmed||!micReady();
+  // 保存領域(ready)は記録開始時に確認・再試行するため、ボタンの条件にはしない
+  $("start-button").disabled=active||!patientConfirmed||!micReady();
   $("stop-button").disabled=!running||finishing;
   $("black-button").disabled=!running;
   $("microphone-button").disabled=active||!patientConfirmed;
@@ -433,23 +434,30 @@ async function recover(){
     r.status="interrupted";await put(r);
   }
 }
+// 保存領域を開く。既存の記録は残し、不足している店舗・索引だけを追加する。
 async function initialize(){
+  db?.close();db=null;ready=false;
   try{
-    const open=indexedDB.open("SomnoLog.real.v7",1);
+    const open=indexedDB.open(DB_NAME,DB_VERSION);
     open.onupgradeneeded=()=>{
-      const d=open.result;
-      d.createObjectStore("records",{keyPath:"id"});
-      d.createObjectStore("chunks",{keyPath:["recordId","number"]}).createIndex("recordId","recordId");
+      const d=open.result,tx=open.transaction;
+      if(!d.objectStoreNames.contains("records"))d.createObjectStore("records",{keyPath:"id"});
+      const c=d.objectStoreNames.contains("chunks")?tx.objectStore("chunks"):d.createObjectStore("chunks",{keyPath:["recordId","number"]});
+      if(!c.indexNames.contains("recordId"))c.createIndex("recordId","recordId");
     };
-    open.onblocked=()=>say("保存領域が別のタブで使用中です。他のSomnoLogタブを閉じてください。");
+    open.onblocked=()=>say("保存領域が別のタブで使用中です。他のSomnoLogタブを閉じてから、記録開始を押してください。");
     const d=await request(open);
     if(disposed){d.close();return}
     db=d;
-    db.onversionchange=()=>{ready=false;db.close();controls();say("保存領域変更。再読み込みしてください。")};
+    db.onversionchange=()=>{ready=false;db?.close();db=null;controls();say("保存領域が変更されました。ページを再読み込みしてください。")};
     await recover();
-    ready=true;await reload();controls();
-    say(patientConfirmed?"患者情報確認済み。マイクを許可してください。":"患者QRを読み込んでください。");
-  }catch(e){say("保存領域を利用できません。ページを再読み込みしてください。\n"+e.message);controls()}
+    await reload();
+    ready=true;
+    if(!running&&!finishing)say(patientConfirmed?"保存領域の準備完了。マイクを許可してから記録開始してください。":"患者QRを読み込んでください。");
+  }catch(e){
+    ready=false;
+    say("保存領域を利用できません（"+(e?.name||"Error")+"）。\n"+(e?.message||"")+"\n他のSomnoLogタブを閉じ、ページを再読み込みしてください。");
+  }finally{controls()}
 }
 function dialog(id){document.querySelectorAll("dialog[open]").forEach(d=>d.close());$(id).showModal()}
 function screen(id){
@@ -640,8 +648,7 @@ function beginFromPatientQr(){
   $("patient-source").textContent="②の患者用QRから受領。";
   $("patient-error").textContent="";
   $("microphone-status").textContent="患者情報確認済み。マイクを許可してください。";
-  say(ready?"患者情報確認済み。マイクを許可してから記録開始してください。"
-           :"患者情報は確認済みです。保存領域の準備ができていません。ページを再読み込みしてください。");
+  say("患者情報を確認しました。マイクを許可してから記録開始してください。");
   screen("capture-screen");controls();
 }
 function initPatientQrReader(){
@@ -799,10 +806,15 @@ function processAudio(e){
 }
 async function start(){
   if(occupied()||!patientConfirmed)return;
-  if(!ready){say("保存領域の準備ができていません。ページを再読み込みしてください。");return}
-  if(!micReady())return;
+  if(!micReady()){say("マイクを許可してから記録開始してください。");return}
   starting=true;controls();writeError=null;let created=false;
   try{
+    // 保存領域が未準備なら、ここで開き直す（失敗理由は状態欄に表示される）
+    if(!ready){
+      say("保存領域を準備しています…");
+      await initialize();
+      if(!ready)throw Error("保存領域を利用できません。上の状態欄の内容を確認してください。");
+    }
     await ac.resume();
     if(ac.state!=="running")throw Error("音声処理を再開できません。マイクを再許可してください。");
     if(!micReady()||ac.sampleRate<RATE)throw Error("マイクを再許可してください。");
@@ -1272,10 +1284,7 @@ on(document,"visibilitychange",()=>{
 on(window,"beforeunload",e=>{if(running||starting||finishing||preparing){e.preventDefault();e.returnValue=""}});
 on(window,"pagehide",()=>{stopPatientQrCamera();cancelHold();if(running){running=false;cleanupAudio()}});
 on(window,"pageshow",e=>{
-  if(e.persisted&&!starting&&!finishing&&!preparing){
-    leaveBlack();ready=false;controls();
-    chain.then(recover).then(reload).then(()=>{ready=true;controls();say("中断記録は履歴で確認してください。")}).catch(e=>say(e.message));
-  }
+  if(e.persisted&&!occupied()){leaveBlack();initialize()}
 });
 function dispose(){
   if(disposed)return;
