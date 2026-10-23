@@ -185,9 +185,11 @@ html.sleep-mode body{touch-action:none}
     <dl class="metrics"><dt>音の検出時間</dt><dd id="result-sound"></dd><dt>体動の検出時間</dt><dd id="result-motion"></dd></dl>
   </section>
   <section class="stack">
-    <p class="hint">宛先（医師）</p>
-    <p id="result-recipient" class="recipient">宛先はありません。</p>
-    <button id="result-copy-email" class="button secondary" disabled>宛先をコピー</button>
+    <div id="result-recipient-section" class="stack" hidden>
+      <p class="hint">宛先（医師）</p>
+      <p id="result-recipient" class="recipient"></p>
+      <button id="result-copy-email" class="button secondary" disabled>宛先をコピー</button>
+    </div>
     <button id="result-share" class="button primary" disabled>この記録を医師と共有</button>
     <p id="result-share-status" class="note" role="status"></p>
     <a id="result-save" class="download-link" hidden>診療所の窓口用ZIPを保存</a>
@@ -381,7 +383,7 @@ const duration=s=>{s=Math.max(0,Math.floor(s||0));return(s>=3600?Math.floor(s/36
 const uuid=()=>crypto.randomUUID?crypto.randomUUID():Array.from(crypto.getRandomValues(new Uint8Array(16)),b=>b.toString(16).padStart(2,"0")).join("");
 const EMAIL_RE=/^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 let db,ready=false,disposed=false,running=false,starting=false,finishing=false,micPending=false,preparing=false,sharing=false;
-let patientConfirmed=false,patientData=null,linked=false;
+let patientConfirmed=false,patientData=null,linked=false,historyGuarded=false;
 let ac,stream,source,analyser,processor,wakeLock,meterBuffer,mutedOutput;
 let record,current,history=[],chain=Promise.resolve(),pending=0,writeError,lastSnapshot=-1,chunkNumber=0;
 let origin=0,lastAudioEnd=0,lastLog=-Infinity,gain=0,bufferFile=null,bufferId="",fileURL="";
@@ -473,13 +475,19 @@ function screen(id){
   ["qr-screen","capture-screen","result-screen","calendar-screen"].forEach(k=>$(k).hidden=k!==id);
   window.scrollTo(0,0);
 }
+// 患者情報の確定後は、戻る操作で患者QR画面へ戻らないよう履歴を固定する
+function armHistoryGuard(){
+  if(historyGuarded)return;
+  historyGuarded=true;
+  history.pushState({somnolog:"guard"},"",location.href);
+}
 function confirmPatient(e){
   e.preventDefault();
   for(const id of ["clinic","chart","patient"])if(!$(id).value.trim()){
     $("patient-error").textContent="診療所名・カルテNo・患者名を確認してください。";return;
   }
   patientData={clinic:$("clinic").value.trim(),chartNo:$("chart").value.trim(),name:$("patient").value.trim(),serialNumber:$("serial").value.trim(),doctorEmail:""};
-  patientConfirmed=true;$("patient-dialog").close();controls();
+  patientConfirmed=true;armHistoryGuard();$("patient-dialog").close();controls();
   $("microphone-status").textContent=micReady()?"マイク取得済み。記録開始できます。":"患者情報確認済み。マイクを許可してください。";
   say("患者情報確認済み。マイクを許可してから記録開始してください。");
 }
@@ -658,7 +666,7 @@ function beginFromPatientQr(){
   patientData={clinic:p.clinic,chartNo:p.chartNo||"未指定",name:p.name,serialNumber:p.serialNumber||"",doctorEmail:p.doctorEmail||""};
   $("clinic").value=patientData.clinic;$("chart").value=patientData.chartNo;
   $("patient").value=patientData.name;$("serial").value=patientData.serialNumber;
-  linked=!!patientData.serialNumber;patientConfirmed=true;
+  linked=!!patientData.serialNumber;patientConfirmed=true;armHistoryGuard();
   $("patient-source").textContent="②の患者用QRから受領。";
   $("patient-error").textContent="";
   $("microphone-status").textContent="患者情報確認済み。マイクを許可してください。";
@@ -892,7 +900,9 @@ function renderResult(){
   const r=current;
   $("result-range").textContent=time(r.startTimeMs)+" → "+time(r.stopTimeMs||r.startTimeMs+r.durationSec*1000);
   $("result-meta").textContent=[r.patient.clinic,r.patient.chartNo,r.patient.name,"シリアル "+r.serialNumber].join(" / ");
-  $("result-recipient").textContent=r.doctorEmail||"宛先はありません。記録後に手で入力してください。";
+  // 宛先がある場合のみ表示する（ない場合は案内を出さず、欄ごと非表示）
+  $("result-recipient-section").hidden=!r.doctorEmail;
+  $("result-recipient").textContent=r.doctorEmail||"";
   $("result-duration").textContent=duration(r.durationSec);
   let sound=0,moving=0;
   for(let i=1;i<r.logs.length;i++){
@@ -1254,6 +1264,19 @@ on(black,"contextmenu",e=>e.preventDefault());
 on(black,"selectstart",e=>e.preventDefault());
 on($("black-return"),"click",leaveBlack);
 on(window,"keydown",e=>{if(blackActive&&(e.key==="Escape"||e.key==="Enter")){e.preventDefault();leaveBlack()}});
+// 入力欄以外での Backspace は無効化（誤操作で患者QR画面へ戻らないようにする）
+on(window,"keydown",e=>{
+  if(e.key!=="Backspace"||e.defaultPrevented)return;
+  const t=e.target;
+  if(t instanceof HTMLElement&&(t.isContentEditable||t.matches("input,textarea,select")))return;
+  e.preventDefault();
+});
+// 端末の戻る操作（ブラウザー履歴）でも患者QR画面へ戻らないようにする
+on(window,"popstate",()=>{
+  if(!historyGuarded||disposed||!$("qr-screen").hidden)return;
+  history.pushState({somnolog:"guard"},"",location.href);
+  if(!running&&!starting&&!finishing&&!preparing&&!sharing)say("戻る操作では患者QRの読み取り画面に戻りません。");
+});
 function fullscreenChanged(){
   if(fullscreenElement()){
     if(fullscreenPending||blackActive)ownsFullscreen=true;
