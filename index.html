@@ -4,11 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#101419">
-<meta name="somnolog-app" content="somnolog-real-v14">
-<meta name="somnolog-build" content="SomnoLog-V14">
+<meta name="somnolog-app" content="somnolog-real-v15">
+<meta name="somnolog-build" content="SomnoLog-V15">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
-<title>SomnoLog V14</title>
+<title>SomnoLog V15</title>
 <style>
 :root{color-scheme:dark;--bg:#101419;--surface:#192029;--line:#2f3b48;--primary:#84b9cf;--text:#f0eee6;--muted:#aebbc9;--green:#bfdbd1;--yellow:#f3e7c9;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans JP",sans-serif}
 *{box-sizing:border-box}
@@ -67,7 +67,7 @@ dialog{width:calc(100% - 28px);max-width:440px;max-height:88svh;overflow:auto;pa
 dialog::backdrop{background:#000b}
 dialog h2{margin-bottom:15px}dialog p,dialog li{font-size:13px;line-height:1.8}dialog .stack{margin-top:15px}
 label{display:block;font-size:13px;line-height:1.8}
-input[type=text]{width:100%;padding:11px;border:1px solid #506276;border-radius:10px;background:#101923;color:var(--text)}
+input[type=text],input[type=email]{width:100%;padding:11px;border:1px solid #506276;border-radius:10px;background:#101923;color:var(--text)}
 .warning{padding:11px;border-left:3px solid #b9a67e;background:#292820;color:var(--yellow);font-size:12px;line-height:1.7}
 a{color:var(--primary);overflow-wrap:anywhere}
 .download-link{display:block;padding:15px;border:1px solid #726b59;border-radius:12px;background:#343129;color:var(--yellow);text-align:center;font-size:14px}
@@ -83,6 +83,7 @@ a{color:var(--primary);overflow-wrap:anywhere}
 .qr-status{min-height:2.8em}
 .qr-actions{display:grid;gap:10px}
 .recipient{padding:13px;border-left:3px solid var(--primary);border-radius:0 11px 11px 0;background:#101923;color:var(--text);font-size:14px;overflow-wrap:anywhere}
+.recipient-entry{display:grid;gap:9px}
 html.sleep-mode,html.sleep-mode body{background:#000!important;overflow:hidden!important;overscroll-behavior:none!important}
 html.sleep-mode{color-scheme:dark}
 html.sleep-mode body{touch-action:none}
@@ -97,12 +98,12 @@ html.sleep-mode body{touch-action:none}
 </style>
 </head>
 <body>
-<div id="build-bar" class="build-bar">SomnoLog V14 ｜ SomnoLog-V14</div>
+<div id="build-bar" class="build-bar">SomnoLog V15 ｜ SomnoLog-V15</div>
 
 <main id="qr-screen" class="screen qr-screen">
   <header class="stack">
     <div class="header-row">
-      <div class="brand"><h1>SomnoLog</h1><span class="version">V14</span><span class="commit"></span></div>
+      <div class="brand"><h1>SomnoLog</h1><span class="version">V15</span><span class="commit"></span></div>
       <span class="badge">患者情報確認</span>
     </div>
     <p class="hint">②が発行した患者用QRを読み取ってください。</p>
@@ -133,7 +134,7 @@ html.sleep-mode body{touch-action:none}
 
 <main id="capture-screen" class="screen" hidden>
   <header class="stack">
-    <div class="header-row"><div class="brand"><h1>SomnoLog</h1><span class="version">V14</span><span class="commit"></span></div><span id="capture-status" class="badge">待機中</span></div>
+    <div class="header-row"><div class="brand"><h1>SomnoLog</h1><span class="version">V15</span><span class="commit"></span></div><span id="capture-status" class="badge">待機中</span></div>
     <p class="hint">就寝中の音と体動を記録します。</p>
   </header>
   <section class="meter-panel">
@@ -174,7 +175,7 @@ html.sleep-mode body{touch-action:none}
 
 <main id="result-screen" class="screen" hidden>
   <header class="stack">
-    <div class="header-row"><div class="brand"><h1>SomnoLog</h1><span class="version">V14</span><span class="commit"></span></div><span class="badge">記録終了</span></div>
+    <div class="header-row"><div class="brand"><h1>SomnoLog</h1><span class="version">V15</span><span class="commit"></span></div><span class="badge">記録終了</span></div>
     <h2>睡眠記録</h2>
     <p id="result-range" class="range"></p>
     <p id="result-meta" class="note"></p>
@@ -188,6 +189,10 @@ html.sleep-mode body{touch-action:none}
     <div id="result-recipient-section" class="stack">
       <p class="hint">ログ共有通知先（宛先）</p>
       <p id="result-recipient" class="recipient"></p>
+      <div id="result-recipient-entry" class="recipient-entry" hidden>
+        <input id="result-recipient-input" type="email" maxlength="254" placeholder="宛先メールアドレスを入力" aria-label="宛先メールアドレス">
+        <button id="result-recipient-save" class="button secondary" type="button">宛先を保存</button>
+      </div>
       <button id="result-copy-email" class="button secondary" disabled>宛先をコピー</button>
     </div>
     <button id="result-share" class="button primary" disabled>この記録を医師と共有</button>
@@ -201,7 +206,7 @@ html.sleep-mode body{touch-action:none}
 
 <main id="calendar-screen" class="screen" hidden>
   <header class="stack">
-    <div class="header-row"><div class="brand"><h1>SomnoLog</h1><span class="version">V14</span><span class="commit"></span></div><span class="badge">保存記録</span></div>
+    <div class="header-row"><div class="brand"><h1>SomnoLog</h1><span class="version">V15</span><span class="commit"></span></div><span class="badge">保存記録</span></div>
     <h2>記録カレンダー</h2>
     <p class="hint">日付を選び、記録の確認・共有を行います。</p>
   </header>
@@ -226,7 +231,7 @@ html.sleep-mode body{touch-action:none}
 </section>
 
 <dialog id="patient-dialog">
-  <div class="brand" style="margin-bottom:15px"><h1>SomnoLog</h1><span class="version">V14</span></div>
+  <div class="brand" style="margin-bottom:15px"><h1>SomnoLog</h1><span class="version">V15</span></div>
   <h2>患者情報の確認</h2>
   <p class="hint">最初に内容を確認してください。その後にマイク・体動を許可します。</p>
   <form id="patient-form" class="stack">
@@ -260,12 +265,12 @@ html.sleep-mode body{touch-action:none}
 <dialog id="usage-dialog">
   <h2>使い方</h2>
   <ol>
-    <li>患者QRを読み込み、診療所名・患者名・ログ共有通知先を確認します。</li>
+    <li>患者QRを読み込み、診療所名・患者名・ログ共有通知先を確認します。宛先がない場合は結果画面で入力できます。</li>
     <li>「始める」を押します。</li>
     <li>マイクを許可します。体動は任意です（PCでは許可しなくても記録できます）。</li>
     <li>音量を調整し、記録開始を押します。</li>
     <li>黒画面は任意の場所を1.5秒長押しで戻ります。「通常画面に戻る」でも戻れます。</li>
-    <li>停止後、共有ファイルを自動準備します。「宛先をコピー」で宛先を控え、「医師と共有」で端末の共有先を選びます。共有画面の本文にも宛先が記載されます。</li>
+    <li>停止後、共有ファイルを自動準備します。「宛先をコピー」で宛先を控え、「医師と共有」で端末の共有先を選びます。共有画面の件名と本文にも宛先が入ります。</li>
   </ol>
   <p class="warning">確認版。背景・画面ロック中の継続は保証しません。音量は未校正、体動は端末の加速度です。診断用途ではありません。</p>
   <p class="note">全画面表示やシステムバーの色はブラウザー・Androidの設定に依存します。共有操作の終了は医師の受領を意味しません。</p>
@@ -304,12 +309,14 @@ async function fresh(address,json){
     return json?JSON.parse(text):text;
   }finally{clearTimeout(timer)}
 }
+// 版判定は接頭辞で行い、将来の版（V16以降）も適用できるようにする
 function parse(html,rollback=false){
   const d=new DOMParser().parseFromString(html,"text/html");
   const build=d.querySelector('meta[name="somnolog-build"]')?.content||"";
+  const app=d.querySelector('meta[name="somnolog-app"]')?.content||"";
   const n=build.match(/^SomnoLog-V(\d+)$/);
   const local=localBuild().match(/V(\d+)$/);
-  if(!n||d.querySelector('meta[name="somnolog-app"]')?.content!=="somnolog-real-v14"||
+  if(!n||!/^somnolog-real-v\d+$/.test(app)||
      d.querySelector("base,script[src],script[type=module]")||d.querySelectorAll("script").length!==2||
      d.querySelectorAll("script[data-somnolog-app]").length!==1||
      d.querySelectorAll("script[data-somnolog-updater]").length!==1)
@@ -375,7 +382,7 @@ window.SomnoLogRealUpdater={bind,render};
 (()=>{
 "use strict";
 window.SomnoLogReal?.dispose();
-const VERSION="SomnoLog-V14",RATE=16000,DB_NAME="SomnoLog.real.v7",DB_VERSION=2;
+const VERSION="SomnoLog-V15",RATE=16000,DB_NAME="SomnoLog.real.v7",DB_VERSION=2;
 const $=id=>document.getElementById(id),events=new AbortController();
 const on=(t,e,f,extra={})=>t.addEventListener(e,f,{...extra,signal:events.signal});
 const round=(n,d)=>Number(n.toFixed(d)),pad=n=>String(n).padStart(2,"0");
@@ -422,6 +429,7 @@ function controls(){
   $("result-share").disabled=active||!bufferFile||bufferId!==current?.id;
   // 宛先コピーは常に表示し、宛先がない場合は無効にする
   $("result-copy-email").disabled=active||!current?.doctorEmail;
+  $("result-recipient-save").disabled=active;
   $("result-retry").disabled=active;
   $("result-back").disabled=preparing||sharing;
   $("result-calendar").disabled=preparing||sharing;
@@ -579,7 +587,7 @@ function acceptPatientQrText(text){
     qrPendingPatient=patient;
     $("qr-clinic-name").textContent=patient.clinic;
     $("qr-patient-name").textContent=patient.name;
-    $("qr-doctor-email").textContent=patient.doctorEmail||"QRに宛先なし（記録後に手で入力してください）";
+    $("qr-doctor-email").textContent=patient.doctorEmail||"QRに宛先なし（記録後に結果画面で入力できます）";
     $("qr-patient-preview").hidden=false;
     qrStatus("診療所名・患者名・宛先を確認してください。");
   }catch(error){
@@ -906,8 +914,10 @@ function renderResult(){
   const r=current;
   $("result-range").textContent=time(r.startTimeMs)+" → "+time(r.stopTimeMs||r.startTimeMs+r.durationSec*1000);
   $("result-meta").textContent=[r.patient.clinic,r.patient.chartNo,r.patient.name,"シリアル "+r.serialNumber].join(" / ");
-  // 宛先欄は常に表示し、宛先がない場合は「宛先未設定」と示す
+  // 宛先欄は常に表示。宛先がなければ手入力欄を出す
   $("result-recipient").textContent=r.doctorEmail||"宛先未設定（QRに宛先がありませんでした）";
+  $("result-recipient-entry").hidden=!!r.doctorEmail;
+  $("result-recipient-input").value="";
   $("result-duration").textContent=duration(r.durationSec);
   let sound=0,moving=0;
   for(let i=1;i<r.logs.length;i++){
@@ -918,6 +928,28 @@ function renderResult(){
   $("result-sound").textContent=duration(sound);
   $("result-motion").textContent=duration(moving);
   $("result-detail").textContent=r.status+" / ログ "+r.logs.length+"点。参考しきい値：音22以上・体動0.025G以上。";
+}
+// 結果画面で宛先を手入力して保存する。保存後はZIPと共有内容を作り直す。
+async function saveRecipient(){
+  if(occupied()||!current)return;
+  const mail=$("result-recipient-input").value.trim();
+  if(!mail||mail.length>254||!EMAIL_RE.test(mail)){
+    $("result-share-status").textContent="宛先のメールアドレスを正しく入力してください。";return;
+  }
+  const r=current;
+  try{
+    r.doctorEmail=mail;
+    await put(r);
+    await reload();
+    current=savedRecords.find(x=>x.id===r.id)||r;
+    clearFile();
+    renderResult();
+    controls();
+    prepareFile(current);
+    $("result-share-status").textContent="宛先を保存しました："+mail+"\nZIPと共有内容を作り直しています…";
+  }catch(e){
+    $("result-share-status").textContent="宛先を保存できませんでした："+e.message;
+  }
 }
 // 宛先をクリップボードへコピーする。使えない環境では選択状態にして手動コピーを促す。
 async function copyRecipient(){
@@ -1118,11 +1150,15 @@ function shareCapability(f){
   }
   return "";
 }
-// 共有画面の本文に宛先（ログ共有通知先）と記録情報を載せる
+// 共有の件名と本文の先頭に宛先（ログ共有通知先）を入れる
+function shareTitle(r){
+  return"【宛先】"+(r.doctorEmail||"未設定")+" ｜ SomnoLog睡眠記録";
+}
 function shareText(r){
   return[
-    "SomnoLog 睡眠記録の共有",
     "宛先（ログ共有通知先）："+(r.doctorEmail||"未設定"),
+    "",
+    "SomnoLog 睡眠記録の共有",
     "診療所："+r.patient.clinic,
     "カルテNo："+r.patient.chartNo,
     "患者名："+r.patient.name,
@@ -1158,7 +1194,7 @@ async function prepareFile(r){
     bufferFile=new File([blob],filename(r),{type:"application/zip"});bufferId=r.id;bindSaveLinks();
     const reason=shareCapability(bufferFile);
     $("result-share-status").textContent=reason?reason+"\n窓口用ZIP保存を利用できます。":
-      "共有できます（"+(bufferFile.size/1048576).toFixed(2)+" MiB）。医師と共有を押してください。\n共有画面の本文に宛先を表示します："+(r.doctorEmail||"未設定");
+      "共有できます（"+(bufferFile.size/1048576).toFixed(2)+" MiB）。医師と共有を押してください。\n共有画面の件名・本文に宛先を表示します："+(r.doctorEmail||"未設定");
   }catch(e){
     if(!disposed){$("result-share-status").textContent="共有準備失敗："+e.message;$("result-retry").hidden=false}
   }finally{preparing=false;controls()}
@@ -1198,10 +1234,10 @@ function shareCurrent(){
   let promise;
   try{
     // クリックから直接呼ぶ（ファイル作成・画面遷移・awaitを先に挟まない）
-    promise=navigator.share({files:[bufferFile],title:"SomnoLog 睡眠記録",text:shareText(current)});
+    promise=navigator.share({files:[bufferFile],title:shareTitle(current),text:shareText(current)});
   }catch(e){shareFailure(e);return}
   sharing=true;controls();
-  $("result-share-status").textContent="端末の共有画面を開いています…\n共有画面の本文に宛先（"+(current.doctorEmail||"未設定")+"）を表示しています。";
+  $("result-share-status").textContent="端末の共有画面を開いています…\n件名・本文に宛先（"+(current.doctorEmail||"未設定")+"）を入れています。";
   Promise.resolve(promise).then(()=>{
     if(!disposed)$("result-share-status").textContent="端末の共有操作が終了しました。医師への到着・受領は自動確認していません。";
   },shareFailure).finally(()=>{sharing=false;controls()});
@@ -1327,8 +1363,8 @@ on(document,"webkitfullscreenchange",fullscreenChanged);
 function clock(){const d=new Date();$("black-clock").textContent=pad(d.getHours())+":"+pad(d.getMinutes())}
 const clockTimer=setInterval(clock,1000),meterTimer=setInterval(meters,80);
 clock();
-$("build-bar").textContent="SomnoLog V14 ｜ "+VERSION;
-document.title="SomnoLog V14 "+VERSION;
+$("build-bar").textContent="SomnoLog V15 ｜ "+VERSION;
+document.title="SomnoLog V15 "+VERSION;
 if(!window.DeviceMotionEvent)$("motion-status").textContent="この端末では体動を取得できません。音声のみで記録できます。";
 initPatientQrReader();
 on($("patient-form"),"submit",confirmPatient);
@@ -1346,6 +1382,8 @@ on($("stop-button"),"click",stop);
 on($("black-button"),"click",enterBlack);
 on($("history-button"),"click",()=>openCalendar("capture-screen"));
 on($("result-copy-email"),"click",copyRecipient);
+on($("result-recipient-save"),"click",saveRecipient);
+on($("result-recipient-input"),"keydown",e=>{if(e.key==="Enter"){e.preventDefault();saveRecipient()}});
 on($("result-share"),"click",shareCurrent);
 on($("result-retry"),"click",()=>current&&prepareFile(current));
 on($("result-save"),"click",()=>{$("result-share-status").textContent="ZIP保存操作を開始しました。端末の保存先で確認してください。"});
