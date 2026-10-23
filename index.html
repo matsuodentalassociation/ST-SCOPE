@@ -4,11 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#101419">
-<meta name="somnolog-app" content="somnolog-real-v12">
-<meta name="somnolog-build" content="SomnoLog-V12">
+<meta name="somnolog-app" content="somnolog-real-v13">
+<meta name="somnolog-build" content="SomnoLog-V13">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
-<title>SomnoLog V12</title>
+<title>SomnoLog V13</title>
 <style>
 :root{color-scheme:dark;--bg:#101419;--surface:#192029;--line:#2f3b48;--primary:#84b9cf;--text:#f0eee6;--muted:#aebbc9;--green:#bfdbd1;--yellow:#f3e7c9;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans JP",sans-serif}
 *{box-sizing:border-box}
@@ -97,12 +97,12 @@ html.sleep-mode body{touch-action:none}
 </style>
 </head>
 <body>
-<div id="build-bar" class="build-bar">SomnoLog V12 ｜ SomnoLog-V12</div>
+<div id="build-bar" class="build-bar">SomnoLog V13 ｜ SomnoLog-V13</div>
 
 <main id="qr-screen" class="screen qr-screen">
   <header class="stack">
     <div class="header-row">
-      <div class="brand"><h1>SomnoLog</h1><span class="version">V12</span><span class="commit"></span></div>
+      <div class="brand"><h1>SomnoLog</h1><span class="version">V13</span><span class="commit"></span></div>
       <span class="badge">患者情報確認</span>
     </div>
     <p class="hint">②が発行した患者用QRを読み取ってください。</p>
@@ -133,7 +133,7 @@ html.sleep-mode body{touch-action:none}
 
 <main id="capture-screen" class="screen" hidden>
   <header class="stack">
-    <div class="header-row"><div class="brand"><h1>SomnoLog</h1><span class="version">V12</span><span class="commit"></span></div><span id="capture-status" class="badge">待機中</span></div>
+    <div class="header-row"><div class="brand"><h1>SomnoLog</h1><span class="version">V13</span><span class="commit"></span></div><span id="capture-status" class="badge">待機中</span></div>
     <p class="hint">就寝中の音と体動を記録します。</p>
   </header>
   <section class="meter-panel">
@@ -174,7 +174,7 @@ html.sleep-mode body{touch-action:none}
 
 <main id="result-screen" class="screen" hidden>
   <header class="stack">
-    <div class="header-row"><div class="brand"><h1>SomnoLog</h1><span class="version">V12</span><span class="commit"></span></div><span class="badge">記録終了</span></div>
+    <div class="header-row"><div class="brand"><h1>SomnoLog</h1><span class="version">V13</span><span class="commit"></span></div><span class="badge">記録終了</span></div>
     <h2>睡眠記録</h2>
     <p id="result-range" class="range"></p>
     <p id="result-meta" class="note"></p>
@@ -201,7 +201,7 @@ html.sleep-mode body{touch-action:none}
 
 <main id="calendar-screen" class="screen" hidden>
   <header class="stack">
-    <div class="header-row"><div class="brand"><h1>SomnoLog</h1><span class="version">V12</span><span class="commit"></span></div><span class="badge">保存記録</span></div>
+    <div class="header-row"><div class="brand"><h1>SomnoLog</h1><span class="version">V13</span><span class="commit"></span></div><span class="badge">保存記録</span></div>
     <h2>記録カレンダー</h2>
     <p class="hint">日付を選び、記録の確認・共有を行います。</p>
   </header>
@@ -226,7 +226,7 @@ html.sleep-mode body{touch-action:none}
 </section>
 
 <dialog id="patient-dialog">
-  <div class="brand" style="margin-bottom:15px"><h1>SomnoLog</h1><span class="version">V12</span></div>
+  <div class="brand" style="margin-bottom:15px"><h1>SomnoLog</h1><span class="version">V13</span></div>
   <h2>患者情報の確認</h2>
   <p class="hint">最初に内容を確認してください。その後にマイク・体動を許可します。</p>
   <form id="patient-form" class="stack">
@@ -251,6 +251,8 @@ html.sleep-mode body{touch-action:none}
   <p id="share-error-text" class="note" role="status"></p>
   <div class="stack">
     <a id="share-error-save" class="download-link" hidden>ZIPを保存する</a>
+    <button id="share-error-open" class="button secondary" hidden>ZIP保存先を開く</button>
+    <p id="share-error-open-note" class="note" hidden></p>
     <p class="hint">保存したZIPをメールなどに添付する方法でも回収できます。自動送信は行いません。</p>
     <button class="button" data-close>閉じる</button>
   </div>
@@ -307,7 +309,7 @@ function parse(html,rollback=false){
   const build=d.querySelector('meta[name="somnolog-build"]')?.content||"";
   const n=build.match(/^SomnoLog-V(\d+)$/);
   const local=localBuild().match(/V(\d+)$/);
-  if(!n||d.querySelector('meta[name="somnolog-app"]')?.content!=="somnolog-real-v12"||
+  if(!n||d.querySelector('meta[name="somnolog-app"]')?.content!=="somnolog-real-v13"||
      d.querySelector("base,script[src],script[type=module]")||d.querySelectorAll("script").length!==2||
      d.querySelectorAll("script[data-somnolog-app]").length!==1||
      d.querySelectorAll("script[data-somnolog-updater]").length!==1)
@@ -373,7 +375,7 @@ window.SomnoLogRealUpdater={bind,render};
 (()=>{
 "use strict";
 window.SomnoLogReal?.dispose();
-const VERSION="SomnoLog-V12",RATE=16000,DB_NAME="SomnoLog.real.v7",DB_VERSION=2;
+const VERSION="SomnoLog-V13",RATE=16000,DB_NAME="SomnoLog.real.v7",DB_VERSION=2;
 const $=id=>document.getElementById(id),events=new AbortController();
 const on=(t,e,f,extra={})=>t.addEventListener(e,f,{...extra,signal:events.signal});
 const round=(n,d)=>Number(n.toFixed(d)),pad=n=>String(n).padStart(2,"0");
@@ -1082,18 +1084,34 @@ function compact(r,span){
 function clearFile(){
   if(fileURL)URL.revokeObjectURL(fileURL);
   fileURL="";bufferFile=null;bufferId="";
-  for(const id of ["result-save","share-error-save"]){$(id).hidden=true;$(id).removeAttribute("href");$(id).removeAttribute("download")}
+  for(const id of ["result-save","share-error-save","share-error-open"]){$(id).hidden=true;$(id).removeAttribute("href");$(id).removeAttribute("download")}
+  $("share-error-open-note").hidden=true;
 }
 function bindSaveLinks(){
   if(!bufferFile)return;
   if(!fileURL)fileURL=URL.createObjectURL(bufferFile);
   for(const id of ["result-save","share-error-save"]){$(id).href=fileURL;$(id).download=bufferFile.name;$(id).hidden=false}
+  $("share-error-open").hidden=false;
+}
+// 保存済みZIPを開く操作。Webページは保存先フォルダーや保存済みファイルを直接開けないため、
+// 保存操作を再度開始し、Chromeのダウンロードから開く方法を案内する。
+function openSavedZip(){
+  if(!bufferFile||!fileURL)return;
+  const link=document.createElement("a");
+  link.href=fileURL;link.download=bufferFile.name;link.rel="noopener";
+  document.body.append(link);link.click();link.remove();
+  const note=$("share-error-open-note");
+  note.hidden=false;
+  note.textContent="ZIPの保存を開始しました。次のいずれかで開けます。\n・画面下に出るダウンロード通知をタップする\n・Chromeの「⋮」→「ダウンロード」を開き、ZIPをタップする\n※保存先フォルダーは端末の設定により異なります（通常は「ダウンロード」）。";
 }
 function shareCapability(f){
   if(!isSecureContext)return "HTTPSで開いていないため共有APIを利用できません。";
   if(typeof navigator.share!=="function")return "このブラウザーにはファイル共有APIがありません。";
-  const policy=document.permissionsPolicy||document.featurePolicy;
-  try{if(policy?.allowsFeature&&!policy.allowsFeature("web-share"))return "埋め込み画面の権限制限で共有が禁止されています。"}catch(_){}
+  // 最上位のページでは権限制限の判定を行わない（埋め込み時のみ判定する）
+  if(window.self!==window.top){
+    const policy=document.permissionsPolicy||document.featurePolicy;
+    try{if(policy?.allowsFeature&&!policy.allowsFeature("web-share"))return "埋め込み画面の権限制限で共有が禁止されています。"}catch(_){}
+  }
   if(typeof navigator.canShare==="function"){
     try{if(!navigator.canShare({files:[f]}))return "この環境ではZIPファイルの共有に対応していません。"}
     catch(e){return "共有対応の判定に失敗しました："+e.message}
@@ -1306,8 +1324,8 @@ on(document,"webkitfullscreenchange",fullscreenChanged);
 function clock(){const d=new Date();$("black-clock").textContent=pad(d.getHours())+":"+pad(d.getMinutes())}
 const clockTimer=setInterval(clock,1000),meterTimer=setInterval(meters,80);
 clock();
-$("build-bar").textContent="SomnoLog V12 ｜ "+VERSION;
-document.title="SomnoLog V12 "+VERSION;
+$("build-bar").textContent="SomnoLog V13 ｜ "+VERSION;
+document.title="SomnoLog V13 "+VERSION;
 if(!window.DeviceMotionEvent)$("motion-status").textContent="この端末では体動を取得できません。音声のみで記録できます。";
 initPatientQrReader();
 on($("patient-form"),"submit",confirmPatient);
@@ -1328,6 +1346,7 @@ on($("result-copy-email"),"click",copyRecipient);
 on($("result-share"),"click",shareCurrent);
 on($("result-retry"),"click",()=>current&&prepareFile(current));
 on($("result-save"),"click",()=>{$("result-share-status").textContent="ZIP保存操作を開始しました。端末の保存先で確認してください。"});
+on($("share-error-open"),"click",openSavedZip);
 on($("result-calendar"),"click",()=>openCalendar("result-screen",current));
 on($("result-back"),"click",()=>screen("capture-screen"));
 on($("calendar-back"),"click",()=>screen(calendarBack));
