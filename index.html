@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#101419">
 <meta name="somnolog-app" content="somnolog-real-v8">
-<meta name="somnolog-build" content="SomnoLog-03-V8-qr-01">
+<meta name="somnolog-build" content="SomnoLog-03-V8-qr-02">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
-<title>SomnoLog V8</title>
+<title>SomnoLog V8 SomnoLog-03-V8-qr-02</title>
 <style>
 :root{color-scheme:dark;--bg:#101419;--surface:#192029;--line:#2f3b48;--primary:#84b9cf;--text:#f0eee6;--muted:#aebbc9;--green:#bfdbd1;--yellow:#f3e7c9;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans JP",sans-serif}
 *{box-sizing:border-box}
@@ -16,7 +16,8 @@ html,body{margin:0;min-width:320px;min-height:100%;background:var(--bg);color:va
 button,input{font:inherit}button{cursor:pointer}button:disabled{opacity:.45;cursor:not-allowed}
 [hidden]{display:none!important}
 button:focus-visible,input:focus-visible,a:focus-visible{outline:3px solid #9bd5ff;outline-offset:3px}
-.screen{max-width:480px;min-height:100svh;margin:auto;padding:max(24px,env(safe-area-inset-top)) 18px max(24px,env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:22px}
+.build-bar{padding:7px 12px;background:#0b0f14;color:#94a4b4;font-size:11px;text-align:center;letter-spacing:.04em;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.screen{max-width:480px;min-height:calc(100svh - 30px);margin:auto;padding:max(20px,env(safe-area-inset-top)) 18px max(24px,env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:22px}
 .stack{display:grid;gap:11px}.row{display:flex;justify-content:space-between;align-items:center;gap:10px}
 h1,h2,h3,p{margin:0}h1{font-size:24px;letter-spacing:.03em}h2{font-size:21px}h3{font-size:17px}p{line-height:1.8}
 .hint{font-size:13px;color:var(--muted);line-height:1.8}
@@ -25,8 +26,8 @@ h1,h2,h3,p{margin:0}h1{font-size:24px;letter-spacing:.03em}h2{font-size:21px}h3{
 .brand{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
 .version{font-size:24px;font-weight:700;letter-spacing:.03em}.commit{font-size:10px;color:var(--primary)}
 .badge{padding:7px 11px;border:1px solid #3e6159;border-radius:30px;background:#263b38;color:var(--green);font-size:12px;white-space:nowrap}
-.panel,.card{padding:17px;border:1px solid var(--line);border-radius:17px;background:var(--surface)}
-.meter-panel{padding:18px;border:1px solid var(--line);border-radius:20px;background:var(--surface)}
+.panel,.card,.meter-panel{padding:17px;border:1px solid var(--line);border-radius:17px;background:var(--surface)}
+.meter-panel{padding:18px;border-radius:20px}
 .meter+.meter{margin-top:22px}.meter-title{margin-bottom:9px;color:#bec8d3;font-size:14px}
 .wave{width:100%;height:72px;display:block;border-radius:12px;background:#111820}
 .button{width:100%;min-height:54px;padding:13px 16px;border:1px solid #506276;border-radius:15px;background:#1b232d;color:var(--text);font-size:15px;font-weight:650}
@@ -54,7 +55,7 @@ input[type=range]{width:100%;accent-color:var(--primary);margin:13px 0 7px}
 .day{min-height:46px;padding:5px 0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;border:1px solid transparent;border-radius:10px;background:transparent;color:#e0e6ec;font-size:14px}
 .sun{color:#d8a6a1}.sat{color:var(--primary)}.today{border-color:#64798b}
 .day.selected{background:var(--primary);color:#10202a;font-weight:700}
-.day.inrange{background:#253c50}.day.selected.inrange{background:var(--primary)}
+.day.inrange{background:#253c50}
 .dot{width:5px;height:5px;border-radius:50%;background:var(--primary)}
 .dot.empty{background:transparent}.selected .dot{background:#10202a}.selected .dot.empty{background:transparent}
 .small-button{min-height:35px;padding:7px 10px;border:1px solid #506276;border-radius:8px;background:#1b232d;color:var(--muted);font-size:11px}
@@ -70,8 +71,7 @@ input[type=text]{width:100%;padding:11px;border:1px solid #506276;border-radius:
 .warning{padding:11px;border-left:3px solid #b9a67e;background:#292820;color:var(--yellow);font-size:12px;line-height:1.7}
 a{color:var(--primary);overflow-wrap:anywhere}
 .download-link{display:block;padding:15px;border:1px solid #726b59;border-radius:12px;background:#343129;color:var(--yellow);text-align:center;font-size:14px}
-/* 患者QR読取画面 */
-.qr-screen{justify-content:flex-start;padding-top:max(16px,env(safe-area-inset-top))}
+.qr-screen{justify-content:flex-start}
 .qr-panel{display:grid;gap:13px}
 .qr-video{width:100%;max-height:44svh;object-fit:cover;border:1px solid var(--line);border-radius:13px;background:#080b0e}
 .qr-preview{display:grid;gap:13px}
@@ -81,15 +81,13 @@ a{color:var(--primary);overflow-wrap:anywhere}
 .qr-file{position:relative;display:block}
 .qr-file input{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden}
 .qr-status{min-height:2.8em}
-.qr-empty{padding:19px 12px;border:1px dashed #3c495a;border-radius:13px;color:var(--muted);text-align:center}
 .qr-actions{display:grid;gap:10px}
-/* 黒画面：オーバーレイの背後も黒にする */
-html.sleep-mode,html.sleep-mode body{background:#000000!important;background-color:#000000!important;overflow:hidden!important;overscroll-behavior:none!important}
+html.sleep-mode,html.sleep-mode body{background:#000!important;overflow:hidden!important;overscroll-behavior:none!important}
 html.sleep-mode{color-scheme:dark}
 html.sleep-mode body{touch-action:none}
-#black-screen{background:#000000!important;position:fixed;inset:0;width:100%;height:100vh;height:100dvh;min-height:100vh;margin:0;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;touch-action:none;overscroll-behavior:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
-:fullscreen,:fullscreen::backdrop{background:#000000!important}
-:-webkit-full-screen{background:#000000!important}
+#black-screen{background:#000!important;position:fixed;inset:0;width:100%;height:100vh;height:100dvh;margin:0;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;touch-action:none;overscroll-behavior:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
+:fullscreen,:fullscreen::backdrop{background:#000!important}
+:-webkit-full-screen{background:#000!important}
 #black-clock{display:block;color:#756f61;font-size:70px;font-weight:300;letter-spacing:2px;font-variant-numeric:tabular-nums}
 #black-help{margin-top:27px;color:#aaa18e;font-size:12px;text-align:center}
 #black-return{margin-top:22px;padding:9px 18px;border:1px solid #38342e;border-radius:10px;background:#000;color:#aaa18e;font-size:12px;min-height:44px}
@@ -98,6 +96,8 @@ html.sleep-mode body{touch-action:none}
 </style>
 </head>
 <body>
+<div id="build-bar" class="build-bar">SomnoLog V8 ｜ SomnoLog-03-V8-qr-02</div>
+
 <main id="qr-screen" class="screen qr-screen">
   <header class="stack">
     <div class="header-row">
@@ -128,6 +128,7 @@ html.sleep-mode body{touch-action:none}
     <p class="hint">患者名が空欄のQRは利用できません。QRを再発行してもらってください。</p>
   </section>
 </main>
+
 <main id="capture-screen" class="screen" hidden>
   <header class="stack">
     <div class="header-row"><div class="brand"><h1>SomnoLog</h1><span class="version">V8</span><span class="commit"></span></div><span id="capture-status" class="badge">待機中</span></div>
@@ -150,7 +151,7 @@ html.sleep-mode body{touch-action:none}
       <div id="motion-title" class="meter-title">体動</div>
       <svg class="wave" viewBox="0 0 320 72" preserveAspectRatio="none" aria-label="実体動波形"><path d="M0 18H320M0 54H320" stroke="#202d3b" fill="none"/><path id="motion-wave" d="M0 64H320" stroke="#bfdbd1" stroke-width="2" fill="none"/></svg>
       <button id="motion-button" class="button secondary permission" disabled>モーションセンサーを許可</button>
-      <p id="motion-status" class="note" role="status" style="margin-top:8px">未取得は0。PCでは音声のみで記録できます。</p>
+      <p id="motion-status" class="note" role="status" style="margin-top:8px">未取得は0。許可しなくても音声だけで記録できます。</p>
     </div>
   </section>
   <section class="actions">
@@ -168,6 +169,7 @@ html.sleep-mode body{touch-action:none}
     <button id="update-apply" class="button primary" hidden>取得した最新版を適用</button>
   </section>
 </main>
+
 <main id="result-screen" class="screen" hidden>
   <header class="stack">
     <div class="header-row"><div class="brand"><h1>SomnoLog</h1><span class="version">V8</span><span class="commit"></span></div><span class="badge">記録終了</span></div>
@@ -189,6 +191,7 @@ html.sleep-mode body{touch-action:none}
   </section>
   <section class="footer"><button id="result-back" class="button">記録画面に戻る</button><button class="button clinic" data-usage>使い方を見る</button></section>
 </main>
+
 <main id="calendar-screen" class="screen" hidden>
   <header class="stack">
     <div class="header-row"><div class="brand"><h1>SomnoLog</h1><span class="version">V8</span><span class="commit"></span></div><span class="badge">保存記録</span></div>
@@ -208,11 +211,13 @@ html.sleep-mode body{touch-action:none}
   <section class="panel stack"><p class="hint">複数記録は1件ずつ共有します。</p><button id="calendar-share" class="button primary" disabled>ログを医師と共有</button></section>
   <section class="footer"><button id="calendar-back" class="button">記録画面に戻る</button><button class="button clinic" data-usage>使い方を見る</button></section>
 </main>
+
 <section id="black-screen" hidden tabindex="0" aria-label="黒画面。長押しで通常画面に戻ります">
   <time id="black-clock">00:00</time>
   <p id="black-help">どこでも1.5秒長押しすると戻ります</p>
   <button id="black-return" type="button">通常画面に戻る</button>
 </section>
+
 <dialog id="patient-dialog">
   <div class="brand" style="margin-bottom:15px"><h1>SomnoLog</h1><span class="version">V8</span></div>
   <h2>患者情報の確認</h2>
@@ -247,23 +252,26 @@ html.sleep-mode body{touch-action:none}
   <h2>使い方</h2>
   <ol>
     <li>患者QRを読み込み、診療所名・患者名を確認します。</li>
-    <li>「始める」を押してからマイク・体動を許可します。</li>
+    <li>「始める」を押します。</li>
+    <li>マイクを許可します。体動は任意です（PCでは許可しなくても記録できます）。</li>
     <li>音量を調整し、記録開始を押します。</li>
     <li>黒画面は任意の場所を1.5秒長押しで戻ります。「通常画面に戻る」でも戻れます。</li>
-    <li>停止後、共有ファイルを自動準備します。</li>
-    <li>医師と共有を押して端末の共有先を選びます。エラーの場合は表示されたZIP保存リンクを使います。</li>
+    <li>停止後、共有ファイルを自動準備します。医師と共有を押して端末の共有先を選びます。</li>
   </ol>
   <p class="warning">最大30分の確認版。背景・画面ロック中の継続は保証しません。音量は未校正、体動は端末の加速度です。診断用途ではありません。</p>
-  <p class="note">全画面表示やシステムバーの色はブラウザー・Androidの設定に依存します。WebページからOS設定を強制変更することはできません。共有操作の終了は医師の受領を意味しません。</p>
+  <p class="note">全画面表示やシステムバーの色はブラウザー・Androidの設定に依存します。共有操作の終了は医師の受領を意味しません。</p>
   <div class="stack"><button class="button" data-close>閉じる</button></div>
 </dialog>
+
 <script data-somnolog-updater>
 (()=>{
 "use strict";
 if(window.SomnoLogRealUpdater)return;
 const $=id=>document.getElementById(id);
 const ROOT="https://api.github.com/repos/matsuodentalassociation/ST-SCOPE";
+const RAW="https://raw.githubusercontent.com/matsuodentalassociation/ST-SCOPE/";
 let events,busy=false,candidate=null,sha="",message="最新版を確認します。",started=false;
+const localBuild=()=>document.querySelector('meta[name="somnolog-build"]')?.content||"";
 function render(){
   if(!$("update-status"))return;
   $("update-status").textContent=message;
@@ -273,6 +281,7 @@ function render(){
   document.querySelectorAll(".commit").forEach(e=>e.textContent=sha?sha.slice(0,7):"");
 }
 function say(s){message=s;render()}
+// キャッシュバスティング：毎回異なる値を付けて取得する
 async function fresh(address,json){
   const u=new URL(address);
   u.searchParams.set("_cb",Date.now()+"-"+Math.random().toString(16).slice(2));
@@ -290,7 +299,7 @@ function parse(html,rollback=false){
   const d=new DOMParser().parseFromString(html,"text/html");
   const build=d.querySelector('meta[name="somnolog-build"]')?.content||"";
   const n=build.match(/^SomnoLog-03-V8-qr-(\d+)$/);
-  const local=document.querySelector('meta[name="somnolog-build"]')?.content.match(/qr-(\d+)$/);
+  const local=localBuild().match(/qr-(\d+)$/);
   if(!n||d.querySelector('meta[name="somnolog-app"]')?.content!=="somnolog-real-v8"||
      d.querySelector("base,script[src],script[type=module]")||d.querySelectorAll("script").length!==2||
      d.querySelectorAll("script[data-somnolog-app]").length!==1||
@@ -299,7 +308,7 @@ function parse(html,rollback=false){
   if(!rollback&&local&&+n[1]<+local[1])throw Error("古い版の適用を停止しました。");
   for(const id of ["qr-screen","qr-camera-button","qr-image-input","qr-start-button","capture-screen","start-button","history-button","update-check","update-apply","update-status"])
     if(d.querySelectorAll("#"+id).length!==1)throw Error("画面要素が欠損・重複しています。");
-  return {d,build};
+  return{d,build};
 }
 async function check(){
   if(busy)return;
@@ -308,15 +317,16 @@ async function check(){
     const commit=await fresh(ROOT+"/commits/main",true);
     if(!/^[a-f0-9]{40}$/i.test(commit.sha||""))throw Error("SHAが不正です。");
     if(sha===commit.sha){say("このタブは最新コミット適用済みです。");return}
-    const html=await fresh("https://raw.githubusercontent.com/matsuodentalassociation/ST-SCOPE/"+commit.sha+"/index.html",false);
-    const {build}=parse(html);
+    const html=await fresh(RAW+commit.sha+"/index.html",false);
+    const{build}=parse(html);
     candidate={html,sha:commit.sha,build};
-    say("取得済み・未適用\n"+build+" / "+commit.sha.slice(0,12)+"\n現在と同じ版の場合もあります。");
+    say("取得済み・未適用\n"+build+" / "+commit.sha.slice(0,12)+
+      (build===localBuild()?"\n現在と同じ版番号です。内容が違う場合のみ適用してください。":"\n現在の版："+localBuild()));
   }catch(e){say("確認失敗。現在の版を維持します。\n"+e.message)}
   finally{busy=false;render()}
 }
 function install(html){
-  const {d}=parse(html,true);
+  const{d}=parse(html,true);
   const app=d.querySelector("script[data-somnolog-app]").textContent;
   const updater=d.querySelector("script[data-somnolog-updater]").textContent;
   d.querySelectorAll("script").forEach(s=>s.remove());
@@ -335,7 +345,6 @@ function apply(){
   if(busy||!candidate||!window.SomnoLogReal?.canUpdate())return;
   const next=candidate;
   if(!confirm(next.build+"\n"+next.sha.slice(0,12)+"\n指定GitHubのコードを適用します。保存済み履歴は削除しません。\n入力内容は引き継ぎません。適用しますか？"))return;
-  if(!window.SomnoLogReal?.canUpdate())return;
   const fallback="<!DOCTYPE html>\n"+document.documentElement.outerHTML;
   busy=true;render();
   try{install(next.html);sha=next.sha;candidate=null;say("適用完了\n"+next.build)}
@@ -352,11 +361,12 @@ function bind(){
 window.SomnoLogRealUpdater={bind,render};
 })();
 </script>
+
 <script data-somnolog-app>
 (()=>{
 "use strict";
 window.SomnoLogReal?.dispose();
-const VERSION="SomnoLog-03-V8-qr-01",RATE=16000,MAX=1800;
+const VERSION="SomnoLog-03-V8-qr-02",RATE=16000,MAX=1800;
 const $=id=>document.getElementById(id),events=new AbortController();
 const on=(t,e,f,extra={})=>t.addEventListener(e,f,{...extra,signal:events.signal});
 const round=(n,d)=>Number(n.toFixed(d)),pad=n=>String(n).padStart(2,"0");
@@ -373,9 +383,7 @@ let motionAllowed=false,motionPending=false,motionValue=0,motionAt=0,motionSourc
 let motionEvents=0,motionValidEvents=0,motionStarted=0,gravity=null,gravityAt=0,motionSamples=[];
 let visualPeak=.001;
 let month=new Date(new Date().getFullYear(),new Date().getMonth(),1),mode="single",selected=day(Date.now()),from=null,to=null,calendarBack="capture-screen";
-/* 患者QR読取 */
 let qrStream=null,qrFrame=0,qrReading=false,qrPendingPatient=null,jsQrPromise=null;
-/* 黒画面管理 */
 let blackActive=false,holdTimer=null,holding=false,holdX=0,holdY=0,holdStarted=0;
 let ownsFullscreen=false,fullscreenPending=false,blackScroll=0,fullscreenMessage="";
 const fullscreenElement=()=>document.fullscreenElement||document.webkitFullscreenElement;
@@ -398,7 +406,7 @@ function controls(){
   $("microphone-button").classList.toggle("enabled",micReady());
   $("motion-button").textContent=motionPending?"センサー許可を確認中…":motionAllowed?"モーションセンサー許可済み":"モーションセンサーを許可";
   $("motion-button").classList.toggle("enabled",motionAllowed);
-  $("qr-start-button").disabled=!ready||active||!qrPendingPatient;
+  $("qr-start-button").disabled=active||!qrPendingPatient;
   $("result-share").disabled=active||!bufferFile||bufferId!==current?.id;
   $("result-retry").disabled=active;
   $("result-back").disabled=preparing||sharing;
@@ -433,13 +441,15 @@ async function initialize(){
       d.createObjectStore("records",{keyPath:"id"});
       d.createObjectStore("chunks",{keyPath:["recordId","number"]}).createIndex("recordId","recordId");
     };
+    open.onblocked=()=>say("保存領域が別のタブで使用中です。他のSomnoLogタブを閉じてください。");
     const d=await request(open);
     if(disposed){d.close();return}
     db=d;
     db.onversionchange=()=>{ready=false;db.close();controls();say("保存領域変更。再読み込みしてください。")};
-    await recover();ready=true;await reload();controls();
+    await recover();
+    ready=true;await reload();controls();
     say(patientConfirmed?"患者情報確認済み。マイクを許可してください。":"患者QRを読み込んでください。");
-  }catch(e){say("保存領域を利用できません。\n"+e.message);controls()}
+  }catch(e){say("保存領域を利用できません。ページを再読み込みしてください。\n"+e.message);controls()}
 }
 function dialog(id){document.querySelectorAll("dialog[open]").forEach(d=>d.close());$(id).showModal()}
 function screen(id){
@@ -456,7 +466,7 @@ function confirmPatient(e){
   patientData={clinic:$("clinic").value.trim(),chartNo:$("chart").value.trim(),name:$("patient").value.trim(),serialNumber:$("serial").value.trim()};
   patientConfirmed=true;$("patient-dialog").close();controls();
   $("microphone-status").textContent=micReady()?"マイク取得済み。記録開始できます。":"患者情報確認済み。マイクを許可してください。";
-  say("患者情報確認済み。マイク・体動を許可してから記録開始してください。");
+  say("患者情報確認済み。マイクを許可してから記録開始してください。");
 }
 function setPatientContext(data){
   if(occupied())throw Error("処理中は患者情報を変更できません。");
@@ -471,8 +481,8 @@ function qrStatus(message){$("qr-read-status").textContent=message}
 function stopPatientQrCamera(){
   qrReading=false;
   if(qrFrame){cancelAnimationFrame(qrFrame);qrFrame=0}
-  if(qrStream){qrStream.getTracks().forEach(track=>track.stop());qrStream=null}
-  const video=$("qr-video");if(video)video.srcObject=null;
+  if(qrStream){qrStream.getTracks().forEach(t=>t.stop());qrStream=null}
+  const video=$("qr-video");video.srcObject=null;video.hidden=true;
 }
 function cameraErrorMessage(error){
   const name=error?.name||"";
@@ -484,15 +494,16 @@ function cameraErrorMessage(error){
     return "カメラを開けません。他のアプリがカメラを使用していないか確認してください。";
   return "カメラを起動できません（"+(name||"Error")+"）。QR画像を選択してください。";
 }
+// キャッシュバスティング：読込URLにバージョンを付与し、失敗時は再試行可能にする
 function loadJsQR(){
   if(typeof window.jsQR==="function")return Promise.resolve();
   if(jsQrPromise)return jsQrPromise;
   jsQrPromise=new Promise((resolve,reject)=>{
     const script=document.createElement("script");
-    script.src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js";
-    const timer=setTimeout(()=>{jsQrPromise=null;reject(Error("QR読取ライブラリの読込がタイムアウトしました。"))},10000);
-    script.onload=()=>{clearTimeout(timer);typeof window.jsQR==="function"?resolve():(jsQrPromise=null,reject(Error("QR読取ライブラリを利用できません。")))};
-    script.onerror=()=>{clearTimeout(timer);jsQrPromise=null;reject(Error("QR読取ライブラリを読み込めません。"))};
+    script.src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js?v="+encodeURIComponent(VERSION);
+    const timer=setTimeout(()=>{jsQrPromise=null;script.remove();reject(Error("QR読取ライブラリの読込がタイムアウトしました。"))},10000);
+    script.onload=()=>{clearTimeout(timer);if(typeof window.jsQR==="function")resolve();else{jsQrPromise=null;reject(Error("QR読取ライブラリを利用できません。"))}};
+    script.onerror=()=>{clearTimeout(timer);jsQrPromise=null;script.remove();reject(Error("QR読取ライブラリを読み込めません。"))};
     document.head.append(script);
   });
   return jsQrPromise;
@@ -500,7 +511,7 @@ function loadJsQR(){
 function resetPatientQr(){
   stopPatientQrCamera();qrPendingPatient=null;
   $("qr-patient-preview").hidden=true;$("qr-start-button").disabled=true;
-  $("qr-image-input").value="";$("qr-video").hidden=true;
+  $("qr-image-input").value="";
   qrStatus("患者用QRをカメラで読み取るか、画像を選択してください。");
 }
 function decodePatientQr(text){
@@ -514,19 +525,17 @@ function decodePatientQr(text){
   let payload;
   try{
     const binary=atob(encoded.replace(/-/g,"+").replace(/_/g,"/")+"=".repeat((4-encoded.length%4)%4));
-    const bytes=Uint8Array.from(binary,c=>c.charCodeAt(0));
-    payload=JSON.parse(new TextDecoder("utf-8",{fatal:true}).decode(bytes));
+    payload=JSON.parse(new TextDecoder("utf-8",{fatal:true}).decode(Uint8Array.from(binary,c=>c.charCodeAt(0))));
   }catch(_){throw Error("患者QRの情報を読み取れません。")}
   if(!payload||Array.isArray(payload)||typeof payload!=="object")throw Error("患者QRの情報が不正です。");
   const clinic=typeof payload.clinicName==="string"?payload.clinicName.trim():"";
   const name=typeof payload.patientName==="string"?payload.patientName.trim():"";
   if(!name)throw Error("患者名がありません。患者情報を確認し、QRを再発行してください。");
   if(!clinic)throw Error("診療所名がありません。QRを再発行してください。");
-  if(clinic.length>100||name.length>100)throw Error("患者QRの情報が長すぎます。");
   const chartNo=typeof payload.chartNo==="string"?payload.chartNo.trim():"";
   const serialNumber=typeof payload.serial==="string"?payload.serial.trim():"";
-  if(chartNo.length>100||serialNumber.length>80)throw Error("患者QRの情報が不正です。");
-  return{clinic,name,chartNo,serialNumber,payload};
+  if(clinic.length>100||name.length>100||chartNo.length>100||serialNumber.length>80)throw Error("患者QRの情報が長すぎるか不正です。");
+  return{clinic,name,chartNo,serialNumber};
 }
 function acceptPatientQrText(text){
   try{
@@ -536,55 +545,38 @@ function acceptPatientQrText(text){
     $("qr-clinic-name").textContent=patient.clinic;
     $("qr-patient-name").textContent=patient.name;
     $("qr-patient-preview").hidden=false;
-    $("qr-start-button").disabled=!ready;
     qrStatus("診療所名と患者名を確認してください。");
   }catch(error){
     qrPendingPatient=null;
     $("qr-patient-preview").hidden=true;
-    $("qr-start-button").disabled=true;
     qrStatus(error.message);
   }
+  controls();
 }
 async function startPatientQrCamera(){
+  stopPatientQrCamera();qrPendingPatient=null;
+  $("qr-patient-preview").hidden=true;controls();
+  qrStatus("カメラを起動しています…");
   try{
-    resetPatientQr();
-    qrStatus("カメラを起動しています…");
-
     if(!window.isSecureContext){qrStatus("カメラを使うにはHTTPSでページを開いてください。");return}
     if(!navigator.mediaDevices?.getUserMedia){qrStatus("このブラウザーではカメラを利用できません。QR画像を選択してください。");return}
-
-    // 1) カメラを先に起動する
     try{
       qrStream=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:"environment"}}});
-    }catch(error){
-      qrStatus(cameraErrorMessage(error));
-      return;
-    }
-
+    }catch(error){qrStatus(cameraErrorMessage(error));return}
     const video=$("qr-video");
-    video.hidden=false;
-    video.srcObject=qrStream;
+    video.hidden=false;video.srcObject=qrStream;
     try{await video.play()}catch(_){}
-
-    // 2) QR読取ライブラリを読み込む
     qrStatus("QR読取の準備をしています…");
-    try{
-      await loadJsQR();
-    }catch(error){
+    try{await loadJsQR()}catch(error){
       stopPatientQrCamera();
-      $("qr-video").hidden=true;
       qrStatus(error.message+" QR画像を選択してください。");
       return;
     }
-
-    // 3) スキャン開始
     const canvas=document.createElement("canvas");
     const context=canvas.getContext("2d",{willReadFrequently:true});
-    if(!context){stopPatientQrCamera();$("qr-video").hidden=true;qrStatus("カメラ画像を処理できません。QR画像を選択してください。");return}
-
+    if(!context){stopPatientQrCamera();qrStatus("カメラ画像を処理できません。QR画像を選択してください。");return}
     qrReading=true;
     qrStatus("患者用QRをカメラに映してください。");
-
     const scan=()=>{
       if(!qrReading)return;
       qrFrame=requestAnimationFrame(scan);
@@ -598,15 +590,13 @@ async function startPatientQrCamera(){
         const code=window.jsQR(image.data,image.width,image.height,{inversionAttempts:"attemptBoth"});
         if(code?.data)acceptPatientQrText(code.data);
       }catch(_){
-        qrStatus("カメラ画像を処理できません。QR画像を選択するか、カメラを再起動してください。");
         stopPatientQrCamera();
+        qrStatus("カメラ画像を処理できません。QR画像を選択するか、カメラを再起動してください。");
       }
     };
     scan();
   }catch(error){
-    // 想定外のエラーも必ず画面に出す
     stopPatientQrCamera();
-    $("qr-video").hidden=true;
     qrStatus("カメラ処理でエラー："+(error?.name||"Error")+" "+(error?.message||""));
   }
 }
@@ -635,12 +625,13 @@ async function readPatientQrImage(file){
     if(!code?.data)throw Error("画像からQRを検出できません。");
     acceptPatientQrText(code.data);
   }catch(error){
-    qrPendingPatient=null;$("qr-patient-preview").hidden=true;$("qr-start-button").disabled=true;
+    qrPendingPatient=null;$("qr-patient-preview").hidden=true;
     qrStatus(error.message||"QR画像を読み取れません。");
+    controls();
   }
 }
 function beginFromPatientQr(){
-  if(!qrPendingPatient||!ready||occupied())return;
+  if(!qrPendingPatient||occupied())return;
   const p=qrPendingPatient;
   patientData={clinic:p.clinic,chartNo:p.chartNo||"未指定",name:p.name,serialNumber:p.serialNumber||""};
   $("clinic").value=patientData.clinic;$("chart").value=patientData.chartNo;
@@ -649,7 +640,8 @@ function beginFromPatientQr(){
   $("patient-source").textContent="②の患者用QRから受領。";
   $("patient-error").textContent="";
   $("microphone-status").textContent="患者情報確認済み。マイクを許可してください。";
-  say("患者情報確認済み。マイク・体動を許可してから記録開始してください。");
+  say(ready?"患者情報確認済み。マイクを許可してから記録開始してください。"
+           :"患者情報は確認済みです。保存領域の準備ができていません。ページを再読み込みしてください。");
   screen("capture-screen");controls();
 }
 function initPatientQrReader(){
@@ -689,9 +681,7 @@ async function permission(){
     stream=acquired;await resume;
     if(disposed)return;
     if(ac.state!=="running")ac.resume().catch(()=>{});
-    if(source)try{source.disconnect()}catch(_){}
-    if(analyser)try{analyser.disconnect()}catch(_){}
-    if(mutedOutput)try{mutedOutput.disconnect()}catch(_){}
+    [source,analyser,mutedOutput].forEach(n=>{if(n)try{n.disconnect()}catch(_){}});
     source=ac.createMediaStreamSource(stream);
     analyser=ac.createAnalyser();analyser.fftSize=1024;
     meterBuffer=new Float32Array(analyser.fftSize);
@@ -703,16 +693,17 @@ async function permission(){
   finally{micPending=false;controls()}
 }
 function validVector(a){return !!a&&[a.x,a.y,a.z].every(Number.isFinite)}
+// 体動は任意。未許可・非対応でも音声のみで記録できる。
 async function motionPermission(){
   if(occupied()||!patientConfirmed)return;
   motionPending=true;controls();
   try{
-    if(!isSecureContext||!window.DeviceMotionEvent)throw Error("体動非対応です。音声のみで記録できます。");
-    if(typeof DeviceMotionEvent.requestPermission==="function"&&await DeviceMotionEvent.requestPermission()!=="granted")throw Error("体動許可なし。音声のみで記録できます。");
+    if(!isSecureContext||!window.DeviceMotionEvent)throw Error("この端末では体動を取得できません。音声のみで記録できます。");
+    if(typeof DeviceMotionEvent.requestPermission==="function"&&await DeviceMotionEvent.requestPermission()!=="granted")throw Error("体動は未許可です。音声のみで記録できます。");
     motionAllowed=true;motionStarted=performance.now();motionEvents=0;motionValidEvents=0;motionAt=0;
     gravity=null;gravityAt=0;motionValue=0;motionSamples=[];
     $("motion-status").textContent="許可済み・受信待ち。端末を軽く動かしてください。";
-  }catch(e){motionAllowed=false;$("motion-status").textContent=e.message}
+  }catch(e){motionAllowed=false;$("motion-status").textContent=e.message+"\n体動なしで記録を開始できます。"}
   finally{motionPending=false;controls()}
 }
 on(window,"devicemotion",e=>{
@@ -807,7 +798,9 @@ function processAudio(e){
   if(end>=MAX)stop();
 }
 async function start(){
-  if(!ready||!patientConfirmed||!micReady()||occupied())return;
+  if(occupied()||!patientConfirmed)return;
+  if(!ready){say("保存領域の準備ができていません。ページを再読み込みしてください。");return}
+  if(!micReady())return;
   starting=true;controls();writeError=null;let created=false;
   try{
     await ac.resume();
@@ -816,7 +809,7 @@ async function start(){
     clearFile();
     const ms=Date.now();
     record={id:uuid(),version:VERSION,status:"recording",serialNumber:serial(),
-      serialSource:linked?"stage-1-2":"provisional",gainDb:gain,motionSource:motionSource||"not-received",
+      serialSource:linked?"stage-1-2":"provisional",gainDb:gain,motionSource:motionAllowed?(motionSource||"not-received"):"not-permitted",
       patient:{clinic:patientData.clinic,chartNo:patientData.chartNo,name:patientData.name},
       startTimeMs:ms,stopTimeMs:ms,durationSec:0,logs:[]};
     created=true;
@@ -840,9 +833,7 @@ async function start(){
 function cleanupAudio(){
   clearInterval(timer);timer=null;
   if(processor){processor.onaudioprocess=null;try{processor.disconnect()}catch(_){}}
-  if(source)try{source.disconnect()}catch(_){}
-  if(analyser)try{analyser.disconnect()}catch(_){}
-  if(mutedOutput)try{mutedOutput.disconnect()}catch(_){}
+  [source,analyser,mutedOutput].forEach(n=>{if(n)try{n.disconnect()}catch(_){}});
   if(stream)stream.getTracks().forEach(t=>{t.onended=null;t.stop()});
   if(ac)ac.close().catch(()=>{});
   if(wakeLock)wakeLock.release().catch(()=>{});
@@ -981,7 +972,6 @@ function chooseRecords(){
   }
   dialog("records-dialog");
 }
-/* 回収ファイル */
 function filename(r){
   const clean=v=>String(v??"未設定").normalize("NFC").replace(/[\/\\:*?"<>|\u0000-\u001f\u007f]/g,"-").replace(/[. ]+$/g,"").slice(0,60)||"未設定";
   return[day(r.startTimeMs).replaceAll("-",""),r.serialNumber,r.patient.clinic,r.patient.chartNo,r.patient.name].map(clean).join("_")+".zip";
@@ -1097,7 +1087,7 @@ async function prepareFile(r){
 function showShareError(text){
   if(disposed)return;
   $("result-share-status").textContent=text;bindSaveLinks();
-  const details=[
+  $("share-error-text").textContent=[
     text,
     "公開ページをChrome／Safariで直接開いてください。",
     "HTTPS："+(isSecureContext?"はい":"いいえ"),
@@ -1105,7 +1095,6 @@ function showShareError(text){
     bufferFile?"ファイル容量："+(bufferFile.size/1048576).toFixed(2)+" MiB":"",
     "元記録は端末に残っています。"
   ].filter(Boolean).join("\n");
-  $("share-error-text").textContent=details;
   dialog("share-error-dialog");
 }
 function shareFailure(e){
@@ -1129,7 +1118,7 @@ function shareCurrent(){
   if(reason){showShareError(reason);return}
   let promise;
   try{
-    // クリックから直接呼ぶ。ファイル作成・画面遷移・awaitを先に挟まない。
+    // クリックから直接呼ぶ（ファイル作成・画面遷移・awaitを先に挟まない）
     promise=navigator.share({files:[bufferFile]});
   }catch(e){shareFailure(e);return}
   sharing=true;controls();
@@ -1138,7 +1127,6 @@ function shareCurrent(){
     if(!disposed)$("result-share-status").textContent="端末の共有操作が終了しました。医師への到着・受領は自動確認していません。";
   },shareFailure).finally(()=>{sharing=false;controls()});
 }
-/* 黒画面・全画面・長押し */
 function cancelHold(){
   clearTimeout(holdTimer);holdTimer=null;holding=false;
   $("black-screen").classList.remove("holding");
@@ -1213,9 +1201,7 @@ if(window.PointerEvent){
   on(black,"pointermove",e=>{if(holding)e.preventDefault();moveHold(e.clientX,e.clientY)},{passive:false});
   on(window,"pointerup",endHold);
   on(window,"pointercancel",cancelHold);
-  // lostpointercaptureだけでは長押しタイマーを解除しない。
 }
-// Touch Eventsを併用。重複イベントではタイマーを再開始しない。
 on(black,"touchstart",e=>{
   if(e.touches.length!==1){cancelHold();return}
   e.preventDefault();const t=e.touches[0];beginHold(t.clientX,t.clientY);
@@ -1225,7 +1211,6 @@ on(black,"touchmove",e=>{
   e.preventDefault();const t=e.touches[0];moveHold(t.clientX,t.clientY);
 },{passive:false});
 on(black,"touchend",e=>{
-  // 予備ボタンはタッチ終了でも確実に復帰させる。
   if(e.target.closest?.("#black-return")){e.preventDefault();leaveBlack();return}
   e.preventDefault();endHold();
 },{passive:false});
@@ -1247,6 +1232,9 @@ on(document,"webkitfullscreenchange",fullscreenChanged);
 function clock(){const d=new Date();$("black-clock").textContent=pad(d.getHours())+":"+pad(d.getMinutes())}
 const clockTimer=setInterval(clock,1000),meterTimer=setInterval(meters,80);
 clock();
+$("build-bar").textContent="SomnoLog V8 ｜ "+VERSION;
+document.title="SomnoLog V8 "+VERSION;
+if(!window.DeviceMotionEvent)$("motion-status").textContent="この端末では体動を取得できません。音声のみで記録できます。";
 initPatientQrReader();
 on($("patient-form"),"submit",confirmPatient);
 on($("patient-form"),"input",()=>{linked=false;$("patient-source").textContent="暫定入力：確認後に使用します。"});
