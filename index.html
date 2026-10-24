@@ -4,11 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#101419">
-<meta name="somnolog-app" content="somnolog-real-v15">
-<meta name="somnolog-build" content="SomnoLog-V15">
+<meta name="somnolog-app" content="somnolog-real-v16">
+<meta name="somnolog-build" content="SomnoLog-V16">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
-<title>SomnoLog V15</title>
+<title>SomnoLog V16</title>
 <style>
 :root{color-scheme:dark;--bg:#101419;--surface:#192029;--line:#2f3b48;--primary:#84b9cf;--text:#f0eee6;--muted:#aebbc9;--green:#bfdbd1;--yellow:#f3e7c9;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans JP",sans-serif}
 *{box-sizing:border-box}
@@ -98,12 +98,12 @@ html.sleep-mode body{touch-action:none}
 </style>
 </head>
 <body>
-<div id="build-bar" class="build-bar">SomnoLog V15 ｜ SomnoLog-V15</div>
+<div id="build-bar" class="build-bar">SomnoLog V16 ｜ SomnoLog-V16</div>
 
 <main id="qr-screen" class="screen qr-screen">
   <header class="stack">
     <div class="header-row">
-      <div class="brand"><h1>SomnoLog</h1><span class="version">V15</span><span class="commit"></span></div>
+      <div class="brand"><h1>SomnoLog</h1><span class="version">V16</span><span class="commit"></span></div>
       <span class="badge">患者情報確認</span>
     </div>
     <p class="hint">②が発行した患者用QRを読み取ってください。</p>
@@ -134,7 +134,7 @@ html.sleep-mode body{touch-action:none}
 
 <main id="capture-screen" class="screen" hidden>
   <header class="stack">
-    <div class="header-row"><div class="brand"><h1>SomnoLog</h1><span class="version">V15</span><span class="commit"></span></div><span id="capture-status" class="badge">待機中</span></div>
+    <div class="header-row"><div class="brand"><h1>SomnoLog</h1><span class="version">V16</span><span class="commit"></span></div><span id="capture-status" class="badge">待機中</span></div>
     <p class="hint">就寝中の音と体動を記録します。</p>
   </header>
   <section class="meter-panel">
@@ -175,7 +175,7 @@ html.sleep-mode body{touch-action:none}
 
 <main id="result-screen" class="screen" hidden>
   <header class="stack">
-    <div class="header-row"><div class="brand"><h1>SomnoLog</h1><span class="version">V15</span><span class="commit"></span></div><span class="badge">記録終了</span></div>
+    <div class="header-row"><div class="brand"><h1>SomnoLog</h1><span class="version">V16</span><span class="commit"></span></div><span class="badge">記録終了</span></div>
     <h2>睡眠記録</h2>
     <p id="result-range" class="range"></p>
     <p id="result-meta" class="note"></p>
@@ -206,7 +206,7 @@ html.sleep-mode body{touch-action:none}
 
 <main id="calendar-screen" class="screen" hidden>
   <header class="stack">
-    <div class="header-row"><div class="brand"><h1>SomnoLog</h1><span class="version">V15</span><span class="commit"></span></div><span class="badge">保存記録</span></div>
+    <div class="header-row"><div class="brand"><h1>SomnoLog</h1><span class="version">V16</span><span class="commit"></span></div><span class="badge">保存記録</span></div>
     <h2>記録カレンダー</h2>
     <p class="hint">日付を選び、記録の確認・共有を行います。</p>
   </header>
@@ -231,7 +231,7 @@ html.sleep-mode body{touch-action:none}
 </section>
 
 <dialog id="patient-dialog">
-  <div class="brand" style="margin-bottom:15px"><h1>SomnoLog</h1><span class="version">V15</span></div>
+  <div class="brand" style="margin-bottom:15px"><h1>SomnoLog</h1><span class="version">V16</span></div>
   <h2>患者情報の確認</h2>
   <p class="hint">最初に内容を確認してください。その後にマイク・体動を許可します。</p>
   <form id="patient-form" class="stack">
@@ -295,7 +295,6 @@ function render(){
   document.querySelectorAll(".commit").forEach(e=>e.textContent=sha?sha.slice(0,7):"");
 }
 function say(s){message=s;render()}
-// キャッシュバスティング：毎回異なる値を付けて取得する
 async function fresh(address,json){
   const u=new URL(address);
   u.searchParams.set("_cb",Date.now()+"-"+Math.random().toString(16).slice(2));
@@ -309,7 +308,6 @@ async function fresh(address,json){
     return json?JSON.parse(text):text;
   }finally{clearTimeout(timer)}
 }
-// 版判定は接頭辞で行い、将来の版（V16以降）も適用できるようにする
 function parse(html,rollback=false){
   const d=new DOMParser().parseFromString(html,"text/html");
   const build=d.querySelector('meta[name="somnolog-build"]')?.content||"";
@@ -381,8 +379,12 @@ window.SomnoLogRealUpdater={bind,render};
 <script data-somnolog-app>
 (()=>{
 "use strict";
+// --- デバッグモード設定 ---
+const IS_DEBUG_MODE = true;
+// ------------------------
+
 window.SomnoLogReal?.dispose();
-const VERSION="SomnoLog-V15",RATE=16000,DB_NAME="SomnoLog.real.v7",DB_VERSION=2;
+const VERSION="SomnoLog-V16",RATE=16000,DB_NAME="SomnoLog.real.v7",DB_VERSION=2;
 const $=id=>document.getElementById(id),events=new AbortController();
 const on=(t,e,f,extra={})=>t.addEventListener(e,f,{...extra,signal:events.signal});
 const round=(n,d)=>Number(n.toFixed(d)),pad=n=>String(n).padStart(2,"0");
@@ -394,7 +396,6 @@ const EMAIL_RE=/^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 let db,ready=false,disposed=false,running=false,starting=false,finishing=false,micPending=false,preparing=false,sharing=false;
 let patientConfirmed=false,patientData=null,linked=false,historyGuarded=false;
 let ac,stream,source,analyser,processor,wakeLock,meterBuffer,mutedOutput;
-// 記録一覧は savedRecords とする（window.history と名前を衝突させない）
 let record,current,savedRecords=[],chain=Promise.resolve(),pending=0,writeError,lastSnapshot=-1,chunkNumber=0;
 let origin=0,lastAudioEnd=0,lastLog=-Infinity,gain=0,bufferFile=null,bufferId="",fileURL="";
 let motionAllowed=false,motionPending=false,motionValue=0,motionAt=0,motionSource="";
@@ -413,7 +414,6 @@ const occupied=()=>running||starting||finishing||micPending||motionPending||prep
 function controls(){
   if(disposed)return;
   const active=occupied();
-  // 保存領域(ready)は記録開始時に確認・再試行するため、ボタンの条件にはしない
   $("start-button").disabled=active||!patientConfirmed||!micReady();
   $("stop-button").disabled=!running||finishing;
   $("black-button").disabled=!running;
@@ -427,7 +427,6 @@ function controls(){
   $("motion-button").classList.toggle("enabled",motionAllowed);
   $("qr-start-button").disabled=active||!qrPendingPatient;
   $("result-share").disabled=active||!bufferFile||bufferId!==current?.id;
-  // 宛先コピーは常に表示し、宛先がない場合は無効にする
   $("result-copy-email").disabled=active||!current?.doctorEmail;
   $("result-recipient-save").disabled=active;
   $("result-retry").disabled=active;
@@ -455,7 +454,6 @@ async function recover(){
     r.status="interrupted";await put(r);
   }
 }
-// 保存領域を開く。既存の記録は残し、不足している店舗・索引だけを追加する。
 async function initialize(){
   db?.close();db=null;ready=false;
   try{
@@ -487,11 +485,10 @@ function screen(id){
   ["qr-screen","capture-screen","result-screen","calendar-screen"].forEach(k=>$(k).hidden=k!==id);
   window.scrollTo(0,0);
 }
-// 患者情報の確定後は、戻る操作で患者QR画面へ戻らないよう履歴を固定する
 function armHistoryGuard(){
   if(historyGuarded)return;
   historyGuarded=true;
-  window.history.pushState({somnolog:"guard"},"",location.href);
+  window.history.replaceState({somnolog:"guard"},"",location.href);
 }
 function confirmPatient(e){
   e.preventDefault();
@@ -509,7 +506,7 @@ function setPatientContext(data){
   if(data.serialNumber!=null&&(typeof data.serialNumber!=="string"||data.serialNumber.length>80))throw Error("シリアル番号が不正です。");
   $("clinic").value=data.clinic;$("chart").value=data.chartNo;$("patient").value=data.name;$("serial").value=data.serialNumber||"";
   linked=true;patientConfirmed=false;controls();
-  $("patient-source").textContent="①②から受領。内容を確認してください。";
+  $("patient-source").textContent="①②未連携：暫定入力";
   dialog("patient-dialog");
 }
 function qrStatus(message){$("qr-read-status").textContent=message}
@@ -529,7 +526,6 @@ function cameraErrorMessage(error){
     return "カメラを開けません。他のアプリがカメラを使用していないか確認してください。";
   return "カメラを起動できません（"+(name||"Error")+"）。QR画像を選択してください。";
 }
-// キャッシュバスティング：読込URLに版番号を付与し、失敗時は再試行可能にする
 function loadJsQR(){
   if(typeof window.jsQR==="function")return Promise.resolve();
   if(jsQrPromise)return jsQrPromise;
@@ -549,8 +545,6 @@ function resetPatientQr(){
   $("qr-image-input").value="";
   qrStatus("患者用QRをカメラで読み取るか、画像を選択してください。");
 }
-// ②の患者用QRは logShareEmail（ログ共有通知メール）を宛先として記録している。
-// 互換のため、他の項目名も順に探す。最初に見つかった有効なメールを使う。
 function readDoctorEmail(payload){
   const raw=[payload.logShareEmail,payload.doctorEmail,payload.email,payload.dentistEmail,payload.mailTo]
     .find(v=>typeof v==="string"&&v.trim())||"";
@@ -735,8 +729,6 @@ async function permission(){
   }catch(e){cleanupAudio();$("microphone-status").textContent=micError(e);say("マイク欄のエラーを確認してください。")}
   finally{micPending=false;controls()}
 }
-function validVector(a){return !!a&&[a.x,a.y,a.z].every(Number.isFinite)}
-// 体動は任意。未許可・非対応でも音声のみで記録できる。
 async function motionPermission(){
   if(occupied()||!patientConfirmed)return;
   motionPending=true;controls();
@@ -817,7 +809,6 @@ function enqueue(c,snapshot){
     tx.objectStore("chunks").put(c);
     if(snapshot)tx.objectStore("records").put(snapshot);
   })).catch(e=>{writeError=e;say("保存失敗。録音を停止します。\n"+e.message);if(running)stop()}).finally(()=>pending--);
-  // 保存が大きく遅れた場合の安全停止（時間制限ではない）
   if(pending>40&&running)stop();
 }
 function processAudio(e){
@@ -845,7 +836,6 @@ async function start(){
   if(!micReady()){say("マイクを許可してから記録開始してください。");return}
   starting=true;controls();writeError=null;let created=false;
   try{
-    // 保存領域が未準備なら、ここで開き直す（失敗理由は状態欄に表示される）
     if(!ready){
       say("保存領域を準備しています…");
       await initialize();
@@ -879,7 +869,7 @@ async function start(){
   }
 }
 function cleanupAudio(){
-  if(processor){processor.onaudioprocess=null;try{processor.disconnect()}catch(_){}}
+  if(processor){processor.onaudioprocess=null;try{processor.disconnect()}catch(_).catch(_)}}
   [source,analyser,mutedOutput].forEach(n=>{if(n)try{n.disconnect()}catch(_){}});
   if(stream)stream.getTracks().forEach(t=>{t.onended=null;t.stop()});
   if(ac)ac.close().catch(()=>{});
@@ -914,7 +904,6 @@ function renderResult(){
   const r=current;
   $("result-range").textContent=time(r.startTimeMs)+" → "+time(r.stopTimeMs||r.startTimeMs+r.durationSec*1000);
   $("result-meta").textContent=[r.patient.clinic,r.patient.chartNo,r.patient.name,"シリアル "+r.serialNumber].join(" / ");
-  // 宛先欄は常に表示。宛先がなければ手入力欄を出す
   $("result-recipient").textContent=r.doctorEmail||"宛先未設定（QRに宛先がありませんでした）";
   $("result-recipient-entry").hidden=!!r.doctorEmail;
   $("result-recipient-input").value="";
@@ -929,7 +918,6 @@ function renderResult(){
   $("result-motion").textContent=duration(moving);
   $("result-detail").textContent=r.status+" / ログ "+r.logs.length+"点。参考しきい値：音22以上・体動0.025G以上。";
 }
-// 結果画面で宛先を手入力して保存する。保存後はZIPと共有内容を作り直す。
 async function saveRecipient(){
   if(occupied()||!current)return;
   const mail=$("result-recipient-input").value.trim();
@@ -951,7 +939,6 @@ async function saveRecipient(){
     $("result-share-status").textContent="宛先を保存できませんでした："+e.message;
   }
 }
-// 宛先をクリップボードへコピーする。使えない環境では選択状態にして手動コピーを促す。
 async function copyRecipient(){
   const mail=current?.doctorEmail;
   if(!mail){$("result-share-status").textContent="宛先が未設定のためコピーできません。";return}
@@ -1064,7 +1051,6 @@ function filename(r){
   const clean=v=>String(v??"未設定").normalize("NFC").replace(/[\/\\:*?"<>|\u0000-\u001f\u007f]/g,"-").replace(/[. ]+$/g,"").slice(0,60)||"未設定";
   return[day(r.startTimeMs).replaceAll("-",""),r.serialNumber,r.patient.clinic,r.patient.chartNo,r.patient.name].map(clean).join("_")+".zip";
 }
-// WAVの大きさに上限は設けない（音声は全長を書き出す）
 function wav(cs,span){
   const frames=Math.ceil(span*RATE),bytes=frames*2;
   const out=new Uint8Array(44+bytes),v=new DataView(out.buffer);
@@ -1082,10 +1068,8 @@ const encoder=new TextEncoder();
 const u16=n=>{const b=new Uint8Array(2);new DataView(b.buffer).setUint16(0,n,true);return b};
 const u32=n=>{const b=new Uint8Array(4);new DataView(b.buffer).setUint32(0,n>>>0,true);return b};
 function concat(parts){const out=new Uint8Array(parts.reduce((n,p)=>n+p.length,0));let i=0;for(const p of parts){out.set(p,i);i+=p.length}return out}
-// CRC32はテーブル方式（大容量でも速い）
 const CRC_TABLE=(()=>{const t=new Uint32Array(256);for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=c&1?0xedb88320^(c>>>1):c>>>1;t[n]=c>>>0}return t})();
 function crc32(bytes){let c=0xffffffff;for(let i=0;i<bytes.length;i++)c=CRC_TABLE[(c^bytes[i])&255]^(c>>>8);return(c^0xffffffff)>>>0}
-// 無圧縮（stored）のZIPを作る。音声は圧縮しても効果が小さく、時間とメモリを使うため
 function zip(files){
   const local=[],central=[];let offset=0;
   for(const f of files){
@@ -1125,8 +1109,6 @@ function bindSaveLinks(){
   for(const id of ["result-save","share-error-save"]){$(id).href=fileURL;$(id).download=bufferFile.name;$(id).hidden=false}
   $("share-error-open").hidden=false;
 }
-// 保存済みZIPを開く操作。Webページは保存先フォルダーや保存済みファイルを直接開けないため、
-// 保存操作を再度開始し、Chromeのダウンロードから開く方法を案内する。
 function openSavedZip(){
   if(!bufferFile||!fileURL)return;
   const link=document.createElement("a");
@@ -1139,7 +1121,6 @@ function openSavedZip(){
 function shareCapability(f){
   if(!isSecureContext)return "HTTPSで開いていないため共有APIを利用できません。";
   if(typeof navigator.share!=="function")return "このブラウザーにはファイル共有APIがありません。";
-  // 最上位のページでは権限制限の判定を行わない（埋め込み時のみ判定する）
   if(window.self!==window.top){
     const policy=document.permissionsPolicy||document.featurePolicy;
     try{if(policy?.allowsFeature&&!policy.allowsFeature("web-share"))return "埋め込み画面の権限制限で共有が禁止されています。"}catch(_){}
@@ -1150,7 +1131,6 @@ function shareCapability(f){
   }
   return "";
 }
-// 共有の件名と本文の先頭に宛先（ログ共有通知先）を入れる
 function shareTitle(r){
   return"【宛先】"+(r.doctorEmail||"未設定")+" ｜ SomnoLog睡眠記録";
 }
@@ -1233,7 +1213,6 @@ function shareCurrent(){
   if(reason){showShareError(reason);return}
   let promise;
   try{
-    // クリックから直接呼ぶ（ファイル作成・画面遷移・awaitを先に挟まない）
     promise=navigator.share({files:[bufferFile],title:shareTitle(current),text:shareText(current)});
   }catch(e){shareFailure(e);return}
   sharing=true;controls();
@@ -1334,7 +1313,6 @@ on(black,"contextmenu",e=>e.preventDefault());
 on(black,"selectstart",e=>e.preventDefault());
 on($("black-return"),"click",leaveBlack);
 on(window,"keydown",e=>{if(blackActive&&(e.key==="Escape"||e.key==="Enter")){e.preventDefault();leaveBlack()}});
-// 入力欄以外での Backspace・Alt+← は無効化（キャプチャ段階で止め、戻る動作を起こさせない）
 window.addEventListener("keydown",e=>{
   const back=e.key==="Backspace"||(e.altKey&&(e.key==="ArrowLeft"||e.key==="Left"));
   if(!back)return;
@@ -1342,13 +1320,11 @@ window.addEventListener("keydown",e=>{
   if(t instanceof HTMLElement&&(t.isContentEditable||t.matches("input,textarea,select")))return;
   e.preventDefault();e.stopPropagation();
 },{capture:true,signal:events.signal});
-// 端末の戻る操作（ブラウザー履歴）で患者QR画面へ戻らないようにする。
-// 患者情報の確定後は、戻られても必ず現在の画面に留まる（再度ガードを積む）。
 on(window,"popstate",()=>{
   if(!historyGuarded||disposed)return;
-  if(!$("qr-screen").hidden)return;
   window.history.pushState({somnolog:"guard"},"",location.href);
-  if(!running&&!starting&&!finishing&&!preparing&&!sharing)say("戻る操作では患者QRの読み取り画面に戻りません。");
+  if(!$("qr-screen").hidden)return;
+  say("このアプリでは戻る操作は無効です。");
 });
 function fullscreenChanged(){
   if(fullscreenElement()){
@@ -1363,8 +1339,8 @@ on(document,"webkitfullscreenchange",fullscreenChanged);
 function clock(){const d=new Date();$("black-clock").textContent=pad(d.getHours())+":"+pad(d.getMinutes())}
 const clockTimer=setInterval(clock,1000),meterTimer=setInterval(meters,80);
 clock();
-$("build-bar").textContent="SomnoLog V15 ｜ "+VERSION;
-document.title="SomnoLog V15 "+VERSION;
+$("build-bar").textContent="SomnoLog V16 ｜ "+VERSION;
+document.title="SomnoLog V16 "+VERSION;
 if(!window.DeviceMotionEvent)$("motion-status").textContent="この端末では体動を取得できません。音声のみで記録できます。";
 initPatientQrReader();
 on($("patient-form"),"submit",confirmPatient);
@@ -1409,6 +1385,29 @@ on(window,"pagehide",()=>{stopPatientQrCamera();cancelHold();if(running){running
 on(window,"pageshow",e=>{
   if(e.persisted&&!occupied()){leaveBlack();initialize()}
 });
+
+// --- デバッグモード自動適用 ---
+if (IS_DEBUG_MODE) {
+  const p = {
+    clinic: "[DEBUG] 開発用診療所",
+    chartNo: "DEBUG-001",
+    name: "テスト 患者",
+    serialNumber: "DEBUG-SERIAL-000",
+    doctorEmail: "test@example.com"
+  };
+  patientData = p;
+  patientConfirmed = true;
+  armHistoryGuard();
+  
+  // 記録画面へ強制遷移
+  screen("capture-screen");
+  $("microphone-status").textContent = "デバッグモード：マイクを許可してください。";
+  say("デバッグモードで起動しました。");
+} else {
+  // 通常起動時のみQR画面へ
+  screen("qr-screen");
+}
+
 function dispose(){
   if(disposed)return;
   disposed=true;running=false;ready=false;
@@ -1419,7 +1418,6 @@ function dispose(){
 window.SomnoLogReal={version:VERSION,setPatientContext,
   canUpdate:()=>!disposed&&ready&&!occupied()&&!blackActive&&!fullscreenPending&&!document.querySelector("dialog[open]"),
   dispose};
-screen("qr-screen");
 controls();
 initialize();
 window.SomnoLogRealUpdater?.bind();
