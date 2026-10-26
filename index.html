@@ -2,10 +2,10 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#101419">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
+<meta name="theme-color" content="#000000">
 <meta http-equiv="Cache-Control" content="no-cache">
-<title>SomnoLoggerV6</title>
+<title>SomnoLoggerV7</title>
 <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.17.1/dist/ort.min.js"></script>
 <style>
 :root{color-scheme:dark}
@@ -47,7 +47,7 @@ input[type=checkbox]{width:18px;height:18px;accent-color:#84b9cf;vertical-align:
 audio{width:100%}
 .listitem{text-align:left;min-height:auto;display:flex;flex-direction:column;gap:4px}
 .list{display:flex;flex-direction:column;gap:10px}
-#black{position:fixed;inset:0;background:#000;z-index:10;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;color:#756f61;touch-action:none}
+#black-screen{background-color:#000000 !important;width:100vw;height:100dvh;min-height:100vh;position:fixed;top:0;left:0;right:0;bottom:0;margin:0;padding:0;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;color:#756f61;touch-action:none;overflow:hidden}
 #black-clock{font-size:64px;font-variant-numeric:tabular-nums}
 </style>
 </head>
@@ -58,7 +58,7 @@ audio{width:100%}
 <!-- 記録画面 -->
 <main id="page-record" class="page">
   <header class="head">
-    <h1>SomnoLoggerV6</h1>
+    <h1>SomnoLoggerV7</h1>
     <span id="rec-badge" class="tag">待機中</span>
   </header>
   <p id="boot" class="boot">スクリプト読込中…</p>
@@ -117,11 +117,11 @@ audio{width:100%}
     <button id="start-btn" class="primary" disabled>記録開始</button>
     <button id="stop-btn" class="danger" disabled>停止</button>
   </div>
-  <button id="black-btn" class="sub" disabled>黒画面に切り替え</button>
+  <button id="btn-enter-black" class="sub" disabled>黒画面に切り替え</button>
   <button id="history-btn" class="sub">履歴を見る</button>
 
   <section class="card">
-    <div class="kv"><span>バージョン</span><b id="ver-text">V6</b></div>
+    <div class="kv"><span>バージョン</span><b id="ver-text">V7</b></div>
     <p id="upd-msg" class="muted">更新確認は未実行です。</p>
     <button id="update-btn" class="sub">今すぐ更新を確認</button>
   </section>
@@ -158,7 +158,7 @@ audio{width:100%}
 </main>
 
 <!-- 黒画面 -->
-<div id="black" hidden>
+<div id="black-screen" hidden>
   <span id="black-clock"></span>
   <span class="muted">タップで戻る</span>
 </div>
@@ -168,7 +168,7 @@ audio{width:100%}
 
 /* ===== バージョンと更新元（GitHub） ===== */
 // 修正のたびに数字を1つ増やす。端末は、GitHubの版の数字がこれより大きい時だけ自動で更新する。
-const APP_VERSION = 6;
+const APP_VERSION = 7;
 const APP = "SomnoLoggerV" + APP_VERSION;
 const GH = { owner: "matsuodentalassociation", repo: "ST-SCOPE", branch: "main", file: "index.html" };
 const UPDATE_MIN_MS = 10 * 60 * 1000;
@@ -287,7 +287,7 @@ const S = {
   vad: null, vadOk: false, vadState: null, vadCtx: new Float32Array(VAD_CTX),
   gainDb: 0, envSave: false,
   running: false, epoch: 0, sid: null, sess: null, counts: newCounts(),
-  wake: null, timers: [], uiTimer: null, blackTimer: null, detailSid: null,
+  wake: null, timers: [], uiTimer: null, blackOn: false, savedStyle: null, detailSid: null,
   ring: new Ring(RING_SEC), recv: 0, queue: [], busy: false, dropped: 0,
   nowMs: 0, lastLv: -100, motionNow: null, grav: null, live: [],
   calibrated: false, calibVals: [], base: null, pool: [], lastBaseSec: 0,
@@ -817,7 +817,7 @@ async function stopRec() {
   S.sess.counts = { ...S.counts };
   await DB.put("sessions", S.sess).catch(console.error);
   releaseWake();
-  hideBlack();
+  exitBlack();
   setButtons();
   updateUI();
 }
@@ -882,26 +882,80 @@ function setButtons() {
   $("mic-btn").textContent = S.ctx ? "マイク許可済み" : "マイクを許可";
   $("start-btn").disabled = S.running || !S.ctx;
   $("stop-btn").disabled = !S.running;
-  $("black-btn").disabled = !S.running;
+  $("btn-enter-black").disabled = !S.running;
   $("gain").disabled = S.running;
   $("update-btn").disabled = S.running;
   $("rec-badge").textContent = S.running ? "記録中" : "待機中";
   $("rec-badge").className = S.running ? "tag rec" : "tag";
 }
 
-/* ===== 黒画面 ===== */
+/* ===== 黒画面（完全黒色化） ===== */
+// 黒画面の表示中だけ html・body を黒にし、スクロールを止める（終了時に元へ戻す）
+function setRootBlack(on) {
+  const h = document.documentElement, b = document.body;
+  if (on) {
+    S.savedStyle = {
+      h: h.getAttribute("style"), b: b.getAttribute("style")
+    };
+    h.style.setProperty("background-color", "#000000", "important");
+    b.style.setProperty("background-color", "#000000", "important");
+    h.style.setProperty("overflow", "hidden");
+    b.style.setProperty("overflow", "hidden");
+  } else {
+    if (S.savedStyle) {
+      if (S.savedStyle.h == null) h.removeAttribute("style"); else h.setAttribute("style", S.savedStyle.h);
+      if (S.savedStyle.b == null) b.removeAttribute("style"); else b.setAttribute("style", S.savedStyle.b);
+    }
+    S.savedStyle = null;
+  }
+}
+
+// 全画面表示の要求（ボタンを押した操作の中で呼ぶ必要がある）
+function requestFs() {
+  const el = document.documentElement;
+  const req = el.requestFullscreen || el.webkitRequestFullscreen;
+  if (!req) return; // iPhoneのSafariは非対応のため、黒背景のみになる
+  try {
+    const r = req.call(el);
+    if (r && r.catch) r.catch(() => {});
+  } catch (e) { console.warn(e); }
+}
+
+function exitFs() {
+  const doc = document;
+  const isFs = doc.fullscreenElement || doc.webkitFullscreenElement;
+  if (!isFs) return;
+  const exit = doc.exitFullscreen || doc.webkitExitFullscreen;
+  if (exit) {
+    try {
+      const r = exit.call(doc);
+      if (r && r.catch) r.catch(() => {});
+    } catch (e) { console.warn(e); }
+  }
+}
+
 function updateBlack() {
   $("black-clock").textContent = new Date().toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" });
 }
-function showBlack() {
-  $("black").hidden = false;
+
+function enterBlack() {
+  if (S.blackOn) return;
+  S.blackOn = true;
+  setRootBlack(true);
+  $("black-screen").hidden = false;
   updateBlack();
   S.blackTimer = setInterval(updateBlack, 1000);
+  requestFs();
 }
-function hideBlack() {
-  $("black").hidden = true;
+
+function exitBlack() {
+  if (!S.blackOn) return;
+  S.blackOn = false;
   if (S.blackTimer) clearInterval(S.blackTimer);
   S.blackTimer = null;
+  $("black-screen").hidden = true;
+  setRootBlack(false);
+  exitFs();
 }
 
 /* ===== 履歴・詳細 ===== */
@@ -1242,8 +1296,9 @@ $("motion-btn").onclick = async () => {
 
 $("start-btn").onclick = () => startRec().catch((e) => { showError(e.message); setButtons(); });
 $("stop-btn").onclick = () => stopRec().catch((e) => showError(e.message));
-$("black-btn").onclick = showBlack;
-$("black").onclick = hideBlack;
+// 全画面要求はタップの操作の中で行う必要があるため、ここでは同期的に呼ぶ
+$("btn-enter-black").onclick = enterBlack;
+$("black-screen").onclick = exitBlack;
 $("history-btn").onclick = async () => { await renderHistory(); showPage("history"); };
 $("history-back").onclick = () => showPage("record");
 $("detail-back").onclick = () => showPage("history");
