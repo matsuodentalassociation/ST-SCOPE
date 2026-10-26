@@ -4,7 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#101419">
-<title>SomnoLoggerV3</title>
+<meta http-equiv="Cache-Control" content="no-cache">
+<title>SomnoLoggerV6</title>
 <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.17.1/dist/ort.min.js"></script>
 <style>
 :root{color-scheme:dark}
@@ -23,9 +24,9 @@ h1{margin:0;font-size:22px}
 h2{margin:0;font-size:17px}
 .card{background:#192029;border:1px solid #2f3b48;border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:10px}
 .muted{color:#aebbc9;font-size:12px;line-height:1.7;margin:0}
-.boot{color:#9fd8b5;font-size:12px}
+.boot{color:#9fd8b5;font-size:12px;margin:0}
 .warn{background:#3a2f1a;border:1px solid #7a6a3a;color:#f3e7c9;padding:10px 12px;border-radius:10px;font-size:13px;line-height:1.6}
-#errbox{background:#4a1f1f;border:1px solid #9a4a4a;color:#ffd9d6;padding:10px 12px;border-radius:10px;font-size:13px;line-height:1.6;white-space:pre-wrap;word-break:break-all}
+.err{background:#4a1f1f;border:1px solid #9a4a4a;color:#ffd9d6;padding:10px 12px;border-radius:10px;font-size:13px;line-height:1.6;white-space:pre-wrap;word-break:break-all}
 .tag{font-size:11px;padding:3px 7px;border-radius:6px;background:#263b38;color:#bfdbd1;white-space:nowrap}
 .tag.rec{background:#7a2e2e;color:#ffd9d6}
 .tag.env{background:#343129;color:#f3e7c9}
@@ -52,19 +53,21 @@ audio{width:100%}
 </head>
 <body>
 
-<div id="errbox" hidden></div>
+<div id="errbox" class="err" hidden></div>
 
 <!-- 記録画面 -->
 <main id="page-record" class="page">
   <header class="head">
-    <h1>SomnoLoggerV3</h1>
+    <h1>SomnoLoggerV6</h1>
     <span id="rec-badge" class="tag">待機中</span>
   </header>
   <p id="boot" class="boot">スクリプト読込中…</p>
   <p class="muted">就寝中の音とセンサーを記録します。本アプリは診断を行うものではありません。医師の判断の参考資料です。</p>
 
+  <div id="mic-msg" class="err" hidden></div>
+
   <div id="vad-warn" class="warn" hidden>
-    寝言除外のモデル（silero_vad.onnx）が読めていません。このままではいびきクリップは保存されません（寝言の混入を防ぐためです）。同じフォルダにモデルを置いて再読み込みしてください。
+    寝言除外のモデル（silero_vad.onnx）が見つからないため、いびき音声は保存されません（寝言の混入を防ぐためです）。リポジトリの index.html と同じ場所に置いて、再読み込みしてください。マイクの許可には影響しません。
   </div>
 
   <section class="card">
@@ -81,6 +84,19 @@ audio{width:100%}
   <section class="card">
     <button id="motion-btn">モーションセンサーを許可</button>
     <div class="kv"><span>体動（重力除去）</span><b id="motion-text">-</b></div>
+  </section>
+
+  <section class="card">
+    <h2>リアルタイム表示（直近60秒）</h2>
+    <p class="muted">記録していなくても、マイクとモーションセンサーの値を確認できます。</p>
+    <div class="chart">
+      <div class="kv" style="border:0"><span>音声（音圧）</span><b id="live-lv-text">-</b></div>
+      <div id="live-audio"></div>
+    </div>
+    <div class="chart">
+      <div class="kv" style="border:0"><span>体動</span><b id="live-mot-text">-</b></div>
+      <div id="live-motion"></div>
+    </div>
   </section>
 
   <section class="card">
@@ -103,6 +119,12 @@ audio{width:100%}
   </div>
   <button id="black-btn" class="sub" disabled>黒画面に切り替え</button>
   <button id="history-btn" class="sub">履歴を見る</button>
+
+  <section class="card">
+    <div class="kv"><span>バージョン</span><b id="ver-text">V6</b></div>
+    <p id="upd-msg" class="muted">更新確認は未実行です。</p>
+    <button id="update-btn" class="sub">今すぐ更新を確認</button>
+  </section>
 </main>
 
 <!-- 履歴画面 -->
@@ -144,15 +166,23 @@ audio{width:100%}
 <script>
 "use strict";
 
+/* ===== バージョンと更新元（GitHub） ===== */
+// 修正のたびに数字を1つ増やす。端末は、GitHubの版の数字がこれより大きい時だけ自動で更新する。
+const APP_VERSION = 6;
+const APP = "SomnoLoggerV" + APP_VERSION;
+const GH = { owner: "matsuodentalassociation", repo: "ST-SCOPE", branch: "main", file: "index.html" };
+const UPDATE_MIN_MS = 10 * 60 * 1000;
+
 /* ===== 設定 ===== */
 const SR = 16000, FRAME = 512, RING_SEC = 62;
-const VAD_CTX = 64, VAD_URL = "./silero_vad.onnx", VAD_TH = 0.3;
+const VAD_CTX = 64, VAD_URL = "./silero_vad.onnx?v=" + APP_VERSION, VAD_TH = 0.3;
 const LOUD_DB = 6, SEG_MIN = 0.5, SEG_MAX = 4, QUIET_FRAMES = 5;
 const PRE_MS = 3000, POST_MS = 1000;
 const CALIB_SEC = 300, BASE_EVERY = 600, POOL_MAX = 600, POOL_MIN = 60;
 const ENV_RUN_SEC = 10, ENV_DB = 6, ENV_COOLDOWN = 300, ENV_CLIP_SEC = 30;
 const FLUSH_SEC = 60, MAX_QUEUE = 40;
-const APP = "SomnoLoggerV3";
+const UI_MS = 250, LIVE_N = 240;
+const DB_NAME = "somnolog-v3"; // V3以降のデータを引き継ぐため名前は据え置き
 const DISCLAIMER = "本アプリは診断を行うものではありません。医師の判断の参考資料です。";
 const LABELS = { snore: "いびき", speech: "寝言・話し声", env: "環境音", unknown: "判定不能", short: "短い音" };
 const LABEL_KEYS = ["snore", "speech", "env", "unknown"];
@@ -193,6 +223,12 @@ function showError(msg) {
 window.addEventListener("error", (e) => showError(e.message));
 window.addEventListener("unhandledrejection", (e) => showError((e.reason && e.reason.message) || String(e.reason)));
 
+function showMicMsg(text) {
+  const b = $("mic-msg");
+  b.hidden = !text;
+  b.textContent = text || "";
+}
+
 /* ===== リングバッファ（直近62秒・16kHz・調整前の生音） ===== */
 class Ring {
   constructor(sec) { this.len = SR * sec; this.buf = new Float32Array(this.len); this.total = 0; }
@@ -214,7 +250,7 @@ class Ring {
 const DB = (() => {
   let p = null;
   const open = () => p || (p = new Promise((res, rej) => {
-    const r = indexedDB.open("somnolog-v3", 1);
+    const r = indexedDB.open(DB_NAME, 1);
     r.onupgradeneeded = () => {
       const d = r.result;
       d.createObjectStore("sessions", { keyPath: "id" });
@@ -247,19 +283,81 @@ const DB = (() => {
 
 /* ===== 状態 ===== */
 const S = {
-  ctx: null, stream: null, tap: null,
+  ctx: null, pendingCtx: null, stream: null, tap: null, micMode: "",
   vad: null, vadOk: false, vadState: null, vadCtx: new Float32Array(VAD_CTX),
   gainDb: 0, envSave: false,
   running: false, epoch: 0, sid: null, sess: null, counts: newCounts(),
-  wake: null, timers: [], blackTimer: null, detailSid: null,
+  wake: null, timers: [], uiTimer: null, blackTimer: null, detailSid: null,
   ring: new Ring(RING_SEC), recv: 0, queue: [], busy: false, dropped: 0,
-  nowMs: 0, lastLv: -100, motionNow: null, grav: null,
+  nowMs: 0, lastLv: -100, motionNow: null, grav: null, live: [],
   calibrated: false, calibVals: [], base: null, pool: [], lastBaseSec: 0,
   cand: null, pHist: [], pendingCands: [], pendingEnv: [],
   bucket: null, secBuf: [], envRun: 0, lastEnvMs: -1e9,
 };
 
-/* ===== 音声取得（AudioWorklet・16kHzへ変換して512サンプルずつ送信） ===== */
+/* ===== 動的フェッチ（GitHubの最新コミットから index.html を取得し、新しい版なら適用） ===== */
+let lastUpdateCheck = 0;
+let checking = false;
+
+function setUpdMsg(text) { $("upd-msg").textContent = text; }
+
+async function checkUpdate(force) {
+  if (checking) return;
+  if (S.running) { setUpdMsg("記録中のため、更新確認は停止後に行います。"); return; }
+  if (!navigator.onLine) { setUpdMsg("オフラインのため、更新を確認できません。"); return; }
+  const now = Date.now();
+  if (!force && now - lastUpdateCheck < UPDATE_MIN_MS) return;
+  lastUpdateCheck = now;
+  checking = true;
+  setUpdMsg("更新を確認しています…");
+  try {
+    // 1. 最新コミットのSHAを取得（キャッシュを避けるため時刻を付ける）
+    const apiUrl = "https://api.github.com/repos/" + GH.owner + "/" + GH.repo +
+      "/commits?sha=" + GH.branch + "&path=" + GH.file + "&per_page=1&_=" + now;
+    const r1 = await fetch(apiUrl, { cache: "no-store", headers: { Accept: "application/vnd.github+json" } });
+    if (!r1.ok) throw new Error("GitHub API " + r1.status);
+    const commits = await r1.json();
+    const sha = commits && commits[0] && commits[0].sha;
+    if (!sha) throw new Error("コミットを取得できませんでした");
+
+    // 2. そのコミットの index.html を取得（SHA指定なので内容は固定される）
+    const rawUrl = "https://raw.githubusercontent.com/" + GH.owner + "/" + GH.repo + "/" + sha + "/" + GH.file + "?_=" + now;
+    const r2 = await fetch(rawUrl, { cache: "no-store" });
+    if (!r2.ok) throw new Error("raw " + r2.status);
+    const text = await r2.text();
+
+    // 3. 中身を確認（SomnoLoggerのHTMLか、版の数字があるか）
+    const m = text.match(/const APP_VERSION = (\d+);/);
+    if (!m || text.indexOf("<!DOCTYPE html>") < 0) throw new Error("取得したファイルを確認できませんでした");
+    const remote = Number(m[1]);
+
+    // 4. 新しい版だけ適用（同じか古い版なら何もしない＝ループしない）
+    if (remote > APP_VERSION) {
+      setUpdMsg("V" + remote + " が見つかりました。更新します…");
+      applyUpdate(text, remote);
+      return;
+    }
+    setUpdMsg("最新版です（V" + APP_VERSION + "・確認 " + new Date().toLocaleTimeString("ja-JP") + "）");
+  } catch (e) {
+    console.warn(e);
+    setUpdMsg("更新を確認できませんでした: " + e.message + "（現在の版で動作を続けます）");
+  } finally {
+    checking = false;
+  }
+}
+
+function applyUpdate(text, remote) {
+  try {
+    sessionStorage.setItem("somno_updated_to", String(remote));
+    document.open();
+    document.write(text);
+    document.close();
+  } catch (e) {
+    showError("更新の適用に失敗しました。ページを再読み込みしてください。");
+  }
+}
+
+/* ===== 音声取得（16kHzへ変換して512サンプルずつ onAudio に渡す） ===== */
 const WORKLET = `
 class Tap extends AudioWorkletProcessor {
   constructor() {
@@ -293,30 +391,118 @@ class Tap extends AudioWorkletProcessor {
 registerProcessor("tap", Tap);
 `;
 
-async function setupMic() {
-  if (S.ctx) return;
-  const stream = await navigator.mediaDevices.getUserMedia({
-    audio: { channelCount: 1, echoCancellation: false, noiseSuppression: false, autoGainControl: false }
-  });
-  const AC = window.AudioContext || window.webkitAudioContext;
-  const ctx = new AC();
-  const url = URL.createObjectURL(new Blob([WORKLET], { type: "application/javascript" }));
-  try { await ctx.audioWorklet.addModule(url); }
-  finally { URL.revokeObjectURL(url); }
-  const src = ctx.createMediaStreamSource(stream);
-  const tap = new AudioWorkletNode(ctx, "tap");
-  const mute = ctx.createGain();
-  mute.gain.value = 0;
-  src.connect(tap);
-  tap.connect(mute);
-  mute.connect(ctx.destination);
-  tap.port.onmessage = (e) => onAudio(e.data);
-  S.ctx = ctx; S.stream = stream; S.tap = tap;
+// 失敗した段階と理由を付けてエラーを作る
+function micError(name, message, stage) {
+  const e = new Error(message || name);
+  e.name = name;
+  e.stage = stage || "";
+  return e;
 }
 
-// 受信時刻はサンプル数で決める（処理が遅れても時刻はずれない）
+// マイク取得。中断や条件不一致の時は、少し待って一度だけ再試行する
+async function getMicStream() {
+  const constraints = { channelCount: 1, echoCancellation: false, noiseSuppression: false, autoGainControl: false };
+  try {
+    return await navigator.mediaDevices.getUserMedia({ audio: constraints });
+  } catch (e) {
+    if (e.name !== "AbortError" && e.name !== "OverconstrainedError") throw e;
+    await new Promise((r) => setTimeout(r, 500));
+    return await navigator.mediaDevices.getUserMedia({ audio: true });
+  }
+}
+
+// 予備の方式（AudioWorkletが使えない古い環境向け）
+function makeScriptTap(ctx) {
+  const node = ctx.createScriptProcessor(2048, 1, 1);
+  const ratio = ctx.sampleRate / SR;
+  let pos = 0, prev = 0;
+  const acc = [];
+  node.onaudioprocess = (e) => {
+    const ch = e.inputBuffer.getChannelData(0);
+    const n = ch.length;
+    let t = pos;
+    while (t < n) {
+      const i = Math.floor(t), f = t - i;
+      const a = i === 0 ? prev : ch[i - 1];
+      const b = ch[i];
+      acc.push(a * (1 - f) + b * f);
+      t += ratio;
+    }
+    pos = t - n;
+    prev = ch[n - 1];
+    while (acc.length >= FRAME) onAudio(Float32Array.from(acc.splice(0, FRAME)));
+  };
+  return node;
+}
+
+// ボタンを押した直後に呼ぶ（iOSは操作の直後でないと音声を開始できないため）
+async function setupMic(ctx) {
+  if (!window.isSecureContext || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    throw micError("InsecureContext", "secure context required", "接続の確認");
+  }
+  if (!ctx) throw micError("NotSupportedError", "AudioContext is not available", "音声処理の作成");
+  if (S.ctx) return;
+
+  let stream;
+  try {
+    stream = await getMicStream();
+  } catch (e) {
+    e.stage = "マイクの許可";
+    throw e;
+  }
+
+  try {
+    if (ctx.state !== "running") await ctx.resume();
+    const src = ctx.createMediaStreamSource(stream);
+    const mute = ctx.createGain();
+    mute.gain.value = 0;
+    mute.connect(ctx.destination);
+
+    let tap, mode;
+    try {
+      const url = URL.createObjectURL(new Blob([WORKLET], { type: "application/javascript" }));
+      try { await ctx.audioWorklet.addModule(url); }
+      finally { URL.revokeObjectURL(url); }
+      tap = new AudioWorkletNode(ctx, "tap");
+      tap.port.onmessage = (e) => onAudio(e.data);
+      mode = "worklet";
+    } catch (e) {
+      console.warn("AudioWorklet unavailable, using ScriptProcessor", e);
+      tap = makeScriptTap(ctx);
+      mode = "script";
+    }
+    src.connect(tap);
+    tap.connect(mute);
+
+    S.ctx = ctx; S.stream = stream; S.tap = tap; S.micMode = mode; S.pendingCtx = null;
+    startUiLoop();
+  } catch (e) {
+    stream.getTracks().forEach((t) => t.stop());
+    if (!e.stage) e.stage = "音声処理の開始";
+    throw e;
+  }
+}
+
+function micErrorMessage(e) {
+  const n = (e && e.name) || "不明";
+  const stage = (e && e.stage) ? e.stage : "不明";
+  const detail = "（段階：" + stage + "／エラー名：" + n + (e && e.message ? "／" + e.message : "") + "）";
+  if (n === "InsecureContext") return "HTTPSで開いていないため、マイクを使えません。https:// から始まるURL（GitHub Pages）で開いてください。" + detail;
+  if (n === "NotAllowedError" || n === "SecurityError") return "マイクの許可が得られませんでした。iPhoneでは「設定」→「Safari」（またはこのサイト）→「マイク」を「許可」に変更し、ページを開き直してください。" + detail;
+  if (n === "NotFoundError") return "マイクが見つかりません。機器の接続を確認してください。" + detail;
+  if (n === "NotReadableError") return "マイクが他のアプリで使用中の可能性があります。通話や録音のアプリを閉じて、再度お試しください。" + detail;
+  if (n === "AbortError") return "マイクの起動が中断されました。ボタンを一度だけ押し、許可の表示が出たら「許可」を選んでください。改善しない場合はページを開き直してください。" + detail;
+  return "マイクを開始できませんでした。" + detail;
+}
+
+// 音声の入口。記録中でなければ、音量の表示だけを更新する
 function onAudio(data) {
-  if (!S.running) return;
+  if (!S.running) {
+    let ss = 0;
+    for (let i = 0; i < data.length; i++) ss += data[i] * data[i];
+    S.lastLv = toDb(Math.sqrt(ss / data.length)) + S.gainDb;
+    return;
+  }
   const t = S.recv / SR * 1000;
   S.recv += FRAME;
   S.ring.push(data);
@@ -333,13 +519,16 @@ async function loadVad() {
     return;
   }
   try {
+    // キャッシュを避けて毎回取得し、バイト列からセッションを作る
     const r = await fetch(VAD_URL, { cache: "no-store" });
     if (!r.ok) throw new Error("HTTP " + r.status);
+    const buf = await r.arrayBuffer();
     ort.env.wasm.numThreads = 1;
-    S.vad = await ort.InferenceSession.create(VAD_URL, { executionProviders: ["wasm"] });
+    S.vad = await ort.InferenceSession.create(buf, { executionProviders: ["wasm"] });
     setVadState("有効");
+    $("vad-warn").hidden = true;
   } catch (e) {
-    console.error(e);
+    console.warn(e);
     S.vad = null;
     setVadState("未配置");
     $("vad-warn").hidden = false;
@@ -567,7 +756,7 @@ async function flushSecs() {
   }
 }
 
-/* ===== 体動（重力成分を除去） ===== */
+/* ===== 体動（重力成分を除去）。待機中も値を更新する ===== */
 function onMotion(e) {
   const a = e.accelerationIncludingGravity;
   if (!a || a.x == null) return;
@@ -603,12 +792,11 @@ async function startRec() {
   S.vadState = S.vad ? new ort.Tensor("float32", new Float32Array(2 * 128), [2, 1, 128]) : null;
   S.sess = {
     id: S.sid, startedAt: Date.now(), endedAt: null, gainDb: S.gainDb, vadOk: S.vadOk,
-    base: null, counts: newCounts(), app: APP, ua: navigator.userAgent
+    base: null, counts: newCounts(), app: APP, ua: navigator.userAgent, micMode: S.micMode
   };
   await DB.put("sessions", S.sess);
   S.running = true;
   await acquireWake();
-  S.timers.push(setInterval(updateUI, 250));
   S.timers.push(setInterval(flushSecs, FLUSH_SEC * 1000));
   setButtons();
   updateUI();
@@ -634,9 +822,17 @@ async function stopRec() {
   updateUI();
 }
 
-/* ===== 画面更新 ===== */
+/* ===== 画面更新（待機中も含めて常時動かす） ===== */
+function startUiLoop() {
+  if (S.uiTimer) return;
+  S.uiTimer = setInterval(updateUI, UI_MS);
+}
+
 function updateUI() {
   const lv = S.lastLv;
+  S.live.push({ lv: Math.max(-90, lv), mot: S.motionNow });
+  if (S.live.length > LIVE_N) S.live.shift();
+
   $("level-bar").style.width = clamp((lv + 80) / 80 * 100, 0, 100) + "%";
   $("level-text").textContent = round1(lv) + " dB";
   if (!S.running) {
@@ -647,11 +843,38 @@ function updateUI() {
     $("base-text").textContent = "基準計測中 残り " + Math.max(0, Math.ceil(CALIB_SEC - S.nowMs / 1000)) + " 秒";
   }
   $("motion-text").textContent = S.motionNow == null ? "-" : S.motionNow.toFixed(2) + " m/s²";
+  $("live-lv-text").textContent = S.ctx ? round1(lv) + " dB" : "-";
+  $("live-mot-text").textContent = S.motionNow == null ? "-" : S.motionNow.toFixed(2) + " m/s²";
+  drawSpark("live-audio", S.live.map((x) => x.lv), -90, 0, "#84b9cf");
+  drawSpark("live-motion", S.live.map((x) => x.mot), 0, 1, "#ffffff");
+
   $("s-count").textContent = S.counts.snore;
   $("s-speech").textContent = S.counts.speech;
   $("s-unknown").textContent = S.counts.unknown;
   $("s-env").textContent = S.counts.env;
   $("s-time").textContent = fmtTime(S.nowMs);
+}
+
+// 直近 LIVE_N 点の折れ線（値がないところは線を切る）
+function drawSpark(id, arr, min, max, color) {
+  const box = $(id);
+  if (!box) return;
+  const W = 480, H = 90, PT = 6, PB = 6;
+  const pad0 = LIVE_N - arr.length;
+  const pts = [];
+  arr.forEach((v, i) => {
+    if (v == null) return;
+    const x = (i + pad0) / (LIVE_N - 1) * W;
+    const r = clamp((v - min) / (max - min), 0, 1);
+    const y = H - PB - r * (H - PT - PB);
+    pts.push(x.toFixed(1) + "," + y.toFixed(1));
+  });
+  box.innerHTML = '<svg viewBox="0 0 ' + W + " " + H + '" xmlns="http://www.w3.org/2000/svg">' +
+    '<rect x="0" y="0" width="' + W + '" height="' + H + '" fill="none" stroke="#2f3b48"/>' +
+    '<polyline points="' + pts.join(" ") + '" fill="none" stroke="' + color + '" stroke-width="1.5"/>' +
+    '<text x="4" y="12" font-size="10" fill="#aebbc9">' + max + "</text>" +
+    '<text x="4" y="' + (H - 3) + '" font-size="10" fill="#aebbc9">' + min + "</text>" +
+    "</svg>";
 }
 
 function setButtons() {
@@ -661,6 +884,7 @@ function setButtons() {
   $("stop-btn").disabled = !S.running;
   $("black-btn").disabled = !S.running;
   $("gain").disabled = S.running;
+  $("update-btn").disabled = S.running;
   $("rec-badge").textContent = S.running ? "記録中" : "待機中";
   $("rec-badge").className = S.running ? "tag rec" : "tag";
 }
@@ -919,7 +1143,7 @@ async function shareSession(sid) {
     app: APP, disclaimer: DISCLAIMER, sessionId: sess.id,
     startedAt: isoOf(sess.startedAt), endedAt: sess.endedAt ? isoOf(sess.endedAt) : null,
     recordedSec: secs.length ? secs[secs.length - 1].sec : 0,
-    vadEnabled: sess.vadOk, baselineDbApplied: sess.base, gainDb: sess.gainDb,
+    vadEnabled: sess.vadOk, micMode: sess.micMode || "", baselineDbApplied: sess.base, gainDb: sess.gainDb,
     counts: sess.counts, events: evOut
   };
 
@@ -966,16 +1190,32 @@ async function deleteEnvClips() {
 }
 
 /* ===== ボタン・入力の接続 ===== */
-$("mic-btn").onclick = async () => {
+// 重要：AudioContextの作成とマイク要求を、タップの直後（同じ操作の中）で行う
+$("mic-btn").onclick = () => {
+  if (S.ctx) return;
+  $("mic-btn").disabled = true;
+  $("mic-state").textContent = "確認中…";
+  showMicMsg("");
+  let ctx = null;
   try {
-    await setupMic();
-    $("mic-state").textContent = "許可済み";
+    const AC = window.AudioContext || window.webkitAudioContext;
+    ctx = S.pendingCtx || new AC();
+    S.pendingCtx = ctx;
+    ctx.resume().catch(() => {});
   } catch (e) {
     console.error(e);
-    $("mic-state").textContent = "拒否・エラー";
-    alert("マイクを使用できませんでした: " + e.message);
   }
-  setButtons();
+  setupMic(ctx)
+    .then(() => {
+      $("mic-state").textContent = "許可済み（" + (S.micMode === "worklet" ? "標準" : "予備") + "方式）";
+      showMicMsg("");
+    })
+    .catch((e) => {
+      console.error(e);
+      $("mic-state").textContent = "未許可";
+      showMicMsg(micErrorMessage(e));
+    })
+    .finally(() => setButtons());
 };
 
 $("gain").addEventListener("input", (e) => {
@@ -1008,18 +1248,34 @@ $("history-btn").onclick = async () => { await renderHistory(); showPage("histor
 $("history-back").onclick = () => showPage("record");
 $("detail-back").onclick = () => showPage("history");
 $("d-share").onclick = () => shareSession(S.detailSid).catch((e) => showError(e.message));
+$("update-btn").onclick = () => checkUpdate(true);
 
 document.addEventListener("visibilitychange", async () => {
-  if (document.visibilityState !== "visible" || !S.running) return;
-  if (!S.wake) await acquireWake();
-  if (S.ctx && S.ctx.state !== "running") S.ctx.resume().catch(() => {});
+  if (document.visibilityState !== "visible") return;
+  if (S.running) {
+    if (!S.wake) await acquireWake();
+    if (S.ctx && S.ctx.state !== "running") S.ctx.resume().catch(() => {});
+  } else {
+    checkUpdate(false);
+  }
 });
 
 /* ===== 起動 ===== */
+$("ver-text").textContent = "V" + APP_VERSION;
+$("boot").textContent = "スクリプト読込OK（V" + APP_VERSION + "・" + new Date().toLocaleTimeString("ja-JP") + "）";
+const updatedTo = sessionStorage.getItem("somno_updated_to");
+if (updatedTo) {
+  sessionStorage.removeItem("somno_updated_to");
+  setUpdMsg("V" + updatedTo + " に更新しました。マイクは「マイクを許可」を押し直してください。");
+}
+if (!window.isSecureContext) {
+  showMicMsg(micErrorMessage({ name: "InsecureContext", stage: "接続の確認" }));
+}
+startUiLoop();
 setButtons();
 updateUI();
-$("boot").textContent = "スクリプト読込OK（" + new Date().toLocaleTimeString("ja-JP") + "）";
 loadVad().then(() => setButtons());
+checkUpdate(false);
 </script>
 </body>
 </html>
