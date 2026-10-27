@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
 <meta name="theme-color" content="#000000">
 <meta http-equiv="Cache-Control" content="no-cache">
-<title>SomnoLog V13</title>
+<title>SomnoLog V15</title>
 <script src="./ort.min.js"></script>
 <style>
 :root{color-scheme:dark}
@@ -64,7 +64,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 1-1 起動・QR読み取り -->
 <main id="page-start" class="page" hidden>
   <header class="head">
-    <h1>SomnoLog V13</h1>
+    <h1>SomnoLog V15</h1>
     <span class="tag">患者情報確認</span>
   </header>
   <p class="muted">②が発行した患者用QRを読み取ってください。</p>
@@ -126,7 +126,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 記録画面 -->
 <main id="page-record" class="page" hidden>
   <header class="head">
-    <h1>SomnoLog V13</h1>
+    <h1>SomnoLog V15</h1>
     <span id="rec-badge" class="tag">待機中</span>
   </header>
   <p id="boot" class="boot">スクリプト読込中…</p>
@@ -198,7 +198,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
   <button id="history-btn" class="sub">履歴を見る</button>
 
   <section class="card">
-    <div class="kv"><span>バージョン</span><b id="ver-text">V13</b></div>
+    <div class="kv"><span>バージョン</span><b id="ver-text">V15</b></div>
     <p class="muted">この版は自動で書き換わりません。新しい版を使うときは、新しいファイルを開いてください。</p>
   </section>
 </main>
@@ -244,7 +244,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 
 /* ===== バージョン ===== */
 // 修正のたびに数字を1つ増やす。自動で書き換えは行わない（手動で新しいファイルを使う）
-const APP_VERSION = 13;
+const APP_VERSION = 15;
 const APP = "SomnoLogV" + APP_VERSION;
 
 /* ===== 設定 ===== */
@@ -258,7 +258,7 @@ const ENV_RUN_SEC = 10, ENV_DB = 6, ENV_COOLDOWN = 300, ENV_CLIP_SEC = 30;
 const FLUSH_SEC = 60, MAX_QUEUE = 40;
 const UI_MS = 250, LIVE_N = 240;
 const DB_NAME = "somnolog-v3"; // V3以降のデータを引き継ぐため名前は据え置き
-const DB_VERSION = 2;          // V10で settings を追加（V13でも変更なし）
+const DB_VERSION = 2;          // V10で settings を追加（V15でも変更なし）
 const DISCLAIMER = "本アプリは診断を行うものではありません。医師の判断の参考資料です。";
 const LABELS = { snore: "いびき", speech: "寝言・話し声", env: "環境音", unknown: "判定不能", short: "短い音" };
 const LABEL_KEYS = ["snore", "speech", "env", "unknown"];
@@ -266,7 +266,6 @@ const LABEL_KEYS = ["snore", "speech", "env", "unknown"];
 /* ===== 補助関数 ===== */
 const $ = (id) => document.getElementById(id);
 const pad = (n) => String(n).padStart(2, "0");
-const dateKey = (d) => d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
 const uid = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now() + "-" + Math.random().toString(16).slice(2));
 const toDb = (a) => (a > 1e-5 ? Math.max(-100, 20 * Math.log10(a)) : -100);
 const round1 = (v) => Math.round(v * 10) / 10;
@@ -363,11 +362,15 @@ function sanitize(v, max = 40) {
   return s || "未設定";
 }
 
-// 命名規則：YYYYMMDD_SERIAL_CLINIC_CHARTNO_PATIENTNAME.zip
+// ZIPの名前（人が見て分かる形）：日付_時刻_診療所_カルテNo_患者名.zip
+// 例：20261027_1915_サンプル中央クリニック_123456_山田太郎.zip
+// 時刻は記録開始の時・分（24時間表記）。シリアルNoはファイル名には入れず、中身（session.json）に残す
 function zipName(sess) {
   const p = sess.patient || {};
-  const day = dateKey(new Date(sess.startedAt)).replace(/-/g, "");
-  return [day, sanitize(p.serialNumber), sanitize(p.clinic), sanitize(p.chartNo), sanitize(p.name)].join("_") + ".zip";
+  const d = new Date(sess.startedAt);
+  const day = d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate());
+  const time = pad(d.getHours()) + pad(d.getMinutes());
+  return [day, time, sanitize(p.clinic, 30), sanitize(p.chartNo, 20), sanitize(p.name, 20)].join("_") + ".zip";
 }
 
 /* ===== リングバッファ（直近62秒・16kHz・調整前の生音） ===== */
@@ -956,7 +959,7 @@ function tickPending(now) {
 }
 
 // fromMs / toMs は記録開始からの時間（ミリ秒）。clips.json の startSec はここから作る
-// V13：音声は 4bit IMA ADPCM（WAV形式）で保存する（約1/4）
+// V13以降：音声は 4bit IMA ADPCM（WAV形式）で保存する（約1/4）
 function saveClip(fromMs, toMs, eventId, kind) {
   const a = Math.round(fromMs / 1000 * SR), b = Math.round(toMs / 1000 * SR);
   const actualA = Math.max(a, 0, S.ring.total - S.ring.len);
