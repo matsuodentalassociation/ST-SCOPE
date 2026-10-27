@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
 <meta name="theme-color" content="#000000">
 <meta http-equiv="Cache-Control" content="no-cache">
-<title>SomnoLog V10</title>
+<title>SomnoLog V13</title>
 <script src="./ort.min.js"></script>
 <style>
 :root{color-scheme:dark}
@@ -64,7 +64,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 1-1 起動・QR読み取り -->
 <main id="page-start" class="page" hidden>
   <header class="head">
-    <h1>SomnoLog V10</h1>
+    <h1>SomnoLog V13</h1>
     <span class="tag">患者情報確認</span>
   </header>
   <p class="muted">②が発行した患者用QRを読み取ってください。</p>
@@ -77,6 +77,13 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
     <input id="qr-file" type="file" accept="image/*" hidden>
     <button id="usage-btn" class="warnbtn">使い方を見る</button>
     <button id="start-back" class="sub" hidden>患者情報を変えずに戻る</button>
+  </section>
+
+  <section class="card">
+    <div class="kv"><span>端末の読み取り機能</span><b id="dec-api">確認中</b></div>
+    <div class="kv"><span>jsQR（同じフォルダ）</span><b id="dec-jsqr">確認中</b></div>
+    <div class="kv"><span>カメラ</span><b id="dec-cam">確認中</b></div>
+    <div class="kv"><span>画像選択の結果</span><b id="dec-last">未操作</b></div>
   </section>
 
   <section id="cam-box" class="card" hidden>
@@ -119,7 +126,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 記録画面 -->
 <main id="page-record" class="page" hidden>
   <header class="head">
-    <h1>SomnoLog V10</h1>
+    <h1>SomnoLog V13</h1>
     <span id="rec-badge" class="tag">待機中</span>
   </header>
   <p id="boot" class="boot">スクリプト読込中…</p>
@@ -191,7 +198,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
   <button id="history-btn" class="sub">履歴を見る</button>
 
   <section class="card">
-    <div class="kv"><span>バージョン</span><b id="ver-text">V10</b></div>
+    <div class="kv"><span>バージョン</span><b id="ver-text">V13</b></div>
     <p class="muted">この版は自動で書き換わりません。新しい版を使うときは、新しいファイルを開いてください。</p>
   </section>
 </main>
@@ -237,7 +244,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 
 /* ===== バージョン ===== */
 // 修正のたびに数字を1つ増やす。自動で書き換えは行わない（手動で新しいファイルを使う）
-const APP_VERSION = 10;
+const APP_VERSION = 13;
 const APP = "SomnoLogV" + APP_VERSION;
 
 /* ===== 設定 ===== */
@@ -251,7 +258,7 @@ const ENV_RUN_SEC = 10, ENV_DB = 6, ENV_COOLDOWN = 300, ENV_CLIP_SEC = 30;
 const FLUSH_SEC = 60, MAX_QUEUE = 40;
 const UI_MS = 250, LIVE_N = 240;
 const DB_NAME = "somnolog-v3"; // V3以降のデータを引き継ぐため名前は据え置き
-const DB_VERSION = 2;          // V10で settings を追加
+const DB_VERSION = 2;          // V10で settings を追加（V13でも変更なし）
 const DISCLAIMER = "本アプリは診断を行うものではありません。医師の判断の参考資料です。";
 const LABELS = { snore: "いびき", speech: "寝言・話し声", env: "環境音", unknown: "判定不能", short: "短い音" };
 const LABEL_KEYS = ["snore", "speech", "env", "unknown"];
@@ -457,6 +464,18 @@ function showScanMsg(text) {
   b.textContent = text || "";
 }
 
+// 1-1 画面の「画像選択の結果」欄を更新する（切り分け用）
+function setLast(text) {
+  $("dec-last").textContent = text;
+}
+
+// 1-1 画面の読み取り機能の有無を表示する（切り分け用）
+function renderDecodeState() {
+  $("dec-api").textContent = window.BarcodeDetector ? "あり" : "なし";
+  $("dec-jsqr").textContent = typeof window.jsQR === "function" ? "あり" : "なし";
+  $("dec-cam").textContent = (window.isSecureContext && navigator.mediaDevices && navigator.mediaDevices.getUserMedia) ? "使える" : "使えない（https以外）";
+}
+
 // 読み取った文字列を確認する（OKなら1-2へ、NGなら1-1に留まる）
 function handleQrText(text) {
   try {
@@ -560,8 +579,10 @@ function scanLoop() {
 
 async function readQrFile(file) {
   showScanMsg("");
-  if (!file) return;
+  if (!file) { setLast("ファイルが選ばれませんでした"); return; }
+  setLast("画像を受け取りました");
   if (!canDecode()) {
+    setLast("読み取り機能がないため未実行");
     showScanMsg("この端末では画像からQRを読み取れません。標準のカメラアプリでQRを読むと、この画面が自動で開きます。");
     return;
   }
@@ -573,9 +594,15 @@ async function readQrFile(file) {
     canvas.getContext("2d").drawImage(bmp, 0, 0);
     bmp.close && bmp.close();
     const text = await decodeCanvas(canvas);
-    if (!text) { showScanMsg("画像からQRを見つけられませんでした。QRがはっきり写った画像を選んでください。"); return; }
+    if (!text) {
+      setLast("画像にQRが見つからない");
+      showScanMsg("画像からQRを見つけられませんでした。QRがはっきり写った画像を選んでください。");
+      return;
+    }
+    setLast("QRを読み取れました");
     handleQrText(text);
   } catch (e) {
+    setLast("画像の読み込みに失敗");
     showScanMsg("画像を読み込めませんでした: " + e.message);
   }
 }
@@ -929,6 +956,7 @@ function tickPending(now) {
 }
 
 // fromMs / toMs は記録開始からの時間（ミリ秒）。clips.json の startSec はここから作る
+// V13：音声は 4bit IMA ADPCM（WAV形式）で保存する（約1/4）
 function saveClip(fromMs, toMs, eventId, kind) {
   const a = Math.round(fromMs / 1000 * SR), b = Math.round(toMs / 1000 * SR);
   const actualA = Math.max(a, 0, S.ring.total - S.ring.len);
@@ -939,8 +967,9 @@ function saveClip(fromMs, toMs, eventId, kind) {
   const id = uid();
   DB.put("clips", {
     id, sid: S.sid, eventId, kind, sr: SR,
+    codec: "ima-adpcm", samples: i16.length,
     startMs: round1(actualA / SR * 1000),
-    dataIsSource: true, gainDb: S.gainDb, data: i16
+    dataIsSource: true, gainDb: S.gainDb, data: encodeImaWav(i16, SR)
   }).catch(console.error);
   return id;
 }
@@ -1341,7 +1370,7 @@ async function renderEvents(sess, evs) {
     if (e.clipId) {
       const clip = await DB.get("clips", e.clipId);
       if (clip) {
-        const url = URL.createObjectURL(wavBlob(clip.data, clip.sr));
+        const url = URL.createObjectURL(wavBlob(clipPcm(clip), clip.sr));
         blobUrls.push(url);
         const au = document.createElement("audio");
         au.controls = true; au.preload = "none"; au.src = url;
@@ -1368,6 +1397,130 @@ function wavBytes(i16, sr) {
 }
 const wavBlob = (i16, sr) => new Blob([wavBytes(i16, sr)], { type: "audio/wav" });
 
+/* ===== 4bit IMA ADPCM（V13で追加） =====
+   ・1サンプル16bit → 4bit に圧縮（約1/4）
+   ・WAV形式（format 17）で保存するので、Windowsの標準再生でも聞ける
+   ・1ブロック256バイト（先頭4バイトは予測値と段階番号）
+   ・旧版（V12以前）の音声は PCM16 のまま。clips の codec で判別する */
+const IMA_STEP = [7,8,9,10,11,12,13,14,16,17,19,21,23,25,28,31,34,37,41,45,50,55,60,66,73,80,88,97,107,118,130,143,157,173,190,209,230,253,279,307,337,371,408,449,494,544,598,658,724,796,876,963,1060,1166,1282,1411,1552,1707,1878,2066,2272,2499,2749,3024,3327,3660,4026,4428,4871,5358,5894,6484,7132,7845,8630,9493,10442,11487,12635,13899,15289,16818,18500,20350,22385,24623,27086,29794,32767];
+const IMA_IDX = [-1, -1, -1, -1, 2, 4, 6, 8];
+const IMA_BLOCK = 256, IMA_SPB = 505; // 1ブロックのバイト数／1ブロックのサンプル数
+
+// 状態（st.pred=予測値, st.idx=段階番号）を、4bitの符号 code で更新する（符号化・復号で共通）
+function imaApply(code, st) {
+  const step = IMA_STEP[st.idx];
+  let dq = step >> 3;
+  if (code & 4) dq += step;
+  if (code & 2) dq += step >> 1;
+  if (code & 1) dq += step >> 2;
+  st.pred += (code & 8) ? -dq : dq;
+  st.pred = Math.max(-32768, Math.min(32767, st.pred));
+  st.idx = Math.max(0, Math.min(88, st.idx + IMA_IDX[code & 7]));
+}
+
+// 1サンプルを 4bit の符号に変換し、状態を更新する
+function imaEncodeSample(s, st) {
+  const step = IMA_STEP[st.idx];
+  let diff = s - st.pred;
+  let code = 0;
+  if (diff < 0) { code = 8; diff = -diff; }
+  let tmp = step;
+  if (diff >= tmp) { code |= 4; diff -= tmp; }
+  tmp >>= 1;
+  if (diff >= tmp) { code |= 2; diff -= tmp; }
+  tmp >>= 1;
+  if (diff >= tmp) { code |= 1; }
+  imaApply(code, st);
+  return code;
+}
+
+// Int16Array → IMA ADPCM の WAV（バイト列）
+function encodeImaWav(i16, sr) {
+  const n = i16.length;
+  const blocks = Math.max(1, Math.ceil(n / IMA_SPB));
+  const dataLen = blocks * IMA_BLOCK;
+  const buf = new ArrayBuffer(60 + dataLen);
+  const u8 = new Uint8Array(buf);
+  const v = new DataView(buf);
+  const put = (o, s) => { for (let i = 0; i < 4; i++) u8[o + i] = s.charCodeAt(i); };
+  put(0, "RIFF"); v.setUint32(4, buf.byteLength - 8, true); put(8, "WAVE");
+  put(12, "fmt "); v.setUint32(16, 20, true);
+  v.setUint16(20, 17, true);                              // 形式：IMA ADPCM
+  v.setUint16(22, 1, true);                               // モノラル
+  v.setUint32(24, sr, true);
+  v.setUint32(28, Math.round(sr * IMA_BLOCK / IMA_SPB), true);
+  v.setUint16(32, IMA_BLOCK, true);
+  v.setUint16(34, 4, true);                               // 4bit
+  v.setUint16(36, 2, true);                               // 追加情報の長さ
+  v.setUint16(38, IMA_SPB, true);                         // 1ブロックのサンプル数
+  put(40, "fact"); v.setUint32(44, 4, true); v.setUint32(48, n, true);
+  put(52, "data"); v.setUint32(56, dataLen, true);
+  const sampleAt = (i) => (i < n ? i16[i] : 0);
+  const st = { pred: 0, idx: 0 };
+  for (let b = 0; b < blocks; b++) {
+    const start = b * IMA_SPB, o = 60 + b * IMA_BLOCK;
+    st.pred = sampleAt(start);
+    st.idx = 0;
+    v.setInt16(o, st.pred, true);
+    u8[o + 2] = st.idx;
+    u8[o + 3] = 0;
+    let p = o + 4;
+    for (let j = 1; j < IMA_SPB; j += 2) {
+      const lo = imaEncodeSample(sampleAt(start + j), st);
+      const hi = imaEncodeSample(sampleAt(start + j + 1), st);
+      u8[p++] = lo | (hi << 4);
+    }
+  }
+  return u8;
+}
+
+// IMA ADPCM の WAV（バイト列）→ Int16Array（再生・確認用に復号する）
+function decodeImaWav(u8) {
+  const v = new DataView(u8.buffer, u8.byteOffset, u8.byteLength);
+  const tag = (o) => String.fromCharCode(u8[o], u8[o + 1], u8[o + 2], u8[o + 3]);
+  let off = 12, blockAlign = IMA_BLOCK, spb = IMA_SPB, total = 0, dataOff = -1, dataLen = 0;
+  while (off + 8 <= u8.length) {
+    const id = tag(off), size = v.getUint32(off + 4, true), body = off + 8;
+    if (id === "fmt ") { blockAlign = v.getUint16(body + 12, true); spb = v.getUint16(body + 18, true); }
+    else if (id === "fact") { total = v.getUint32(body, true); }
+    else if (id === "data") { dataOff = body; dataLen = size; break; }
+    off = body + size + (size & 1);
+  }
+  if (dataOff < 0) throw new Error("音声データが見つかりません");
+  const out = new Int16Array(total || Math.floor(dataLen / blockAlign) * spb);
+  const st = { pred: 0, idx: 0 };
+  let pos = 0;
+  for (let b = dataOff; b < dataOff + dataLen && pos < out.length; b += blockAlign) {
+    st.pred = v.getInt16(b, true);
+    st.idx = Math.max(0, Math.min(88, u8[b + 2]));
+    out[pos++] = st.pred;
+    let left = spb - 1;
+    const end = Math.min(b + blockAlign, dataOff + dataLen);
+    for (let p = b + 4; p < end && left > 0 && pos < out.length; p++) {
+      const byte = u8[p];
+      for (let k = 0; k < 2 && left > 0 && pos < out.length; k++) {
+        imaApply(k === 0 ? (byte & 15) : (byte >> 4), st);
+        out[pos++] = st.pred;
+        left--;
+      }
+    }
+  }
+  return out;
+}
+
+// 保存された音声（V13以降のADPCM、V12以前のPCM16の両方）をPCM16として取り出す
+function clipPcm(c) {
+  return c.codec === "ima-adpcm" ? decodeImaWav(c.data) : c.data;
+}
+// 保存された音声を、ZIPに入れるファイルのバイト列にする
+function clipBytes(c) {
+  return c.codec === "ima-adpcm" ? c.data : wavBytes(c.data, c.sr);
+}
+// 音声のサンプル数
+function clipSamples(c) {
+  return c.codec === "ima-adpcm" ? c.samples : c.data.length;
+}
+
 const CRC_TABLE = (() => {
   const t = new Uint32Array(256);
   for (let n = 0; n < 256; n++) {
@@ -1383,23 +1536,40 @@ function crc32(u8) {
   return (c ^ 0xFFFFFFFF) >>> 0;
 }
 
-// 無圧縮ZIP（STORE）
-function makeZip(files) {
+// deflate（ZIP内のraw deflate）で圧縮する。ブラウザが対応していない場合は null を返す（無圧縮で保存する）
+async function deflateRaw(u8) {
+  if (typeof CompressionStream === "undefined") return null;
+  try {
+    const stream = new Blob([u8]).stream().pipeThrough(new CompressionStream("deflate-raw"));
+    return new Uint8Array(await new Response(stream).arrayBuffer());
+  } catch (e) {
+    console.warn(e);
+    return null;
+  }
+}
+
+// ZIP作成。compress:true のファイルだけ圧縮する（音声は無圧縮のまま）
+async function makeZip(files) {
   const parts = [], cd = [];
   let off = 0;
   for (const f of files) {
-    const name = f.nameBytes, data = f.data, crc = crc32(data);
+    const name = f.nameBytes, raw = f.data, crc = crc32(raw);
+    let data = raw, method = 0;
+    if (f.compress) {
+      const z = await deflateRaw(raw);
+      if (z && z.length < raw.length) { data = z; method = 8; }
+    }
     const h = new DataView(new ArrayBuffer(30));
     h.setUint32(0, 0x04034b50, true); h.setUint16(4, 20, true); h.setUint16(6, 0x0800, true);
-    h.setUint16(8, 0, true); h.setUint16(10, 0, true); h.setUint16(12, 0x21, true);
-    h.setUint32(14, crc, true); h.setUint32(18, data.length, true); h.setUint32(22, data.length, true);
+    h.setUint16(8, method, true); h.setUint16(10, 0, true); h.setUint16(12, 0x21, true);
+    h.setUint32(14, crc, true); h.setUint32(18, data.length, true); h.setUint32(22, raw.length, true);
     h.setUint16(26, name.length, true); h.setUint16(28, 0, true);
     parts.push(h, name, data);
 
     const c = new DataView(new ArrayBuffer(46));
     c.setUint32(0, 0x02014b50, true); c.setUint16(4, 20, true); c.setUint16(6, 20, true); c.setUint16(8, 0x0800, true);
-    c.setUint16(10, 0, true); c.setUint16(12, 0, true); c.setUint16(14, 0x21, true);
-    c.setUint32(16, crc, true); c.setUint32(20, data.length, true); c.setUint32(24, data.length, true);
+    c.setUint16(10, method, true); c.setUint16(12, 0, true); c.setUint16(14, 0x21, true);
+    c.setUint32(16, crc, true); c.setUint32(20, data.length, true); c.setUint32(24, raw.length, true);
     c.setUint16(28, name.length, true); c.setUint32(42, off, true);
     cd.push(c, name);
     off += 30 + name.length + data.length;
@@ -1413,8 +1583,9 @@ function makeZip(files) {
 
 // ZIPの中身
 // ・session.json：patient（患者情報）と session.timeSeriesLogs（1秒ごとのデータ）
-// ・clips.json：音声ファイルの一覧（startSec＝記録開始からの秒数）
-// ・summary.json / seconds.csv / events.csv / README.txt / clips/*.wav：人が確認する用
+// ・clips.json：音声ファイルの一覧（startSec＝記録開始からの秒数、codec＝音声の方式）
+// ・summary.json / seconds.csv / events.csv / README.txt：人が確認する用（圧縮して保存）
+// ・clips/*.wav：音声（4bit IMA ADPCM。無圧縮のまま）
 async function shareSession(sid) {
   if (!sid) return;
   const sess = await DB.get("sessions", sid);
@@ -1428,6 +1599,7 @@ async function shareSession(sid) {
   const files = [];
   const recordedSec = secs.length ? secs[secs.length - 1].sec : 0;
   const clipFile = (c) => "clips/" + c.id + ".wav";
+  const txt = (name, str) => ({ name, nameBytes: enc.encode(name), data: enc.encode(str), compress: true });
   const patient = {
     clinic: (sess.patient && sess.patient.clinic) || "",
     chartNo: (sess.patient && sess.patient.chartNo) || "",
@@ -1438,7 +1610,7 @@ async function shareSession(sid) {
 
   for (const c of clips) {
     const name = clipFile(c);
-    files.push({ name, nameBytes: enc.encode(name), data: wavBytes(c.data, c.sr) });
+    files.push({ name, nameBytes: enc.encode(name), data: clipBytes(c) });
   }
 
   const evOut = evs.map((e) => {
@@ -1491,11 +1663,12 @@ async function shareSession(sid) {
         id: c.id,
         eventId: c.eventId,
         audioFile: clipFile(c),
+        codec: c.codec || "pcm16",
         category: c.kind,
         type: ev ? ev.type : c.kind,
         label: ev ? ev.label : null,
         startSec: round2(c.startMs / 1000),
-        durationSec: round2(c.data.length / c.sr),
+        durationSec: round2(clipSamples(c) / c.sr),
         sampleRate: c.sr,
         gainDb: c.gainDb,
         dataIsSource: true
@@ -1520,22 +1693,22 @@ async function shareSession(sid) {
     evOut.map((e) => [e.id, e.type, e.label ?? "", e.startTime, e.durationSec, e.peakSourceDb ?? "", e.peakAppliedDb ?? "", e.meanSourceDb ?? "", e.vadMax ?? "", e.vadNear ?? "", e.gainDb, e.clip ?? ""].join(",")).join("\n");
   const readme = DISCLAIMER + "\n\n" +
     "- session.json: 患者情報（patient）と1秒ごとのデータ（session.timeSeriesLogs）\n" +
-    "- clips.json: 音声ファイルの一覧（startSec＝記録開始からの秒数）\n" +
+    "- clips.json: 音声ファイルの一覧（startSec＝記録開始からの秒数、codec＝音声の方式）\n" +
     "- summary.json: 記録の概要と検知区間\n" +
     "- seconds.csv: 1秒ごとの音圧（dbApplied=ゲイン適用値、dbSource=調整前の生音）、音声確率、体動（motionMs2=m/s²、motionG=G）\n" +
     "- events.csv: 検知区間の一覧\n" +
-    "- clips/*.wav: 保存された音声（調整前の生音。ゲイン値はclips.jsonのgainDbを参照）\n";
+    "- clips/*.wav: 保存された音声（4bit IMA ADPCM、調整前の生音。ゲイン値はclips.jsonのgainDbを参照）\n";
 
   files.unshift(
-    { name: "README.txt", nameBytes: enc.encode("README.txt"), data: enc.encode(readme) },
-    { name: "session.json", nameBytes: enc.encode("session.json"), data: enc.encode(JSON.stringify(session)) },
-    { name: "clips.json", nameBytes: enc.encode("clips.json"), data: enc.encode(JSON.stringify(clipsJson, null, 2)) },
-    { name: "summary.json", nameBytes: enc.encode("summary.json"), data: enc.encode(JSON.stringify(summary, null, 2)) },
-    { name: "seconds.csv", nameBytes: enc.encode("seconds.csv"), data: enc.encode(csvSecs) },
-    { name: "events.csv", nameBytes: enc.encode("events.csv"), data: enc.encode(csvEvs) }
+    txt("README.txt", readme),
+    txt("session.json", JSON.stringify(session)),
+    txt("clips.json", JSON.stringify(clipsJson, null, 2)),
+    txt("summary.json", JSON.stringify(summary, null, 2)),
+    txt("seconds.csv", csvSecs),
+    txt("events.csv", csvEvs)
   );
 
-  const blob = makeZip(files);
+  const blob = await makeZip(files);
   const fname = zipName(sess);
   const file = new File([blob], fname, { type: "application/zip" });
   if (navigator.canShare && navigator.canShare({ files: [file] })) {
@@ -1564,7 +1737,10 @@ async function deleteEnvClips() {
 // 1-1
 $("cam-btn").onclick = () => startCamera();
 $("cam-stop").onclick = () => stopCamera();
-$("qr-file-btn").onclick = () => $("qr-file").click();
+$("qr-file-btn").onclick = () => {
+  setLast("選択画面を開きました");
+  $("qr-file").click();
+};
 $("qr-file").addEventListener("change", (e) => {
   readQrFile(e.target.files && e.target.files[0]).catch((err) => showScanMsg(err.message));
   e.target.value = "";
@@ -1678,8 +1854,10 @@ async function init() {
   // 任意：jsQRが同じフォルダにあれば、アプリ内の読み取りに使う（無くても動く）
   const jq = document.createElement("script");
   jq.src = "./jsqr.min.js";
-  jq.onerror = () => {};
+  jq.onload = () => renderDecodeState();
+  jq.onerror = () => renderDecodeState();
   document.head.appendChild(jq);
+  renderDecodeState();
 
   if (!window.isSecureContext) {
     showMicMsg(micErrorMessage({ name: "InsecureContext", stage: "接続の確認" }));
