@@ -5,48 +5,54 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
 <meta name="theme-color" content="#000000">
 <meta http-equiv="Cache-Control" content="no-cache">
-<title>SomnoLoggerV9</title>
+<title>SomnoLog V10</title>
 <script src="./ort.min.js"></script>
 <style>
 :root{color-scheme:dark}
 *{box-sizing:border-box}
-body{margin:0;background:#101419;color:#f0eee6;font-family:-apple-system,BlinkMacSystemFont,"Noto Sans JP",sans-serif}
+body{margin:0;background:#0d1117;color:#f0eee6;font-family:-apple-system,BlinkMacSystemFont,"Noto Sans JP",sans-serif}
 [hidden]{display:none!important}
 button,input{font:inherit}
-button{min-height:48px;padding:12px 14px;border-radius:12px;border:1px solid #506276;background:#253c50;color:#e5f1fb;font-size:15px;font-weight:600;width:100%;cursor:pointer}
+button{min-height:48px;padding:12px 14px;border-radius:10px;border:1px solid #3c4f63;background:#223649;color:#e5f1fb;font-size:15px;font-weight:600;width:100%;cursor:pointer}
 button.primary{background:#84b9cf;border-color:#84b9cf;color:#10202a}
 button.danger{background:#3a2a2a;border-color:#7a4b48;color:#f2d2cf}
-button.sub{background:#1b232d;border-color:#3c4b5b;color:#d3dde7}
+button.sub{background:#171f29;border-color:#34424f;color:#d3dde7}
+button.warnbtn{background:#353024;border-color:#6d6240;color:#f3e7c9}
 button:disabled{opacity:.4;cursor:not-allowed}
 .page{max-width:480px;margin:0 auto;padding:20px 16px 40px;display:flex;flex-direction:column;gap:14px}
 .head{display:flex;justify-content:space-between;align-items:center;gap:10px}
 h1{margin:0;font-size:22px}
 h2{margin:0;font-size:17px}
-.card{background:#192029;border:1px solid #2f3b48;border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:10px}
+.card{background:#161d26;border:1px solid #2a3643;border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:10px}
 .muted{color:#aebbc9;font-size:12px;line-height:1.7;margin:0}
 .boot{color:#9fd8b5;font-size:12px;margin:0}
 .warn{background:#3a2f1a;border:1px solid #7a6a3a;color:#f3e7c9;padding:10px 12px;border-radius:10px;font-size:13px;line-height:1.6}
 .err{background:#4a1f1f;border:1px solid #9a4a4a;color:#ffd9d6;padding:10px 12px;border-radius:10px;font-size:13px;line-height:1.6;white-space:pre-wrap;word-break:break-all}
-.tag{font-size:11px;padding:3px 7px;border-radius:6px;background:#263b38;color:#bfdbd1;white-space:nowrap}
+.tag{font-size:11px;padding:4px 9px;border-radius:999px;background:#263b38;color:#bfdbd1;white-space:nowrap}
 .tag.rec{background:#7a2e2e;color:#ffd9d6}
 .tag.env{background:#343129;color:#f3e7c9}
 .tag.rej{background:#3a2a2a;color:#f2d2cf}
-.kv{display:flex;justify-content:space-between;gap:8px;font-size:14px;padding:4px 0;border-bottom:1px solid #2f3b48}
-.kv b{color:#f3e7c9;font-weight:600;text-align:right}
+.kv{display:flex;justify-content:space-between;gap:8px;font-size:14px;padding:4px 0;border-bottom:1px solid #2a3643}
+.kv b{color:#f3e7c9;font-weight:600;text-align:right;word-break:break-all}
+.field{background:#0d1117;border:1px solid #2a3643;border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:4px}
+.field span{font-size:11px;color:#8fa0b3}
+.field b{font-size:16px;font-weight:600;word-break:break-all}
 .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .meter{height:10px;background:#111820;border-radius:6px;overflow:hidden}
 .meter i{display:block;height:100%;width:0;background:#84b9cf}
 input[type=range]{width:100%;accent-color:#84b9cf}
 input[type=checkbox]{width:18px;height:18px;accent-color:#84b9cf;vertical-align:middle}
-.chart{background:#101923;border:1px solid #2f3b48;border-radius:10px;padding:6px}
+.chart{background:#101923;border:1px solid #2a3643;border-radius:10px;padding:6px}
 .chart svg{width:100%;height:auto;display:block}
-.event{border-top:1px solid #2f3b48;padding-top:10px;display:flex;flex-direction:column;gap:8px}
+.event{border-top:1px solid #2a3643;padding-top:10px;display:flex;flex-direction:column;gap:8px}
 .labels{display:grid;grid-template-columns:repeat(2,1fr);gap:6px}
 .labels button{min-height:38px;font-size:13px}
 .labels button.on{background:#84b9cf;color:#10202a;border-color:#84b9cf}
 audio{width:100%}
 .listitem{text-align:left;min-height:auto;display:flex;flex-direction:column;gap:4px}
 .list{display:flex;flex-direction:column;gap:10px}
+video{width:100%;border-radius:10px;background:#000}
+ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 #black-screen{background-color:#000000 !important;width:100vw;height:100dvh;min-height:100vh;position:fixed;top:0;left:0;right:0;bottom:0;margin:0;padding:0;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;color:#756f61;touch-action:none;overflow:hidden}
 #black-clock{font-size:64px;font-variant-numeric:tabular-nums}
 </style>
@@ -55,14 +61,78 @@ audio{width:100%}
 
 <div id="errbox" class="err" hidden></div>
 
-<!-- 記録画面 -->
-<main id="page-record" class="page">
+<!-- 1-1 起動・QR読み取り -->
+<main id="page-start" class="page" hidden>
   <header class="head">
-    <h1>SomnoLoggerV9</h1>
+    <h1>SomnoLog V10</h1>
+    <span class="tag">患者情報確認</span>
+  </header>
+  <p class="muted">②が発行した患者用QRを読み取ってください。</p>
+
+  <div id="scan-msg" class="err" hidden></div>
+
+  <section class="card">
+    <button id="cam-btn">カメラを起動</button>
+    <button id="qr-file-btn">QR画像を選択</button>
+    <input id="qr-file" type="file" accept="image/*" hidden>
+    <button id="usage-btn" class="warnbtn">使い方を見る</button>
+    <button id="start-back" class="sub" hidden>患者情報を変えずに戻る</button>
+  </section>
+
+  <section id="cam-box" class="card" hidden>
+    <video id="cam-video" playsinline muted></video>
+    <p class="muted">QRを枠内に収めてください。読み取れると自動で次に進みます。</p>
+    <button id="cam-stop" class="sub">カメラを止める</button>
+  </section>
+
+  <section id="usage-box" class="card" hidden>
+    <h2>使い方</h2>
+    <ol class="steps">
+      <li>診療所の画面に表示されたQRを読み取ります。</li>
+      <li>標準のカメラアプリでQRを読むと、この画面が自動で開きます。</li>
+      <li>患者情報（診療所名・患者名など）が正しいか確認します。</li>
+      <li>正しければ「始める」を押すと、記録の画面に進みます。</li>
+      <li>違う場合は「情報が間違っています」を押してください。診療所にご連絡ください。</li>
+    </ol>
+    <p class="muted">本アプリは診断を行うものではありません。医師の判断の参考資料です。</p>
+  </section>
+  <canvas id="scan-canvas" hidden></canvas>
+</main>
+
+<!-- 1-2 患者情報の確認 -->
+<main id="page-confirm" class="page" hidden>
+  <header class="head">
+    <h1>患者情報の確認</h1>
+  </header>
+  <section class="card">
+    <div class="field"><span>診療所名</span><b id="cf-clinic"></b></div>
+    <div class="field"><span>カルテNo</span><b id="cf-chart"></b></div>
+    <div class="field"><span>患者名</span><b id="cf-name"></b></div>
+    <div class="field"><span>シリアルNo</span><b id="cf-serial"></b></div>
+    <div class="field"><span>ログ共有通知先（宛先）</span><b id="cf-email"></b></div>
+    <button id="cf-ok" class="primary">始める</button>
+    <button id="cf-ng" class="warnbtn">情報が間違っています</button>
+  </section>
+  <p class="muted">患者情報が違う場合は「始める」を押さず、診療所に確認してください。</p>
+</main>
+
+<!-- 記録画面 -->
+<main id="page-record" class="page" hidden>
+  <header class="head">
+    <h1>SomnoLog V10</h1>
     <span id="rec-badge" class="tag">待機中</span>
   </header>
   <p id="boot" class="boot">スクリプト読込中…</p>
   <p class="muted">就寝中の音とセンサーを記録します。本アプリは診断を行うものではありません。医師の判断の参考資料です。</p>
+
+  <section class="card">
+    <h2>患者情報</h2>
+    <div class="kv"><span>診療所</span><b id="pt-clinic">-</b></div>
+    <div class="kv"><span>カルテNo</span><b id="pt-chart">-</b></div>
+    <div class="kv"><span>患者名</span><b id="pt-name">-</b></div>
+    <div class="kv"><span>シリアルNo</span><b id="pt-serial">-</b></div>
+    <button id="pt-change" class="sub">患者情報を読み直す</button>
+  </section>
 
   <div id="mic-msg" class="err" hidden></div>
 
@@ -121,7 +191,7 @@ audio{width:100%}
   <button id="history-btn" class="sub">履歴を見る</button>
 
   <section class="card">
-    <div class="kv"><span>バージョン</span><b id="ver-text">V9</b></div>
+    <div class="kv"><span>バージョン</span><b id="ver-text">V10</b></div>
     <p class="muted">この版は自動で書き換わりません。新しい版を使うときは、新しいファイルを開いてください。</p>
   </section>
 </main>
@@ -167,12 +237,12 @@ audio{width:100%}
 
 /* ===== バージョン ===== */
 // 修正のたびに数字を1つ増やす。自動で書き換えは行わない（手動で新しいファイルを使う）
-const APP_VERSION = 9;
-const APP = "SomnoLoggerV" + APP_VERSION;
+const APP_VERSION = 10;
+const APP = "SomnoLogV" + APP_VERSION;
 
 /* ===== 設定 ===== */
 const SR = 16000, FRAME = 512, RING_SEC = 62;
-const G_ACC = 9.80665; // 重力加速度（m/s² → G 換算用）
+const G_ACC = 9.80665;
 const VAD_CTX = 64, VAD_URL = "./silero_vad.onnx?v=" + APP_VERSION, VAD_TH = 0.3;
 const LOUD_DB = 6, SEG_MIN = 0.5, SEG_MAX = 4, QUIET_FRAMES = 5;
 const PRE_MS = 3000, POST_MS = 1000;
@@ -181,6 +251,7 @@ const ENV_RUN_SEC = 10, ENV_DB = 6, ENV_COOLDOWN = 300, ENV_CLIP_SEC = 30;
 const FLUSH_SEC = 60, MAX_QUEUE = 40;
 const UI_MS = 250, LIVE_N = 240;
 const DB_NAME = "somnolog-v3"; // V3以降のデータを引き継ぐため名前は据え置き
+const DB_VERSION = 2;          // V10で settings を追加
 const DISCLAIMER = "本アプリは診断を行うものではありません。医師の判断の参考資料です。";
 const LABELS = { snore: "いびき", speech: "寝言・話し声", env: "環境音", unknown: "判定不能", short: "短い音" };
 const LABEL_KEYS = ["snore", "speech", "env", "unknown"];
@@ -228,6 +299,70 @@ function showMicMsg(text) {
   b.textContent = text || "";
 }
 
+/* ===== 患者情報（QR） ===== */
+// QRの中身：https://<③の公開URL>/#slp=<Base64URL化したJSON>
+const S_PATIENT_PENDING = { value: null };
+
+class PatientError extends Error {}
+
+// Base64URL → UTF-8文字列 → JSON（日本語の文字化けを防ぐためTextDecoderを使う）
+function decodeSlp(payload) {
+  let s = String(payload).trim().replace(/[^A-Za-z0-9\-_]/g, "");
+  if (!s) throw new PatientError("QRの中身が空です。");
+  s = s.replace(/-/g, "+").replace(/_/g, "/");
+  while (s.length % 4) s += "=";
+  const bin = atob(s);
+  const bytes = Uint8Array.from(bin, (c) => c.charCodeAt(0));
+  const json = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+  return JSON.parse(json);
+}
+
+// 読み取った文字列（URL全体、またはハッシュ部分）から患者情報を作る
+function patientFromText(text) {
+  const str = String(text || "");
+  const idx = str.indexOf("#slp=");
+  if (idx < 0) throw new PatientError("患者用QRではありません。②が発行したQRを読み取ってください。");
+  let obj;
+  try { obj = decodeSlp(str.slice(idx + 5)); }
+  catch (e) { throw new PatientError("QRの中身を読み取れませんでした。QRを再発行してもらってください。"); }
+  if (!obj || typeof obj !== "object" || Array.isArray(obj)) throw new PatientError("QRの中身の形式が正しくありません。");
+  return normalizePatient(obj);
+}
+
+function normalizePatient(o) {
+  const s = (v) => (typeof v === "string" ? v.normalize("NFC").trim() : "");
+  const p = {
+    clinic: s(o.clinicName),
+    chartNo: s(o.chartNo),
+    name: s(o.patientName),
+    serialNumber: s(o.serial),
+    issuedOn: s(o.issuedOn),
+    logShareEmail: s(o.logShareEmail),
+    issueId: s(o.issueId),
+  };
+  if (!p.name) throw new PatientError("患者名がありません。このQRは利用できません。QRを再発行してもらってください。");
+  if (!p.chartNo) throw new PatientError("カルテNoがありません。QRを再発行してもらってください。");
+  return p;
+}
+
+// ファイル名用の安全な文字列（禁止記号・制御文字を _ に置換、NFC正規化）
+function sanitize(v, max = 40) {
+  const s = String(v ?? "").normalize("NFC")
+    .replace(/[\\/:*?"<>|\u0000-\u001f\u007f]/g, "_")
+    .replace(/\s+/g, "_")
+    .replace(/_+/g, "_")
+    .replace(/^[_.]+|[_.]+$/g, "")
+    .slice(0, max);
+  return s || "未設定";
+}
+
+// 命名規則：YYYYMMDD_SERIAL_CLINIC_CHARTNO_PATIENTNAME.zip
+function zipName(sess) {
+  const p = sess.patient || {};
+  const day = dateKey(new Date(sess.startedAt)).replace(/-/g, "");
+  return [day, sanitize(p.serialNumber), sanitize(p.clinic), sanitize(p.chartNo), sanitize(p.name)].join("_") + ".zip";
+}
+
 /* ===== リングバッファ（直近62秒・16kHz・調整前の生音） ===== */
 class Ring {
   constructor(sec) { this.len = SR * sec; this.buf = new Float32Array(this.len); this.total = 0; }
@@ -249,13 +384,15 @@ class Ring {
 const DB = (() => {
   let p = null;
   const open = () => p || (p = new Promise((res, rej) => {
-    const r = indexedDB.open(DB_NAME, 1);
+    const r = indexedDB.open(DB_NAME, DB_VERSION);
     r.onupgradeneeded = () => {
       const d = r.result;
-      d.createObjectStore("sessions", { keyPath: "id" });
-      d.createObjectStore("secs", { keyPath: "key" }).createIndex("sid", "sid");
-      d.createObjectStore("events", { keyPath: "id" }).createIndex("sid", "sid");
-      d.createObjectStore("clips", { keyPath: "id" }).createIndex("sid", "sid");
+      const names = d.objectStoreNames;
+      if (!names.contains("sessions")) d.createObjectStore("sessions", { keyPath: "id" });
+      if (!names.contains("secs")) d.createObjectStore("secs", { keyPath: "key" }).createIndex("sid", "sid");
+      if (!names.contains("events")) d.createObjectStore("events", { keyPath: "id" }).createIndex("sid", "sid");
+      if (!names.contains("clips")) d.createObjectStore("clips", { keyPath: "id" }).createIndex("sid", "sid");
+      if (!names.contains("settings")) d.createObjectStore("settings", { keyPath: "key" });
     };
     r.onsuccess = () => res(r.result);
     r.onerror = () => rej(r.error);
@@ -285,6 +422,7 @@ const S = {
   ctx: null, pendingCtx: null, stream: null, tap: null, micMode: "",
   vad: null, vadOk: false, vadState: null, vadCtx: new Float32Array(VAD_CTX),
   gainDb: 0, envSave: false,
+  patient: null,
   running: false, epoch: 0, sid: null, sess: null, counts: newCounts(),
   wake: null, timers: [], uiTimer: null, blackOn: false, savedStyle: null, detailSid: null,
   blackTimer: null,
@@ -294,6 +432,179 @@ const S = {
   cand: null, pHist: [], pendingCands: [], pendingEnv: [],
   bucket: null, secBuf: [], envRun: 0, lastEnvMs: -1e9,
 };
+
+/* ===== 画面切り替え ===== */
+function showPage(name) {
+  ["start", "confirm", "record", "history", "detail"].forEach((n) => { $("page-" + n).hidden = n !== name; });
+  window.scrollTo(0, 0);
+}
+
+function renderPatientCard() {
+  const p = S.patient;
+  $("pt-clinic").textContent = p ? p.clinic || "-" : "-";
+  $("pt-chart").textContent = p ? p.chartNo || "-" : "-";
+  $("pt-name").textContent = p ? p.name || "-" : "-";
+  $("pt-serial").textContent = p ? p.serialNumber || "-" : "-";
+  $("pt-change").disabled = S.running;
+}
+
+/* ===== QR読み取り（カメラ・画像） ===== */
+let camStream = null, camTimer = 0, detector = null, scanBusy = false;
+
+function showScanMsg(text) {
+  const b = $("scan-msg");
+  b.hidden = !text;
+  b.textContent = text || "";
+}
+
+// 読み取った文字列を確認する（OKなら1-2へ、NGなら1-1に留まる）
+function handleQrText(text) {
+  try {
+    const p = patientFromText(text);
+    showScanMsg("");
+    S_PATIENT_PENDING.value = p;
+    showConfirm(p);
+  } catch (e) {
+    showScanMsg(e instanceof PatientError ? e.message : "QRを読み取れませんでした: " + e.message);
+  }
+}
+
+function showConfirm(p) {
+  $("cf-clinic").textContent = p.clinic || "（未記入）";
+  $("cf-chart").textContent = p.chartNo || "（未記入）";
+  $("cf-name").textContent = p.name;
+  $("cf-serial").textContent = p.serialNumber || "（未記入）";
+  $("cf-email").textContent = p.logShareEmail || "（未記入）";
+  showPage("confirm");
+}
+
+// 1枚の画像・映像から QR の文字列を探す（BarcodeDetector → jsQR の順）
+async function decodeCanvas(canvas) {
+  if (window.BarcodeDetector) {
+    try {
+      if (!detector) detector = new BarcodeDetector({ formats: ["qr_code"] });
+      const r = await detector.detect(canvas);
+      if (r.length && r[0].rawValue) return r[0].rawValue;
+    } catch (e) { console.warn(e); }
+  }
+  if (typeof window.jsQR === "function") {
+    const c = canvas.getContext("2d");
+    const img = c.getImageData(0, 0, canvas.width, canvas.height);
+    const code = window.jsQR(img.data, img.width, img.height);
+    if (code && code.data) return code.data;
+  }
+  return null;
+}
+
+function canDecode() {
+  return !!window.BarcodeDetector || typeof window.jsQR === "function";
+}
+
+async function startCamera() {
+  showScanMsg("");
+  if (!window.isSecureContext || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    showScanMsg("カメラを使うには https:// で開いてください。");
+    return;
+  }
+  if (!canDecode()) {
+    showScanMsg("この端末ではアプリ内でQRを読み取れません。標準のカメラアプリでQRを読むと、この画面が自動で開きます。");
+    return;
+  }
+  try {
+    camStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" } }, audio: false });
+    const video = $("cam-video");
+    video.srcObject = camStream;
+    await video.play();
+    $("cam-box").hidden = false;
+    scanLoop();
+  } catch (e) {
+    stopCamera();
+    showScanMsg("カメラを起動できませんでした。カメラの許可を確認してください。（" + e.name + "）");
+  }
+}
+
+function stopCamera() {
+  clearTimeout(camTimer);
+  camTimer = 0;
+  if (camStream) camStream.getTracks().forEach((t) => t.stop());
+  camStream = null;
+  const v = $("cam-video");
+  if (v) v.srcObject = null;
+  $("cam-box").hidden = true;
+}
+
+function scanLoop() {
+  if (!camStream) return;
+  const video = $("cam-video");
+  const run = async () => {
+    if (!camStream) return;
+    if (!scanBusy && video.readyState >= 2 && video.videoWidth) {
+      scanBusy = true;
+      try {
+        const canvas = $("scan-canvas");
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        canvas.getContext("2d").drawImage(video, 0, 0);
+        const text = await decodeCanvas(canvas);
+        if (text) {
+          stopCamera();
+          handleQrText(text);
+          return;
+        }
+      } finally { scanBusy = false; }
+    }
+    camTimer = setTimeout(run, 250);
+  };
+  run();
+}
+
+async function readQrFile(file) {
+  showScanMsg("");
+  if (!file) return;
+  if (!canDecode()) {
+    showScanMsg("この端末では画像からQRを読み取れません。標準のカメラアプリでQRを読むと、この画面が自動で開きます。");
+    return;
+  }
+  try {
+    const bmp = await createImageBitmap(file);
+    const canvas = $("scan-canvas");
+    canvas.width = bmp.width;
+    canvas.height = bmp.height;
+    canvas.getContext("2d").drawImage(bmp, 0, 0);
+    bmp.close && bmp.close();
+    const text = await decodeCanvas(canvas);
+    if (!text) { showScanMsg("画像からQRを見つけられませんでした。QRがはっきり写った画像を選んでください。"); return; }
+    handleQrText(text);
+  } catch (e) {
+    showScanMsg("画像を読み込めませんでした: " + e.message);
+  }
+}
+
+// 標準カメラで開いた時（#slp=付きURL）は、自動で1-2へ進む
+function checkHashOnLoad() {
+  if (location.hash.indexOf("#slp=") < 0) return false;
+  const text = location.href;
+  // 読み取った後はURLからハッシュを消し、再読み込みで二重に扱わないようにする
+  history.replaceState(null, "", location.pathname + location.search);
+  handleQrText(text);
+  return true;
+}
+
+/* ===== 患者情報の保存・読み込み ===== */
+async function loadPatient() {
+  try {
+    const row = await DB.get("settings", "patient");
+    S.patient = row && row.value ? row.value : null;
+  } catch (e) {
+    console.warn(e);
+    S.patient = null;
+  }
+}
+
+async function savePatient(p) {
+  S.patient = p;
+  await DB.put("settings", { key: "patient", value: p, savedAt: Date.now() });
+}
 
 /* ===== 音声取得（16kHzへ変換して512サンプルずつ onAudio に渡す） ===== */
 const WORKLET = `
@@ -329,7 +640,6 @@ class Tap extends AudioWorkletProcessor {
 registerProcessor("tap", Tap);
 `;
 
-// 失敗した段階と理由を付けてエラーを作る
 function micError(name, message, stage) {
   const e = new Error(message || name);
   e.name = name;
@@ -337,7 +647,6 @@ function micError(name, message, stage) {
   return e;
 }
 
-// マイク取得。中断や条件不一致の時は、少し待って一度だけ再試行する
 async function getMicStream() {
   const constraints = { channelCount: 1, echoCancellation: false, noiseSuppression: false, autoGainControl: false };
   try {
@@ -349,7 +658,6 @@ async function getMicStream() {
   }
 }
 
-// 予備の方式（AudioWorkletが使えない古い環境向け）
 function makeScriptTap(ctx) {
   const node = ctx.createScriptProcessor(2048, 1, 1);
   const ratio = ctx.sampleRate / SR;
@@ -373,7 +681,6 @@ function makeScriptTap(ctx) {
   return node;
 }
 
-// ボタンを押した直後に呼ぶ（iOSは操作の直後でないと音声を開始できないため）
 async function setupMic(ctx) {
   if (!window.isSecureContext || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
     throw micError("InsecureContext", "secure context required", "接続の確認");
@@ -433,7 +740,6 @@ function micErrorMessage(e) {
   return "マイクを開始できませんでした。" + detail;
 }
 
-// 音声の入口。記録中でなければ、音量の表示だけを更新する
 function onAudio(data) {
   if (!S.running) {
     let ss = 0;
@@ -450,7 +756,6 @@ function onAudio(data) {
 }
 
 /* ===== Silero VAD（寝言除外の第1段） ===== */
-// 読込の段階ごとに状態を分けて表示する（ort未読込／モデル未配置／読込失敗／有効）
 async function loadVad() {
   if (typeof ort === "undefined") {
     S.vad = null; S.vadOk = false;
@@ -460,7 +765,6 @@ async function loadVad() {
   }
   let buf;
   try {
-    // キャッシュを避けて毎回取得し、バイト列からセッションを作る
     const r = await fetch(VAD_URL, { cache: "no-store" });
     if (!r.ok) throw new Error("HTTP " + r.status);
     buf = await r.arrayBuffer();
@@ -539,7 +843,6 @@ function processFrame(f, p) {
   S.pHist.push({ t, p });
   while (S.pHist.length && S.pHist[0].t < t - 10000) S.pHist.shift();
 
-  // 基準値（開始後5分の音の少ない側の平均）
   if (!S.calibrated) {
     S.calibVals.push(lv);
     if (S.nowMs >= CALIB_SEC * 1000) {
@@ -551,7 +854,6 @@ function processFrame(f, p) {
     }
   }
 
-  // 1秒ごとの集計
   const sec = Math.floor(t / 1000);
   if (!S.bucket || S.bucket.sec !== sec) {
     if (S.bucket) finishSecond(S.bucket);
@@ -560,7 +862,6 @@ function processFrame(f, p) {
   S.bucket.lv.push(lv);
   S.bucket.p.push(p);
 
-  // 候補区間（基準値＋LOUD_DB を超える音が続く区間）
   if (S.calibrated) {
     if (lv > S.base + LOUD_DB) {
       if (!S.cand) S.cand = { startMs: t, lastMs: t, quiet: 0, peakDb: -100, sumDb: 0, n: 0 };
@@ -594,10 +895,6 @@ function maxP(from, to) {
   return m;
 }
 
-// 判定：
-// ・長すぎる音（4秒超）は判定不能（保存なし）
-// ・VADが有効なら、音声らしい区間は寝言・話し声の疑い（保存なし）、それ以外はいびき（保存）
-// ・VADが無効なら寝言の区別ができないため、候補はいびきとして保存する（summaryのvadEnabled:falseで区別できる）
 function decideCand(it) {
   const { c, endMs, durMs } = it;
   const vadOn = S.vadOk;
@@ -616,13 +913,12 @@ function decideCand(it) {
     vadMax: vadOn ? round2(inside) : null, vadNear: vadOn ? round2(near) : null,
     gainDb: S.gainDb, label: null, clipId: null
   };
-  // 寝言の疑いと判定不能は音声を保存しない
   if (type === "snore") ev.clipId = saveClip(c.startMs - PRE_MS, endMs + POST_MS, ev.id, "snore");
   S.counts[type]++;
   DB.put("events", ev).catch(console.error);
 }
 
-/* ===== 環境音の変化（判定から30秒後に音声を切り出す） ===== */
+/* ===== 環境音の変化 ===== */
 function tickPending(now) {
   while (S.pendingCands.length && S.pendingCands[0].due <= now) decideCand(S.pendingCands.shift());
   while (S.pendingEnv.length && S.pendingEnv[0].due <= now) {
@@ -632,8 +928,7 @@ function tickPending(now) {
   }
 }
 
-// 音声の切り出し（調整前の生音。ゲイン値はメタデータとして別に保存）
-// fromMs / toMs は記録開始からの時間（ミリ秒）。clip.startMs がそのまま clips.json の startSec になる
+// fromMs / toMs は記録開始からの時間（ミリ秒）。clips.json の startSec はここから作る
 function saveClip(fromMs, toMs, eventId, kind) {
   const a = Math.round(fromMs / 1000 * SR), b = Math.round(toMs / 1000 * SR);
   const actualA = Math.max(a, 0, S.ring.total - S.ring.len);
@@ -663,7 +958,6 @@ function finishSecond(b) {
   });
   if (!S.calibrated) return;
 
-  // 環境音の変化：10秒続けて基準より大きく、音声でない状態
   const envCond = qLv > S.base + ENV_DB && mP < VAD_TH && !S.cand;
   S.envRun = envCond ? S.envRun + 1 : 0;
   if (S.envRun >= ENV_RUN_SEC && S.nowMs - S.lastEnvMs > ENV_COOLDOWN * 1000) {
@@ -686,7 +980,6 @@ function finishSecond(b) {
     }
   }
 
-  // 基準値の更新（音の少ない秒だけを使う）
   if (!envCond && mP < VAD_TH && qLv < S.base + ENV_DB) {
     S.pool.push(qLv);
     if (S.pool.length > POOL_MAX) S.pool.shift();
@@ -712,7 +1005,7 @@ async function flushSecs() {
   }
 }
 
-/* ===== 体動（重力成分を除去）。待機中も値を更新する ===== */
+/* ===== 体動（重力成分を除去） ===== */
 function onMotion(e) {
   const a = e.accelerationIncludingGravity;
   if (!a || a.x == null) return;
@@ -735,6 +1028,7 @@ function releaseWake() {
 
 async function startRec() {
   if (S.running || !S.ctx) return;
+  if (!S.patient) { showError("患者情報がありません。最初からQRを読み取ってください。"); showPage("start"); return; }
   if (S.ctx.state !== "running") await S.ctx.resume().catch(() => {});
   S.epoch++;
   S.sid = uid();
@@ -748,7 +1042,8 @@ async function startRec() {
   S.vadState = S.vad ? new ort.Tensor("float32", new Float32Array(2 * 128), [2, 1, 128]) : null;
   S.sess = {
     id: S.sid, startedAt: Date.now(), endedAt: null, gainDb: S.gainDb, vadOk: S.vadOk,
-    base: null, counts: newCounts(), app: APP, ua: navigator.userAgent, micMode: S.micMode
+    base: null, counts: newCounts(), app: APP, ua: navigator.userAgent, micMode: S.micMode,
+    patient: { ...S.patient }
   };
   await DB.put("sessions", S.sess);
   S.running = true;
@@ -778,7 +1073,7 @@ async function stopRec() {
   updateUI();
 }
 
-/* ===== 画面更新（待機中も含めて常時動かす） ===== */
+/* ===== 画面更新 ===== */
 function startUiLoop() {
   if (S.uiTimer) return;
   S.uiTimer = setInterval(updateUI, UI_MS);
@@ -811,7 +1106,6 @@ function updateUI() {
   $("s-time").textContent = fmtTime(S.nowMs);
 }
 
-// 直近 LIVE_N 点の折れ線（値がないところは線を切る）
 function drawSpark(id, arr, min, max, color) {
   const box = $(id);
   if (!box) return;
@@ -826,7 +1120,7 @@ function drawSpark(id, arr, min, max, color) {
     pts.push(x.toFixed(1) + "," + y.toFixed(1));
   });
   box.innerHTML = '<svg viewBox="0 0 ' + W + " " + H + '" xmlns="http://www.w3.org/2000/svg">' +
-    '<rect x="0" y="0" width="' + W + '" height="' + H + '" fill="none" stroke="#2f3b48"/>' +
+    '<rect x="0" y="0" width="' + W + '" height="' + H + '" fill="none" stroke="#2a3643"/>' +
     '<polyline points="' + pts.join(" ") + '" fill="none" stroke="' + color + '" stroke-width="1.5"/>' +
     '<text x="4" y="12" font-size="10" fill="#aebbc9">' + max + "</text>" +
     '<text x="4" y="' + (H - 3) + '" font-size="10" fill="#aebbc9">' + min + "</text>" +
@@ -836,22 +1130,20 @@ function drawSpark(id, arr, min, max, color) {
 function setButtons() {
   $("mic-btn").disabled = !!S.ctx;
   $("mic-btn").textContent = S.ctx ? "マイク許可済み" : "マイクを許可";
-  $("start-btn").disabled = S.running || !S.ctx;
+  $("start-btn").disabled = S.running || !S.ctx || !S.patient;
   $("stop-btn").disabled = !S.running;
   $("btn-enter-black").disabled = !S.running;
   $("gain").disabled = S.running;
   $("rec-badge").textContent = S.running ? "記録中" : "待機中";
   $("rec-badge").className = S.running ? "tag rec" : "tag";
+  renderPatientCard();
 }
 
-/* ===== 黒画面（完全黒色化） ===== */
-// 黒画面の表示中だけ html・body を黒にし、スクロールを止める（終了時に元へ戻す）
+/* ===== 黒画面 ===== */
 function setRootBlack(on) {
   const h = document.documentElement, b = document.body;
   if (on) {
-    S.savedStyle = {
-      h: h.getAttribute("style"), b: b.getAttribute("style")
-    };
+    S.savedStyle = { h: h.getAttribute("style"), b: b.getAttribute("style") };
     h.style.setProperty("background-color", "#000000", "important");
     b.style.setProperty("background-color", "#000000", "important");
     h.style.setProperty("overflow", "hidden");
@@ -865,11 +1157,10 @@ function setRootBlack(on) {
   }
 }
 
-// 全画面表示の要求（ボタンを押した操作の中で呼ぶ必要がある）
 function requestFs() {
   const el = document.documentElement;
   const req = el.requestFullscreen || el.webkitRequestFullscreen;
-  if (!req) return; // iPhoneのSafariは非対応のため、黒背景のみになる
+  if (!req) return;
   try {
     const r = req.call(el);
     if (r && r.catch) r.catch(() => {});
@@ -914,11 +1205,6 @@ function exitBlack() {
 }
 
 /* ===== 履歴・詳細 ===== */
-function showPage(name) {
-  ["record", "history", "detail"].forEach((n) => { $("page-" + n).hidden = n !== name; });
-  window.scrollTo(0, 0);
-}
-
 async function renderHistory() {
   const list = $("session-list");
   list.innerHTML = "";
@@ -929,8 +1215,9 @@ async function renderHistory() {
     b.className = "listitem sub";
     const c = s.counts || {};
     const dur = s.endedAt ? fmtTime(s.endedAt - s.startedAt) : "記録中または中断";
+    const who = s.patient && s.patient.name ? s.patient.name + "・" : "";
     b.innerHTML = "<b>" + esc(fmtDate(s.startedAt)) + "</b>" +
-      '<span class="muted">記録 ' + dur + "／いびき " + (c.snore || 0) + "・寝言の疑い " + (c.speech || 0) + "・環境音 " + (c.env || 0) + "</span>";
+      '<span class="muted">' + esc(who) + "記録 " + dur + "／いびき " + (c.snore || 0) + "・寝言の疑い " + (c.speech || 0) + "・環境音 " + (c.env || 0) + "</span>";
     b.onclick = () => openDetail(s.id).catch((err) => showError(err.message));
     list.appendChild(b);
   }
@@ -954,9 +1241,12 @@ async function openDetail(sid) {
 
 function renderSummary(sess, secs) {
   const c = sess.counts || {};
+  const p = sess.patient || {};
   const motions = secs.filter((s) => s.motion != null).map((s) => s.motion);
   const last = secs.length ? secs[secs.length - 1].sec : 0;
   $("d-summary").innerHTML =
+    '<div class="kv"><span>患者名</span><b>' + esc(p.name || "-") + "</b></div>" +
+    '<div class="kv"><span>カルテNo</span><b>' + esc(p.chartNo || "-") + "</b></div>" +
     '<div class="kv"><span>開始</span><b>' + esc(fmtDate(sess.startedAt)) + "</b></div>" +
     '<div class="kv"><span>記録時間</span><b>' + fmtTime(last * 1000) + "</b></div>" +
     '<div class="kv"><span>基準値（生音）</span><b>' + (sess.base == null ? "-" : round1(sess.base) + " dB") + "</b></div>" +
@@ -1004,7 +1294,7 @@ function drawChart(sess, secs, evs) {
     '<line x1="' + PL + '" x2="' + (W - PR) + '" y1="' + Y(sess.base).toFixed(1) + '" y2="' + Y(sess.base).toFixed(1) + '" stroke="#84b9cf" stroke-dasharray="4 3"/>';
 
   box.innerHTML = '<svg viewBox="0 0 ' + W + " " + H + '" xmlns="http://www.w3.org/2000/svg">' +
-    '<rect x="' + PL + '" y="' + PT + '" width="' + (W - PL - PR) + '" height="' + (H - PT - PB) + '" fill="none" stroke="#2f3b48"/>' +
+    '<rect x="' + PL + '" y="' + PT + '" width="' + (W - PL - PR) + '" height="' + (H - PT - PB) + '" fill="none" stroke="#2a3643"/>' +
     baseLine + marks +
     '<polyline points="' + pts + '" fill="none" stroke="#84b9cf" stroke-width="1.2"/>' +
     '<polyline points="' + motPts + '" fill="none" stroke="#ffffff" stroke-width="1" opacity=".7"/>' +
@@ -1121,9 +1411,9 @@ function makeZip(files) {
   return new Blob([...parts, ...cd, e], { type: "application/zip" });
 }
 
-// ZIPの中身（④が読む形式）
-// ・session.json：session.timeSeriesLogs に1秒ごとのデータ（sec・db・motionG）
-// ・clips.json：clips に音声ファイルの一覧（audioFile・startSec＝記録開始からの秒数）
+// ZIPの中身
+// ・session.json：patient（患者情報）と session.timeSeriesLogs（1秒ごとのデータ）
+// ・clips.json：音声ファイルの一覧（startSec＝記録開始からの秒数）
 // ・summary.json / seconds.csv / events.csv / README.txt / clips/*.wav：人が確認する用
 async function shareSession(sid) {
   if (!sid) return;
@@ -1138,14 +1428,19 @@ async function shareSession(sid) {
   const files = [];
   const recordedSec = secs.length ? secs[secs.length - 1].sec : 0;
   const clipFile = (c) => "clips/" + c.id + ".wav";
+  const patient = {
+    clinic: (sess.patient && sess.patient.clinic) || "",
+    chartNo: (sess.patient && sess.patient.chartNo) || "",
+    name: (sess.patient && sess.patient.name) || "",
+    serialNumber: (sess.patient && sess.patient.serialNumber) || "",
+    logShareEmail: (sess.patient && sess.patient.logShareEmail) || "",
+  };
 
-  // 音声ファイル
   for (const c of clips) {
     const name = clipFile(c);
     files.push({ name, nameBytes: enc.encode(name), data: wavBytes(c.data, c.sr) });
   }
 
-  // 検知区間（人が読む用）
   const evOut = evs.map((e) => {
     const clip = e.clipId ? clipById.get(e.clipId) : null;
     return {
@@ -1161,10 +1456,10 @@ async function shareSession(sid) {
     };
   });
 
-  // session.json（④が読む本体）
   const session = {
     exporter: APP,
     disclaimer: DISCLAIMER,
+    patient,
     session: {
       id: sess.id,
       startedAt: isoOf(sess.startedAt),
@@ -1187,27 +1482,29 @@ async function shareSession(sid) {
     }
   };
 
-  // clips.json（④が読む音声の位置）
-  const clipIndex = clips.map((c) => {
-    const ev = c.eventId ? evById.get(c.eventId) : null;
-    return {
-      id: c.id,
-      eventId: c.eventId,
-      audioFile: clipFile(c),
-      category: c.kind,
-      type: ev ? ev.type : c.kind,
-      label: ev ? ev.label : null,
-      startSec: round2(c.startMs / 1000),
-      durationSec: round2(c.data.length / c.sr),
-      sampleRate: c.sr,
-      gainDb: c.gainDb,
-      dataIsSource: true
-    };
-  });
-  const clipsJson = { exporter: APP, clips: clipIndex };
+  const clipsJson = {
+    exporter: APP,
+    patient,
+    clips: clips.map((c) => {
+      const ev = c.eventId ? evById.get(c.eventId) : null;
+      return {
+        id: c.id,
+        eventId: c.eventId,
+        audioFile: clipFile(c),
+        category: c.kind,
+        type: ev ? ev.type : c.kind,
+        label: ev ? ev.label : null,
+        startSec: round2(c.startMs / 1000),
+        durationSec: round2(c.data.length / c.sr),
+        sampleRate: c.sr,
+        gainDb: c.gainDb,
+        dataIsSource: true
+      };
+    })
+  };
 
   const summary = {
-    app: APP, disclaimer: DISCLAIMER, sessionId: sess.id,
+    app: APP, disclaimer: DISCLAIMER, sessionId: sess.id, patient,
     startedAt: isoOf(sess.startedAt), endedAt: sess.endedAt ? isoOf(sess.endedAt) : null,
     recordedSec,
     vadEnabled: sess.vadOk, micMode: sess.micMode || "", baselineDbApplied: sess.base, gainDb: sess.gainDb,
@@ -1222,7 +1519,7 @@ async function shareSession(sid) {
   const csvEvs = "id,type,label,startTime,durationSec,peakSourceDb,peakAppliedDb,meanSourceDb,vadMax,vadNear,gainDb,clip\n" +
     evOut.map((e) => [e.id, e.type, e.label ?? "", e.startTime, e.durationSec, e.peakSourceDb ?? "", e.peakAppliedDb ?? "", e.meanSourceDb ?? "", e.vadMax ?? "", e.vadNear ?? "", e.gainDb, e.clip ?? ""].join(",")).join("\n");
   const readme = DISCLAIMER + "\n\n" +
-    "- session.json: 記録の概要と1秒ごとのデータ（session.timeSeriesLogs）\n" +
+    "- session.json: 患者情報（patient）と1秒ごとのデータ（session.timeSeriesLogs）\n" +
     "- clips.json: 音声ファイルの一覧（startSec＝記録開始からの秒数）\n" +
     "- summary.json: 記録の概要と検知区間\n" +
     "- seconds.csv: 1秒ごとの音圧（dbApplied=ゲイン適用値、dbSource=調整前の生音）、音声確率、体動（motionMs2=m/s²、motionG=G）\n" +
@@ -1239,7 +1536,7 @@ async function shareSession(sid) {
   );
 
   const blob = makeZip(files);
-  const fname = "somnolog_" + sess.id.slice(0, 8) + "_" + dateKey(new Date(sess.startedAt)) + ".zip";
+  const fname = zipName(sess);
   const file = new File([blob], fname, { type: "application/zip" });
   if (navigator.canShare && navigator.canShare({ files: [file] })) {
     try { await navigator.share({ files: [file], title: fname }); return; }
@@ -1264,7 +1561,46 @@ async function deleteEnvClips() {
 }
 
 /* ===== ボタン・入力の接続 ===== */
-// 重要：AudioContextの作成とマイク要求を、タップの直後（同じ操作の中）で行う
+// 1-1
+$("cam-btn").onclick = () => startCamera();
+$("cam-stop").onclick = () => stopCamera();
+$("qr-file-btn").onclick = () => $("qr-file").click();
+$("qr-file").addEventListener("change", (e) => {
+  readQrFile(e.target.files && e.target.files[0]).catch((err) => showScanMsg(err.message));
+  e.target.value = "";
+});
+$("usage-btn").onclick = () => { $("usage-box").hidden = !$("usage-box").hidden; };
+$("start-back").onclick = () => { stopCamera(); showScanMsg(""); showPage("record"); };
+
+// 1-2
+$("cf-ok").onclick = async () => {
+  const p = S_PATIENT_PENDING.value;
+  if (!p) { showPage("start"); return; }
+  try {
+    await savePatient(p);
+    S_PATIENT_PENDING.value = null;
+    renderPatientCard();
+    setButtons();
+    showPage("record");
+  } catch (e) {
+    showError("患者情報を保存できませんでした: " + e.message);
+  }
+};
+$("cf-ng").onclick = () => {
+  S_PATIENT_PENDING.value = null;
+  showScanMsg("");
+  showPage("start");
+};
+
+// 記録画面
+$("pt-change").onclick = () => {
+  if (S.running) return;
+  stopCamera();
+  showScanMsg("");
+  showPage("start");
+  $("start-back").hidden = !S.patient;
+};
+
 $("mic-btn").onclick = () => {
   if (S.ctx) return;
   $("mic-btn").disabled = true;
@@ -1316,13 +1652,15 @@ $("motion-btn").onclick = async () => {
 
 $("start-btn").onclick = () => startRec().catch((e) => { showError(e.message); setButtons(); });
 $("stop-btn").onclick = () => stopRec().catch((e) => showError(e.message));
-// 全画面要求はタップの操作の中で行う必要があるため、ここでは同期的に呼ぶ
 $("btn-enter-black").onclick = enterBlack;
 $("black-screen").onclick = exitBlack;
 $("history-btn").onclick = async () => { await renderHistory(); showPage("history"); };
 $("history-back").onclick = () => showPage("record");
 $("detail-back").onclick = () => showPage("history");
 $("d-share").onclick = () => shareSession(S.detailSid).catch((e) => showError(e.message));
+
+// 別のQRをハッシュで開いた時も確認画面へ
+window.addEventListener("hashchange", () => { checkHashOnLoad(); });
 
 document.addEventListener("visibilitychange", async () => {
   if (document.visibilityState !== "visible") return;
@@ -1333,15 +1671,36 @@ document.addEventListener("visibilitychange", async () => {
 });
 
 /* ===== 起動 ===== */
-$("ver-text").textContent = "V" + APP_VERSION;
-$("boot").textContent = "スクリプト読込OK（V" + APP_VERSION + "・" + new Date().toLocaleTimeString("ja-JP") + "）";
-if (!window.isSecureContext) {
-  showMicMsg(micErrorMessage({ name: "InsecureContext", stage: "接続の確認" }));
+async function init() {
+  $("ver-text").textContent = "V" + APP_VERSION;
+  $("boot").textContent = "スクリプト読込OK（V" + APP_VERSION + "・" + new Date().toLocaleTimeString("ja-JP") + "）";
+
+  // 任意：jsQRが同じフォルダにあれば、アプリ内の読み取りに使う（無くても動く）
+  const jq = document.createElement("script");
+  jq.src = "./jsqr.min.js";
+  jq.onerror = () => {};
+  document.head.appendChild(jq);
+
+  if (!window.isSecureContext) {
+    showMicMsg(micErrorMessage({ name: "InsecureContext", stage: "接続の確認" }));
+  }
+
+  await loadPatient();
+  startUiLoop();
+  setButtons();
+  updateUI();
+  loadVad().then(() => setButtons());
+
+  if (checkHashOnLoad()) return;          // 標準カメラで開いた場合は1-2へ
+  if (S.patient) {
+    showPage("record");
+  } else {
+    $("start-back").hidden = true;
+    showPage("start");
+  }
 }
-startUiLoop();
-setButtons();
-updateUI();
-loadVad().then(() => setButtons());
+
+init().catch((e) => showError(e.message));
 </script>
 </body>
 </html>
