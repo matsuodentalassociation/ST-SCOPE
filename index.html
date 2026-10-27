@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
 <meta name="theme-color" content="#000000">
 <meta http-equiv="Cache-Control" content="no-cache">
-<title>SomnoLoggerV8</title>
+<title>SomnoLoggerV9</title>
 <script src="./ort.min.js"></script>
 <style>
 :root{color-scheme:dark}
@@ -58,7 +58,7 @@ audio{width:100%}
 <!-- 記録画面 -->
 <main id="page-record" class="page">
   <header class="head">
-    <h1>SomnoLoggerV8</h1>
+    <h1>SomnoLoggerV9</h1>
     <span id="rec-badge" class="tag">待機中</span>
   </header>
   <p id="boot" class="boot">スクリプト読込中…</p>
@@ -67,7 +67,7 @@ audio{width:100%}
   <div id="mic-msg" class="err" hidden></div>
 
   <div id="vad-warn" class="warn" hidden>
-    寝言除外（VAD）が無効です。onnxruntime（ort.min.js）またはモデル（silero_vad.onnx）が読み込めていません。このため、いびき候補は寝言の区別なしで保存されます。寝言が混ざる可能性があります。リポジトリの index.html と同じ場所に ort.min.js・ort-wasm-simd.wasm・ort-wasm.wasm・silero_vad.onnx を置き、再読み込みしてください。マイクの許可には影響しません。
+    寝言除外（VAD）が無効です。onnxruntime（ort.min.js）またはモデル（silero_vad.onnx）が読み込めていません。このため、いびき候補は寝言の区別なしで保存されます。寝言が混ざる可能性があります。このHTMLと同じ場所に ort.min.js・ort-wasm-simd.wasm・ort-wasm.wasm・silero_vad.onnx を置き、再読み込みしてください。マイクの許可には影響しません。
   </div>
 
   <section class="card">
@@ -121,9 +121,8 @@ audio{width:100%}
   <button id="history-btn" class="sub">履歴を見る</button>
 
   <section class="card">
-    <div class="kv"><span>バージョン</span><b id="ver-text">V8</b></div>
-    <p id="upd-msg" class="muted">更新確認は未実行です。</p>
-    <button id="update-btn" class="sub">今すぐ更新を確認</button>
+    <div class="kv"><span>バージョン</span><b id="ver-text">V9</b></div>
+    <p class="muted">この版は自動で書き換わりません。新しい版を使うときは、新しいファイルを開いてください。</p>
   </section>
 </main>
 
@@ -166,15 +165,14 @@ audio{width:100%}
 <script>
 "use strict";
 
-/* ===== バージョンと更新元（GitHub） ===== */
-// 修正のたびに数字を1つ増やす。端末は、GitHubの版の数字がこれより大きい時だけ自動で更新する。
-const APP_VERSION = 8;
+/* ===== バージョン ===== */
+// 修正のたびに数字を1つ増やす。自動で書き換えは行わない（手動で新しいファイルを使う）
+const APP_VERSION = 9;
 const APP = "SomnoLoggerV" + APP_VERSION;
-const GH = { owner: "matsuodentalassociation", repo: "ST-SCOPE", branch: "main", file: "index.html" };
-const UPDATE_MIN_MS = 10 * 60 * 1000;
 
 /* ===== 設定 ===== */
 const SR = 16000, FRAME = 512, RING_SEC = 62;
+const G_ACC = 9.80665; // 重力加速度（m/s² → G 換算用）
 const VAD_CTX = 64, VAD_URL = "./silero_vad.onnx?v=" + APP_VERSION, VAD_TH = 0.3;
 const LOUD_DB = 6, SEG_MIN = 0.5, SEG_MAX = 4, QUIET_FRAMES = 5;
 const PRE_MS = 3000, POST_MS = 1000;
@@ -195,6 +193,7 @@ const uid = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now() + "-" + 
 const toDb = (a) => (a > 1e-5 ? Math.max(-100, 20 * Math.log10(a)) : -100);
 const round1 = (v) => Math.round(v * 10) / 10;
 const round2 = (v) => Math.round(v * 100) / 100;
+const round3 = (v) => Math.round(v * 1000) / 1000;
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 const mean = (a) => (a.length ? a.reduce((s, v) => s + v, 0) / a.length : 0);
 const lowerMean = (arr) => {
@@ -295,68 +294,6 @@ const S = {
   cand: null, pHist: [], pendingCands: [], pendingEnv: [],
   bucket: null, secBuf: [], envRun: 0, lastEnvMs: -1e9,
 };
-
-/* ===== 動的フェッチ（GitHubの最新コミットから index.html を取得し、新しい版なら適用） ===== */
-let lastUpdateCheck = 0;
-let checking = false;
-
-function setUpdMsg(text) { $("upd-msg").textContent = text; }
-
-async function checkUpdate(force) {
-  if (checking) return;
-  if (S.running) { setUpdMsg("記録中のため、更新確認は停止後に行います。"); return; }
-  if (!navigator.onLine) { setUpdMsg("オフラインのため、更新を確認できません。"); return; }
-  const now = Date.now();
-  if (!force && now - lastUpdateCheck < UPDATE_MIN_MS) return;
-  lastUpdateCheck = now;
-  checking = true;
-  setUpdMsg("更新を確認しています…");
-  try {
-    // 1. 最新コミットのSHAを取得（キャッシュを避けるため時刻を付ける）
-    const apiUrl = "https://api.github.com/repos/" + GH.owner + "/" + GH.repo +
-      "/commits?sha=" + GH.branch + "&path=" + GH.file + "&per_page=1&_=" + now;
-    const r1 = await fetch(apiUrl, { cache: "no-store", headers: { Accept: "application/vnd.github+json" } });
-    if (!r1.ok) throw new Error("GitHub API " + r1.status);
-    const commits = await r1.json();
-    const sha = commits && commits[0] && commits[0].sha;
-    if (!sha) throw new Error("コミットを取得できませんでした");
-
-    // 2. そのコミットの index.html を取得（SHA指定なので内容は固定される）
-    const rawUrl = "https://raw.githubusercontent.com/" + GH.owner + "/" + GH.repo + "/" + sha + "/" + GH.file + "?_=" + now;
-    const r2 = await fetch(rawUrl, { cache: "no-store" });
-    if (!r2.ok) throw new Error("raw " + r2.status);
-    const text = await r2.text();
-
-    // 3. 中身を確認（SomnoLoggerのHTMLか、版の数字があるか）
-    const m = text.match(/const APP_VERSION = (\d+);/);
-    if (!m || text.indexOf("<!DOCTYPE html>") < 0) throw new Error("取得したファイルを確認できませんでした");
-    const remote = Number(m[1]);
-
-    // 4. 新しい版だけ適用（同じか古い版なら何もしない＝ループしない）
-    if (remote > APP_VERSION) {
-      setUpdMsg("V" + remote + " が見つかりました。更新します…");
-      applyUpdate(text, remote);
-      return;
-    }
-    setUpdMsg("最新版です（V" + APP_VERSION + "・確認 " + new Date().toLocaleTimeString("ja-JP") + "）");
-  } catch (e) {
-    console.warn(e);
-    setUpdMsg("更新を確認できませんでした: " + e.message + "（現在の版で動作を続けます）");
-  } finally {
-    checking = false;
-  }
-}
-
-function applyUpdate(text, remote) {
-  try {
-    sessionStorage.setItem("somno_updated_to", String(remote));
-    document.open();
-    document.write(text);
-    document.close();
-  } catch (e) {
-    showError("更新の適用に失敗しました。ページを再読み込みしてください。");
-  }
-}
 
 /* ===== 音声取得（16kHzへ変換して512サンプルずつ onAudio に渡す） ===== */
 const WORKLET = `
@@ -696,6 +633,7 @@ function tickPending(now) {
 }
 
 // 音声の切り出し（調整前の生音。ゲイン値はメタデータとして別に保存）
+// fromMs / toMs は記録開始からの時間（ミリ秒）。clip.startMs がそのまま clips.json の startSec になる
 function saveClip(fromMs, toMs, eventId, kind) {
   const a = Math.round(fromMs / 1000 * SR), b = Math.round(toMs / 1000 * SR);
   const actualA = Math.max(a, 0, S.ring.total - S.ring.len);
@@ -902,7 +840,6 @@ function setButtons() {
   $("stop-btn").disabled = !S.running;
   $("btn-enter-black").disabled = !S.running;
   $("gain").disabled = S.running;
-  $("update-btn").disabled = S.running;
   $("rec-badge").textContent = S.running ? "記録中" : "待機中";
   $("rec-badge").className = S.running ? "tag rec" : "tag";
 }
@@ -1184,53 +1121,118 @@ function makeZip(files) {
   return new Blob([...parts, ...cd, e], { type: "application/zip" });
 }
 
+// ZIPの中身（④が読む形式）
+// ・session.json：session.timeSeriesLogs に1秒ごとのデータ（sec・db・motionG）
+// ・clips.json：clips に音声ファイルの一覧（audioFile・startSec＝記録開始からの秒数）
+// ・summary.json / seconds.csv / events.csv / README.txt / clips/*.wav：人が確認する用
 async function shareSession(sid) {
   if (!sid) return;
   const sess = await DB.get("sessions", sid);
   if (!sess) return;
   const secs = (await DB.byIndex("secs", "sid", sid)).sort((a, b) => a.sec - b.sec);
   const evs = (await DB.byIndex("events", "sid", sid)).sort((a, b) => a.startMs - b.startMs);
-  const clips = await DB.byIndex("clips", "sid", sid);
+  const clips = (await DB.byIndex("clips", "sid", sid)).sort((a, b) => a.startMs - b.startMs);
   const clipById = new Map(clips.map((c) => [c.id, c]));
+  const evById = new Map(evs.map((e) => [e.id, e]));
   const enc = new TextEncoder();
   const files = [];
+  const recordedSec = secs.length ? secs[secs.length - 1].sec : 0;
+  const clipFile = (c) => "clips/" + c.id + ".wav";
 
+  // 音声ファイル
+  for (const c of clips) {
+    const name = clipFile(c);
+    files.push({ name, nameBytes: enc.encode(name), data: wavBytes(c.data, c.sr) });
+  }
+
+  // 検知区間（人が読む用）
   const evOut = evs.map((e) => {
     const clip = e.clipId ? clipById.get(e.clipId) : null;
-    const clipPath = clip ? "clips/" + e.id + ".wav" : null;
-    if (clip) files.push({ name: clipPath, nameBytes: enc.encode(clipPath), data: wavBytes(clip.data, clip.sr) });
     return {
       id: e.id, type: e.type, label: e.label,
+      startSec: round1(e.startMs / 1000),
       startTime: isoOf(sess.startedAt + e.startMs),
       durationSec: round1(e.durMs / 1000),
       peakSourceDb: e.peakSourceDb, peakAppliedDb: e.peakAppliedDb,
       meanSourceDb: e.meanSourceDb, meanAppliedDb: e.meanAppliedDb,
       vadMax: e.vadMax, vadNear: e.vadNear, gainDb: e.gainDb,
-      clip: clipPath,
+      clip: clip ? clipFile(clip) : null,
       clipStartTime: clip ? isoOf(sess.startedAt + clip.startMs) : null
     };
   });
 
+  // session.json（④が読む本体）
+  const session = {
+    exporter: APP,
+    disclaimer: DISCLAIMER,
+    session: {
+      id: sess.id,
+      startedAt: isoOf(sess.startedAt),
+      endedAt: sess.endedAt ? isoOf(sess.endedAt) : null,
+      durationSec: recordedSec,
+      gainDb: sess.gainDb,
+      vadEnabled: sess.vadOk,
+      micMode: sess.micMode || "",
+      baselineDbApplied: sess.base,
+      counts: sess.counts,
+      timeSeriesLogs: secs.map((s) => ({
+        sec: s.sec,
+        db: s.dbApplied,
+        dbSource: s.dbSource,
+        peakDb: s.peakApplied,
+        vadMean: s.vadMean,
+        motionMs2: s.motion,
+        motionG: s.motion == null ? null : round3(s.motion / G_ACC)
+      }))
+    }
+  };
+
+  // clips.json（④が読む音声の位置）
+  const clipIndex = clips.map((c) => {
+    const ev = c.eventId ? evById.get(c.eventId) : null;
+    return {
+      id: c.id,
+      eventId: c.eventId,
+      audioFile: clipFile(c),
+      category: c.kind,
+      type: ev ? ev.type : c.kind,
+      label: ev ? ev.label : null,
+      startSec: round2(c.startMs / 1000),
+      durationSec: round2(c.data.length / c.sr),
+      sampleRate: c.sr,
+      gainDb: c.gainDb,
+      dataIsSource: true
+    };
+  });
+  const clipsJson = { exporter: APP, clips: clipIndex };
+
   const summary = {
     app: APP, disclaimer: DISCLAIMER, sessionId: sess.id,
     startedAt: isoOf(sess.startedAt), endedAt: sess.endedAt ? isoOf(sess.endedAt) : null,
-    recordedSec: secs.length ? secs[secs.length - 1].sec : 0,
+    recordedSec,
     vadEnabled: sess.vadOk, micMode: sess.micMode || "", baselineDbApplied: sess.base, gainDb: sess.gainDb,
     counts: sess.counts, events: evOut
   };
 
-  const csvSecs = "sec,time,dbApplied,dbSource,peakApplied,vadMean,motion\n" +
-    secs.map((s) => [s.sec, isoOf(sess.startedAt + s.sec * 1000), s.dbApplied, s.dbSource, s.peakApplied, s.vadMean, s.motion ?? ""].join(",")).join("\n");
+  const csvSecs = "sec,time,dbApplied,dbSource,peakApplied,vadMean,motionMs2,motionG\n" +
+    secs.map((s) => [
+      s.sec, isoOf(sess.startedAt + s.sec * 1000), s.dbApplied, s.dbSource, s.peakApplied, s.vadMean,
+      s.motion ?? "", s.motion == null ? "" : round3(s.motion / G_ACC)
+    ].join(",")).join("\n");
   const csvEvs = "id,type,label,startTime,durationSec,peakSourceDb,peakAppliedDb,meanSourceDb,vadMax,vadNear,gainDb,clip\n" +
     evOut.map((e) => [e.id, e.type, e.label ?? "", e.startTime, e.durationSec, e.peakSourceDb ?? "", e.peakAppliedDb ?? "", e.meanSourceDb ?? "", e.vadMax ?? "", e.vadNear ?? "", e.gainDb, e.clip ?? ""].join(",")).join("\n");
   const readme = DISCLAIMER + "\n\n" +
+    "- session.json: 記録の概要と1秒ごとのデータ（session.timeSeriesLogs）\n" +
+    "- clips.json: 音声ファイルの一覧（startSec＝記録開始からの秒数）\n" +
     "- summary.json: 記録の概要と検知区間\n" +
-    "- seconds.csv: 1秒ごとの音圧（dbApplied=ゲイン適用値、dbSource=調整前の生音）、音声確率、体動\n" +
+    "- seconds.csv: 1秒ごとの音圧（dbApplied=ゲイン適用値、dbSource=調整前の生音）、音声確率、体動（motionMs2=m/s²、motionG=G）\n" +
     "- events.csv: 検知区間の一覧\n" +
-    "- clips/*.wav: 保存された音声（調整前の生音。ゲイン値はevents.csvのgainDbを参照）\n";
+    "- clips/*.wav: 保存された音声（調整前の生音。ゲイン値はclips.jsonのgainDbを参照）\n";
 
   files.unshift(
     { name: "README.txt", nameBytes: enc.encode("README.txt"), data: enc.encode(readme) },
+    { name: "session.json", nameBytes: enc.encode("session.json"), data: enc.encode(JSON.stringify(session)) },
+    { name: "clips.json", nameBytes: enc.encode("clips.json"), data: enc.encode(JSON.stringify(clipsJson, null, 2)) },
     { name: "summary.json", nameBytes: enc.encode("summary.json"), data: enc.encode(JSON.stringify(summary, null, 2)) },
     { name: "seconds.csv", nameBytes: enc.encode("seconds.csv"), data: enc.encode(csvSecs) },
     { name: "events.csv", nameBytes: enc.encode("events.csv"), data: enc.encode(csvEvs) }
@@ -1321,26 +1323,18 @@ $("history-btn").onclick = async () => { await renderHistory(); showPage("histor
 $("history-back").onclick = () => showPage("record");
 $("detail-back").onclick = () => showPage("history");
 $("d-share").onclick = () => shareSession(S.detailSid).catch((e) => showError(e.message));
-$("update-btn").onclick = () => checkUpdate(true);
 
 document.addEventListener("visibilitychange", async () => {
   if (document.visibilityState !== "visible") return;
   if (S.running) {
     if (!S.wake) await acquireWake();
     if (S.ctx && S.ctx.state !== "running") S.ctx.resume().catch(() => {});
-  } else {
-    checkUpdate(false);
   }
 });
 
 /* ===== 起動 ===== */
 $("ver-text").textContent = "V" + APP_VERSION;
 $("boot").textContent = "スクリプト読込OK（V" + APP_VERSION + "・" + new Date().toLocaleTimeString("ja-JP") + "）";
-const updatedTo = sessionStorage.getItem("somno_updated_to");
-if (updatedTo) {
-  sessionStorage.removeItem("somno_updated_to");
-  setUpdMsg("V" + updatedTo + " に更新しました。マイクは「マイクを許可」を押し直してください。");
-}
 if (!window.isSecureContext) {
   showMicMsg(micErrorMessage({ name: "InsecureContext", stage: "接続の確認" }));
 }
@@ -1348,7 +1342,6 @@ startUiLoop();
 setButtons();
 updateUI();
 loadVad().then(() => setButtons());
-checkUpdate(false);
 </script>
 </body>
 </html>
