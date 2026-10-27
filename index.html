@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
 <meta name="theme-color" content="#000000">
 <meta http-equiv="Cache-Control" content="no-cache">
-<title>SomnoLoggerV7</title>
-<script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.17.1/dist/ort.min.js"></script>
+<title>SomnoLoggerV8</title>
+<script src="./ort.min.js"></script>
 <style>
 :root{color-scheme:dark}
 *{box-sizing:border-box}
@@ -58,7 +58,7 @@ audio{width:100%}
 <!-- 記録画面 -->
 <main id="page-record" class="page">
   <header class="head">
-    <h1>SomnoLoggerV7</h1>
+    <h1>SomnoLoggerV8</h1>
     <span id="rec-badge" class="tag">待機中</span>
   </header>
   <p id="boot" class="boot">スクリプト読込中…</p>
@@ -67,7 +67,7 @@ audio{width:100%}
   <div id="mic-msg" class="err" hidden></div>
 
   <div id="vad-warn" class="warn" hidden>
-    寝言除外のモデル（silero_vad.onnx）が見つからないため、いびき音声は保存されません（寝言の混入を防ぐためです）。リポジトリの index.html と同じ場所に置いて、再読み込みしてください。マイクの許可には影響しません。
+    寝言除外（VAD）が無効です。onnxruntime（ort.min.js）またはモデル（silero_vad.onnx）が読み込めていません。このため、いびき候補は寝言の区別なしで保存されます。寝言が混ざる可能性があります。リポジトリの index.html と同じ場所に ort.min.js・ort-wasm-simd.wasm・ort-wasm.wasm・silero_vad.onnx を置き、再読み込みしてください。マイクの許可には影響しません。
   </div>
 
   <section class="card">
@@ -121,7 +121,7 @@ audio{width:100%}
   <button id="history-btn" class="sub">履歴を見る</button>
 
   <section class="card">
-    <div class="kv"><span>バージョン</span><b id="ver-text">V7</b></div>
+    <div class="kv"><span>バージョン</span><b id="ver-text">V8</b></div>
     <p id="upd-msg" class="muted">更新確認は未実行です。</p>
     <button id="update-btn" class="sub">今すぐ更新を確認</button>
   </section>
@@ -168,7 +168,7 @@ audio{width:100%}
 
 /* ===== バージョンと更新元（GitHub） ===== */
 // 修正のたびに数字を1つ増やす。端末は、GitHubの版の数字がこれより大きい時だけ自動で更新する。
-const APP_VERSION = 7;
+const APP_VERSION = 8;
 const APP = "SomnoLoggerV" + APP_VERSION;
 const GH = { owner: "matsuodentalassociation", repo: "ST-SCOPE", branch: "main", file: "index.html" };
 const UPDATE_MIN_MS = 10 * 60 * 1000;
@@ -288,6 +288,7 @@ const S = {
   gainDb: 0, envSave: false,
   running: false, epoch: 0, sid: null, sess: null, counts: newCounts(),
   wake: null, timers: [], uiTimer: null, blackOn: false, savedStyle: null, detailSid: null,
+  blackTimer: null,
   ring: new Ring(RING_SEC), recv: 0, queue: [], busy: false, dropped: 0,
   nowMs: 0, lastLv: -100, motionNow: null, grav: null, live: [],
   calibrated: false, calibVals: [], base: null, pool: [], lastBaseSec: 0,
@@ -512,25 +513,37 @@ function onAudio(data) {
 }
 
 /* ===== Silero VAD（寝言除外の第1段） ===== */
+// 読込の段階ごとに状態を分けて表示する（ort未読込／モデル未配置／読込失敗／有効）
 async function loadVad() {
   if (typeof ort === "undefined") {
-    setVadState("読込失敗");
+    S.vad = null; S.vadOk = false;
+    setVadState("ort未読込");
     $("vad-warn").hidden = false;
     return;
   }
+  let buf;
   try {
     // キャッシュを避けて毎回取得し、バイト列からセッションを作る
     const r = await fetch(VAD_URL, { cache: "no-store" });
     if (!r.ok) throw new Error("HTTP " + r.status);
-    const buf = await r.arrayBuffer();
+    buf = await r.arrayBuffer();
+  } catch (e) {
+    console.warn(e);
+    S.vad = null; S.vadOk = false;
+    setVadState("モデル未配置");
+    $("vad-warn").hidden = false;
+    return;
+  }
+  try {
     ort.env.wasm.numThreads = 1;
+    ort.env.wasm.wasmPaths = "./";
     S.vad = await ort.InferenceSession.create(buf, { executionProviders: ["wasm"] });
     setVadState("有効");
     $("vad-warn").hidden = true;
   } catch (e) {
     console.warn(e);
     S.vad = null;
-    setVadState("未配置");
+    setVadState("読込失敗");
     $("vad-warn").hidden = false;
   }
   S.vadOk = !!S.vad;
@@ -566,7 +579,7 @@ async function pump() {
           console.error(e);
           S.vadOk = false;
           setVadState("エラー");
-          showError("VADの実行に失敗しました。寝言除外は無効になり、いびきクリップは保存されません。");
+          showError("VADの実行に失敗しました。寝言除外は無効になり、以後のいびき候補は寝言の区別なしで保存されます。");
         }
       }
       if (!S.running || f.ep !== S.epoch) break;
@@ -644,14 +657,18 @@ function maxP(from, to) {
   return m;
 }
 
+// 判定：
+// ・長すぎる音（4秒超）は判定不能（保存なし）
+// ・VADが有効なら、音声らしい区間は寝言・話し声の疑い（保存なし）、それ以外はいびき（保存）
+// ・VADが無効なら寝言の区別ができないため、候補はいびきとして保存する（summaryのvadEnabled:falseで区別できる）
 function decideCand(it) {
   const { c, endMs, durMs } = it;
-  const inside = maxP(c.startMs, endMs);
-  const near = maxP(c.startMs - 1000, endMs + 1000);
+  const vadOn = S.vadOk;
+  const inside = vadOn ? maxP(c.startMs, endMs) : 0;
+  const near = vadOn ? maxP(c.startMs - 1000, endMs + 1000) : 0;
   let type;
   if (durMs > SEG_MAX * 1000) type = "unknown";
-  else if (!S.vadOk) type = "unknown";
-  else if (inside > VAD_TH || near > VAD_TH) type = "speech";
+  else if (vadOn && (inside > VAD_TH || near > VAD_TH)) type = "speech";
   else type = "snore";
 
   const ev = {
@@ -659,7 +676,8 @@ function decideCand(it) {
     startMs: round1(c.startMs), endMs: round1(endMs), durMs: round1(durMs),
     peakSourceDb: round1(c.peakDb - S.gainDb), peakAppliedDb: round1(c.peakDb),
     meanSourceDb: round1(c.sumDb / c.n - S.gainDb), meanAppliedDb: round1(c.sumDb / c.n),
-    vadMax: round2(inside), vadNear: round2(near), gainDb: S.gainDb, label: null, clipId: null
+    vadMax: vadOn ? round2(inside) : null, vadNear: vadOn ? round2(near) : null,
+    gainDb: S.gainDb, label: null, clipId: null
   };
   // 寝言の疑いと判定不能は音声を保存しない
   if (type === "snore") ev.clipId = saveClip(c.startMs - PRE_MS, endMs + POST_MS, ev.id, "snore");
@@ -1010,7 +1028,7 @@ function renderSummary(sess, secs) {
     '<div class="kv"><span>判定不能（保存なし）</span><b>' + (c.unknown || 0) + "</b></div>" +
     '<div class="kv"><span>環境音の変化</span><b>' + (c.env || 0) + "</b></div>" +
     '<div class="kv"><span>短い音（除外）</span><b>' + (c.short || 0) + "</b></div>" +
-    '<div class="kv"><span>寝言除外（VAD）</span><b>' + (sess.vadOk ? "有効" : "無効（いびき音声は保存されません）") + "</b></div>" +
+    '<div class="kv"><span>寝言除外（VAD）</span><b>' + (sess.vadOk ? "有効" : "無効（寝言の区別なし。候補はいびきとして保存）") + "</b></div>" +
     '<div class="kv"><span>体動（平均）</span><b>' + mean(motions).toFixed(2) + "</b></div>";
 }
 
