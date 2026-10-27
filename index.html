@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
 <meta name="theme-color" content="#000000">
 <meta http-equiv="Cache-Control" content="no-cache">
-<title>SomnoLog V17</title>
+<title>SomnoLog V19</title>
 <script src="./ort.min.js"></script>
 <style>
 :root{color-scheme:dark}
@@ -65,7 +65,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 1-1 起動・QR読み取り -->
 <main id="page-start" class="page" hidden>
   <header class="head">
-    <h1>SomnoLog V17</h1>
+    <h1>SomnoLog V19</h1>
     <span class="tag">患者情報確認</span>
   </header>
   <p id="boot-start" class="boot">起動中…</p>
@@ -121,7 +121,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 記録画面 -->
 <main id="page-record" class="page" hidden>
   <header class="head">
-    <h1>SomnoLog V17</h1>
+    <h1>SomnoLog V19</h1>
     <span id="rec-badge" class="tag">待機中</span>
   </header>
   <p id="boot" class="boot">スクリプト読込中…</p>
@@ -177,14 +177,6 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
     <button id="env-del" class="sub">保存済みの環境音の音声を削除</button>
   </section>
 
-  <section class="card">
-    <div class="kv"><span>いびき（保存）</span><b id="s-count">0</b></div>
-    <div class="kv"><span>寝言・話し声の疑い（除外）</span><b id="s-speech">0</b></div>
-    <div class="kv"><span>判定不能（保存なし）</span><b id="s-unknown">0</b></div>
-    <div class="kv"><span>環境音の変化</span><b id="s-env">0</b></div>
-    <div class="kv"><span>記録時間</span><b id="s-time">0:00</b></div>
-  </section>
-
   <div class="row">
     <button id="start-btn" class="primary" disabled>記録開始</button>
     <button id="stop-btn" class="danger" disabled>停止</button>
@@ -193,7 +185,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
   <button id="history-btn" class="sub">履歴を見る</button>
 
   <section class="card">
-    <div class="kv"><span>バージョン</span><b id="ver-text">V17</b></div>
+    <div class="kv"><span>バージョン</span><b id="ver-text">V19</b></div>
     <p class="muted">この版は自動で書き換わりません。新しい版を使うときは、新しいファイルを開いてください。</p>
   </section>
 </main>
@@ -241,7 +233,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 
 /* ===== バージョン ===== */
 // 修正のたびに数字を1つ増やす。自動で書き換えは行わない（手動で新しいファイルを使う）
-const APP_VERSION = 17;
+const APP_VERSION = 19;
 const APP = "SomnoLogV" + APP_VERSION;
 
 /* ===== 設定 ===== */
@@ -255,7 +247,7 @@ const ENV_RUN_SEC = 10, ENV_DB = 6, ENV_COOLDOWN = 300, ENV_CLIP_SEC = 30;
 const FLUSH_SEC = 60, MAX_QUEUE = 40;
 const UI_MS = 250, LIVE_N = 240;
 const DB_NAME = "somnolog-v3"; // V3以降のデータを引き継ぐため名前は据え置き
-const DB_VERSION = 2;          // V10で settings を追加（V17でも変更なし）
+const DB_VERSION = 2;          // V10で settings を追加（V19でも変更なし）
 const DB_WAIT_MS = 4000;       // 保存領域の読み込みを待つ上限（これを超えたら待たずに先へ進む）
 const DISCLAIMER = "本アプリは診断を行うものではありません。医師の判断の参考資料です。";
 const LABELS = { snore: "いびき", speech: "寝言・話し声", env: "環境音", unknown: "判定不能", short: "短い音" };
@@ -952,7 +944,7 @@ function tickPending(now) {
 }
 
 // fromMs / toMs は記録開始からの時間（ミリ秒）。clips.json の startSec はここから作る
-// V13以降：音声は 4bit IMA ADPCM（WAV形式）で保存する（約1/4）
+// V13以降：音声は 4bit IMA ADPCM（WAV形式）で保存する（約1/4）。ZIPに書き出す時だけ PCM16 に戻す（V19）
 function saveClip(fromMs, toMs, eventId, kind) {
   const a = Math.round(fromMs / 1000 * SR), b = Math.round(toMs / 1000 * SR);
   const actualA = Math.max(a, 0, S.ring.total - S.ring.len);
@@ -1123,12 +1115,6 @@ function updateUI() {
   $("live-mot-text").textContent = S.motionNow == null ? "-" : S.motionNow.toFixed(2) + " m/s²";
   drawSpark("live-audio", S.live.map((x) => x.lv), -90, 0, "#84b9cf");
   drawSpark("live-motion", S.live.map((x) => x.mot), 0, 1, "#ffffff");
-
-  $("s-count").textContent = S.counts.snore;
-  $("s-speech").textContent = S.counts.speech;
-  $("s-unknown").textContent = S.counts.unknown;
-  $("s-env").textContent = S.counts.env;
-  $("s-time").textContent = fmtTime(S.nowMs);
 }
 
 function drawSpark(id, arr, min, max, color) {
@@ -1395,7 +1381,7 @@ const wavBlob = (i16, sr) => new Blob([wavBytes(i16, sr)], { type: "audio/wav" }
 
 /* ===== 4bit IMA ADPCM（V13で追加） =====
    ・1サンプル16bit → 4bit に圧縮（約1/4）
-   ・WAV形式（format 17）で保存するので、Windowsの標準再生でも聞ける
+   ・保存用の形式。ブラウザ内の再生と、ZIP書き出し時の復号に使う
    ・1ブロック256バイト（先頭4バイトは予測値と段階番号）
    ・旧版（V12以前）の音声は PCM16 のまま。clips の codec で判別する */
 const IMA_STEP = [7,8,9,10,11,12,13,14,16,17,19,21,23,25,28,31,34,37,41,45,50,55,60,66,73,80,88,97,107,118,130,143,157,173,190,209,230,253,279,307,337,371,408,449,494,544,598,658,724,796,876,963,1060,1166,1282,1411,1552,1707,1878,2066,2272,2499,2749,3024,3327,3660,4026,4428,4871,5358,5894,6484,7132,7845,8630,9493,10442,11487,12635,13899,15289,16818,18500,20350,22385,24623,27086,29794,32767];
@@ -1508,9 +1494,10 @@ function decodeImaWav(u8) {
 function clipPcm(c) {
   return c.codec === "ima-adpcm" ? decodeImaWav(c.data) : c.data;
 }
-// 保存された音声を、ZIPに入れるファイルのバイト列にする
+// 共有用（ZIP）の音声：どの端末でも再生できるよう、必ず PCM16 のWAVにする（V19）
+// ADPCMで保存された分は、ここで復号してから書き出す
 function clipBytes(c) {
-  return c.codec === "ima-adpcm" ? c.data : wavBytes(c.data, c.sr);
+  return wavBytes(clipPcm(c), c.sr);
 }
 // 音声のサンプル数
 function clipSamples(c) {
@@ -1581,7 +1568,7 @@ async function makeZip(files) {
 // ・session.json：patient（患者情報）と session.timeSeriesLogs（1秒ごとのデータ）
 // ・clips.json：音声ファイルの一覧（startSec＝記録開始からの秒数、codec＝音声の方式）
 // ・summary.json / seconds.csv / events.csv / README.txt：人が確認する用（圧縮して保存）
-// ・clips/*.wav：音声（4bit IMA ADPCM。無圧縮のまま）
+// ・clips/*.wav：音声（PCM16 WAV。無圧縮のまま）
 async function shareSession(sid) {
   if (!sid) return;
   const sess = await DB.get("sessions", sid);
@@ -1659,7 +1646,7 @@ async function shareSession(sid) {
         id: c.id,
         eventId: c.eventId,
         audioFile: clipFile(c),
-        codec: c.codec || "pcm16",
+        codec: "pcm16",
         category: c.kind,
         type: ev ? ev.type : c.kind,
         label: ev ? ev.label : null,
@@ -1693,7 +1680,7 @@ async function shareSession(sid) {
     "- summary.json: 記録の概要と検知区間\n" +
     "- seconds.csv: 1秒ごとの音圧（dbApplied=ゲイン適用値、dbSource=調整前の生音）、音声確率、体動（motionMs2=m/s²、motionG=G）\n" +
     "- events.csv: 検知区間の一覧\n" +
-    "- clips/*.wav: 保存された音声（4bit IMA ADPCM、調整前の生音。ゲイン値はclips.jsonのgainDbを参照）\n";
+    "- clips/*.wav: 音声（PCM16 WAV、16kHz・モノラル、調整前の生音。ゲイン値はclips.jsonのgainDbを参照）\n";
 
   files.unshift(
     txt("README.txt", readme),
