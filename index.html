@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
 <meta name="theme-color" content="#000000">
 <meta http-equiv="Cache-Control" content="no-cache">
-<title>SomnoLog V15</title>
+<title>SomnoLog V16</title>
 <script src="./ort.min.js"></script>
 <style>
 :root{color-scheme:dark}
@@ -20,6 +20,7 @@ button.sub{background:#171f29;border-color:#34424f;color:#d3dde7}
 button.warnbtn{background:#353024;border-color:#6d6240;color:#f3e7c9}
 button:disabled{opacity:.4;cursor:not-allowed}
 .page{max-width:480px;margin:0 auto;padding:20px 16px 40px;display:flex;flex-direction:column;gap:14px}
+.sticky-bar{position:sticky;top:0;z-index:10;background:#0d1117;padding:8px 0;display:grid;grid-template-columns:1fr 1.4fr;gap:10px}
 .head{display:flex;justify-content:space-between;align-items:center;gap:10px}
 h1{margin:0;font-size:22px}
 h2{margin:0;font-size:17px}
@@ -61,193 +62,186 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 
 <div id="errbox" class="err" hidden></div>
 
-<!-- 1-1 起動・QR読み取り -->
+<!-- 1-1 襍ｷ蜍輔・QR隱ｭ縺ｿ蜿悶ｊ -->
 <main id="page-start" class="page" hidden>
   <header class="head">
-    <h1>SomnoLog V15</h1>
-    <span class="tag">患者情報確認</span>
+    <h1>SomnoLog V16</h1>
+    <span class="tag">謔｣閠・ュ蝣ｱ遒ｺ隱・/span>
   </header>
-  <p class="muted">②が発行した患者用QRを読み取ってください。</p>
+  <p class="muted">竭｡縺檎匱陦後＠縺滓ぅ閠・畑QR繧定ｪｭ縺ｿ蜿悶▲縺ｦ縺上□縺輔＞縲・/p>
 
   <div id="scan-msg" class="err" hidden></div>
 
   <section class="card">
-    <button id="cam-btn">カメラを起動</button>
-    <button id="qr-file-btn">QR画像を選択</button>
+    <button id="cam-btn">繧ｫ繝｡繝ｩ繧定ｵｷ蜍・/button>
+    <button id="qr-file-btn">QR逕ｻ蜒上ｒ驕ｸ謚・/button>
     <input id="qr-file" type="file" accept="image/*" hidden>
-    <button id="usage-btn" class="warnbtn">使い方を見る</button>
-    <button id="start-back" class="sub" hidden>患者情報を変えずに戻る</button>
-  </section>
-
-  <section class="card">
-    <div class="kv"><span>端末の読み取り機能</span><b id="dec-api">確認中</b></div>
-    <div class="kv"><span>jsQR（同じフォルダ）</span><b id="dec-jsqr">確認中</b></div>
-    <div class="kv"><span>カメラ</span><b id="dec-cam">確認中</b></div>
-    <div class="kv"><span>画像選択の結果</span><b id="dec-last">未操作</b></div>
+    <button id="usage-btn" class="warnbtn">菴ｿ縺・婿繧定ｦ九ｋ</button>
+    <button id="start-back" class="sub" hidden>謔｣閠・ュ蝣ｱ繧貞､峨∴縺壹↓謌ｻ繧・/button>
   </section>
 
   <section id="cam-box" class="card" hidden>
     <video id="cam-video" playsinline muted></video>
-    <p class="muted">QRを枠内に収めてください。読み取れると自動で次に進みます。</p>
-    <button id="cam-stop" class="sub">カメラを止める</button>
+    <p class="muted">QR繧呈棧蜀・↓蜿弱ａ縺ｦ縺上□縺輔＞縲りｪｭ縺ｿ蜿悶ｌ繧九→閾ｪ蜍輔〒谺｡縺ｫ騾ｲ縺ｿ縺ｾ縺吶・/p>
+    <button id="cam-stop" class="sub">繧ｫ繝｡繝ｩ繧呈ｭ｢繧√ｋ</button>
   </section>
 
   <section id="usage-box" class="card" hidden>
-    <h2>使い方</h2>
+    <h2>菴ｿ縺・婿</h2>
     <ol class="steps">
-      <li>診療所の画面に表示されたQRを読み取ります。</li>
-      <li>標準のカメラアプリでQRを読むと、この画面が自動で開きます。</li>
-      <li>患者情報（診療所名・患者名など）が正しいか確認します。</li>
-      <li>正しければ「始める」を押すと、記録の画面に進みます。</li>
-      <li>違う場合は「情報が間違っています」を押してください。診療所にご連絡ください。</li>
+      <li>險ｺ逋よ園縺ｮ逕ｻ髱｢縺ｫ陦ｨ遉ｺ縺輔ｌ縺櫺R繧定ｪｭ縺ｿ蜿悶ｊ縺ｾ縺吶・/li>
+      <li>讓呎ｺ悶・繧ｫ繝｡繝ｩ繧｢繝励Μ縺ｧQR繧定ｪｭ繧縺ｨ縲√％縺ｮ逕ｻ髱｢縺瑚・蜍輔〒髢九″縺ｾ縺吶・/li>
+      <li>謔｣閠・ュ蝣ｱ・郁ｨｺ逋よ園蜷阪・謔｣閠・錐縺ｪ縺ｩ・峨′豁｣縺励＞縺狗｢ｺ隱阪＠縺ｾ縺吶・/li>
+      <li>豁｣縺励￠繧後・縲悟ｧ九ａ繧九阪ｒ謚ｼ縺吶→縲∬ｨ倬鹸縺ｮ逕ｻ髱｢縺ｫ騾ｲ縺ｿ縺ｾ縺吶・/li>
+      <li>驕輔≧蝣ｴ蜷医・縲梧ュ蝣ｱ縺碁俣驕輔▲縺ｦ縺・∪縺吶阪ｒ謚ｼ縺励※縺上□縺輔＞縲りｨｺ逋よ園縺ｫ縺秘｣邨｡縺上□縺輔＞縲・/li>
     </ol>
-    <p class="muted">本アプリは診断を行うものではありません。医師の判断の参考資料です。</p>
+    <p class="muted">譛ｬ繧｢繝励Μ縺ｯ險ｺ譁ｭ繧定｡後≧繧ゅ・縺ｧ縺ｯ縺ゅｊ縺ｾ縺帙ｓ縲ょ現蟶ｫ縺ｮ蛻､譁ｭ縺ｮ蜿り・ｳ・侭縺ｧ縺吶・/p>
   </section>
   <canvas id="scan-canvas" hidden></canvas>
 </main>
 
-<!-- 1-2 患者情報の確認 -->
+<!-- 1-2 謔｣閠・ュ蝣ｱ縺ｮ遒ｺ隱・-->
 <main id="page-confirm" class="page" hidden>
   <header class="head">
-    <h1>患者情報の確認</h1>
+    <h1>謔｣閠・ュ蝣ｱ縺ｮ遒ｺ隱・/h1>
   </header>
   <section class="card">
-    <div class="field"><span>診療所名</span><b id="cf-clinic"></b></div>
-    <div class="field"><span>カルテNo</span><b id="cf-chart"></b></div>
-    <div class="field"><span>患者名</span><b id="cf-name"></b></div>
-    <div class="field"><span>シリアルNo</span><b id="cf-serial"></b></div>
-    <div class="field"><span>ログ共有通知先（宛先）</span><b id="cf-email"></b></div>
-    <button id="cf-ok" class="primary">始める</button>
-    <button id="cf-ng" class="warnbtn">情報が間違っています</button>
+    <div class="field"><span>險ｺ逋よ園蜷・/span><b id="cf-clinic"></b></div>
+    <div class="field"><span>繧ｫ繝ｫ繝・o</span><b id="cf-chart"></b></div>
+    <div class="field"><span>謔｣閠・錐</span><b id="cf-name"></b></div>
+    <div class="field"><span>繧ｷ繝ｪ繧｢繝ｫNo</span><b id="cf-serial"></b></div>
+    <div class="field"><span>繝ｭ繧ｰ蜈ｱ譛蛾夂衍蜈茨ｼ亥ｮ帛・・・/span><b id="cf-email"></b></div>
+    <button id="cf-ok" class="primary">蟋九ａ繧・/button>
+    <button id="cf-ng" class="warnbtn">諠・ｱ縺碁俣驕輔▲縺ｦ縺・∪縺・/button>
   </section>
-  <p class="muted">患者情報が違う場合は「始める」を押さず、診療所に確認してください。</p>
+  <p class="muted">謔｣閠・ュ蝣ｱ縺碁＆縺・ｴ蜷医・縲悟ｧ九ａ繧九阪ｒ謚ｼ縺輔★縲∬ｨｺ逋よ園縺ｫ遒ｺ隱阪＠縺ｦ縺上□縺輔＞縲・/p>
 </main>
 
-<!-- 記録画面 -->
+<!-- 險倬鹸逕ｻ髱｢ -->
 <main id="page-record" class="page" hidden>
   <header class="head">
-    <h1>SomnoLog V15</h1>
-    <span id="rec-badge" class="tag">待機中</span>
+    <h1>SomnoLog V16</h1>
+    <span id="rec-badge" class="tag">蠕・ｩ滉ｸｭ</span>
   </header>
-  <p id="boot" class="boot">スクリプト読込中…</p>
-  <p class="muted">就寝中の音とセンサーを記録します。本アプリは診断を行うものではありません。医師の判断の参考資料です。</p>
+  <p id="boot" class="boot">繧ｹ繧ｯ繝ｪ繝励ヨ隱ｭ霎ｼ荳ｭ窶ｦ</p>
+  <p class="muted">蟆ｱ蟇昜ｸｭ縺ｮ髻ｳ縺ｨ繧ｻ繝ｳ繧ｵ繝ｼ繧定ｨ倬鹸縺励∪縺吶よ悽繧｢繝励Μ縺ｯ險ｺ譁ｭ繧定｡後≧繧ゅ・縺ｧ縺ｯ縺ゅｊ縺ｾ縺帙ｓ縲ょ現蟶ｫ縺ｮ蛻､譁ｭ縺ｮ蜿り・ｳ・侭縺ｧ縺吶・/p>
 
   <section class="card">
-    <h2>患者情報</h2>
-    <div class="kv"><span>診療所</span><b id="pt-clinic">-</b></div>
-    <div class="kv"><span>カルテNo</span><b id="pt-chart">-</b></div>
-    <div class="kv"><span>患者名</span><b id="pt-name">-</b></div>
-    <div class="kv"><span>シリアルNo</span><b id="pt-serial">-</b></div>
-    <button id="pt-change" class="sub">患者情報を読み直す</button>
+    <h2>謔｣閠・ュ蝣ｱ</h2>
+    <div class="kv"><span>險ｺ逋よ園</span><b id="pt-clinic">-</b></div>
+    <div class="kv"><span>繧ｫ繝ｫ繝・o</span><b id="pt-chart">-</b></div>
+    <div class="kv"><span>謔｣閠・錐</span><b id="pt-name">-</b></div>
+    <div class="kv"><span>繧ｷ繝ｪ繧｢繝ｫNo</span><b id="pt-serial">-</b></div>
+    <button id="pt-change" class="sub">謔｣閠・ュ蝣ｱ繧定ｪｭ縺ｿ逶ｴ縺・/button>
   </section>
 
   <div id="mic-msg" class="err" hidden></div>
 
   <div id="vad-warn" class="warn" hidden>
-    寝言除外（VAD）が無効です。onnxruntime（ort.min.js）またはモデル（silero_vad.onnx）が読み込めていません。このため、いびき候補は寝言の区別なしで保存されます。寝言が混ざる可能性があります。このHTMLと同じ場所に ort.min.js・ort-wasm-simd.wasm・ort-wasm.wasm・silero_vad.onnx を置き、再読み込みしてください。マイクの許可には影響しません。
-  </div>
+    蟇晁ｨ髯､螟厄ｼ・AD・峨′辟｡蜉ｹ縺ｧ縺吶Ｐnnxruntime・・rt.min.js・峨∪縺溘・繝｢繝・Ν・・ilero_vad.onnx・峨′隱ｭ縺ｿ霎ｼ繧√※縺・∪縺帙ｓ縲ゅ％縺ｮ縺溘ａ縲√＞縺ｳ縺榊呵｣懊・蟇晁ｨ縺ｮ蛹ｺ蛻･縺ｪ縺励〒菫晏ｭ倥＆繧後∪縺吶ょｯ晁ｨ縺梧ｷｷ縺悶ｋ蜿ｯ閭ｽ諤ｧ縺後≠繧翫∪縺吶ゅ％縺ｮHTML縺ｨ蜷後§蝣ｴ謇縺ｫ ort.min.js繝ｻort-wasm-simd.wasm繝ｻort-wasm.wasm繝ｻsilero_vad.onnx 繧堤ｽｮ縺阪∝・隱ｭ縺ｿ霎ｼ縺ｿ縺励※縺上□縺輔＞縲ゅ・繧､繧ｯ縺ｮ險ｱ蜿ｯ縺ｫ縺ｯ蠖ｱ髻ｿ縺励∪縺帙ｓ縲・  </div>
 
   <section class="card">
-    <div class="kv"><span>寝言除外（VAD）</span><b id="vad-state">読込中</b></div>
-    <div class="kv"><span>マイク</span><b id="mic-state">未許可</b></div>
-    <button id="mic-btn">マイクを許可</button>
+    <div class="kv"><span>蟇晁ｨ髯､螟厄ｼ・AD・・/span><b id="vad-state">隱ｭ霎ｼ荳ｭ</b></div>
+    <div class="kv"><span>繝槭う繧ｯ</span><b id="mic-state">譛ｪ險ｱ蜿ｯ</b></div>
+    <button id="mic-btn">繝槭う繧ｯ繧定ｨｱ蜿ｯ</button>
     <div class="meter"><i id="level-bar"></i></div>
-    <div class="kv"><span id="level-text">-</span><span id="base-text">待機中</span></div>
-    <div class="kv"><span>音量調整</span><output id="gain-out">0dB</output></div>
+    <div class="kv"><span id="level-text">-</span><span id="base-text">蠕・ｩ滉ｸｭ</span></div>
+    <div class="kv"><span>髻ｳ驥剰ｪｿ謨ｴ</span><output id="gain-out">0dB</output></div>
     <input id="gain" type="range" min="-9" max="9" step="1" value="0">
-    <p class="muted">iPhoneはマイクのdB表示と録音音圧に差があるため調整します。記録中は固定されます。</p>
+    <p class="muted">iPhone縺ｯ繝槭う繧ｯ縺ｮdB陦ｨ遉ｺ縺ｨ骭ｲ髻ｳ髻ｳ蝨ｧ縺ｫ蟾ｮ縺後≠繧九◆繧∬ｪｿ謨ｴ縺励∪縺吶りｨ倬鹸荳ｭ縺ｯ蝗ｺ螳壹＆繧後∪縺吶・/p>
   </section>
 
   <section class="card">
-    <button id="motion-btn">モーションセンサーを許可</button>
-    <div class="kv"><span>体動（重力除去）</span><b id="motion-text">-</b></div>
+    <button id="motion-btn">繝｢繝ｼ繧ｷ繝ｧ繝ｳ繧ｻ繝ｳ繧ｵ繝ｼ繧定ｨｱ蜿ｯ</button>
+    <div class="kv"><span>菴灘虚・磯㍾蜉幃勁蜴ｻ・・/span><b id="motion-text">-</b></div>
   </section>
 
   <section class="card">
-    <h2>リアルタイム表示（直近60秒）</h2>
-    <p class="muted">記録していなくても、マイクとモーションセンサーの値を確認できます。</p>
+    <h2>繝ｪ繧｢繝ｫ繧ｿ繧､繝陦ｨ遉ｺ・育峩霑・0遘抵ｼ・/h2>
+    <p class="muted">險倬鹸縺励※縺・↑縺上※繧ゅ√・繧､繧ｯ縺ｨ繝｢繝ｼ繧ｷ繝ｧ繝ｳ繧ｻ繝ｳ繧ｵ繝ｼ縺ｮ蛟､繧堤｢ｺ隱阪〒縺阪∪縺吶・/p>
     <div class="chart">
-      <div class="kv" style="border:0"><span>音声（音圧）</span><b id="live-lv-text">-</b></div>
+      <div class="kv" style="border:0"><span>髻ｳ螢ｰ・磯浹蝨ｧ・・/span><b id="live-lv-text">-</b></div>
       <div id="live-audio"></div>
     </div>
     <div class="chart">
-      <div class="kv" style="border:0"><span>体動</span><b id="live-mot-text">-</b></div>
+      <div class="kv" style="border:0"><span>菴灘虚</span><b id="live-mot-text">-</b></div>
       <div id="live-motion"></div>
     </div>
   </section>
 
   <section class="card">
-    <label class="muted"><input type="checkbox" id="env-save"> 環境音の変化を音声でも保存する（既定はOFF）</label>
-    <p class="muted">ONにすると、環境音の変化の前後30秒を保存します。話し声が入る場合があります。数値の記録は常に残ります。</p>
-    <button id="env-del" class="sub">保存済みの環境音の音声を削除</button>
+    <label class="muted"><input type="checkbox" id="env-save"> 迺ｰ蠅・浹縺ｮ螟牙喧繧帝浹螢ｰ縺ｧ繧ゆｿ晏ｭ倥☆繧具ｼ域里螳壹・OFF・・/label>
+    <p class="muted">ON縺ｫ縺吶ｋ縺ｨ縲∫腸蠅・浹縺ｮ螟牙喧縺ｮ蜑榊ｾ・0遘偵ｒ菫晏ｭ倥＠縺ｾ縺吶りｩｱ縺怜｣ｰ縺悟・繧句ｴ蜷医′縺ゅｊ縺ｾ縺吶よ焚蛟､縺ｮ險倬鹸縺ｯ蟶ｸ縺ｫ谿九ｊ縺ｾ縺吶・/p>
+    <button id="env-del" class="sub">菫晏ｭ俶ｸ医∩縺ｮ迺ｰ蠅・浹縺ｮ髻ｳ螢ｰ繧貞炎髯､</button>
   </section>
 
   <section class="card">
-    <div class="kv"><span>いびき（保存）</span><b id="s-count">0</b></div>
-    <div class="kv"><span>寝言・話し声の疑い（除外）</span><b id="s-speech">0</b></div>
-    <div class="kv"><span>判定不能（保存なし）</span><b id="s-unknown">0</b></div>
-    <div class="kv"><span>環境音の変化</span><b id="s-env">0</b></div>
-    <div class="kv"><span>記録時間</span><b id="s-time">0:00</b></div>
+    <div class="kv"><span>縺・・縺搾ｼ井ｿ晏ｭ假ｼ・/span><b id="s-count">0</b></div>
+    <div class="kv"><span>蟇晁ｨ繝ｻ隧ｱ縺怜｣ｰ縺ｮ逍代＞・磯勁螟厄ｼ・/span><b id="s-speech">0</b></div>
+    <div class="kv"><span>蛻､螳壻ｸ崎・・井ｿ晏ｭ倥↑縺暦ｼ・/span><b id="s-unknown">0</b></div>
+    <div class="kv"><span>迺ｰ蠅・浹縺ｮ螟牙喧</span><b id="s-env">0</b></div>
+    <div class="kv"><span>險倬鹸譎る俣</span><b id="s-time">0:00</b></div>
   </section>
 
   <div class="row">
-    <button id="start-btn" class="primary" disabled>記録開始</button>
-    <button id="stop-btn" class="danger" disabled>停止</button>
+    <button id="start-btn" class="primary" disabled>險倬鹸髢句ｧ・/button>
+    <button id="stop-btn" class="danger" disabled>蛛懈ｭ｢</button>
   </div>
-  <button id="btn-enter-black" class="sub" disabled>黒画面に切り替え</button>
-  <button id="history-btn" class="sub">履歴を見る</button>
+  <button id="btn-enter-black" class="sub" disabled>鮟堤判髱｢縺ｫ蛻・ｊ譖ｿ縺・/button>
+  <button id="history-btn" class="sub">螻･豁ｴ繧定ｦ九ｋ</button>
 
   <section class="card">
-    <div class="kv"><span>バージョン</span><b id="ver-text">V15</b></div>
-    <p class="muted">この版は自動で書き換わりません。新しい版を使うときは、新しいファイルを開いてください。</p>
+    <div class="kv"><span>繝舌・繧ｸ繝ｧ繝ｳ</span><b id="ver-text">V16</b></div>
+    <p class="muted">縺薙・迚医・閾ｪ蜍輔〒譖ｸ縺肴鋤繧上ｊ縺ｾ縺帙ｓ縲よ眠縺励＞迚医ｒ菴ｿ縺・→縺阪・縲∵眠縺励＞繝輔ぃ繧､繝ｫ繧帝幕縺・※縺上□縺輔＞縲・/p>
   </section>
 </main>
 
-<!-- 履歴画面 -->
+<!-- 螻･豁ｴ逕ｻ髱｢ -->
 <main id="page-history" class="page" hidden>
   <header class="head">
-    <h1>記録履歴</h1>
-    <button id="history-back" class="sub" style="width:auto;min-height:40px">戻る</button>
+    <h1>險倬鹸螻･豁ｴ</h1>
+    <button id="history-back" class="sub" style="width:auto;min-height:40px">謌ｻ繧・/button>
   </header>
   <div id="session-list" class="list"></div>
 </main>
 
-<!-- 詳細画面 -->
+<!-- 隧ｳ邏ｰ逕ｻ髱｢ -->
 <main id="page-detail" class="page" hidden>
-  <button id="detail-back" class="sub">履歴に戻る</button>
+  <div class="sticky-bar">
+    <button id="detail-back" class="sub">螻･豁ｴ縺ｫ謌ｻ繧・/button>
+    <button id="d-share" class="primary">蛹ｻ蟶ｫ縺ｨ蜈ｱ譛会ｼ・IP・・/button>
+  </div>
   <section class="card">
     <h2 id="d-title"></h2>
     <div id="d-summary"></div>
   </section>
   <section class="card">
-    <h2>タイムライン</h2>
+    <h2>繧ｿ繧､繝繝ｩ繧､繝ｳ</h2>
     <div id="d-chart" class="chart"></div>
-    <p class="muted">線：音圧（ゲイン適用値・1秒平均）／ 点線：基準値／ 緑の点：いびき（保存）／ 赤の点：寝言・話し声の疑い（除外）／ 灰の点：判定不能／ 黄の破線：環境音の変化／ 白い線：体動</p>
+    <p class="muted">邱夲ｼ夐浹蝨ｧ・医ご繧､繝ｳ驕ｩ逕ｨ蛟､繝ｻ1遘貞ｹｳ蝮・ｼ会ｼ・轤ｹ邱夲ｼ壼渕貅門､・・邱代・轤ｹ・壹＞縺ｳ縺搾ｼ井ｿ晏ｭ假ｼ会ｼ・襍､縺ｮ轤ｹ・壼ｯ晁ｨ繝ｻ隧ｱ縺怜｣ｰ縺ｮ逍代＞・磯勁螟厄ｼ会ｼ・轣ｰ縺ｮ轤ｹ・壼愛螳壻ｸ崎・・・鮟・・遐ｴ邱夲ｼ夂腸蠅・浹縺ｮ螟牙喧・・逋ｽ縺・ｷ夲ｼ壻ｽ灘虚</p>
   </section>
   <section class="card">
-    <h2>検知区間</h2>
-    <p class="muted">各区間に医師が判定を付けられます（学習データとして使います）。</p>
+    <h2>讀懃衍蛹ｺ髢・/h2>
+    <p class="muted">蜷・玄髢薙↓蛹ｻ蟶ｫ縺悟愛螳壹ｒ莉倥￠繧峨ｌ縺ｾ縺呻ｼ亥ｭｦ鄙偵ョ繝ｼ繧ｿ縺ｨ縺励※菴ｿ縺・∪縺呻ｼ峨・/p>
     <div id="d-events" class="list"></div>
   </section>
-  <button id="d-share" class="primary">医師と共有（ZIP）</button>
-  <p class="muted">本アプリは診断を行うものではありません。医師の判断の参考資料です。</p>
+  <p class="muted">譛ｬ繧｢繝励Μ縺ｯ險ｺ譁ｭ繧定｡後≧繧ゅ・縺ｧ縺ｯ縺ゅｊ縺ｾ縺帙ｓ縲ょ現蟶ｫ縺ｮ蛻､譁ｭ縺ｮ蜿り・ｳ・侭縺ｧ縺吶・/p>
 </main>
 
-<!-- 黒画面 -->
+<!-- 鮟堤判髱｢ -->
 <div id="black-screen" hidden>
   <span id="black-clock"></span>
-  <span class="muted">タップで戻る</span>
+  <span class="muted">繧ｿ繝・・縺ｧ謌ｻ繧・/span>
 </div>
 
 <script>
 "use strict";
 
-/* ===== バージョン ===== */
-// 修正のたびに数字を1つ増やす。自動で書き換えは行わない（手動で新しいファイルを使う）
-const APP_VERSION = 15;
+/* ===== 繝舌・繧ｸ繝ｧ繝ｳ ===== */
+// 菫ｮ豁｣縺ｮ縺溘・縺ｫ謨ｰ蟄励ｒ1縺､蠅励ｄ縺吶り・蜍輔〒譖ｸ縺肴鋤縺医・陦後ｏ縺ｪ縺・ｼ域焔蜍輔〒譁ｰ縺励＞繝輔ぃ繧､繝ｫ繧剃ｽｿ縺・ｼ・const APP_VERSION = 16;
 const APP = "SomnoLogV" + APP_VERSION;
 
-/* ===== 設定 ===== */
+/* ===== 險ｭ螳・===== */
 const SR = 16000, FRAME = 512, RING_SEC = 62;
 const G_ACC = 9.80665;
 const VAD_CTX = 64, VAD_URL = "./silero_vad.onnx?v=" + APP_VERSION, VAD_TH = 0.3;
@@ -257,13 +251,11 @@ const CALIB_SEC = 300, BASE_EVERY = 600, POOL_MAX = 600, POOL_MIN = 60;
 const ENV_RUN_SEC = 10, ENV_DB = 6, ENV_COOLDOWN = 300, ENV_CLIP_SEC = 30;
 const FLUSH_SEC = 60, MAX_QUEUE = 40;
 const UI_MS = 250, LIVE_N = 240;
-const DB_NAME = "somnolog-v3"; // V3以降のデータを引き継ぐため名前は据え置き
-const DB_VERSION = 2;          // V10で settings を追加（V15でも変更なし）
-const DISCLAIMER = "本アプリは診断を行うものではありません。医師の判断の参考資料です。";
-const LABELS = { snore: "いびき", speech: "寝言・話し声", env: "環境音", unknown: "判定不能", short: "短い音" };
+const DB_NAME = "somnolog-v3"; // V3莉･髯阪・繝・・繧ｿ繧貞ｼ輔″邯吶＄縺溘ａ蜷榊燕縺ｯ謐ｮ縺育ｽｮ縺・const DB_VERSION = 2;          // V10縺ｧ settings 繧定ｿｽ蜉・・16縺ｧ繧ょ､画峩縺ｪ縺暦ｼ・const DISCLAIMER = "譛ｬ繧｢繝励Μ縺ｯ險ｺ譁ｭ繧定｡後≧繧ゅ・縺ｧ縺ｯ縺ゅｊ縺ｾ縺帙ｓ縲ょ現蟶ｫ縺ｮ蛻､譁ｭ縺ｮ蜿り・ｳ・侭縺ｧ縺吶・;
+const LABELS = { snore: "縺・・縺・, speech: "蟇晁ｨ繝ｻ隧ｱ縺怜｣ｰ", env: "迺ｰ蠅・浹", unknown: "蛻､螳壻ｸ崎・", short: "遏ｭ縺・浹" };
 const LABEL_KEYS = ["snore", "speech", "env", "unknown"];
 
-/* ===== 補助関数 ===== */
+/* ===== 陬懷勧髢｢謨ｰ ===== */
 const $ = (id) => document.getElementById(id);
 const pad = (n) => String(n).padStart(2, "0");
 const uid = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now() + "-" + Math.random().toString(16).slice(2));
@@ -294,7 +286,7 @@ const newCounts = () => ({ snore: 0, speech: 0, env: 0, unknown: 0, short: 0 });
 function showError(msg) {
   const b = $("errbox");
   b.hidden = false;
-  b.textContent = "エラー: " + msg;
+  b.textContent = "繧ｨ繝ｩ繝ｼ: " + msg;
 }
 window.addEventListener("error", (e) => showError(e.message));
 window.addEventListener("unhandledrejection", (e) => showError((e.reason && e.reason.message) || String(e.reason)));
@@ -305,16 +297,15 @@ function showMicMsg(text) {
   b.textContent = text || "";
 }
 
-/* ===== 患者情報（QR） ===== */
-// QRの中身：https://<③の公開URL>/#slp=<Base64URL化したJSON>
+/* ===== 謔｣閠・ュ蝣ｱ・・R・・===== */
+// QR縺ｮ荳ｭ霄ｫ・喇ttps://<竭｢縺ｮ蜈ｬ髢偽RL>/#slp=<Base64URL蛹悶＠縺櫟SON>
 const S_PATIENT_PENDING = { value: null };
 
 class PatientError extends Error {}
 
-// Base64URL → UTF-8文字列 → JSON（日本語の文字化けを防ぐためTextDecoderを使う）
-function decodeSlp(payload) {
+// Base64URL 竊・UTF-8譁・ｭ怜・ 竊・JSON・域律譛ｬ隱槭・譁・ｭ怜喧縺代ｒ髦ｲ縺舌◆繧ゝextDecoder繧剃ｽｿ縺・ｼ・function decodeSlp(payload) {
   let s = String(payload).trim().replace(/[^A-Za-z0-9\-_]/g, "");
-  if (!s) throw new PatientError("QRの中身が空です。");
+  if (!s) throw new PatientError("QR縺ｮ荳ｭ霄ｫ縺檎ｩｺ縺ｧ縺吶・);
   s = s.replace(/-/g, "+").replace(/_/g, "/");
   while (s.length % 4) s += "=";
   const bin = atob(s);
@@ -323,15 +314,15 @@ function decodeSlp(payload) {
   return JSON.parse(json);
 }
 
-// 読み取った文字列（URL全体、またはハッシュ部分）から患者情報を作る
+// 隱ｭ縺ｿ蜿悶▲縺滓枚蟄怜・・・RL蜈ｨ菴薙√∪縺溘・繝上ャ繧ｷ繝･驛ｨ蛻・ｼ峨°繧画ぅ閠・ュ蝣ｱ繧剃ｽ懊ｋ
 function patientFromText(text) {
   const str = String(text || "");
   const idx = str.indexOf("#slp=");
-  if (idx < 0) throw new PatientError("患者用QRではありません。②が発行したQRを読み取ってください。");
+  if (idx < 0) throw new PatientError("謔｣閠・畑QR縺ｧ縺ｯ縺ゅｊ縺ｾ縺帙ｓ縲や贈縺檎匱陦後＠縺櫺R繧定ｪｭ縺ｿ蜿悶▲縺ｦ縺上□縺輔＞縲・);
   let obj;
   try { obj = decodeSlp(str.slice(idx + 5)); }
-  catch (e) { throw new PatientError("QRの中身を読み取れませんでした。QRを再発行してもらってください。"); }
-  if (!obj || typeof obj !== "object" || Array.isArray(obj)) throw new PatientError("QRの中身の形式が正しくありません。");
+  catch (e) { throw new PatientError("QR縺ｮ荳ｭ霄ｫ繧定ｪｭ縺ｿ蜿悶ｌ縺ｾ縺帙ｓ縺ｧ縺励◆縲２R繧貞・逋ｺ陦後＠縺ｦ繧ゅｉ縺｣縺ｦ縺上□縺輔＞縲・); }
+  if (!obj || typeof obj !== "object" || Array.isArray(obj)) throw new PatientError("QR縺ｮ荳ｭ霄ｫ縺ｮ蠖｢蠑上′豁｣縺励￥縺ゅｊ縺ｾ縺帙ｓ縲・);
   return normalizePatient(obj);
 }
 
@@ -346,25 +337,24 @@ function normalizePatient(o) {
     logShareEmail: s(o.logShareEmail),
     issueId: s(o.issueId),
   };
-  if (!p.name) throw new PatientError("患者名がありません。このQRは利用できません。QRを再発行してもらってください。");
-  if (!p.chartNo) throw new PatientError("カルテNoがありません。QRを再発行してもらってください。");
+  if (!p.name) throw new PatientError("謔｣閠・錐縺後≠繧翫∪縺帙ｓ縲ゅ％縺ｮQR縺ｯ蛻ｩ逕ｨ縺ｧ縺阪∪縺帙ｓ縲２R繧貞・逋ｺ陦後＠縺ｦ繧ゅｉ縺｣縺ｦ縺上□縺輔＞縲・);
+  if (!p.chartNo) throw new PatientError("繧ｫ繝ｫ繝・o縺後≠繧翫∪縺帙ｓ縲２R繧貞・逋ｺ陦後＠縺ｦ繧ゅｉ縺｣縺ｦ縺上□縺輔＞縲・);
   return p;
 }
 
-// ファイル名用の安全な文字列（禁止記号・制御文字を _ に置換、NFC正規化）
-function sanitize(v, max = 40) {
+// 繝輔ぃ繧､繝ｫ蜷咲畑縺ｮ螳牙・縺ｪ譁・ｭ怜・・育ｦ∵ｭ｢險伜捷繝ｻ蛻ｶ蠕｡譁・ｭ励ｒ _ 縺ｫ鄂ｮ謠帙¨FC豁｣隕丞喧・・function sanitize(v, max = 40) {
   const s = String(v ?? "").normalize("NFC")
     .replace(/[\\/:*?"<>|\u0000-\u001f\u007f]/g, "_")
     .replace(/\s+/g, "_")
     .replace(/_+/g, "_")
     .replace(/^[_.]+|[_.]+$/g, "")
     .slice(0, max);
-  return s || "未設定";
+  return s || "譛ｪ險ｭ螳・;
 }
 
-// ZIPの名前（人が見て分かる形）：日付_時刻_診療所_カルテNo_患者名.zip
-// 例：20261027_1915_サンプル中央クリニック_123456_山田太郎.zip
-// 時刻は記録開始の時・分（24時間表記）。シリアルNoはファイル名には入れず、中身（session.json）に残す
+// ZIP縺ｮ蜷榊燕・井ｺｺ縺瑚ｦ九※蛻・°繧句ｽ｢・会ｼ壽律莉論譎ょ綾_險ｺ逋よ園_繧ｫ繝ｫ繝・o_謔｣閠・錐.zip
+// 萓具ｼ・0261027_1915_繧ｵ繝ｳ繝励Ν荳ｭ螟ｮ繧ｯ繝ｪ繝九ャ繧ｯ_123456_螻ｱ逕ｰ螟ｪ驛・zip
+// 譎ょ綾縺ｯ險倬鹸髢句ｧ九・譎ゅ・蛻・ｼ・4譎る俣陦ｨ險假ｼ峨ゅす繝ｪ繧｢繝ｫNo縺ｯ繝輔ぃ繧､繝ｫ蜷阪↓縺ｯ蜈･繧後★縲∽ｸｭ霄ｫ・・ession.json・峨↓谿九☆
 function zipName(sess) {
   const p = sess.patient || {};
   const d = new Date(sess.startedAt);
@@ -373,7 +363,7 @@ function zipName(sess) {
   return [day, time, sanitize(p.clinic, 30), sanitize(p.chartNo, 20), sanitize(p.name, 20)].join("_") + ".zip";
 }
 
-/* ===== リングバッファ（直近62秒・16kHz・調整前の生音） ===== */
+/* ===== 繝ｪ繝ｳ繧ｰ繝舌ャ繝輔ぃ・育峩霑・2遘偵・16kHz繝ｻ隱ｿ謨ｴ蜑阪・逕滄浹・・===== */
 class Ring {
   constructor(sec) { this.len = SR * sec; this.buf = new Float32Array(this.len); this.total = 0; }
   push(arr) {
@@ -427,7 +417,7 @@ const DB = (() => {
   };
 })();
 
-/* ===== 状態 ===== */
+/* ===== 迥ｶ諷・===== */
 const S = {
   ctx: null, pendingCtx: null, stream: null, tap: null, micMode: "",
   vad: null, vadOk: false, vadState: null, vadCtx: new Float32Array(VAD_CTX),
@@ -443,7 +433,7 @@ const S = {
   bucket: null, secBuf: [], envRun: 0, lastEnvMs: -1e9,
 };
 
-/* ===== 画面切り替え ===== */
+/* ===== 逕ｻ髱｢蛻・ｊ譖ｿ縺・===== */
 function showPage(name) {
   ["start", "confirm", "record", "history", "detail"].forEach((n) => { $("page-" + n).hidden = n !== name; });
   window.scrollTo(0, 0);
@@ -458,7 +448,7 @@ function renderPatientCard() {
   $("pt-change").disabled = S.running;
 }
 
-/* ===== QR読み取り（カメラ・画像） ===== */
+/* ===== QR隱ｭ縺ｿ蜿悶ｊ・医き繝｡繝ｩ繝ｻ逕ｻ蜒擾ｼ・===== */
 let camStream = null, camTimer = 0, detector = null, scanBusy = false;
 
 function showScanMsg(text) {
@@ -467,41 +457,27 @@ function showScanMsg(text) {
   b.textContent = text || "";
 }
 
-// 1-1 画面の「画像選択の結果」欄を更新する（切り分け用）
-function setLast(text) {
-  $("dec-last").textContent = text;
-}
-
-// 1-1 画面の読み取り機能の有無を表示する（切り分け用）
-function renderDecodeState() {
-  $("dec-api").textContent = window.BarcodeDetector ? "あり" : "なし";
-  $("dec-jsqr").textContent = typeof window.jsQR === "function" ? "あり" : "なし";
-  $("dec-cam").textContent = (window.isSecureContext && navigator.mediaDevices && navigator.mediaDevices.getUserMedia) ? "使える" : "使えない（https以外）";
-}
-
-// 読み取った文字列を確認する（OKなら1-2へ、NGなら1-1に留まる）
-function handleQrText(text) {
+// 隱ｭ縺ｿ蜿悶▲縺滓枚蟄怜・繧堤｢ｺ隱阪☆繧具ｼ・K縺ｪ繧・-2縺ｸ縲¨G縺ｪ繧・-1縺ｫ逡吶∪繧具ｼ・function handleQrText(text) {
   try {
     const p = patientFromText(text);
     showScanMsg("");
     S_PATIENT_PENDING.value = p;
     showConfirm(p);
   } catch (e) {
-    showScanMsg(e instanceof PatientError ? e.message : "QRを読み取れませんでした: " + e.message);
+    showScanMsg(e instanceof PatientError ? e.message : "QR繧定ｪｭ縺ｿ蜿悶ｌ縺ｾ縺帙ｓ縺ｧ縺励◆: " + e.message);
   }
 }
 
 function showConfirm(p) {
-  $("cf-clinic").textContent = p.clinic || "（未記入）";
-  $("cf-chart").textContent = p.chartNo || "（未記入）";
+  $("cf-clinic").textContent = p.clinic || "・域悴險伜・・・;
+  $("cf-chart").textContent = p.chartNo || "・域悴險伜・・・;
   $("cf-name").textContent = p.name;
-  $("cf-serial").textContent = p.serialNumber || "（未記入）";
-  $("cf-email").textContent = p.logShareEmail || "（未記入）";
+  $("cf-serial").textContent = p.serialNumber || "・域悴險伜・・・;
+  $("cf-email").textContent = p.logShareEmail || "・域悴險伜・・・;
   showPage("confirm");
 }
 
-// 1枚の画像・映像から QR の文字列を探す（BarcodeDetector → jsQR の順）
-async function decodeCanvas(canvas) {
+// 1譫壹・逕ｻ蜒上・譏蜒上°繧・QR 縺ｮ譁・ｭ怜・繧呈爾縺呻ｼ・arcodeDetector 竊・jsQR 縺ｮ鬆・ｼ・async function decodeCanvas(canvas) {
   if (window.BarcodeDetector) {
     try {
       if (!detector) detector = new BarcodeDetector({ formats: ["qr_code"] });
@@ -525,11 +501,11 @@ function canDecode() {
 async function startCamera() {
   showScanMsg("");
   if (!window.isSecureContext || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-    showScanMsg("カメラを使うには https:// で開いてください。");
+    showScanMsg("繧ｫ繝｡繝ｩ繧剃ｽｿ縺・↓縺ｯ https:// 縺ｧ髢九＞縺ｦ縺上□縺輔＞縲・);
     return;
   }
   if (!canDecode()) {
-    showScanMsg("この端末ではアプリ内でQRを読み取れません。標準のカメラアプリでQRを読むと、この画面が自動で開きます。");
+    showScanMsg("縺薙・遶ｯ譛ｫ縺ｧ縺ｯ繧｢繝励Μ蜀・〒QR繧定ｪｭ縺ｿ蜿悶ｌ縺ｾ縺帙ｓ縲よｨ呎ｺ悶・繧ｫ繝｡繝ｩ繧｢繝励Μ縺ｧQR繧定ｪｭ繧縺ｨ縲√％縺ｮ逕ｻ髱｢縺瑚・蜍輔〒髢九″縺ｾ縺吶・);
     return;
   }
   try {
@@ -541,7 +517,7 @@ async function startCamera() {
     scanLoop();
   } catch (e) {
     stopCamera();
-    showScanMsg("カメラを起動できませんでした。カメラの許可を確認してください。（" + e.name + "）");
+    showScanMsg("繧ｫ繝｡繝ｩ繧定ｵｷ蜍輔〒縺阪∪縺帙ｓ縺ｧ縺励◆縲ゅき繝｡繝ｩ縺ｮ險ｱ蜿ｯ繧堤｢ｺ隱阪＠縺ｦ縺上□縺輔＞縲ゑｼ・ + e.name + "・・);
   }
 }
 
@@ -582,11 +558,9 @@ function scanLoop() {
 
 async function readQrFile(file) {
   showScanMsg("");
-  if (!file) { setLast("ファイルが選ばれませんでした"); return; }
-  setLast("画像を受け取りました");
+  if (!file) return;
   if (!canDecode()) {
-    setLast("読み取り機能がないため未実行");
-    showScanMsg("この端末では画像からQRを読み取れません。標準のカメラアプリでQRを読むと、この画面が自動で開きます。");
+    showScanMsg("縺薙・遶ｯ譛ｫ縺ｧ縺ｯ逕ｻ蜒上°繧渦R繧定ｪｭ縺ｿ蜿悶ｌ縺ｾ縺帙ｓ縲よｨ呎ｺ悶・繧ｫ繝｡繝ｩ繧｢繝励Μ縺ｧQR繧定ｪｭ繧縺ｨ縲√％縺ｮ逕ｻ髱｢縺瑚・蜍輔〒髢九″縺ｾ縺吶・);
     return;
   }
   try {
@@ -598,29 +572,26 @@ async function readQrFile(file) {
     bmp.close && bmp.close();
     const text = await decodeCanvas(canvas);
     if (!text) {
-      setLast("画像にQRが見つからない");
-      showScanMsg("画像からQRを見つけられませんでした。QRがはっきり写った画像を選んでください。");
+      showScanMsg("逕ｻ蜒上°繧渦R繧定ｦ九▽縺代ｉ繧後∪縺帙ｓ縺ｧ縺励◆縲２R縺後・縺｣縺阪ｊ蜀吶▲縺溽判蜒上ｒ驕ｸ繧薙〒縺上□縺輔＞縲・);
       return;
     }
-    setLast("QRを読み取れました");
     handleQrText(text);
   } catch (e) {
-    setLast("画像の読み込みに失敗");
-    showScanMsg("画像を読み込めませんでした: " + e.message);
+    showScanMsg("逕ｻ蜒上ｒ隱ｭ縺ｿ霎ｼ繧√∪縺帙ｓ縺ｧ縺励◆: " + e.message);
   }
 }
 
-// 標準カメラで開いた時（#slp=付きURL）は、自動で1-2へ進む
+// 讓呎ｺ悶き繝｡繝ｩ縺ｧ髢九＞縺滓凾・・slp=莉倥″URL・峨・縲∬・蜍輔〒1-2縺ｸ騾ｲ繧
 function checkHashOnLoad() {
   if (location.hash.indexOf("#slp=") < 0) return false;
   const text = location.href;
-  // 読み取った後はURLからハッシュを消し、再読み込みで二重に扱わないようにする
+  // 隱ｭ縺ｿ蜿悶▲縺溷ｾ後・URL縺九ｉ繝上ャ繧ｷ繝･繧呈ｶ医＠縲∝・隱ｭ縺ｿ霎ｼ縺ｿ縺ｧ莠碁㍾縺ｫ謇ｱ繧上↑縺・ｈ縺・↓縺吶ｋ
   history.replaceState(null, "", location.pathname + location.search);
   handleQrText(text);
   return true;
 }
 
-/* ===== 患者情報の保存・読み込み ===== */
+/* ===== 謔｣閠・ュ蝣ｱ縺ｮ菫晏ｭ倥・隱ｭ縺ｿ霎ｼ縺ｿ ===== */
 async function loadPatient() {
   try {
     const row = await DB.get("settings", "patient");
@@ -636,7 +607,7 @@ async function savePatient(p) {
   await DB.put("settings", { key: "patient", value: p, savedAt: Date.now() });
 }
 
-/* ===== 音声取得（16kHzへ変換して512サンプルずつ onAudio に渡す） ===== */
+/* ===== 髻ｳ螢ｰ蜿門ｾ暦ｼ・6kHz縺ｸ螟画鋤縺励※512繧ｵ繝ｳ繝励Ν縺壹▽ onAudio 縺ｫ貂｡縺呻ｼ・===== */
 const WORKLET = `
 class Tap extends AudioWorkletProcessor {
   constructor() {
@@ -713,16 +684,16 @@ function makeScriptTap(ctx) {
 
 async function setupMic(ctx) {
   if (!window.isSecureContext || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-    throw micError("InsecureContext", "secure context required", "接続の確認");
+    throw micError("InsecureContext", "secure context required", "謗･邯壹・遒ｺ隱・);
   }
-  if (!ctx) throw micError("NotSupportedError", "AudioContext is not available", "音声処理の作成");
+  if (!ctx) throw micError("NotSupportedError", "AudioContext is not available", "髻ｳ螢ｰ蜃ｦ逅・・菴懈・");
   if (S.ctx) return;
 
   let stream;
   try {
     stream = await getMicStream();
   } catch (e) {
-    e.stage = "マイクの許可";
+    e.stage = "繝槭う繧ｯ縺ｮ險ｱ蜿ｯ";
     throw e;
   }
 
@@ -753,21 +724,21 @@ async function setupMic(ctx) {
     startUiLoop();
   } catch (e) {
     stream.getTracks().forEach((t) => t.stop());
-    if (!e.stage) e.stage = "音声処理の開始";
+    if (!e.stage) e.stage = "髻ｳ螢ｰ蜃ｦ逅・・髢句ｧ・;
     throw e;
   }
 }
 
 function micErrorMessage(e) {
-  const n = (e && e.name) || "不明";
-  const stage = (e && e.stage) ? e.stage : "不明";
-  const detail = "（段階：" + stage + "／エラー名：" + n + (e && e.message ? "／" + e.message : "") + "）";
-  if (n === "InsecureContext") return "HTTPSで開いていないため、マイクを使えません。https:// から始まるURL（GitHub Pages）で開いてください。" + detail;
-  if (n === "NotAllowedError" || n === "SecurityError") return "マイクの許可が得られませんでした。iPhoneでは「設定」→「Safari」（またはこのサイト）→「マイク」を「許可」に変更し、ページを開き直してください。" + detail;
-  if (n === "NotFoundError") return "マイクが見つかりません。機器の接続を確認してください。" + detail;
-  if (n === "NotReadableError") return "マイクが他のアプリで使用中の可能性があります。通話や録音のアプリを閉じて、再度お試しください。" + detail;
-  if (n === "AbortError") return "マイクの起動が中断されました。ボタンを一度だけ押し、許可の表示が出たら「許可」を選んでください。改善しない場合はページを開き直してください。" + detail;
-  return "マイクを開始できませんでした。" + detail;
+  const n = (e && e.name) || "荳肴・";
+  const stage = (e && e.stage) ? e.stage : "荳肴・";
+  const detail = "・域ｮｵ髫趣ｼ・ + stage + "・上お繝ｩ繝ｼ蜷搾ｼ・ + n + (e && e.message ? "・・ + e.message : "") + "・・;
+  if (n === "InsecureContext") return "HTTPS縺ｧ髢九＞縺ｦ縺・↑縺・◆繧√√・繧､繧ｯ繧剃ｽｿ縺医∪縺帙ｓ縲Ｉttps:// 縺九ｉ蟋九∪繧偽RL・・itHub Pages・峨〒髢九＞縺ｦ縺上□縺輔＞縲・ + detail;
+  if (n === "NotAllowedError" || n === "SecurityError") return "繝槭う繧ｯ縺ｮ險ｱ蜿ｯ縺悟ｾ励ｉ繧後∪縺帙ｓ縺ｧ縺励◆縲ＪPhone縺ｧ縺ｯ縲瑚ｨｭ螳壹坂・縲郡afari縲搾ｼ医∪縺溘・縺薙・繧ｵ繧､繝茨ｼ俄・縲後・繧､繧ｯ縲阪ｒ縲瑚ｨｱ蜿ｯ縲阪↓螟画峩縺励√・繝ｼ繧ｸ繧帝幕縺咲峩縺励※縺上□縺輔＞縲・ + detail;
+  if (n === "NotFoundError") return "繝槭う繧ｯ縺瑚ｦ九▽縺九ｊ縺ｾ縺帙ｓ縲よｩ溷勣縺ｮ謗･邯壹ｒ遒ｺ隱阪＠縺ｦ縺上□縺輔＞縲・ + detail;
+  if (n === "NotReadableError") return "繝槭う繧ｯ縺御ｻ悶・繧｢繝励Μ縺ｧ菴ｿ逕ｨ荳ｭ縺ｮ蜿ｯ閭ｽ諤ｧ縺後≠繧翫∪縺吶る夊ｩｱ繧・鹸髻ｳ縺ｮ繧｢繝励Μ繧帝哩縺倥※縲∝・蠎ｦ縺願ｩｦ縺励￥縺縺輔＞縲・ + detail;
+  if (n === "AbortError") return "繝槭う繧ｯ縺ｮ襍ｷ蜍輔′荳ｭ譁ｭ縺輔ｌ縺ｾ縺励◆縲ゅ・繧ｿ繝ｳ繧剃ｸ蠎ｦ縺縺第款縺励∬ｨｱ蜿ｯ縺ｮ陦ｨ遉ｺ縺悟・縺溘ｉ縲瑚ｨｱ蜿ｯ縲阪ｒ驕ｸ繧薙〒縺上□縺輔＞縲よ隼蝟・＠縺ｪ縺・ｴ蜷医・繝壹・繧ｸ繧帝幕縺咲峩縺励※縺上□縺輔＞縲・ + detail;
+  return "繝槭う繧ｯ繧帝幕蟋九〒縺阪∪縺帙ｓ縺ｧ縺励◆縲・ + detail;
 }
 
 function onAudio(data) {
@@ -785,11 +756,11 @@ function onAudio(data) {
   pump();
 }
 
-/* ===== Silero VAD（寝言除外の第1段） ===== */
+/* ===== Silero VAD・亥ｯ晁ｨ髯､螟悶・隨ｬ1谿ｵ・・===== */
 async function loadVad() {
   if (typeof ort === "undefined") {
     S.vad = null; S.vadOk = false;
-    setVadState("ort未読込");
+    setVadState("ort譛ｪ隱ｭ霎ｼ");
     $("vad-warn").hidden = false;
     return;
   }
@@ -801,7 +772,7 @@ async function loadVad() {
   } catch (e) {
     console.warn(e);
     S.vad = null; S.vadOk = false;
-    setVadState("モデル未配置");
+    setVadState("繝｢繝・Ν譛ｪ驟咲ｽｮ");
     $("vad-warn").hidden = false;
     return;
   }
@@ -809,12 +780,12 @@ async function loadVad() {
     ort.env.wasm.numThreads = 1;
     ort.env.wasm.wasmPaths = "./";
     S.vad = await ort.InferenceSession.create(buf, { executionProviders: ["wasm"] });
-    setVadState("有効");
+    setVadState("譛牙柑");
     $("vad-warn").hidden = true;
   } catch (e) {
     console.warn(e);
     S.vad = null;
-    setVadState("読込失敗");
+    setVadState("隱ｭ霎ｼ螟ｱ謨・);
     $("vad-warn").hidden = false;
   }
   S.vadOk = !!S.vad;
@@ -849,8 +820,8 @@ async function pump() {
         catch (e) {
           console.error(e);
           S.vadOk = false;
-          setVadState("エラー");
-          showError("VADの実行に失敗しました。寝言除外は無効になり、以後のいびき候補は寝言の区別なしで保存されます。");
+          setVadState("繧ｨ繝ｩ繝ｼ");
+          showError("VAD縺ｮ螳溯｡後↓螟ｱ謨励＠縺ｾ縺励◆縲ょｯ晁ｨ髯､螟悶・辟｡蜉ｹ縺ｫ縺ｪ繧翫∽ｻ･蠕後・縺・・縺榊呵｣懊・蟇晁ｨ縺ｮ蛹ｺ蛻･縺ｪ縺励〒菫晏ｭ倥＆繧後∪縺吶・);
         }
       }
       if (!S.running || f.ep !== S.epoch) break;
@@ -859,7 +830,7 @@ async function pump() {
   } finally { S.busy = false; }
 }
 
-/* ===== 1フレーム（32ms）の処理 ===== */
+/* ===== 1繝輔Ξ繝ｼ繝・・2ms・峨・蜃ｦ逅・===== */
 function processFrame(f, p) {
   const t = f.t;
   let ss = 0;
@@ -911,7 +882,7 @@ function processFrame(f, p) {
   tickPending(S.nowMs);
 }
 
-/* ===== 候補区間の確定と判定 ===== */
+/* ===== 蛟呵｣懷玄髢薙・遒ｺ螳壹→蛻､螳・===== */
 function closeCand(c) {
   const endMs = c.lastMs + FRAME / SR * 1000;
   const durMs = endMs - c.startMs;
@@ -948,7 +919,7 @@ function decideCand(it) {
   DB.put("events", ev).catch(console.error);
 }
 
-/* ===== 環境音の変化 ===== */
+/* ===== 迺ｰ蠅・浹縺ｮ螟牙喧 ===== */
 function tickPending(now) {
   while (S.pendingCands.length && S.pendingCands[0].due <= now) decideCand(S.pendingCands.shift());
   while (S.pendingEnv.length && S.pendingEnv[0].due <= now) {
@@ -958,9 +929,8 @@ function tickPending(now) {
   }
 }
 
-// fromMs / toMs は記録開始からの時間（ミリ秒）。clips.json の startSec はここから作る
-// V13以降：音声は 4bit IMA ADPCM（WAV形式）で保存する（約1/4）
-function saveClip(fromMs, toMs, eventId, kind) {
+// fromMs / toMs 縺ｯ險倬鹸髢句ｧ九°繧峨・譎る俣・医Α繝ｪ遘抵ｼ峨Ｄlips.json 縺ｮ startSec 縺ｯ縺薙％縺九ｉ菴懊ｋ
+// V13莉･髯搾ｼ夐浹螢ｰ縺ｯ 4bit IMA ADPCM・・AV蠖｢蠑擾ｼ峨〒菫晏ｭ倥☆繧具ｼ育ｴ・/4・・function saveClip(fromMs, toMs, eventId, kind) {
   const a = Math.round(fromMs / 1000 * SR), b = Math.round(toMs / 1000 * SR);
   const actualA = Math.max(a, 0, S.ring.total - S.ring.len);
   const f = S.ring.get(a, b);
@@ -977,7 +947,7 @@ function saveClip(fromMs, toMs, eventId, kind) {
   return id;
 }
 
-/* ===== 1秒の集計 ===== */
+/* ===== 1遘偵・髮・ｨ・===== */
 function finishSecond(b) {
   if (!b.lv.length) return;
   const mLv = mean(b.lv), qLv = lowerMean(b.lv), mP = mean(b.p);
@@ -1033,11 +1003,11 @@ async function flushSecs() {
   } catch (e) {
     console.error(e);
     S.secBuf.unshift(...rows);
-    showError("保存に失敗しました: " + e.message);
+    showError("菫晏ｭ倥↓螟ｱ謨励＠縺ｾ縺励◆: " + e.message);
   }
 }
 
-/* ===== 体動（重力成分を除去） ===== */
+/* ===== 菴灘虚・磯㍾蜉帶・蛻・ｒ髯､蜴ｻ・・===== */
 function onMotion(e) {
   const a = e.accelerationIncludingGravity;
   if (!a || a.x == null) return;
@@ -1049,7 +1019,7 @@ function onMotion(e) {
   if (S.bucket) S.bucket.mot.push(m);
 }
 
-/* ===== 記録の開始・停止 ===== */
+/* ===== 險倬鹸縺ｮ髢句ｧ九・蛛懈ｭ｢ ===== */
 async function acquireWake() {
   try { if ("wakeLock" in navigator) S.wake = await navigator.wakeLock.request("screen"); }
   catch (e) { console.warn(e); }
@@ -1060,7 +1030,7 @@ function releaseWake() {
 
 async function startRec() {
   if (S.running || !S.ctx) return;
-  if (!S.patient) { showError("患者情報がありません。最初からQRを読み取ってください。"); showPage("start"); return; }
+  if (!S.patient) { showError("謔｣閠・ュ蝣ｱ縺後≠繧翫∪縺帙ｓ縲よ怙蛻昴°繧渦R繧定ｪｭ縺ｿ蜿悶▲縺ｦ縺上□縺輔＞縲・); showPage("start"); return; }
   if (S.ctx.state !== "running") await S.ctx.resume().catch(() => {});
   S.epoch++;
   S.sid = uid();
@@ -1105,7 +1075,7 @@ async function stopRec() {
   updateUI();
 }
 
-/* ===== 画面更新 ===== */
+/* ===== 逕ｻ髱｢譖ｴ譁ｰ ===== */
 function startUiLoop() {
   if (S.uiTimer) return;
   S.uiTimer = setInterval(updateUI, UI_MS);
@@ -1119,15 +1089,15 @@ function updateUI() {
   $("level-bar").style.width = clamp((lv + 80) / 80 * 100, 0, 100) + "%";
   $("level-text").textContent = round1(lv) + " dB";
   if (!S.running) {
-    $("base-text").textContent = "待機中";
+    $("base-text").textContent = "蠕・ｩ滉ｸｭ";
   } else if (S.calibrated) {
-    $("base-text").textContent = "基準 " + round1(S.base) + " dB";
+    $("base-text").textContent = "蝓ｺ貅・" + round1(S.base) + " dB";
   } else {
-    $("base-text").textContent = "基準計測中 残り " + Math.max(0, Math.ceil(CALIB_SEC - S.nowMs / 1000)) + " 秒";
+    $("base-text").textContent = "蝓ｺ貅冶ｨ域ｸｬ荳ｭ 谿九ｊ " + Math.max(0, Math.ceil(CALIB_SEC - S.nowMs / 1000)) + " 遘・;
   }
-  $("motion-text").textContent = S.motionNow == null ? "-" : S.motionNow.toFixed(2) + " m/s²";
+  $("motion-text").textContent = S.motionNow == null ? "-" : S.motionNow.toFixed(2) + " m/sﾂｲ";
   $("live-lv-text").textContent = S.ctx ? round1(lv) + " dB" : "-";
-  $("live-mot-text").textContent = S.motionNow == null ? "-" : S.motionNow.toFixed(2) + " m/s²";
+  $("live-mot-text").textContent = S.motionNow == null ? "-" : S.motionNow.toFixed(2) + " m/sﾂｲ";
   drawSpark("live-audio", S.live.map((x) => x.lv), -90, 0, "#84b9cf");
   drawSpark("live-motion", S.live.map((x) => x.mot), 0, 1, "#ffffff");
 
@@ -1161,17 +1131,17 @@ function drawSpark(id, arr, min, max, color) {
 
 function setButtons() {
   $("mic-btn").disabled = !!S.ctx;
-  $("mic-btn").textContent = S.ctx ? "マイク許可済み" : "マイクを許可";
+  $("mic-btn").textContent = S.ctx ? "繝槭う繧ｯ險ｱ蜿ｯ貂医∩" : "繝槭う繧ｯ繧定ｨｱ蜿ｯ";
   $("start-btn").disabled = S.running || !S.ctx || !S.patient;
   $("stop-btn").disabled = !S.running;
   $("btn-enter-black").disabled = !S.running;
   $("gain").disabled = S.running;
-  $("rec-badge").textContent = S.running ? "記録中" : "待機中";
+  $("rec-badge").textContent = S.running ? "險倬鹸荳ｭ" : "蠕・ｩ滉ｸｭ";
   $("rec-badge").className = S.running ? "tag rec" : "tag";
   renderPatientCard();
 }
 
-/* ===== 黒画面 ===== */
+/* ===== 鮟堤判髱｢ ===== */
 function setRootBlack(on) {
   const h = document.documentElement, b = document.body;
   if (on) {
@@ -1236,20 +1206,20 @@ function exitBlack() {
   exitFs();
 }
 
-/* ===== 履歴・詳細 ===== */
+/* ===== 螻･豁ｴ繝ｻ隧ｳ邏ｰ ===== */
 async function renderHistory() {
   const list = $("session-list");
   list.innerHTML = "";
   const sessions = (await DB.all("sessions")).sort((a, b) => b.startedAt - a.startedAt);
-  if (!sessions.length) { list.innerHTML = '<p class="muted">まだ記録がありません。</p>'; return; }
+  if (!sessions.length) { list.innerHTML = '<p class="muted">縺ｾ縺險倬鹸縺後≠繧翫∪縺帙ｓ縲・/p>'; return; }
   for (const s of sessions) {
     const b = document.createElement("button");
     b.className = "listitem sub";
     const c = s.counts || {};
-    const dur = s.endedAt ? fmtTime(s.endedAt - s.startedAt) : "記録中または中断";
-    const who = s.patient && s.patient.name ? s.patient.name + "・" : "";
+    const dur = s.endedAt ? fmtTime(s.endedAt - s.startedAt) : "險倬鹸荳ｭ縺ｾ縺溘・荳ｭ譁ｭ";
+    const who = s.patient && s.patient.name ? s.patient.name + "繝ｻ" : "";
     b.innerHTML = "<b>" + esc(fmtDate(s.startedAt)) + "</b>" +
-      '<span class="muted">' + esc(who) + "記録 " + dur + "／いびき " + (c.snore || 0) + "・寝言の疑い " + (c.speech || 0) + "・環境音 " + (c.env || 0) + "</span>";
+      '<span class="muted">' + esc(who) + "險倬鹸 " + dur + "・上＞縺ｳ縺・" + (c.snore || 0) + "繝ｻ蟇晁ｨ縺ｮ逍代＞ " + (c.speech || 0) + "繝ｻ迺ｰ蠅・浹 " + (c.env || 0) + "</span>";
     b.onclick = () => openDetail(s.id).catch((err) => showError(err.message));
     list.appendChild(b);
   }
@@ -1264,7 +1234,7 @@ async function openDetail(sid) {
   if (!sess) return;
   const secs = (await DB.byIndex("secs", "sid", sid)).sort((a, b) => a.sec - b.sec);
   const evs = (await DB.byIndex("events", "sid", sid)).sort((a, b) => a.startMs - b.startMs);
-  $("d-title").textContent = fmtDate(sess.startedAt) + " の記録";
+  $("d-title").textContent = fmtDate(sess.startedAt) + " 縺ｮ險倬鹸";
   renderSummary(sess, secs);
   drawChart(sess, secs, evs);
   await renderEvents(sess, evs);
@@ -1277,23 +1247,23 @@ function renderSummary(sess, secs) {
   const motions = secs.filter((s) => s.motion != null).map((s) => s.motion);
   const last = secs.length ? secs[secs.length - 1].sec : 0;
   $("d-summary").innerHTML =
-    '<div class="kv"><span>患者名</span><b>' + esc(p.name || "-") + "</b></div>" +
-    '<div class="kv"><span>カルテNo</span><b>' + esc(p.chartNo || "-") + "</b></div>" +
-    '<div class="kv"><span>開始</span><b>' + esc(fmtDate(sess.startedAt)) + "</b></div>" +
-    '<div class="kv"><span>記録時間</span><b>' + fmtTime(last * 1000) + "</b></div>" +
-    '<div class="kv"><span>基準値（生音）</span><b>' + (sess.base == null ? "-" : round1(sess.base) + " dB") + "</b></div>" +
-    '<div class="kv"><span>いびき（保存）</span><b>' + (c.snore || 0) + "</b></div>" +
-    '<div class="kv"><span>寝言・話し声の疑い（除外）</span><b>' + (c.speech || 0) + "</b></div>" +
-    '<div class="kv"><span>判定不能（保存なし）</span><b>' + (c.unknown || 0) + "</b></div>" +
-    '<div class="kv"><span>環境音の変化</span><b>' + (c.env || 0) + "</b></div>" +
-    '<div class="kv"><span>短い音（除外）</span><b>' + (c.short || 0) + "</b></div>" +
-    '<div class="kv"><span>寝言除外（VAD）</span><b>' + (sess.vadOk ? "有効" : "無効（寝言の区別なし。候補はいびきとして保存）") + "</b></div>" +
-    '<div class="kv"><span>体動（平均）</span><b>' + mean(motions).toFixed(2) + "</b></div>";
+    '<div class="kv"><span>謔｣閠・錐</span><b>' + esc(p.name || "-") + "</b></div>" +
+    '<div class="kv"><span>繧ｫ繝ｫ繝・o</span><b>' + esc(p.chartNo || "-") + "</b></div>" +
+    '<div class="kv"><span>髢句ｧ・/span><b>' + esc(fmtDate(sess.startedAt)) + "</b></div>" +
+    '<div class="kv"><span>險倬鹸譎る俣</span><b>' + fmtTime(last * 1000) + "</b></div>" +
+    '<div class="kv"><span>蝓ｺ貅門､・育函髻ｳ・・/span><b>' + (sess.base == null ? "-" : round1(sess.base) + " dB") + "</b></div>" +
+    '<div class="kv"><span>縺・・縺搾ｼ井ｿ晏ｭ假ｼ・/span><b>' + (c.snore || 0) + "</b></div>" +
+    '<div class="kv"><span>蟇晁ｨ繝ｻ隧ｱ縺怜｣ｰ縺ｮ逍代＞・磯勁螟厄ｼ・/span><b>' + (c.speech || 0) + "</b></div>" +
+    '<div class="kv"><span>蛻､螳壻ｸ崎・・井ｿ晏ｭ倥↑縺暦ｼ・/span><b>' + (c.unknown || 0) + "</b></div>" +
+    '<div class="kv"><span>迺ｰ蠅・浹縺ｮ螟牙喧</span><b>' + (c.env || 0) + "</b></div>" +
+    '<div class="kv"><span>遏ｭ縺・浹・磯勁螟厄ｼ・/span><b>' + (c.short || 0) + "</b></div>" +
+    '<div class="kv"><span>蟇晁ｨ髯､螟厄ｼ・AD・・/span><b>' + (sess.vadOk ? "譛牙柑" : "辟｡蜉ｹ・亥ｯ晁ｨ縺ｮ蛹ｺ蛻･縺ｪ縺励ょ呵｣懊・縺・・縺阪→縺励※菫晏ｭ假ｼ・) + "</b></div>" +
+    '<div class="kv"><span>菴灘虚・亥ｹｳ蝮・ｼ・/span><b>' + mean(motions).toFixed(2) + "</b></div>";
 }
 
 function drawChart(sess, secs, evs) {
   const box = $("d-chart");
-  if (!secs.length) { box.innerHTML = '<p class="muted">データがありません。</p>'; return; }
+  if (!secs.length) { box.innerHTML = '<p class="muted">繝・・繧ｿ縺後≠繧翫∪縺帙ｓ縲・/p>'; return; }
   const W = 480, H = 220, PL = 36, PR = 8, PT = 8, PB = 22;
   const maxT = Math.max(60, secs[secs.length - 1].sec + 1);
   const vals = secs.map((s) => s.dbApplied);
@@ -1332,8 +1302,8 @@ function drawChart(sess, secs, evs) {
     '<polyline points="' + motPts + '" fill="none" stroke="#ffffff" stroke-width="1" opacity=".7"/>' +
     '<text x="2" y="' + (Y(ymax) + 8) + '" font-size="10" fill="#aebbc9">' + ymax + "</text>" +
     '<text x="2" y="' + Y(ymin) + '" font-size="10" fill="#aebbc9">' + ymin + "</text>" +
-    '<text x="' + PL + '" y="' + (H - 6) + '" font-size="10" fill="#aebbc9">0分</text>' +
-    '<text x="' + (W - PR) + '" y="' + (H - 6) + '" font-size="10" fill="#aebbc9" text-anchor="end">' + Math.round(maxT / 60) + "分</text>" +
+    '<text x="' + PL + '" y="' + (H - 6) + '" font-size="10" fill="#aebbc9">0蛻・/text>' +
+    '<text x="' + (W - PR) + '" y="' + (H - 6) + '" font-size="10" fill="#aebbc9" text-anchor="end">' + Math.round(maxT / 60) + "蛻・/text>" +
     "</svg>";
 }
 
@@ -1341,18 +1311,18 @@ async function renderEvents(sess, evs) {
   revokeUrls();
   const box = $("d-events");
   box.innerHTML = "";
-  if (!evs.length) { box.innerHTML = '<p class="muted">検知区間はありません。</p>'; return; }
+  if (!evs.length) { box.innerHTML = '<p class="muted">讀懃衍蛹ｺ髢薙・縺ゅｊ縺ｾ縺帙ｓ縲・/p>'; return; }
   for (const e of evs) {
     const row = document.createElement("div");
     row.className = "event";
     const tagCls = e.type === "speech" ? "rej" : e.type === "env" ? "env" : "";
     const level = e.peakSourceDb != null
-      ? "最大 " + e.peakSourceDb + " dB（生音）"
-      : "平均 " + (e.meanSourceDb != null ? e.meanSourceDb : "-") + " dB（生音）";
+      ? "譛螟ｧ " + e.peakSourceDb + " dB・育函髻ｳ・・
+      : "蟷ｳ蝮・" + (e.meanSourceDb != null ? e.meanSourceDb : "-") + " dB・育函髻ｳ・・;
     row.innerHTML =
-      '<div class="kv"><span>' + esc(fmtClock(sess.startedAt + e.startMs)) + "（記録から " + fmtTime(e.startMs) + '）</span><span class="tag ' + tagCls + '">' + esc(LABELS[e.type] || e.type) + "</span></div>" +
-      '<div class="kv"><span>長さ ' + round1(e.durMs / 1000) + "秒</span><b>" + level + "</b></div>" +
-      '<div class="kv"><span>音声確率（区間内の最大／前後1秒）</span><b>' + (e.vadMax == null ? "-" : e.vadMax) + " ／ " + (e.vadNear == null ? "-" : e.vadNear) + "</b></div>";
+      '<div class="kv"><span>' + esc(fmtClock(sess.startedAt + e.startMs)) + "・郁ｨ倬鹸縺九ｉ " + fmtTime(e.startMs) + '・・/span><span class="tag ' + tagCls + '">' + esc(LABELS[e.type] || e.type) + "</span></div>" +
+      '<div class="kv"><span>髟ｷ縺・' + round1(e.durMs / 1000) + "遘・/span><b>" + level + "</b></div>" +
+      '<div class="kv"><span>髻ｳ螢ｰ遒ｺ邇・ｼ亥玄髢灘・縺ｮ譛螟ｧ・丞燕蠕・遘抵ｼ・/span><b>' + (e.vadMax == null ? "-" : e.vadMax) + " ・・" + (e.vadNear == null ? "-" : e.vadNear) + "</b></div>";
 
     const lab = document.createElement("div");
     lab.className = "labels";
@@ -1380,13 +1350,13 @@ async function renderEvents(sess, evs) {
         row.appendChild(au);
       }
     } else if (e.type === "env") {
-      row.insertAdjacentHTML("beforeend", '<p class="muted">環境音の音声は保存されていません。</p>');
+      row.insertAdjacentHTML("beforeend", '<p class="muted">迺ｰ蠅・浹縺ｮ髻ｳ螢ｰ縺ｯ菫晏ｭ倥＆繧後※縺・∪縺帙ｓ縲・/p>');
     }
     box.appendChild(row);
   }
 }
 
-/* ===== WAV・ZIP（共有用） ===== */
+/* ===== WAV繝ｻZIP・亥・譛臥畑・・===== */
 function wavBytes(i16, sr) {
   const buf = new ArrayBuffer(44 + i16.length * 2);
   const v = new DataView(buf);
@@ -1400,17 +1370,14 @@ function wavBytes(i16, sr) {
 }
 const wavBlob = (i16, sr) => new Blob([wavBytes(i16, sr)], { type: "audio/wav" });
 
-/* ===== 4bit IMA ADPCM（V13で追加） =====
-   ・1サンプル16bit → 4bit に圧縮（約1/4）
-   ・WAV形式（format 17）で保存するので、Windowsの標準再生でも聞ける
-   ・1ブロック256バイト（先頭4バイトは予測値と段階番号）
-   ・旧版（V12以前）の音声は PCM16 のまま。clips の codec で判別する */
+/* ===== 4bit IMA ADPCM・・13縺ｧ霑ｽ蜉・・=====
+   繝ｻ1繧ｵ繝ｳ繝励Ν16bit 竊・4bit 縺ｫ蝨ｧ邵ｮ・育ｴ・/4・・   繝ｻWAV蠖｢蠑擾ｼ・ormat 17・峨〒菫晏ｭ倥☆繧九・縺ｧ縲仝indows縺ｮ讓呎ｺ門・逕溘〒繧り◇縺代ｋ
+   繝ｻ1繝悶Ο繝・け256繝舌う繝茨ｼ亥・鬆ｭ4繝舌う繝医・莠域ｸｬ蛟､縺ｨ谿ｵ髫守分蜿ｷ・・   繝ｻ譌ｧ迚茨ｼ・12莉･蜑搾ｼ峨・髻ｳ螢ｰ縺ｯ PCM16 縺ｮ縺ｾ縺ｾ縲Ｄlips 縺ｮ codec 縺ｧ蛻､蛻･縺吶ｋ */
 const IMA_STEP = [7,8,9,10,11,12,13,14,16,17,19,21,23,25,28,31,34,37,41,45,50,55,60,66,73,80,88,97,107,118,130,143,157,173,190,209,230,253,279,307,337,371,408,449,494,544,598,658,724,796,876,963,1060,1166,1282,1411,1552,1707,1878,2066,2272,2499,2749,3024,3327,3660,4026,4428,4871,5358,5894,6484,7132,7845,8630,9493,10442,11487,12635,13899,15289,16818,18500,20350,22385,24623,27086,29794,32767];
 const IMA_IDX = [-1, -1, -1, -1, 2, 4, 6, 8];
-const IMA_BLOCK = 256, IMA_SPB = 505; // 1ブロックのバイト数／1ブロックのサンプル数
+const IMA_BLOCK = 256, IMA_SPB = 505; // 1繝悶Ο繝・け縺ｮ繝舌う繝域焚・・繝悶Ο繝・け縺ｮ繧ｵ繝ｳ繝励Ν謨ｰ
 
-// 状態（st.pred=予測値, st.idx=段階番号）を、4bitの符号 code で更新する（符号化・復号で共通）
-function imaApply(code, st) {
+// 迥ｶ諷具ｼ・t.pred=莠域ｸｬ蛟､, st.idx=谿ｵ髫守分蜿ｷ・峨ｒ縲・bit縺ｮ隨ｦ蜿ｷ code 縺ｧ譖ｴ譁ｰ縺吶ｋ・育ｬｦ蜿ｷ蛹悶・蠕ｩ蜿ｷ縺ｧ蜈ｱ騾夲ｼ・function imaApply(code, st) {
   const step = IMA_STEP[st.idx];
   let dq = step >> 3;
   if (code & 4) dq += step;
@@ -1421,7 +1388,7 @@ function imaApply(code, st) {
   st.idx = Math.max(0, Math.min(88, st.idx + IMA_IDX[code & 7]));
 }
 
-// 1サンプルを 4bit の符号に変換し、状態を更新する
+// 1繧ｵ繝ｳ繝励Ν繧・4bit 縺ｮ隨ｦ蜿ｷ縺ｫ螟画鋤縺励∫憾諷九ｒ譖ｴ譁ｰ縺吶ｋ
 function imaEncodeSample(s, st) {
   const step = IMA_STEP[st.idx];
   let diff = s - st.pred;
@@ -1437,8 +1404,7 @@ function imaEncodeSample(s, st) {
   return code;
 }
 
-// Int16Array → IMA ADPCM の WAV（バイト列）
-function encodeImaWav(i16, sr) {
+// Int16Array 竊・IMA ADPCM 縺ｮ WAV・医ヰ繧､繝亥・・・function encodeImaWav(i16, sr) {
   const n = i16.length;
   const blocks = Math.max(1, Math.ceil(n / IMA_SPB));
   const dataLen = blocks * IMA_BLOCK;
@@ -1448,14 +1414,13 @@ function encodeImaWav(i16, sr) {
   const put = (o, s) => { for (let i = 0; i < 4; i++) u8[o + i] = s.charCodeAt(i); };
   put(0, "RIFF"); v.setUint32(4, buf.byteLength - 8, true); put(8, "WAVE");
   put(12, "fmt "); v.setUint32(16, 20, true);
-  v.setUint16(20, 17, true);                              // 形式：IMA ADPCM
-  v.setUint16(22, 1, true);                               // モノラル
+  v.setUint16(20, 17, true);                              // 蠖｢蠑擾ｼ唔MA ADPCM
+  v.setUint16(22, 1, true);                               // 繝｢繝弱Λ繝ｫ
   v.setUint32(24, sr, true);
   v.setUint32(28, Math.round(sr * IMA_BLOCK / IMA_SPB), true);
   v.setUint16(32, IMA_BLOCK, true);
   v.setUint16(34, 4, true);                               // 4bit
-  v.setUint16(36, 2, true);                               // 追加情報の長さ
-  v.setUint16(38, IMA_SPB, true);                         // 1ブロックのサンプル数
+  v.setUint16(36, 2, true);                               // 霑ｽ蜉諠・ｱ縺ｮ髟ｷ縺・  v.setUint16(38, IMA_SPB, true);                         // 1繝悶Ο繝・け縺ｮ繧ｵ繝ｳ繝励Ν謨ｰ
   put(40, "fact"); v.setUint32(44, 4, true); v.setUint32(48, n, true);
   put(52, "data"); v.setUint32(56, dataLen, true);
   const sampleAt = (i) => (i < n ? i16[i] : 0);
@@ -1477,8 +1442,7 @@ function encodeImaWav(i16, sr) {
   return u8;
 }
 
-// IMA ADPCM の WAV（バイト列）→ Int16Array（再生・確認用に復号する）
-function decodeImaWav(u8) {
+// IMA ADPCM 縺ｮ WAV・医ヰ繧､繝亥・・俄・ Int16Array・亥・逕溘・遒ｺ隱咲畑縺ｫ蠕ｩ蜿ｷ縺吶ｋ・・function decodeImaWav(u8) {
   const v = new DataView(u8.buffer, u8.byteOffset, u8.byteLength);
   const tag = (o) => String.fromCharCode(u8[o], u8[o + 1], u8[o + 2], u8[o + 3]);
   let off = 12, blockAlign = IMA_BLOCK, spb = IMA_SPB, total = 0, dataOff = -1, dataLen = 0;
@@ -1489,7 +1453,7 @@ function decodeImaWav(u8) {
     else if (id === "data") { dataOff = body; dataLen = size; break; }
     off = body + size + (size & 1);
   }
-  if (dataOff < 0) throw new Error("音声データが見つかりません");
+  if (dataOff < 0) throw new Error("髻ｳ螢ｰ繝・・繧ｿ縺瑚ｦ九▽縺九ｊ縺ｾ縺帙ｓ");
   const out = new Int16Array(total || Math.floor(dataLen / blockAlign) * spb);
   const st = { pred: 0, idx: 0 };
   let pos = 0;
@@ -1511,15 +1475,14 @@ function decodeImaWav(u8) {
   return out;
 }
 
-// 保存された音声（V13以降のADPCM、V12以前のPCM16の両方）をPCM16として取り出す
-function clipPcm(c) {
+// 菫晏ｭ倥＆繧後◆髻ｳ螢ｰ・・13莉･髯阪・ADPCM縲〃12莉･蜑阪・PCM16縺ｮ荳｡譁ｹ・峨ｒPCM16縺ｨ縺励※蜿悶ｊ蜃ｺ縺・function clipPcm(c) {
   return c.codec === "ima-adpcm" ? decodeImaWav(c.data) : c.data;
 }
-// 保存された音声を、ZIPに入れるファイルのバイト列にする
+// 菫晏ｭ倥＆繧後◆髻ｳ螢ｰ繧偵〇IP縺ｫ蜈･繧後ｋ繝輔ぃ繧､繝ｫ縺ｮ繝舌う繝亥・縺ｫ縺吶ｋ
 function clipBytes(c) {
   return c.codec === "ima-adpcm" ? c.data : wavBytes(c.data, c.sr);
 }
-// 音声のサンプル数
+// 髻ｳ螢ｰ縺ｮ繧ｵ繝ｳ繝励Ν謨ｰ
 function clipSamples(c) {
   return c.codec === "ima-adpcm" ? c.samples : c.data.length;
 }
@@ -1539,8 +1502,7 @@ function crc32(u8) {
   return (c ^ 0xFFFFFFFF) >>> 0;
 }
 
-// deflate（ZIP内のraw deflate）で圧縮する。ブラウザが対応していない場合は null を返す（無圧縮で保存する）
-async function deflateRaw(u8) {
+// deflate・・IP蜀・・raw deflate・峨〒蝨ｧ邵ｮ縺吶ｋ縲ゅヶ繝ｩ繧ｦ繧ｶ縺悟ｯｾ蠢懊＠縺ｦ縺・↑縺・ｴ蜷医・ null 繧定ｿ斐☆・育┌蝨ｧ邵ｮ縺ｧ菫晏ｭ倥☆繧具ｼ・async function deflateRaw(u8) {
   if (typeof CompressionStream === "undefined") return null;
   try {
     const stream = new Blob([u8]).stream().pipeThrough(new CompressionStream("deflate-raw"));
@@ -1551,8 +1513,7 @@ async function deflateRaw(u8) {
   }
 }
 
-// ZIP作成。compress:true のファイルだけ圧縮する（音声は無圧縮のまま）
-async function makeZip(files) {
+// ZIP菴懈・縲Ｄompress:true 縺ｮ繝輔ぃ繧､繝ｫ縺縺大悸邵ｮ縺吶ｋ・磯浹螢ｰ縺ｯ辟｡蝨ｧ邵ｮ縺ｮ縺ｾ縺ｾ・・async function makeZip(files) {
   const parts = [], cd = [];
   let off = 0;
   for (const f of files) {
@@ -1584,12 +1545,8 @@ async function makeZip(files) {
   return new Blob([...parts, ...cd, e], { type: "application/zip" });
 }
 
-// ZIPの中身
-// ・session.json：patient（患者情報）と session.timeSeriesLogs（1秒ごとのデータ）
-// ・clips.json：音声ファイルの一覧（startSec＝記録開始からの秒数、codec＝音声の方式）
-// ・summary.json / seconds.csv / events.csv / README.txt：人が確認する用（圧縮して保存）
-// ・clips/*.wav：音声（4bit IMA ADPCM。無圧縮のまま）
-async function shareSession(sid) {
+// ZIP縺ｮ荳ｭ霄ｫ
+// 繝ｻsession.json・嗔atient・域ぅ閠・ュ蝣ｱ・峨→ session.timeSeriesLogs・・遘偵＃縺ｨ縺ｮ繝・・繧ｿ・・// 繝ｻclips.json・夐浹螢ｰ繝輔ぃ繧､繝ｫ縺ｮ荳隕ｧ・・tartSec・晁ｨ倬鹸髢句ｧ九°繧峨・遘呈焚縲…odec・晞浹螢ｰ縺ｮ譁ｹ蠑擾ｼ・// 繝ｻsummary.json / seconds.csv / events.csv / README.txt・壻ｺｺ縺檎｢ｺ隱阪☆繧狗畑・亥悸邵ｮ縺励※菫晏ｭ假ｼ・// 繝ｻclips/*.wav・夐浹螢ｰ・・bit IMA ADPCM縲ら┌蝨ｧ邵ｮ縺ｮ縺ｾ縺ｾ・・async function shareSession(sid) {
   if (!sid) return;
   const sess = await DB.get("sessions", sid);
   if (!sess) return;
@@ -1695,12 +1652,12 @@ async function shareSession(sid) {
   const csvEvs = "id,type,label,startTime,durationSec,peakSourceDb,peakAppliedDb,meanSourceDb,vadMax,vadNear,gainDb,clip\n" +
     evOut.map((e) => [e.id, e.type, e.label ?? "", e.startTime, e.durationSec, e.peakSourceDb ?? "", e.peakAppliedDb ?? "", e.meanSourceDb ?? "", e.vadMax ?? "", e.vadNear ?? "", e.gainDb, e.clip ?? ""].join(",")).join("\n");
   const readme = DISCLAIMER + "\n\n" +
-    "- session.json: 患者情報（patient）と1秒ごとのデータ（session.timeSeriesLogs）\n" +
-    "- clips.json: 音声ファイルの一覧（startSec＝記録開始からの秒数、codec＝音声の方式）\n" +
-    "- summary.json: 記録の概要と検知区間\n" +
-    "- seconds.csv: 1秒ごとの音圧（dbApplied=ゲイン適用値、dbSource=調整前の生音）、音声確率、体動（motionMs2=m/s²、motionG=G）\n" +
-    "- events.csv: 検知区間の一覧\n" +
-    "- clips/*.wav: 保存された音声（4bit IMA ADPCM、調整前の生音。ゲイン値はclips.jsonのgainDbを参照）\n";
+    "- session.json: 謔｣閠・ュ蝣ｱ・・atient・峨→1遘偵＃縺ｨ縺ｮ繝・・繧ｿ・・ession.timeSeriesLogs・噂n" +
+    "- clips.json: 髻ｳ螢ｰ繝輔ぃ繧､繝ｫ縺ｮ荳隕ｧ・・tartSec・晁ｨ倬鹸髢句ｧ九°繧峨・遘呈焚縲…odec・晞浹螢ｰ縺ｮ譁ｹ蠑擾ｼ噂n" +
+    "- summary.json: 險倬鹸縺ｮ讎りｦ√→讀懃衍蛹ｺ髢貼n" +
+    "- seconds.csv: 1遘偵＃縺ｨ縺ｮ髻ｳ蝨ｧ・・bApplied=繧ｲ繧､繝ｳ驕ｩ逕ｨ蛟､縲‥bSource=隱ｿ謨ｴ蜑阪・逕滄浹・峨・浹螢ｰ遒ｺ邇・∽ｽ灘虚・・otionMs2=m/sﾂｲ縲［otionG=G・噂n" +
+    "- events.csv: 讀懃衍蛹ｺ髢薙・荳隕ｧ\n" +
+    "- clips/*.wav: 菫晏ｭ倥＆繧後◆髻ｳ螢ｰ・・bit IMA ADPCM縲∬ｪｿ謨ｴ蜑阪・逕滄浹縲ゅご繧､繝ｳ蛟､縺ｯclips.json縺ｮgainDb繧貞盾辣ｧ・噂n";
 
   files.unshift(
     txt("README.txt", readme),
@@ -1725,25 +1682,22 @@ async function shareSession(sid) {
   setTimeout(() => URL.revokeObjectURL(a.href), 10000);
 }
 
-/* ===== 環境音の音声削除 ===== */
+/* ===== 迺ｰ蠅・浹縺ｮ髻ｳ螢ｰ蜑企勁 ===== */
 async function deleteEnvClips() {
-  if (!confirm("保存済みの環境音の音声をすべて削除します。数値の記録は残ります。よろしいですか？")) return;
+  if (!confirm("菫晏ｭ俶ｸ医∩縺ｮ迺ｰ蠅・浹縺ｮ髻ｳ螢ｰ繧偵☆縺ｹ縺ｦ蜑企勁縺励∪縺吶よ焚蛟､縺ｮ險倬鹸縺ｯ谿九ｊ縺ｾ縺吶ゅｈ繧阪＠縺・〒縺吶°・・)) return;
   const clips = (await DB.all("clips")).filter((c) => c.kind === "env");
   const ids = new Set(clips.map((c) => c.id));
   const evs = (await DB.all("events")).filter((e) => e.clipId && ids.has(e.clipId));
   for (const c of clips) await DB.del("clips", c.id);
   for (const e of evs) { e.clipId = null; await DB.put("events", e); }
-  alert(clips.length + "件の環境音の音声を削除しました。");
+  alert(clips.length + "莉ｶ縺ｮ迺ｰ蠅・浹縺ｮ髻ｳ螢ｰ繧貞炎髯､縺励∪縺励◆縲・);
 }
 
-/* ===== ボタン・入力の接続 ===== */
+/* ===== 繝懊ち繝ｳ繝ｻ蜈･蜉帙・謗･邯・===== */
 // 1-1
 $("cam-btn").onclick = () => startCamera();
 $("cam-stop").onclick = () => stopCamera();
-$("qr-file-btn").onclick = () => {
-  setLast("選択画面を開きました");
-  $("qr-file").click();
-};
+$("qr-file-btn").onclick = () => $("qr-file").click();
 $("qr-file").addEventListener("change", (e) => {
   readQrFile(e.target.files && e.target.files[0]).catch((err) => showScanMsg(err.message));
   e.target.value = "";
@@ -1762,7 +1716,7 @@ $("cf-ok").onclick = async () => {
     setButtons();
     showPage("record");
   } catch (e) {
-    showError("患者情報を保存できませんでした: " + e.message);
+    showError("謔｣閠・ュ蝣ｱ繧剃ｿ晏ｭ倥〒縺阪∪縺帙ｓ縺ｧ縺励◆: " + e.message);
   }
 };
 $("cf-ng").onclick = () => {
@@ -1771,7 +1725,7 @@ $("cf-ng").onclick = () => {
   showPage("start");
 };
 
-// 記録画面
+// 險倬鹸逕ｻ髱｢
 $("pt-change").onclick = () => {
   if (S.running) return;
   stopCamera();
@@ -1783,7 +1737,7 @@ $("pt-change").onclick = () => {
 $("mic-btn").onclick = () => {
   if (S.ctx) return;
   $("mic-btn").disabled = true;
-  $("mic-state").textContent = "確認中…";
+  $("mic-state").textContent = "遒ｺ隱堺ｸｭ窶ｦ";
   showMicMsg("");
   let ctx = null;
   try {
@@ -1796,12 +1750,12 @@ $("mic-btn").onclick = () => {
   }
   setupMic(ctx)
     .then(() => {
-      $("mic-state").textContent = "許可済み（" + (S.micMode === "worklet" ? "標準" : "予備") + "方式）";
+      $("mic-state").textContent = "險ｱ蜿ｯ貂医∩・・ + (S.micMode === "worklet" ? "讓呎ｺ・ : "莠亥ｙ") + "譁ｹ蠑擾ｼ・;
       showMicMsg("");
     })
     .catch((e) => {
       console.error(e);
-      $("mic-state").textContent = "未許可";
+      $("mic-state").textContent = "譛ｪ險ｱ蜿ｯ";
       showMicMsg(micErrorMessage(e));
     })
     .finally(() => setButtons());
@@ -1819,13 +1773,13 @@ $("motion-btn").onclick = async () => {
   try {
     if (typeof DeviceMotionEvent !== "undefined" && typeof DeviceMotionEvent.requestPermission === "function") {
       const r = await DeviceMotionEvent.requestPermission();
-      if (r !== "granted") throw new Error("許可されませんでした");
+      if (r !== "granted") throw new Error("險ｱ蜿ｯ縺輔ｌ縺ｾ縺帙ｓ縺ｧ縺励◆");
     }
     window.addEventListener("devicemotion", onMotion);
-    $("motion-btn").textContent = "モーションセンサー許可済み";
+    $("motion-btn").textContent = "繝｢繝ｼ繧ｷ繝ｧ繝ｳ繧ｻ繝ｳ繧ｵ繝ｼ險ｱ蜿ｯ貂医∩";
     $("motion-btn").disabled = true;
   } catch (e) {
-    alert("モーションセンサーを許可できませんでした: " + e.message);
+    alert("繝｢繝ｼ繧ｷ繝ｧ繝ｳ繧ｻ繝ｳ繧ｵ繝ｼ繧定ｨｱ蜿ｯ縺ｧ縺阪∪縺帙ｓ縺ｧ縺励◆: " + e.message);
   }
 };
 
@@ -1838,7 +1792,7 @@ $("history-back").onclick = () => showPage("record");
 $("detail-back").onclick = () => showPage("history");
 $("d-share").onclick = () => shareSession(S.detailSid).catch((e) => showError(e.message));
 
-// 別のQRをハッシュで開いた時も確認画面へ
+// 蛻･縺ｮQR繧偵ワ繝・す繝･縺ｧ髢九＞縺滓凾繧ら｢ｺ隱咲判髱｢縺ｸ
 window.addEventListener("hashchange", () => { checkHashOnLoad(); });
 
 document.addEventListener("visibilitychange", async () => {
@@ -1849,21 +1803,17 @@ document.addEventListener("visibilitychange", async () => {
   }
 });
 
-/* ===== 起動 ===== */
+/* ===== 襍ｷ蜍・===== */
 async function init() {
   $("ver-text").textContent = "V" + APP_VERSION;
-  $("boot").textContent = "スクリプト読込OK（V" + APP_VERSION + "・" + new Date().toLocaleTimeString("ja-JP") + "）";
+  $("boot").textContent = "繧ｹ繧ｯ繝ｪ繝励ヨ隱ｭ霎ｼOK・・" + APP_VERSION + "繝ｻ" + new Date().toLocaleTimeString("ja-JP") + "・・;
 
-  // 任意：jsQRが同じフォルダにあれば、アプリ内の読み取りに使う（無くても動く）
-  const jq = document.createElement("script");
+  // 莉ｻ諢擾ｼ嗚sQR縺悟酔縺倥ヵ繧ｩ繝ｫ繝縺ｫ縺ゅｌ縺ｰ縲√い繝励Μ蜀・・隱ｭ縺ｿ蜿悶ｊ縺ｫ菴ｿ縺・ｼ育┌縺上※繧ょ虚縺擾ｼ・  const jq = document.createElement("script");
   jq.src = "./jsqr.min.js";
-  jq.onload = () => renderDecodeState();
-  jq.onerror = () => renderDecodeState();
   document.head.appendChild(jq);
-  renderDecodeState();
 
   if (!window.isSecureContext) {
-    showMicMsg(micErrorMessage({ name: "InsecureContext", stage: "接続の確認" }));
+    showMicMsg(micErrorMessage({ name: "InsecureContext", stage: "謗･邯壹・遒ｺ隱・ }));
   }
 
   await loadPatient();
@@ -1872,7 +1822,7 @@ async function init() {
   updateUI();
   loadVad().then(() => setButtons());
 
-  if (checkHashOnLoad()) return;          // 標準カメラで開いた場合は1-2へ
+  if (checkHashOnLoad()) return;          // 讓呎ｺ悶き繝｡繝ｩ縺ｧ髢九＞縺溷ｴ蜷医・1-2縺ｸ
   if (S.patient) {
     showPage("record");
   } else {
