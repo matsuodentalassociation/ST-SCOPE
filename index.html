@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
 <meta name="theme-color" content="#000000">
 <meta http-equiv="Cache-Control" content="no-cache">
-<title>SomnoLog V20</title>
+<title>SomnoLog V21</title>
 <script src="./ort.min.js"></script>
 <style>
 :root{color-scheme:dark}
@@ -52,6 +52,7 @@ input[type=checkbox]{width:18px;height:18px;accent-color:#84b9cf;vertical-align:
 audio{width:100%}
 .listitem{text-align:left;min-height:auto;display:flex;flex-direction:column;gap:4px}
 .list{display:flex;flex-direction:column;gap:10px}
+.hist-row{display:flex;flex-direction:column;gap:6px}
 video{width:100%;border-radius:10px;background:#000}
 ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 #black-screen{background-color:#000000 !important;width:100vw;height:100dvh;min-height:100vh;position:fixed;top:0;left:0;right:0;bottom:0;margin:0;padding:0;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;color:#756f61;touch-action:none;overflow:hidden}
@@ -65,7 +66,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 1-1 起動・QR読み取り -->
 <main id="page-start" class="page" hidden>
   <header class="head">
-    <h1>SomnoLog V20</h1>
+    <h1>SomnoLog V21</h1>
     <span class="tag">患者情報確認</span>
   </header>
   <p id="boot-start" class="boot">起動中…</p>
@@ -121,7 +122,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 記録画面（上から順に、音・体動・環境音の設定 → 記録の開始/停止 → 履歴・更新） -->
 <main id="page-record" class="page" hidden>
   <header class="head">
-    <h1>SomnoLog V20</h1>
+    <h1>SomnoLog V21</h1>
     <span id="rec-badge" class="tag">待機中</span>
   </header>
   <p id="boot" class="boot">スクリプト読込中…</p>
@@ -179,7 +180,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
   <section class="card">
     <h2>GitHub更新</h2>
     <p class="muted">matsuodentalassociation/ST-SCOPE / main / index.html</p>
-    <div class="kv"><span>現在</span><b id="upd-cur">SomnoLog V20</b></div>
+    <div class="kv"><span>現在</span><b id="upd-cur">SomnoLog V21</b></div>
     <div class="kv"><span>最新</span><b id="upd-latest">未確認</b></div>
     <p id="upd-msg" class="muted">起動時にGitHubの更新を確認します。</p>
     <button id="upd-check" class="sub">更新を確認</button>
@@ -189,7 +190,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
   </section>
 
   <section class="card">
-    <div class="kv"><span>バージョン</span><b id="ver-text">V20</b></div>
+    <div class="kv"><span>バージョン</span><b id="ver-text">V21</b></div>
     <p class="muted">この版は自動で書き換わりません。新しい版を使うときは、新しいファイルを開くか、上の「更新を適用」を使ってください。</p>
   </section>
 </main>
@@ -237,7 +238,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 
 /* ===== バージョン ===== */
 // 修正のたびに数字を1つ増やす。GitHub更新の確認はこの数字を比べる
-const APP_VERSION = 20;
+const APP_VERSION = 21;
 const APP = "SomnoLogV" + APP_VERSION;
 
 /* ===== GitHub更新の取得元 ===== */
@@ -257,7 +258,7 @@ const ENV_RUN_SEC = 10, ENV_DB = 6, ENV_COOLDOWN = 300, ENV_CLIP_SEC = 60; // �
 const FLUSH_SEC = 60, MAX_QUEUE = 40;
 const UI_MS = 250, LIVE_N = 240;
 const DB_NAME = "somnolog-v3"; // V3以降のデータを引き継ぐため名前は据え置き
-const DB_VERSION = 2;          // V10で settings を追加（V20でも変更なし）
+const DB_VERSION = 2;          // V10で settings を追加（V20・V21でも変更なし）
 const DB_WAIT_MS = 4000;       // 保存領域の読み込みを待つ上限（これを超えたら待たずに先へ進む）
 const DISCLAIMER = "本アプリは診断を行うものではありません。医師の判断の参考資料です。";
 const LABELS = { snore: "いびき", speech: "寝言・話し声", env: "環境音", unknown: "判定不能", short: "短い音" };
@@ -1295,6 +1296,9 @@ async function renderHistory() {
   const sessions = (await DB.all("sessions")).sort((a, b) => b.startedAt - a.startedAt);
   if (!sessions.length) { list.innerHTML = '<p class="muted">まだ記録がありません。</p>'; return; }
   for (const s of sessions) {
+    const row = document.createElement("div");
+    row.className = "hist-row";
+
     const b = document.createElement("button");
     b.className = "listitem sub";
     const c = s.counts || {};
@@ -1303,8 +1307,36 @@ async function renderHistory() {
     b.innerHTML = "<b>" + esc(fmtDate(s.startedAt)) + "</b>" +
       '<span class="muted">' + esc(who) + "記録 " + dur + "／いびき " + (c.snore || 0) + "・寝言の疑い " + (c.speech || 0) + "・環境音 " + (c.env || 0) + "</span>";
     b.onclick = () => openDetail(s.id).catch((err) => showError(err.message));
-    list.appendChild(b);
+
+    const del = document.createElement("button");
+    del.className = "danger";
+    del.textContent = "この記録を削除";
+    // 記録中・保存中の記録は削除させない
+    del.disabled = (S.running || S.saving) && S.sid === s.id;
+    del.onclick = () => deleteSession(s.id).catch((err) => showError("削除できませんでした: " + err.message));
+
+    row.appendChild(b);
+    row.appendChild(del);
+    list.appendChild(row);
   }
+}
+
+// 1件の記録を、その記録のデータ（sessions・secs・events・clips）すべてから削除する
+async function deleteSession(sid) {
+  if ((S.running || S.saving) && S.sid === sid) {
+    showError("記録中・保存中の記録は削除できません。");
+    return;
+  }
+  if (!confirm("この記録を削除します。元に戻せません。よろしいですか？")) return;
+  const secs = await DB.byIndex("secs", "sid", sid);
+  const evs = await DB.byIndex("events", "sid", sid);
+  const clips = await DB.byIndex("clips", "sid", sid);
+  for (const x of secs) await DB.del("secs", x.key);
+  for (const x of evs) await DB.del("events", x.id);
+  for (const x of clips) await DB.del("clips", x.id);
+  await DB.del("sessions", sid);
+  if (S.detailSid === sid) S.detailSid = null;
+  await renderHistory();
 }
 
 let blobUrls = [];
