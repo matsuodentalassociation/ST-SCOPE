@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
 <meta name="theme-color" content="#000000">
 <meta http-equiv="Cache-Control" content="no-cache">
-<title>SomnoLog V22</title>
+<title>SomnoLog V23</title>
 <script src="./ort.min.js"></script>
 <style>
 :root{color-scheme:dark}
@@ -19,6 +19,7 @@ button.danger{background:#3a2a2a;border-color:#7a4b48;color:#f2d2cf}
 button.sub{background:#171f29;border-color:#34424f;color:#d3dde7}
 button.warnbtn{background:#353024;border-color:#6d6240;color:#f3e7c9}
 button:disabled{opacity:.4;cursor:not-allowed}
+.mini{width:auto;min-width:44px;min-height:40px;padding:8px 12px;font-size:14px}
 .page{max-width:480px;margin:0 auto;padding:20px 16px 40px;display:flex;flex-direction:column;gap:14px}
 .sticky-bar{position:sticky;top:0;z-index:10;background:#0d1117;padding:8px 0;display:grid;grid-template-columns:1fr 1.4fr;gap:10px}
 .head{display:flex;justify-content:space-between;align-items:center;gap:10px}
@@ -50,9 +51,19 @@ input[type=checkbox]{width:18px;height:18px;accent-color:#84b9cf;vertical-align:
 .labels button{min-height:38px;font-size:13px}
 .labels button.on{background:#84b9cf;color:#10202a;border-color:#84b9cf}
 audio{width:100%}
-.listitem{text-align:left;min-height:auto;display:flex;flex-direction:column;gap:4px}
 .list{display:flex;flex-direction:column;gap:10px}
-.hist-row{display:flex;flex-direction:column;gap:6px}
+.cal-nav{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center}
+.cal-nav h2{text-align:center}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.cal-wk{font-size:11px;color:#8fa0b3;text-align:center;padding:4px 0}
+.cal-day{position:relative;min-height:44px;padding:6px 0;font-size:14px;background:#111820;border-color:#2a3643}
+.cal-day.has::after{content:"";position:absolute;bottom:5px;left:50%;transform:translateX(-50%);width:5px;height:5px;border-radius:50%;background:#84b9cf}
+.cal-day.today{border-color:#f3e7c9}
+.cal-day.sel{background:#84b9cf;border-color:#84b9cf;color:#10202a}
+.cal-day.sel::after{background:#10202a}
+.pager{display:flex;align-items:center;gap:8px}
+.cal-sum-head{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.event-list-note{margin:0}
 video{width:100%;border-radius:10px;background:#000}
 ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 #black-screen{background-color:#000000 !important;width:100vw;height:100dvh;min-height:100vh;position:fixed;top:0;left:0;right:0;bottom:0;margin:0;padding:0;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;color:#756f61;touch-action:none;overflow:hidden}
@@ -66,7 +77,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 1-1 起動・QR読み取り -->
 <main id="page-start" class="page" hidden>
   <header class="head">
-    <h1>SomnoLog V22</h1>
+    <h1>SomnoLog V23</h1>
     <span class="tag">患者情報確認</span>
   </header>
   <p id="boot-start" class="boot">起動中…</p>
@@ -122,7 +133,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 記録画面（上から順に、音・体動・環境音の設定 → 記録の開始/停止 → 履歴・更新） -->
 <main id="page-record" class="page" hidden>
   <header class="head">
-    <h1>SomnoLog V22</h1>
+    <h1>SomnoLog V23</h1>
     <span id="rec-badge" class="tag">待機中</span>
   </header>
   <p id="boot" class="boot">スクリプト読込中…</p>
@@ -169,7 +180,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
     <button id="stop-btn" class="danger" disabled>停止</button>
   </div>
   <button id="btn-enter-black" class="sub" disabled>黒画面に切り替え</button>
-  <button id="history-btn" class="sub">履歴を見る</button>
+  <button id="history-btn" class="sub">記録カレンダーを見る</button>
 
   <!-- 患者情報 -->
   <section class="card">
@@ -180,7 +191,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
   <section class="card">
     <h2>GitHub更新</h2>
     <p class="muted">matsuodentalassociation/ST-SCOPE / main / index.html</p>
-    <div class="kv"><span>現在</span><b id="upd-cur">SomnoLog V22</b></div>
+    <div class="kv"><span>現在</span><b id="upd-cur">SomnoLog V23</b></div>
     <div class="kv"><span>最新</span><b id="upd-latest">未確認</b></div>
     <p id="upd-msg" class="muted">起動時にGitHubの更新を確認します。</p>
     <button id="upd-check" class="sub">更新を確認</button>
@@ -190,24 +201,35 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
   </section>
 
   <section class="card">
-    <div class="kv"><span>バージョン</span><b id="ver-text">V22</b></div>
+    <div class="kv"><span>バージョン</span><b id="ver-text">V23</b></div>
     <p class="muted">この版は自動で書き換わりません。新しい版を使うときは、新しいファイルを開くか、上の「更新を適用」を使ってください。</p>
   </section>
 </main>
 
-<!-- 履歴画面 -->
-<main id="page-history" class="page" hidden>
+<!-- 記録カレンダー（旧・履歴画面の代わり） -->
+<main id="page-calendar" class="page" hidden>
   <header class="head">
-    <h1>記録履歴</h1>
-    <button id="history-back" class="sub" style="width:auto;min-height:40px">戻る</button>
+    <h1>記録カレンダー</h1>
+    <button id="cal-back" class="sub mini">戻る</button>
   </header>
-  <div id="session-list" class="list"></div>
+  <p class="muted">記録がある日には●が付きます。日付を1回押すと簡易情報を表示し、同じ日付をもう一度押すと詳細を開きます。</p>
+  <section class="card">
+    <div class="cal-nav">
+      <button id="cal-prev" class="sub mini">‹</button>
+      <h2 id="cal-title">-</h2>
+      <button id="cal-next" class="sub mini">›</button>
+    </div>
+    <div id="cal-weekdays" class="cal-grid"></div>
+    <div id="cal-days" class="cal-grid"></div>
+    <p class="muted">● 記録あり ／ 枠：今日</p>
+  </section>
+  <section id="cal-summary" class="card"></section>
 </main>
 
 <!-- 詳細画面 -->
 <main id="page-detail" class="page" hidden>
   <div class="sticky-bar">
-    <button id="detail-back" class="sub">履歴に戻る</button>
+    <button id="detail-back" class="sub">カレンダーに戻る</button>
     <button id="d-share" class="primary">医師と共有（ZIP）</button>
   </div>
   <section class="card">
@@ -238,7 +260,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 
 /* ===== バージョン ===== */
 // 修正のたびに数字を1つ増やす。GitHub更新の確認はこの数字を比べる
-const APP_VERSION = 22;
+const APP_VERSION = 23;
 const APP = "SomnoLogV" + APP_VERSION;
 
 /* ===== GitHub更新の取得元 ===== */
@@ -258,7 +280,7 @@ const ENV_RUN_SEC = 10, ENV_DB = 6, ENV_COOLDOWN = 300, ENV_CLIP_SEC = 60; // �
 const FLUSH_SEC = 60, MAX_QUEUE = 40;
 const UI_MS = 250, LIVE_N = 240;
 const DB_NAME = "somnolog-v3"; // V3以降のデータを引き継ぐため名前は据え置き
-const DB_VERSION = 2;          // V10で settings を追加（V20・V21・V22でも変更なし）
+const DB_VERSION = 2;          // V10で settings を追加（V20〜V23でも変更なし）
 const DB_WAIT_MS = 4000;       // 保存領域の読み込みを待つ上限（これを超えたら待たずに先へ進む）
 const DISCLAIMER = "本アプリは診断を行うものではありません。医師の判断の参考資料です。";
 const LABELS = { snore: "いびき", speech: "寝言・話し声", env: "環境音", unknown: "判定不能", short: "短い音" };
@@ -286,11 +308,27 @@ const fmtTime = (ms) => {
   const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
   return h ? h + ":" + pad(m) + ":" + pad(sec) : m + ":" + pad(sec);
 };
+// 「2時間5分」の形（カレンダーの簡易表示用）
+const fmtHM = (ms) => {
+  const s = Math.max(0, Math.floor(ms / 1000));
+  return Math.floor(s / 3600) + "時間" + Math.floor((s % 3600) / 60) + "分";
+};
 const fmtClock = (ms) => new Date(ms).toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 const fmtDate = (ms) => new Date(ms).toLocaleString("ja-JP", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" });
 const isoOf = (ms) => new Date(ms).toISOString();
 const esc = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const newCounts = () => ({ snore: 0, speech: 0, env: 0, unknown: 0, short: 0 });
+// 端末の日付（年-月-日）の文字列。カレンダーの日付の照合に使う
+const dayKey = (ms) => {
+  const d = new Date(ms);
+  return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
+};
+// 「2026年10月26日（月）」の形
+const dayLabel = (key) => {
+  const [y, m, d] = key.split("-").map(Number);
+  const w = "日月火水木金土"[new Date(y, m - 1, d).getDay()];
+  return y + "年" + m + "月" + d + "日（" + w + "）";
+};
 
 function showError(msg) {
   const b = $("errbox");
@@ -446,12 +484,15 @@ const S = {
   bucket: null, secBuf: [], envRun: 0, lastEnvMs: -1e9,
 };
 
+// カレンダーの表示状態（年・月・選んだ日・同じ日の何件目か・日付ごとの記録）
+const cal = { year: 0, month: 0, selected: null, index: 0, byDay: new Map() };
+
 // 記録中・保存中・共有中は、更新の適用や再読み込みをさせない
 function isBusy() { return S.running || S.saving; }
 
 /* ===== 画面切り替え ===== */
 function showPage(name) {
-  ["start", "confirm", "record", "history", "detail"].forEach((n) => { $("page-" + n).hidden = n !== name; });
+  ["start", "confirm", "record", "calendar", "detail"].forEach((n) => { $("page-" + n).hidden = n !== name; });
   window.scrollTo(0, 0);
 }
 
@@ -1289,38 +1330,109 @@ function exitBlack() {
   exitFs();
 }
 
-/* ===== 履歴・詳細 ===== */
-async function renderHistory() {
-  const list = $("session-list");
-  list.innerHTML = "";
-  const sessions = (await DB.all("sessions")).sort((a, b) => b.startedAt - a.startedAt);
-  if (!sessions.length) { list.innerHTML = '<p class="muted">まだ記録がありません。</p>'; return; }
+/* ===== 記録カレンダー ===== */
+// 記録（sessions）を日付ごとにまとめる。同じ日は開始時刻の早い順（1件目から）
+async function loadCalendarData() {
+  const sessions = (await DB.all("sessions")).sort((a, b) => a.startedAt - b.startedAt);
+  cal.byDay = new Map();
   for (const s of sessions) {
-    const row = document.createElement("div");
-    row.className = "hist-row";
-
-    const b = document.createElement("button");
-    b.className = "listitem sub";
-    const c = s.counts || {};
-    const dur = s.endedAt ? fmtTime(s.endedAt - s.startedAt) : "記録中または中断";
-    const who = s.patient && s.patient.name ? s.patient.name + "・" : "";
-    b.innerHTML = "<b>" + esc(fmtDate(s.startedAt)) + "</b>" +
-      '<span class="muted">' + esc(who) + "記録 " + dur + "／いびき " + (c.snore || 0) + "・寝言の疑い " + (c.speech || 0) + "・環境音 " + (c.env || 0) + "</span>";
-    b.onclick = () => openDetail(s.id).catch((err) => showError(err.message));
-
-    const del = document.createElement("button");
-    del.className = "danger";
-    del.textContent = "この記録を削除";
-    // 記録中・保存中の記録は削除させない
-    del.disabled = (S.running || S.saving) && S.sid === s.id;
-    del.onclick = () => deleteSession(s.id).catch((err) => showError("削除できませんでした: " + err.message));
-
-    row.appendChild(b);
-    row.appendChild(del);
-    list.appendChild(row);
+    const k = dayKey(s.startedAt);
+    if (!cal.byDay.has(k)) cal.byDay.set(k, []);
+    cal.byDay.get(k).push(s);
   }
 }
 
+// データを読み直して、カレンダーと簡易表示を描く
+async function refreshCalendar() {
+  await loadCalendarData();
+  renderCalendar();
+  renderDaySummary();
+}
+
+function shiftMonth(n) {
+  let m = cal.month + n, y = cal.year;
+  while (m < 1) { m += 12; y--; }
+  while (m > 12) { m -= 12; y++; }
+  cal.year = y;
+  cal.month = m;
+  renderCalendar();
+}
+
+function renderCalendar() {
+  $("cal-title").textContent = cal.year + "年" + cal.month + "月";
+  $("cal-weekdays").innerHTML = "日月火水木金土".split("").map((w) => '<div class="cal-wk">' + w + "</div>").join("");
+  const first = new Date(cal.year, cal.month - 1, 1).getDay();
+  const days = new Date(cal.year, cal.month, 0).getDate();
+  const today = dayKey(Date.now());
+  let html = "";
+  for (let i = 0; i < first; i++) html += "<div></div>";
+  for (let d = 1; d <= days; d++) {
+    const key = cal.year + "-" + pad(cal.month) + "-" + pad(d);
+    const cls = ["cal-day"];
+    if (cal.byDay.has(key)) cls.push("has");
+    if (key === cal.selected) cls.push("sel");
+    if (key === today) cls.push("today");
+    html += '<button class="' + cls.join(" ") + '" data-key="' + key + '">' + d + "</button>";
+  }
+  const box = $("cal-days");
+  box.innerHTML = html;
+  box.querySelectorAll("button[data-key]").forEach((b) => {
+    b.onclick = () => onDayTap(b.dataset.key);
+  });
+}
+
+// 1回目：簡易表示。同じ日付をもう一度押すと詳細を開く
+function onDayTap(key) {
+  if (cal.selected === key) {
+    const list = cal.byDay.get(key) || [];
+    if (list.length) {
+      const s = list[Math.min(cal.index, list.length - 1)];
+      openDetail(s.id).catch((err) => showError("詳細を開けませんでした: " + err.message));
+    }
+    return;
+  }
+  cal.selected = key;
+  cal.index = 0;
+  renderCalendar();
+  renderDaySummary();
+}
+
+// 選んだ日の簡易情報（同じ日に複数あれば ▲ ▼ で切り替える）
+function renderDaySummary() {
+  const box = $("cal-summary");
+  if (!cal.selected) {
+    box.innerHTML = '<p class="muted">日付を選んでください。</p>';
+    return;
+  }
+  const list = cal.byDay.get(cal.selected) || [];
+  if (!list.length) {
+    box.innerHTML = "<h2>" + esc(dayLabel(cal.selected)) + '</h2><p class="muted">この日の記録はありません。</p>';
+    return;
+  }
+  if (cal.index >= list.length) cal.index = list.length - 1;
+  const s = list[cal.index];
+  const c = s.counts || {};
+  const sleep = s.endedAt ? fmtHM(s.endedAt - s.startedAt) : "記録中または中断";
+  box.innerHTML =
+    '<div class="cal-sum-head"><h2>' + esc(dayLabel(cal.selected)) + "</h2>" +
+    '<div class="pager"><button id="cs-prev" class="sub mini">▲</button>' +
+    '<span class="tag">' + (cal.index + 1) + "件目/" + list.length + "件中</span>" +
+    '<button id="cs-next" class="sub mini">▼</button></div></div>' +
+    '<div class="kv"><span>開始</span><b>' + esc(fmtClock(s.startedAt)) + "</b></div>" +
+    '<div class="kv"><span>睡眠記録時間</span><b>' + esc(sleep) + "</b></div>" +
+    '<div class="kv"><span>いびき検出</span><b>' + (c.snore || 0) + "</b></div>" +
+    '<div class="kv"><span>寝言・話し声として除外</span><b>' + (c.speech || 0) + "</b></div>" +
+    '<div class="kv"><span>環境音の変化</span><b>' + (c.env || 0) + "</b></div>" +
+    '<button id="cs-open" class="primary">詳細を見る</button>' +
+    '<button id="cs-del" class="danger">この記録を削除</button>';
+
+  $("cs-prev").onclick = () => { cal.index = Math.max(0, cal.index - 1); renderDaySummary(); };
+  $("cs-next").onclick = () => { cal.index = Math.min(list.length - 1, cal.index + 1); renderDaySummary(); };
+  $("cs-open").onclick = () => openDetail(s.id).catch((err) => showError("詳細を開けませんでした: " + err.message));
+  $("cs-del").onclick = () => deleteSession(s.id).catch((err) => showError("削除できませんでした: " + err.message));
+}
+
+/* ===== 詳細 ===== */
 // 1件の記録を、その記録のデータ（sessions・secs・events・clips）すべてから削除する
 async function deleteSession(sid) {
   if ((S.running || S.saving) && S.sid === sid) {
@@ -1336,7 +1448,7 @@ async function deleteSession(sid) {
   for (const x of clips) await DB.del("clips", x.id);
   await DB.del("sessions", sid);
   if (S.detailSid === sid) S.detailSid = null;
-  await renderHistory();
+  await refreshCalendar();
 }
 
 let blobUrls = [];
@@ -1941,12 +2053,29 @@ $("stop-btn").onclick = () => {
 };
 $("btn-enter-black").onclick = enterBlack;
 $("black-screen").onclick = exitBlack;
+
+// 記録カレンダーを開く
 $("history-btn").onclick = async () => {
-  try { await renderHistory(); showPage("history"); }
-  catch (e) { showError("履歴を読めませんでした: " + e.message); }
+  try {
+    if (!cal.year) {
+      const now = new Date();
+      cal.year = now.getFullYear();
+      cal.month = now.getMonth() + 1;
+    }
+    await refreshCalendar();
+    showPage("calendar");
+  } catch (e) {
+    showError("カレンダーを読めませんでした: " + e.message);
+  }
 };
-$("history-back").onclick = () => showPage("record");
-$("detail-back").onclick = () => showPage("history");
+$("cal-prev").onclick = () => shiftMonth(-1);
+$("cal-next").onclick = () => shiftMonth(1);
+$("cal-back").onclick = () => showPage("record");
+$("detail-back").onclick = () => {
+  showPage("calendar");
+  renderCalendar();
+  renderDaySummary();
+};
 $("d-share").onclick = async () => {
   S.saving = true;
   renderUpdate();
