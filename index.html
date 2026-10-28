@@ -5,20 +5,21 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
 <meta name="theme-color" content="#000000">
 <meta http-equiv="Cache-Control" content="no-cache">
-<title>SomnoLog V23</title>
+<title>SomnoLog V24</title>
 <script src="./ort.min.js"></script>
 <style>
 :root{color-scheme:dark}
 *{box-sizing:border-box}
 body{margin:0;background:#0d1117;color:#f0eee6;font-family:-apple-system,BlinkMacSystemFont,"Noto Sans JP",sans-serif}
 [hidden]{display:none!important}
-button,input{font:inherit}
+button,input,select{font:inherit}
 button{min-height:48px;padding:12px 14px;border-radius:10px;border:1px solid #3c4f63;background:#223649;color:#e5f1fb;font-size:15px;font-weight:600;width:100%;cursor:pointer}
 button.primary{background:#84b9cf;border-color:#84b9cf;color:#10202a}
 button.danger{background:#3a2a2a;border-color:#7a4b48;color:#f2d2cf}
 button.sub{background:#171f29;border-color:#34424f;color:#d3dde7}
 button.warnbtn{background:#353024;border-color:#6d6240;color:#f3e7c9}
 button:disabled{opacity:.4;cursor:not-allowed}
+select{min-height:40px;padding:8px 10px;border-radius:10px;border:1px solid #3c4f63;background:#223649;color:#e5f1fb;font-size:14px;width:auto}
 .mini{width:auto;min-width:44px;min-height:40px;padding:8px 12px;font-size:14px}
 .page{max-width:480px;margin:0 auto;padding:20px 16px 40px;display:flex;flex-direction:column;gap:14px}
 .sticky-bar{position:sticky;top:0;z-index:10;background:#0d1117;padding:8px 0;display:grid;grid-template-columns:1fr 1.4fr;gap:10px}
@@ -46,6 +47,7 @@ input[type=range]{width:100%;accent-color:#84b9cf}
 input[type=checkbox]{width:18px;height:18px;accent-color:#84b9cf;vertical-align:middle}
 .chart{background:#101923;border:1px solid #2a3643;border-radius:10px;padding:6px}
 .chart svg{width:100%;height:auto;display:block}
+.tl-area{touch-action:none;user-select:none;-webkit-user-select:none;cursor:ew-resize}
 .event{border-top:1px solid #2a3643;padding-top:10px;display:flex;flex-direction:column;gap:8px}
 .labels{display:grid;grid-template-columns:repeat(2,1fr);gap:6px}
 .labels button{min-height:38px;font-size:13px}
@@ -63,6 +65,7 @@ audio{width:100%}
 .cal-day.sel::after{background:#10202a}
 .pager{display:flex;align-items:center;gap:8px}
 .cal-sum-head{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.tl-info{font-size:12px;color:#d3dde7;line-height:1.7;margin:0}
 .event-list-note{margin:0}
 video{width:100%;border-radius:10px;background:#000}
 ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
@@ -77,7 +80,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 1-1 起動・QR読み取り -->
 <main id="page-start" class="page" hidden>
   <header class="head">
-    <h1>SomnoLog V23</h1>
+    <h1>SomnoLog V24</h1>
     <span class="tag">患者情報確認</span>
   </header>
   <p id="boot-start" class="boot">起動中…</p>
@@ -133,7 +136,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 記録画面（上から順に、音・体動・環境音の設定 → 記録の開始/停止 → 履歴・更新） -->
 <main id="page-record" class="page" hidden>
   <header class="head">
-    <h1>SomnoLog V23</h1>
+    <h1>SomnoLog V24</h1>
     <span id="rec-badge" class="tag">待機中</span>
   </header>
   <p id="boot" class="boot">スクリプト読込中…</p>
@@ -191,7 +194,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
   <section class="card">
     <h2>GitHub更新</h2>
     <p class="muted">matsuodentalassociation/ST-SCOPE / main / index.html</p>
-    <div class="kv"><span>現在</span><b id="upd-cur">SomnoLog V23</b></div>
+    <div class="kv"><span>現在</span><b id="upd-cur">SomnoLog V24</b></div>
     <div class="kv"><span>最新</span><b id="upd-latest">未確認</b></div>
     <p id="upd-msg" class="muted">起動時にGitHubの更新を確認します。</p>
     <button id="upd-check" class="sub">更新を確認</button>
@@ -201,7 +204,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
   </section>
 
   <section class="card">
-    <div class="kv"><span>バージョン</span><b id="ver-text">V23</b></div>
+    <div class="kv"><span>バージョン</span><b id="ver-text">V24</b></div>
     <p class="muted">この版は自動で書き換わりません。新しい版を使うときは、新しいファイルを開くか、上の「更新を適用」を使ってください。</p>
   </section>
 </main>
@@ -237,9 +240,28 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
     <div id="d-summary"></div>
   </section>
   <section class="card">
-    <h2>タイムライン</h2>
-    <div id="d-chart" class="chart"></div>
-    <p class="muted">線：音圧（ゲイン適用値・1秒平均）／ 点線：基準値／ 緑の点：いびき（保存）／ 赤の点：寝言・話し声の疑い（除外）／ 灰の点：判定不能／ 黄の破線：環境音の変化／ 白い線：体動</p>
+    <div class="head">
+      <h2>タイムライン</h2>
+      <select id="tl-zoom" aria-label="タイムライン圧縮">
+        <option value="60">1分</option>
+        <option value="300">5分</option>
+        <option value="600">10分</option>
+        <option value="1800">30分</option>
+        <option value="3600">1時間</option>
+        <option value="0" selected>全体</option>
+      </select>
+    </div>
+    <p id="tl-info" class="tl-info"></p>
+    <div id="d-chart" class="chart tl-area"></div>
+    <p id="tl-cur-text" class="tl-info"></p>
+    <label class="muted">表示位置（右へ動かすと終了時刻の方へ進みます）</label>
+    <input id="tl-pos" type="range" min="0" max="0" step="1" value="0">
+    <label class="muted">黄色い線（時刻の位置）</label>
+    <input id="tl-cur" type="range" min="0" max="0" step="1" value="0">
+    <button id="tl-listen" class="primary">タイムラインのいびきを聴く</button>
+    <div id="tl-audio"></div>
+    <p id="tl-msg" class="muted"></p>
+    <p class="muted">線：音圧（ゲイン適用値・1秒平均）／ 点線：基準値／ 緑の点：いびき（保存）／ 赤の点：寝言・話し声の疑い（除外）／ 灰の点：判定不能／ 薄い破線：環境音の変化／ 白い線：体動／ 黄色い線：選んだ時刻</p>
   </section>
   <section class="card">
     <h2>検知区間</h2>
@@ -260,7 +282,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 
 /* ===== バージョン ===== */
 // 修正のたびに数字を1つ増やす。GitHub更新の確認はこの数字を比べる
-const APP_VERSION = 23;
+const APP_VERSION = 24;
 const APP = "SomnoLogV" + APP_VERSION;
 
 /* ===== GitHub更新の取得元 ===== */
@@ -280,8 +302,9 @@ const ENV_RUN_SEC = 10, ENV_DB = 6, ENV_COOLDOWN = 300, ENV_CLIP_SEC = 60; // �
 const FLUSH_SEC = 60, MAX_QUEUE = 40;
 const UI_MS = 250, LIVE_N = 240;
 const DB_NAME = "somnolog-v3"; // V3以降のデータを引き継ぐため名前は据え置き
-const DB_VERSION = 2;          // V10で settings を追加（V20〜V23でも変更なし）
+const DB_VERSION = 2;          // V10で settings を追加（V20〜V24でも変更なし）
 const DB_WAIT_MS = 4000;       // 保存領域の読み込みを待つ上限（これを超えたら待たずに先へ進む）
+const TL_PLAY_SEC = 5;         // タイムラインの再生：線の位置の前後の秒数（V24）
 const DISCLAIMER = "本アプリは診断を行うものではありません。医師の判断の参考資料です。";
 const LABELS = { snore: "いびき", speech: "寝言・話し声", env: "環境音", unknown: "判定不能", short: "短い音" };
 const LABEL_KEYS = ["snore", "speech", "env", "unknown"];
@@ -486,6 +509,10 @@ const S = {
 
 // カレンダーの表示状態（年・月・選んだ日・同じ日の何件目か・日付ごとの記録）
 const cal = { year: 0, month: 0, selected: null, index: 0, byDay: new Map() };
+
+// タイムラインの表示状態（V24）。秒単位。cursor は黄色い線の時刻
+const ZOOM_DEFAULT = 0;
+const tl = { data: null, total: 0, winStart: 0, winLen: 0, cursor: 0, zoomSec: ZOOM_DEFAULT, mMax: 0.5 };
 
 // 記録中・保存中・共有中は、更新の適用や再読み込みをさせない
 function isBusy() { return S.running || S.saving; }
@@ -1457,6 +1484,7 @@ function revokeUrls() { blobUrls.forEach((u) => URL.revokeObjectURL(u)); blobUrl
 // 詳細画面を先に表示し、そのあとで中身を描く（音声は読み込まない）
 async function openDetail(sid) {
   S.detailSid = sid;
+  tl.data = null;
   const sess = await DB.get("sessions", sid);
   if (!sess) return;
   $("d-title").textContent = fmtDate(sess.startedAt) + " の記録";
@@ -1469,7 +1497,7 @@ async function openDetail(sid) {
   const evs = (await DB.byIndex("events", "sid", sid)).sort((a, b) => a.startMs - b.startMs);
   if (S.detailSid !== sid) return; // 別の記録に切り替えられていたら描かない
   renderSummary(sess, secs);
-  drawChart(sess, secs, evs);
+  initTimeline(sess, secs, evs);
   renderEvents(sess, evs);
 }
 
@@ -1493,31 +1521,73 @@ function renderSummary(sess, secs) {
     '<div class="kv"><span>体動（平均）</span><b>' + mean(motions).toFixed(2) + "</b></div>";
 }
 
-function drawChart(sess, secs, evs) {
+/* ===== タイムライン（V24） =====
+   ・全記録を1本のグラフで持ち、表示幅（圧縮）と表示位置だけを変える
+   ・右へ動かすと記録の終了時刻の方へ進む
+   ・黄色い線は時刻の位置。前後 TL_PLAY_SEC 秒のいびき候補の音声だけを、押したときに1件読み込む */
+
+// 詳細を開いたときに、タイムラインの元データと初期位置を用意する
+function initTimeline(sess, secs, evs) {
+  const last = secs.length ? secs[secs.length - 1].sec : 0;
+  tl.data = { sess, secs, evs };
+  tl.total = Math.max(60, last + 1);
+  tl.mMax = secs.reduce((a, s) => Math.max(a, s.motion || 0), 0.5);
+  tl.zoomSec = ZOOM_DEFAULT;
+  tl.winStart = 0;
+  tl.cursor = 0;
+  $("tl-zoom").value = String(ZOOM_DEFAULT);
+  $("tl-msg").textContent = "";
+  $("tl-audio").innerHTML = "";
+  renderTimeline();
+}
+
+// 表示幅・表示位置・線の位置を、範囲内に収める
+function clampTl() {
+  tl.winLen = tl.zoomSec > 0 ? Math.min(tl.zoomSec, tl.total) : tl.total;
+  tl.winStart = clamp(tl.winStart, 0, Math.max(0, tl.total - tl.winLen));
+  tl.cursor = clamp(tl.cursor, tl.winStart, tl.winStart + tl.winLen);
+}
+
+function renderTimeline() {
+  if (!tl.data) return;
+  clampTl();
+  const { secs, sess } = tl.data;
   const box = $("d-chart");
-  if (!secs.length) { box.innerHTML = '<p class="muted">データがありません。</p>'; return; }
+
+  $("tl-pos").max = String(Math.round(tl.total - tl.winLen));
+  $("tl-pos").value = String(Math.round(tl.winStart));
+  $("tl-cur").min = String(Math.round(tl.winStart));
+  $("tl-cur").max = String(Math.round(tl.winStart + tl.winLen));
+  $("tl-cur").value = String(Math.round(tl.cursor));
+
+  if (!secs.length) {
+    box.innerHTML = '<p class="muted">データがありません。</p>';
+    $("tl-info").textContent = "";
+    $("tl-cur-text").textContent = "";
+    return;
+  }
+
   const W = 480, H = 220, PL = 36, PR = 8, PT = 8, PB = 22;
-  const maxT = Math.max(60, secs[secs.length - 1].sec + 1);
+  const t0 = tl.winStart, t1 = tl.winStart + tl.winLen;
   const vals = secs.map((s) => s.dbApplied);
   if (sess.base != null) vals.push(sess.base);
   const ymin = Math.floor(minOf(vals) / 5) * 5 - 5;
   const ymax = Math.ceil(maxOf(vals) / 5) * 5 + 5;
-  const X = (t) => PL + (t / maxT) * (W - PL - PR);
+  const X = (t) => PL + (t - t0) / tl.winLen * (W - PL - PR);
   const Y = (db) => PT + ((ymax - db) / (ymax - ymin)) * (H - PT - PB);
+  const MY = (m) => H - PB - Math.min(1, m / tl.mMax) * 18;
 
-  const step = Math.max(1, Math.ceil(secs.length / 900));
-  const pts = secs.filter((_, i) => i % step === 0)
+  const inWin = secs.filter((s) => s.sec >= t0 && s.sec <= t1);
+  const step = Math.max(1, Math.ceil(inWin.length / 900));
+  const pts = inWin.filter((_, i) => i % step === 0)
     .map((s) => X(s.sec).toFixed(1) + "," + Y(s.dbApplied).toFixed(1)).join(" ");
+  const motPts = inWin.filter((s) => s.motion != null).filter((_, i) => i % step === 0)
+    .map((s) => X(s.sec).toFixed(1) + "," + MY(s.motion).toFixed(1)).join(" ");
 
-  const mot = secs.filter((s) => s.motion != null);
-  const mMax = mot.reduce((a, s) => Math.max(a, s.motion), 0.5);
-  const motPts = mot.filter((_, i) => i % step === 0)
-    .map((s) => X(s.sec).toFixed(1) + "," + (H - PB - Math.min(1, s.motion / mMax) * 18).toFixed(1)).join(" ");
-
-  const marks = evs.map((e) => {
+  const marks = tl.data.evs.filter((e) => e.startMs / 1000 >= t0 && e.startMs / 1000 <= t1).map((e) => {
     const x = X(e.startMs / 1000).toFixed(1);
     if (e.type === "env") {
-      return '<line x1="' + x + '" x2="' + x + '" y1="' + PT + '" y2="' + (H - PB) + '" stroke="#f3e7c9" stroke-dasharray="4 3"/>';
+      return '<line x1="' + x + '" x2="' + x + '" y1="' + PT + '" y2="' + (H - PB) + '" stroke="#f3e7c9" stroke-opacity=".6" stroke-dasharray="4 3"/>';
     }
     const db = e.peakAppliedDb != null ? e.peakAppliedDb : (e.meanAppliedDb != null ? e.meanAppliedDb : ymin);
     const color = e.type === "snore" ? "#7fd6a0" : e.type === "speech" ? "#e07b74" : "#9aa5b1";
@@ -1526,20 +1596,89 @@ function drawChart(sess, secs, evs) {
 
   const baseLine = sess.base == null ? "" :
     '<line x1="' + PL + '" x2="' + (W - PR) + '" y1="' + Y(sess.base).toFixed(1) + '" y2="' + Y(sess.base).toFixed(1) + '" stroke="#84b9cf" stroke-dasharray="4 3"/>';
+  const cursorLine = '<line x1="' + X(tl.cursor).toFixed(1) + '" x2="' + X(tl.cursor).toFixed(1) + '" y1="' + PT + '" y2="' + (H - PB) + '" stroke="#ffd54a" stroke-width="2"/>';
 
   box.innerHTML = '<svg viewBox="0 0 ' + W + " " + H + '" xmlns="http://www.w3.org/2000/svg">' +
     '<rect x="' + PL + '" y="' + PT + '" width="' + (W - PL - PR) + '" height="' + (H - PT - PB) + '" fill="none" stroke="#2a3643"/>' +
     baseLine + marks +
     '<polyline points="' + pts + '" fill="none" stroke="#84b9cf" stroke-width="1.2"/>' +
     '<polyline points="' + motPts + '" fill="none" stroke="#ffffff" stroke-width="1" opacity=".7"/>' +
+    cursorLine +
     '<text x="2" y="' + (Y(ymax) + 8) + '" font-size="10" fill="#aebbc9">' + ymax + "</text>" +
     '<text x="2" y="' + Y(ymin) + '" font-size="10" fill="#aebbc9">' + ymin + "</text>" +
-    '<text x="' + PL + '" y="' + (H - 6) + '" font-size="10" fill="#aebbc9">0分</text>' +
-    '<text x="' + (W - PR) + '" y="' + (H - 6) + '" font-size="10" fill="#aebbc9" text-anchor="end">' + Math.round(maxT / 60) + "分</text>" +
+    '<text x="' + PL + '" y="' + (H - 6) + '" font-size="10" fill="#aebbc9">' + fmtTime(t0 * 1000) + "</text>" +
+    '<text x="' + (W - PR) + '" y="' + (H - 6) + '" font-size="10" fill="#aebbc9" text-anchor="end">' + fmtTime(t1 * 1000) + "</text>" +
     "</svg>";
+
+  $("tl-info").textContent = "表示：" + fmtTime(t0 * 1000) + " 〜 " + fmtTime(t1 * 1000) +
+    "（記録の終了 " + fmtTime(tl.total * 1000) + "）";
+  $("tl-cur-text").textContent = "黄色い線：記録から " + fmtTime(tl.cursor * 1000) +
+    "（" + fmtClock(sess.startedAt + tl.cursor * 1000) + "）";
 }
 
-// 検知区間を描く。音声は読み込まず、押したときだけ1件ずつ読み込む
+// 指の位置で、黄色い線を動かすか、表示位置を動かすかを決める
+let tlDrag = null;
+function tlPointerDown(e) {
+  if (!tl.data || !tl.data.secs.length) return;
+  const box = $("d-chart");
+  const rect = box.getBoundingClientRect();
+  const k = rect.width / 480;
+  const x = e.clientX - rect.left;
+  const cx = (36 + (tl.cursor - tl.winStart) / tl.winLen * 440) * k;
+  tlDrag = {
+    mode: Math.abs(x - cx) <= 24 ? "cursor" : "window",
+    lastX: e.clientX,
+    pxSec: (440 * k) / tl.winLen
+  };
+  try { box.setPointerCapture(e.pointerId); } catch (_) {}
+}
+
+function tlPointerMove(e) {
+  if (!tlDrag) return;
+  const dx = e.clientX - tlDrag.lastX;
+  tlDrag.lastX = e.clientX;
+  if (tlDrag.mode === "cursor") tl.cursor += dx / tlDrag.pxSec;
+  else tl.winStart += dx / tlDrag.pxSec; // 右へ動かすと終了時刻の方へ進む
+  renderTimeline();
+}
+
+function tlPointerEnd() { tlDrag = null; }
+
+// 線の位置の前後 TL_PLAY_SEC 秒にあるいびき候補の音声を、押したときだけ1件読み込んで再生する
+async function listenAtCursor() {
+  const msg = $("tl-msg"), box = $("tl-audio");
+  box.innerHTML = "";
+  if (!tl.data) return;
+  const c = tl.cursor * 1000;
+  const half = TL_PLAY_SEC * 1000;
+  const cands = tl.data.evs
+    .filter((e) => e.type === "snore" && e.clipId && e.startMs - PRE_MS <= c + half && e.endMs + POST_MS >= c - half)
+    .sort((a, b) => Math.abs(a.startMs - c) - Math.abs(b.startMs - c));
+  if (!cands.length) { msg.textContent = "音なし（この位置にいびきの音声はありません）"; return; }
+
+  msg.textContent = "読み込み中…";
+  try {
+    const clip = await DB.get("clips", cands[0].clipId);
+    if (!clip) { msg.textContent = "音なし（音声が見つかりません）"; return; }
+    const pcm = clipPcm(clip);
+    const from = Math.max(0, Math.round((c - half - clip.startMs) / 1000 * SR));
+    const to = Math.min(pcm.length, Math.round((c + half - clip.startMs) / 1000 * SR));
+    if (to <= from) { msg.textContent = "音なし（この位置に音声がありません）"; return; }
+    const url = URL.createObjectURL(wavBlob(pcm.slice(from, to), clip.sr));
+    blobUrls.push(url);
+    const au = document.createElement("audio");
+    au.controls = true;
+    au.preload = "auto";
+    au.src = url;
+    box.appendChild(au);
+    msg.textContent = "線の位置の前後" + TL_PLAY_SEC + "秒を再生できます（いびき候補の音声のみ）。";
+  } catch (err) {
+    console.error(err);
+    msg.textContent = "読み込めませんでした。もう一度押してください。";
+  }
+}
+
+// 検知区間の一覧（音声は押したときだけ読み込む）
 function renderEvents(sess, evs) {
   revokeUrls();
   const box = $("d-events");
@@ -2083,6 +2222,32 @@ $("d-share").onclick = async () => {
   catch (e) { showError(e.message); }
   finally { S.saving = false; renderUpdate(); }
 };
+
+// タイムライン（V24）
+const tlArea = $("d-chart");
+tlArea.addEventListener("pointerdown", tlPointerDown);
+tlArea.addEventListener("pointermove", tlPointerMove);
+tlArea.addEventListener("pointerup", tlPointerEnd);
+tlArea.addEventListener("pointercancel", tlPointerEnd);
+$("tl-zoom").addEventListener("change", (e) => {
+  if (!tl.data) return;
+  const center = tl.cursor;
+  tl.zoomSec = Number(e.target.value);
+  const len = tl.zoomSec > 0 ? Math.min(tl.zoomSec, tl.total) : tl.total;
+  tl.winStart = center - len / 2; // 線の位置が見える範囲で表示幅を変える
+  renderTimeline();
+});
+$("tl-pos").addEventListener("input", (e) => {
+  if (!tl.data) return;
+  tl.winStart = Number(e.target.value);
+  renderTimeline();
+});
+$("tl-cur").addEventListener("input", (e) => {
+  if (!tl.data) return;
+  tl.cursor = Number(e.target.value);
+  renderTimeline();
+});
+$("tl-listen").onclick = () => listenAtCursor();
 
 // GitHub更新
 $("upd-check").onclick = () => checkUpdate();
