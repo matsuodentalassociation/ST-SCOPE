@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
 <meta name="theme-color" content="#000000">
 <meta http-equiv="Cache-Control" content="no-cache">
-<title>SomnoLog V24</title>
+<title>SomnoLog V26</title>
 <script src="./ort.min.js"></script>
 <style>
 :root{color-scheme:dark}
@@ -80,7 +80,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 1-1 起動・QR読み取り -->
 <main id="page-start" class="page" hidden>
   <header class="head">
-    <h1>SomnoLog V24</h1>
+    <h1>SomnoLog V26</h1>
     <span class="tag">患者情報確認</span>
   </header>
   <p id="boot-start" class="boot">起動中…</p>
@@ -136,7 +136,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 記録画面（上から順に、音・体動・環境音の設定 → 記録の開始/停止 → 履歴・更新） -->
 <main id="page-record" class="page" hidden>
   <header class="head">
-    <h1>SomnoLog V24</h1>
+    <h1>SomnoLog V26</h1>
     <span id="rec-badge" class="tag">待機中</span>
   </header>
   <p id="boot" class="boot">スクリプト読込中…</p>
@@ -194,7 +194,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
   <section class="card">
     <h2>GitHub更新</h2>
     <p class="muted">matsuodentalassociation/ST-SCOPE / main / index.html</p>
-    <div class="kv"><span>現在</span><b id="upd-cur">SomnoLog V24</b></div>
+    <div class="kv"><span>現在</span><b id="upd-cur">SomnoLog V26</b></div>
     <div class="kv"><span>最新</span><b id="upd-latest">未確認</b></div>
     <p id="upd-msg" class="muted">起動時にGitHubの更新を確認します。</p>
     <button id="upd-check" class="sub">更新を確認</button>
@@ -204,7 +204,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
   </section>
 
   <section class="card">
-    <div class="kv"><span>バージョン</span><b id="ver-text">V24</b></div>
+    <div class="kv"><span>バージョン</span><b id="ver-text">V26</b></div>
     <p class="muted">この版は自動で書き換わりません。新しい版を使うときは、新しいファイルを開くか、上の「更新を適用」を使ってください。</p>
   </section>
 </main>
@@ -259,14 +259,21 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
     <label class="muted">黄色い線（時刻の位置）</label>
     <input id="tl-cur" type="range" min="0" max="0" step="1" value="0">
     <button id="tl-listen" class="primary">タイムラインのいびきを聴く</button>
+    <button id="tl-save" class="sub">保存する（黄色い線の前後1分）</button>
     <div id="tl-audio"></div>
     <p id="tl-msg" class="muted"></p>
-    <p class="muted">線：音圧（ゲイン適用値・1秒平均）／ 点線：基準値／ 緑の点：いびき（保存）／ 赤の点：寝言・話し声の疑い（除外）／ 灰の点：判定不能／ 薄い破線：環境音の変化／ 白い線：体動／ 黄色い線：選んだ時刻</p>
+    <p class="muted">線：音圧（ゲイン適用値・1秒平均）／ 点線：基準値／ 緑の点：いびき（保存）／ 赤の点：寝言・話し声の疑い（除外）／ 灰の点：判定不能／ 薄い破線：環境音の変化／ 白い線：体動／ 橙の破線：保存した位置／ 黄色い線：選んだ時刻</p>
   </section>
   <section class="card">
     <h2>検知区間</h2>
     <p class="muted">各区間に医師が判定を付けられます（学習データとして使います）。音声は押したときだけ読み込みます。</p>
     <div id="d-events" class="list"></div>
+  </section>
+  <section class="card">
+    <h2>保存した記録</h2>
+    <p class="muted">黄色い線で選んだ時刻の前後1分を保存します。音声はコピーせず、記録への参照だけを持ちます。共有を押したときに音声をWAVにまとめます。</p>
+    <div id="saved-list" class="list"></div>
+    <button id="saved-share" class="primary">保存した記録を共有する</button>
   </section>
   <p class="muted">本アプリは診断を行うものではありません。医師の判断の参考資料です。</p>
 </main>
@@ -282,7 +289,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 
 /* ===== バージョン ===== */
 // 修正のたびに数字を1つ増やす。GitHub更新の確認はこの数字を比べる
-const APP_VERSION = 24;
+const APP_VERSION = 26;
 const APP = "SomnoLogV" + APP_VERSION;
 
 /* ===== GitHub更新の取得元 ===== */
@@ -302,9 +309,10 @@ const ENV_RUN_SEC = 10, ENV_DB = 6, ENV_COOLDOWN = 300, ENV_CLIP_SEC = 60; // �
 const FLUSH_SEC = 60, MAX_QUEUE = 40;
 const UI_MS = 250, LIVE_N = 240;
 const DB_NAME = "somnolog-v3"; // V3以降のデータを引き継ぐため名前は据え置き
-const DB_VERSION = 2;          // V10で settings を追加（V20〜V24でも変更なし）
+const DB_VERSION = 2;          // V10で settings を追加（V20〜V26でも変更なし）
 const DB_WAIT_MS = 4000;       // 保存領域の読み込みを待つ上限（これを超えたら待たずに先へ進む）
 const TL_PLAY_SEC = 5;         // タイムラインの再生：線の位置の前後の秒数（V24）
+const MARK_HALF_MS = 60 * 1000; // 「保存する」の範囲：線の時刻の前後1分（V26）
 const DISCLAIMER = "本アプリは診断を行うものではありません。医師の判断の参考資料です。";
 const LABELS = { snore: "いびき", speech: "寝言・話し声", env: "環境音", unknown: "判定不能", short: "短い音" };
 const LABEL_KEYS = ["snore", "speech", "env", "unknown"];
@@ -510,9 +518,9 @@ const S = {
 // カレンダーの表示状態（年・月・選んだ日・同じ日の何件目か・日付ごとの記録）
 const cal = { year: 0, month: 0, selected: null, index: 0, byDay: new Map() };
 
-// タイムラインの表示状態（V24）。秒単位。cursor は黄色い線の時刻
+// タイムラインの表示状態（V24）。秒単位。cursor は黄色い線の時刻。marks は保存した位置（V26）
 const ZOOM_DEFAULT = 0;
-const tl = { data: null, total: 0, winStart: 0, winLen: 0, cursor: 0, zoomSec: ZOOM_DEFAULT, mMax: 0.5 };
+const tl = { data: null, total: 0, winStart: 0, winLen: 0, cursor: 0, zoomSec: ZOOM_DEFAULT, mMax: 0.5, marks: [] };
 
 // 記録中・保存中・共有中は、更新の適用や再読み込みをさせない
 function isBusy() { return S.running || S.saving; }
@@ -1460,19 +1468,20 @@ function renderDaySummary() {
 }
 
 /* ===== 詳細 ===== */
-// 1件の記録を、その記録のデータ（sessions・secs・events・clips）すべてから削除する
+// 1件の記録を、その記録のデータ（sessions・secs・events・clips・保存分）すべてから削除する
 async function deleteSession(sid) {
   if ((S.running || S.saving) && S.sid === sid) {
     showError("記録中・保存中の記録は削除できません。");
     return;
   }
-  if (!confirm("この記録を削除します。元に戻せません。よろしいですか？")) return;
+  if (!confirm("この記録を削除します。保存した記録も一緒に消えます。元に戻せません。よろしいですか？")) return;
   const secs = await DB.byIndex("secs", "sid", sid);
   const evs = await DB.byIndex("events", "sid", sid);
   const clips = await DB.byIndex("clips", "sid", sid);
   for (const x of secs) await DB.del("secs", x.key);
   for (const x of evs) await DB.del("events", x.id);
   for (const x of clips) await DB.del("clips", x.id);
+  await DB.del("settings", marksKey(sid));
   await DB.del("sessions", sid);
   if (S.detailSid === sid) S.detailSid = null;
   await refreshCalendar();
@@ -1485,20 +1494,25 @@ function revokeUrls() { blobUrls.forEach((u) => URL.revokeObjectURL(u)); blobUrl
 async function openDetail(sid) {
   S.detailSid = sid;
   tl.data = null;
+  tl.marks = [];
   const sess = await DB.get("sessions", sid);
   if (!sess) return;
   $("d-title").textContent = fmtDate(sess.startedAt) + " の記録";
   $("d-summary").innerHTML = '<p class="muted">読み込み中…</p>';
   $("d-chart").innerHTML = '<p class="muted">読み込み中…</p>';
   $("d-events").innerHTML = '<p class="muted">読み込み中…</p>';
+  $("saved-list").innerHTML = '<p class="muted">読み込み中…</p>';
   showPage("detail");
 
   const secs = (await DB.byIndex("secs", "sid", sid)).sort((a, b) => a.sec - b.sec);
   const evs = (await DB.byIndex("events", "sid", sid)).sort((a, b) => a.startMs - b.startMs);
+  const marks = await loadMarks(sid);
   if (S.detailSid !== sid) return; // 別の記録に切り替えられていたら描かない
+  tl.marks = marks;
   renderSummary(sess, secs);
   initTimeline(sess, secs, evs);
   renderEvents(sess, evs);
+  renderMarks();
 }
 
 function renderSummary(sess, secs) {
@@ -1594,13 +1608,19 @@ function renderTimeline() {
     return '<circle cx="' + x + '" cy="' + Y(db).toFixed(1) + '" r="3.5" fill="' + color + '"/>';
   }).join("");
 
+  // 保存した位置（橙の破線）
+  const savedLines = tl.marks.filter((m) => m.centerMs / 1000 >= t0 && m.centerMs / 1000 <= t1).map((m) => {
+    const x = X(m.centerMs / 1000).toFixed(1);
+    return '<line x1="' + x + '" x2="' + x + '" y1="' + PT + '" y2="' + (H - PB) + '" stroke="#ff9f43" stroke-width="1.5" stroke-dasharray="2 3"/>';
+  }).join("");
+
   const baseLine = sess.base == null ? "" :
     '<line x1="' + PL + '" x2="' + (W - PR) + '" y1="' + Y(sess.base).toFixed(1) + '" y2="' + Y(sess.base).toFixed(1) + '" stroke="#84b9cf" stroke-dasharray="4 3"/>';
   const cursorLine = '<line x1="' + X(tl.cursor).toFixed(1) + '" x2="' + X(tl.cursor).toFixed(1) + '" y1="' + PT + '" y2="' + (H - PB) + '" stroke="#ffd54a" stroke-width="2"/>';
 
   box.innerHTML = '<svg viewBox="0 0 ' + W + " " + H + '" xmlns="http://www.w3.org/2000/svg">' +
     '<rect x="' + PL + '" y="' + PT + '" width="' + (W - PL - PR) + '" height="' + (H - PT - PB) + '" fill="none" stroke="#2a3643"/>' +
-    baseLine + marks +
+    baseLine + marks + savedLines +
     '<polyline points="' + pts + '" fill="none" stroke="#84b9cf" stroke-width="1.2"/>' +
     '<polyline points="' + motPts + '" fill="none" stroke="#ffffff" stroke-width="1" opacity=".7"/>' +
     cursorLine +
@@ -1676,6 +1696,214 @@ async function listenAtCursor() {
     console.error(err);
     msg.textContent = "読み込めませんでした。もう一度押してください。";
   }
+}
+
+/* ===== 保存した位置（V26）=====
+   ・「保存する」：黄色い線の時刻の前後1分を、参照として保存する（音声はコピーしない）
+   ・同じ時刻は重複として保存しない
+   ・前後1分に、いびき候補の音声が1件もなければ保存しない
+   ・保存分は settings（キー：marks:記録ID）に入れる。IndexedDBの版は変えない */
+
+function marksKey(sid) { return "marks:" + sid; }
+
+async function loadMarks(sid) {
+  const row = await DB.get("settings", marksKey(sid));
+  return row && Array.isArray(row.value) ? row.value : [];
+}
+
+async function saveMarks(sid, list) {
+  await DB.put("settings", { key: marksKey(sid), value: list, savedAt: Date.now() });
+}
+
+// 黄色い線の時刻を保存する
+async function saveMark() {
+  const msg = $("tl-msg");
+  if (!tl.data || !tl.data.secs.length) return;
+  const sess = tl.data.sess;
+  const centerMs = Math.round(tl.cursor * 1000);
+
+  if (tl.marks.some((m) => m.centerMs === centerMs)) {
+    msg.textContent = "重複しているため保存しません（記録から " + fmtTime(centerMs) + " は保存済みです）。";
+    return;
+  }
+  const from = Math.max(0, centerMs - MARK_HALF_MS);
+  const to = Math.min(tl.total * 1000, centerMs + MARK_HALF_MS);
+  const snores = tl.data.evs.filter((e) => e.type === "snore" && e.clipId &&
+    e.startMs - PRE_MS < to && e.endMs + POST_MS > from);
+  if (!snores.length) {
+    msg.textContent = "音声がないため保存できません（記録から " + fmtTime(centerMs) + " の前後1分に、いびき候補の音声がありません）。";
+    return;
+  }
+
+  const mark = {
+    id: uid(), centerMs, fromMs: from, toMs: to, savedAt: Date.now(),
+    items: snores.map((e) => ({ startMs: e.startMs, durMs: e.durMs }))
+  };
+  const next = tl.marks.concat(mark).sort((a, b) => a.centerMs - b.centerMs);
+  await saveMarks(sess.id, next);
+  tl.marks = next;
+  renderTimeline();
+  renderMarks();
+  msg.textContent = "保存しました：記録から " + fmtTime(centerMs) + "（前後1分・いびき候補 " + snores.length + "件）";
+}
+
+// 保存分の音声を、範囲の中で時刻順に組み立てる（重なりは同じ位置に書くので1回だけ使われ、音のない所は無音）
+async function buildMarkPcm(mark, evs) {
+  const n = Math.max(0, Math.round((mark.toMs - mark.fromMs) / 1000 * SR));
+  const out = new Int16Array(n);
+  const list = evs.filter((e) => e.type === "snore" && e.clipId &&
+    e.startMs - PRE_MS < mark.toMs && e.endMs + POST_MS > mark.fromMs);
+  for (const e of list) {
+    const clip = await DB.get("clips", e.clipId);
+    if (!clip) continue;
+    const pcm = clipPcm(clip);
+    const base = Math.round((clip.startMs - mark.fromMs) / 1000 * SR);
+    for (let i = 0; i < pcm.length; i++) {
+      const j = base + i;
+      if (j >= 0 && j < n) out[j] = pcm[i];
+    }
+  }
+  return out;
+}
+
+// 保存した記録の一覧（詳細画面の下）
+function renderMarks() {
+  const box = $("saved-list");
+  box.innerHTML = "";
+  if (!tl.data) return;
+  const sess = tl.data.sess;
+  if (!tl.marks.length) {
+    box.innerHTML = '<p class="muted">保存した記録はありません。黄色い線で気になる位置を選び、「保存する」を押してください。</p>';
+    return;
+  }
+  for (const m of tl.marks) {
+    const row = document.createElement("div");
+    row.className = "event";
+    const list = m.items.map((it) => fmtTime(it.startMs) + "（" + round1(it.durMs / 1000) + "秒）").join("、");
+    row.innerHTML =
+      '<div class="kv"><span>記録から ' + esc(fmtTime(m.centerMs)) + "（" + esc(fmtClock(sess.startedAt + m.centerMs)) + '）</span><span class="tag">前後1分</span></div>' +
+      '<div class="kv"><span>範囲</span><b>' + esc(fmtTime(m.fromMs)) + " 〜 " + esc(fmtTime(m.toMs)) + "</b></div>" +
+      '<div class="kv"><span>いびき候補</span><b>' + m.items.length + "件</b></div>" +
+      '<p class="muted">' + esc(list) + "</p>" +
+      '<p class="muted">保存：' + esc(fmtDate(m.savedAt)) + "</p>";
+
+    const slot = document.createElement("div");
+    const play = document.createElement("button");
+    play.className = "sub";
+    play.textContent = "再生";
+    play.onclick = async () => {
+      play.disabled = true;
+      play.textContent = "読み込み中…";
+      try {
+        const pcm = await buildMarkPcm(m, tl.data.evs);
+        const url = URL.createObjectURL(wavBlob(pcm, SR));
+        blobUrls.push(url);
+        const au = document.createElement("audio");
+        au.controls = true;
+        au.preload = "auto";
+        au.src = url;
+        slot.appendChild(au);
+        play.hidden = true;
+      } catch (err) {
+        console.error(err);
+        play.disabled = false;
+        play.textContent = "読み込めませんでした。もう一度押してください";
+      }
+    };
+
+    const del = document.createElement("button");
+    del.className = "danger";
+    del.textContent = "削除";
+    del.onclick = async () => {
+      if (!confirm("この保存した記録を削除します。よろしいですか？")) return;
+      const next = tl.marks.filter((x) => x.id !== m.id);
+      await saveMarks(sess.id, next);
+      tl.marks = next;
+      renderTimeline();
+      renderMarks();
+    };
+
+    row.append(play, slot, del);
+    box.appendChild(row);
+  }
+}
+
+// 保存分をZIPにまとめる：各保存分のWAV（PCM16）と marks.json、README
+async function shareMarks(sid) {
+  const sess = await DB.get("sessions", sid);
+  if (!sess) return;
+  const marks = await loadMarks(sid);
+  if (!marks.length) { alert("保存した記録がありません。"); return; }
+  const evs = (await DB.byIndex("events", "sid", sid)).sort((a, b) => a.startMs - b.startMs);
+  const enc = new TextEncoder();
+  const files = [];
+  const txt = (name, str) => ({ name, nameBytes: enc.encode(name), data: enc.encode(str), compress: true });
+  const patient = {
+    clinic: (sess.patient && sess.patient.clinic) || "",
+    chartNo: (sess.patient && sess.patient.chartNo) || "",
+    name: (sess.patient && sess.patient.name) || "",
+    serialNumber: (sess.patient && sess.patient.serialNumber) || "",
+    logShareEmail: (sess.patient && sess.patient.logShareEmail) || "",
+  };
+
+  const outMarks = [];
+  for (let i = 0; i < marks.length; i++) {
+    const m = marks[i];
+    const file = "saved/saved_" + pad(i + 1) + ".wav";
+    const pcm = await buildMarkPcm(m, evs);
+    files.push({ name: file, nameBytes: enc.encode(file), data: wavBytes(pcm, SR) });
+    outMarks.push({
+      index: i + 1,
+      audioFile: file,
+      audioStartSec: round1(m.fromMs / 1000),
+      audioEndSec: round1(m.toMs / 1000),
+      durationSec: round1((m.toMs - m.fromMs) / 1000),
+      centerSec: round1(m.centerMs / 1000),
+      centerTime: isoOf(sess.startedAt + m.centerMs),
+      savedAt: isoOf(m.savedAt),
+      snoreCandidates: m.items.map((it) => ({
+        startSec: round1(it.startMs / 1000),
+        startTime: isoOf(sess.startedAt + it.startMs),
+        durationSec: round1(it.durMs / 1000),
+      })),
+    });
+  }
+
+  const marksJson = {
+    exporter: APP,
+    disclaimer: DISCLAIMER,
+    patient,
+    sessionId: sess.id,
+    startedAt: isoOf(sess.startedAt),
+    note: "audioStartSec は記録開始からの秒数。音声ファイルの0秒は audioStartSec に対応する。",
+    marks: outMarks,
+  };
+  const readme = DISCLAIMER + "\n\n" +
+    "- marks.json: 保存した記録の一覧（記録開始からの秒数、時刻、いびき候補）\n" +
+    "- saved/*.wav: 保存した記録の音声（PCM16 WAV、16kHz・モノラル、前後1分）。音のない所は無音\n";
+
+  files.unshift(
+    txt("README.txt", readme),
+    txt("marks.json", JSON.stringify(marksJson, null, 2))
+  );
+
+  const blob = await makeZip(files);
+  const fname = zipName(sess).replace(/\.zip$/, "_保存分.zip");
+  await deliverZip(blob, fname);
+}
+
+// ZIPを共有シートで渡す。使えなければダウンロードにする
+async function deliverZip(blob, fname) {
+  const file = new File([blob], fname, { type: "application/zip" });
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    try { await navigator.share({ files: [file], title: fname }); return; }
+    catch (e) { if (e.name === "AbortError") return; }
+  }
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = fname;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 10000);
 }
 
 // 検知区間の一覧（音声は押したときだけ読み込む）
@@ -2069,16 +2297,7 @@ async function shareSession(sid) {
 
   const blob = await makeZip(files);
   const fname = zipName(sess);
-  const file = new File([blob], fname, { type: "application/zip" });
-  if (navigator.canShare && navigator.canShare({ files: [file] })) {
-    try { await navigator.share({ files: [file], title: fname }); return; }
-    catch (e) { if (e.name === "AbortError") return; }
-  }
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = fname;
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+  await deliverZip(blob, fname);
 }
 
 /* ===== 環境音の音声削除 ===== */
@@ -2248,6 +2467,17 @@ $("tl-cur").addEventListener("input", (e) => {
   renderTimeline();
 });
 $("tl-listen").onclick = () => listenAtCursor();
+$("tl-save").onclick = () => saveMark().catch((err) => showError("保存できませんでした: " + err.message));
+
+// 保存した記録の共有（V26）
+$("saved-share").onclick = async () => {
+  if (!S.detailSid) return;
+  S.saving = true;
+  renderUpdate();
+  try { await shareMarks(S.detailSid); }
+  catch (e) { showError(e.message); }
+  finally { S.saving = false; renderUpdate(); }
+};
 
 // GitHub更新
 $("upd-check").onclick = () => checkUpdate();
