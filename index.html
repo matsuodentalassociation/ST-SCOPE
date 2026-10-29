@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
 <meta name="theme-color" content="#000000">
 <meta http-equiv="Cache-Control" content="no-cache">
-<title>SomnoLog V31</title>
+<title>SomnoLog V32</title>
 <script src="./ort.min.js"></script>
 <style>
 :root{color-scheme:dark}
@@ -22,7 +22,7 @@ button:disabled{opacity:.4;cursor:not-allowed}
 select{min-height:40px;padding:8px 10px;border-radius:10px;border:1px solid #3c4f63;background:#223649;color:#e5f1fb;font-size:14px;width:auto}
 .mini{width:auto;min-width:44px;min-height:40px;padding:8px 12px;font-size:14px}
 .page{max-width:480px;margin:0 auto;padding:20px 16px 40px;display:flex;flex-direction:column;gap:14px}
-.sticky-bar{position:sticky;top:0;z-index:10;background:#0d1117;padding:8px 0;display:grid;grid-template-columns:1fr 1.4fr;gap:10px}
+.sticky-bar{position:sticky;top:0;z-index:10;background:#0d1117;padding:8px 0;display:grid;grid-template-columns:1fr;gap:10px}
 .head{display:flex;justify-content:space-between;align-items:center;gap:10px}
 h1{margin:0;font-size:22px}
 h2{margin:0;font-size:17px}
@@ -75,7 +75,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 1-1 起動・QR読み取り -->
 <main id="page-start" class="page" hidden>
   <header class="head">
-    <h1>SomnoLog V31</h1>
+    <h1>SomnoLog V32</h1>
     <span class="tag">患者情報確認</span>
   </header>
   <p class="muted">②が発行した患者用QRを読み取ってください。</p>
@@ -131,7 +131,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 記録画面 -->
 <main id="page-record" class="page" hidden>
   <header class="head">
-    <h1>SomnoLog V31</h1>
+    <h1>SomnoLog V32</h1>
     <span id="rec-badge" class="tag">待機中</span>
   </header>
 
@@ -177,7 +177,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 
   <!-- バージョン・更新 -->
   <section class="card">
-    <div class="kv"><span>アプリのバージョン</span><b id="ver-text">SomnoLog V31</b></div>
+    <div class="kv"><span>アプリのバージョン</span><b id="ver-text">SomnoLog V32</b></div>
     <p class="muted">このアプリは自動でアップデートしません。アプリ更新のお知らせが届いたときは、更新を確認後にキャッシュ回避で再読み込みをクリックしてください。</p>
     <p id="upd-msg" class="muted"></p>
     <button id="upd-check" class="sub">更新を確認</button>
@@ -209,7 +209,6 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <main id="page-detail" class="page" hidden>
   <div class="sticky-bar">
     <button id="detail-back" class="sub">カレンダーに戻る</button>
-    <button id="d-share" class="primary">医師と共有（ZIP）</button>
   </div>
   <section class="card">
     <h2 id="d-title"></h2>
@@ -239,7 +238,6 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
     <p id="tl-msg" class="muted"></p>
     <button id="tl-save" class="sub">保存する（黄色い線の前後1分）</button>
     <p id="save-msg" class="warn" hidden></p>
-    <p class="muted">線：音圧（ゲイン適用値・1秒平均）／ 点線：基準値／ 緑の点：いびき（保存）／ 赤の点：寝言・話し声の疑い（除外）／ 灰の点：判定不能／ 薄い破線：環境音の変化／ 白い線：体動／ 橙の破線：保存した位置／ 黄色い線：選んだ時刻</p>
   </section>
   <section class="card">
     <h2>保存した記録</h2>
@@ -247,6 +245,37 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
     <div id="saved-list" class="list"></div>
     <button id="saved-share" class="primary">保存した記録を共有する</button>
   </section>
+  <p class="muted">本アプリは診断を行うものではありません。医師の判断の参考資料です。</p>
+</main>
+
+<!-- 4-1 睡眠記録の共有 -->
+<main id="page-share" class="page" hidden>
+  <header class="head">
+    <h1>睡眠記録の共有</h1>
+  </header>
+  <section class="card">
+    <button id="sh-all" class="primary">全てのいびき記録を保存</button>
+    <button id="sh-sel">選択したいびき記録を保存</button>
+  </section>
+  <section class="card">
+    <h2>共有先確認（宛先）</h2>
+    <div class="field"><span>共有先アドレス（QRコードから引用）</span><b id="sh-addr"></b></div>
+    <button id="sh-copy">①アドレスをコピー</button>
+    <button id="sh-pick">②ファイルを選んで送信</button>
+    <input id="sh-file" type="file" accept=".zip,application/zip" hidden>
+  </section>
+  <button id="sh-usage" class="warnbtn">使い方を見る</button>
+  <section id="sh-usage-box" class="card" hidden>
+    <h2>送り方</h2>
+    <ol class="steps">
+      <li>「全てのいびき記録を保存」または「選択したいびき記録を保存」を押します。ZIPファイルがダウンロードに保存されます。</li>
+      <li>「①アドレスをコピー」を押して、宛先のアドレスをコピーします。</li>
+      <li>「②ファイルを選んで送信」を押し、ダウンロードに保存したZIPファイルを選びます。</li>
+      <li>共有の画面が開いたら、メールを選びます。</li>
+      <li>宛先の欄にコピーしたアドレスを貼り付けて、送信します。</li>
+    </ol>
+  </section>
+  <button id="sh-back" class="sub">記録画面に戻る</button>
   <p class="muted">本アプリは診断を行うものではありません。医師の判断の参考資料です。</p>
 </main>
 
@@ -261,7 +290,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 
 /* ===== バージョン ===== */
 // 修正のたびに数字を1つ増やす。GitHub更新の確認はこの数字を比べる
-const APP_VERSION = 31;
+const APP_VERSION = 32;
 const APP = "SomnoLogV" + APP_VERSION;
 
 /* ===== GitHub更新の取得元 ===== */
@@ -281,7 +310,7 @@ const ENV_RUN_SEC = 10, ENV_DB = 6, ENV_COOLDOWN = 300, ENV_CLIP_SEC = 60; // �
 const FLUSH_SEC = 60, MAX_QUEUE = 40;
 const UI_MS = 250, LIVE_N = 240;
 const DB_NAME = "somnolog-v3"; // V3以降のデータを引き継ぐため名前は据え置き
-const DB_VERSION = 2;          // V10で settings を追加（V20〜V30でも変更なし）
+const DB_VERSION = 2;          // V10で settings を追加（V20〜V32でも変更なし）
 const DB_WAIT_MS = 4000;       // 保存領域の読み込みを待つ上限（これを超えたら待たずに先へ進む）
 const TL_PLAY_SEC = 5;         // タイムラインの再生：線の位置の前後の秒数（V24）
 const MARK_HALF_MS = 60 * 1000; // 「保存する」の範囲：線の時刻の前後1分（V26）
@@ -509,7 +538,7 @@ function isBusy() { return S.running || S.saving; }
 
 /* ===== 画面切り替え ===== */
 function showPage(name) {
-  ["start", "confirm", "record", "calendar", "detail"].forEach((n) => { $("page-" + n).hidden = n !== name; });
+  ["start", "confirm", "record", "calendar", "detail", "share"].forEach((n) => { $("page-" + n).hidden = n !== name; });
   window.scrollTo(0, 0);
 }
 
@@ -1624,7 +1653,8 @@ function renderSummary(sess, secs) {
 /* ===== タイムライン（V24） =====
    ・全記録を1本のグラフで持ち、表示幅（圧縮）と表示位置だけを変える
    ・右へ動かすと記録の終了時刻の方へ進む
-   ・黄色い線は時刻の位置。前後 TL_PLAY_SEC 秒のいびき候補の音声だけを、押したときに1件読み込む */
+   ・黄色い線は時刻の位置。前後 TL_PLAY_SEC 秒のいびき候補の音声だけを、押したときに1件読み込む
+   ・V32：グラフ上の点（いびき・寝言・判定不能）は表示しない */
 
 // 詳細を開いたときに、タイムラインの元データと初期位置を用意する
 function initTimeline(sess, secs, evs) {
@@ -1684,14 +1714,10 @@ function renderTimeline() {
   const motPts = inWin.filter((s) => s.motion != null).filter((_, i) => i % step === 0)
     .map((s) => X(s.sec).toFixed(1) + "," + MY(s.motion).toFixed(1)).join(" ");
 
-  const marks = tl.data.evs.filter((e) => e.startMs / 1000 >= t0 && e.startMs / 1000 <= t1).map((e) => {
+  // 環境音の変化（薄い破線）だけを描く。いびき・寝言・判定不能の点は描かない（V32）
+  const marks = tl.data.evs.filter((e) => e.type === "env" && e.startMs / 1000 >= t0 && e.startMs / 1000 <= t1).map((e) => {
     const x = X(e.startMs / 1000).toFixed(1);
-    if (e.type === "env") {
-      return '<line x1="' + x + '" x2="' + x + '" y1="' + PT + '" y2="' + (H - PB) + '" stroke="#f3e7c9" stroke-opacity=".6" stroke-dasharray="4 3"/>';
-    }
-    const db = e.peakAppliedDb != null ? e.peakAppliedDb : (e.meanAppliedDb != null ? e.meanAppliedDb : ymin);
-    const color = e.type === "snore" ? "#7fd6a0" : e.type === "speech" ? "#e07b74" : "#9aa5b1";
-    return '<circle cx="' + x + '" cy="' + Y(db).toFixed(1) + '" r="3.5" fill="' + color + '"/>';
+    return '<line x1="' + x + '" x2="' + x + '" y1="' + PT + '" y2="' + (H - PB) + '" stroke="#f3e7c9" stroke-opacity=".6" stroke-dasharray="4 3"/>';
   }).join("");
 
   // 保存した位置（橙の破線）
@@ -1927,7 +1953,7 @@ function renderMarks() {
   }
 }
 
-// 保存分をZIPにまとめる（V28）
+// 保存分をZIPにまとめる（V28）。V32：共有シートは使わず、ダウンロードへ保存する
 // ・saved/*.wav：各保存分の音声（PCM16 WAV、前後1分）
 // ・clips.json：保存分WAVの一覧（分析アプリと同じ形式。startSec＝記録開始からの秒数）
 // ・session.json：保存分の時間範囲の時系列データ（記録開始時刻はそのまま、sec は記録開始からの秒数）
@@ -2063,21 +2089,32 @@ async function shareMarks(sid) {
 
   const blob = await makeZip(files);
   const fname = zipName(sess).replace(/\.zip$/, "_保存分.zip");
-  await deliverZip(blob, fname);
+  downloadZip(blob, fname);
 }
 
-// ZIPを共有シートで渡す。使えなければダウンロードにする
-async function deliverZip(blob, fname) {
-  const file = new File([blob], fname, { type: "application/zip" });
-  if (navigator.canShare && navigator.canShare({ files: [file] })) {
-    try { await navigator.share({ files: [file], title: fname }); return; }
-    catch (e) { if (e.name === "AbortError") return; }
-  }
+// V32：ZIPをダウンロードへ保存する（共有シートは使わない）
+function downloadZip(blob, fname) {
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
   a.download = fname;
+  document.body.appendChild(a);
   a.click();
+  a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+}
+
+// V32：選んだZIPファイルを、端末の共有画面で渡す（メールなどを選んで送る）
+async function sendPickedFile(file) {
+  if (!file) return;
+  if (!(navigator.canShare && navigator.canShare({ files: [file] }))) {
+    showError("この端末では、ファイルを共有画面に渡せません。");
+    return;
+  }
+  try {
+    await navigator.share({ files: [file], title: file.name });
+  } catch (e) {
+    if (e.name !== "AbortError") showError("共有画面を開けませんでした: " + e.message);
+  }
 }
 
 /* ===== WAV・ZIP（共有用） ===== */
@@ -2279,7 +2316,7 @@ async function makeZip(files) {
   return new Blob([...parts, ...cd, e], { type: "application/zip" });
 }
 
-// ZIPの中身
+// ZIPの中身（V32：共有シートは使わず、ダウンロードへ保存する）
 // ・session.json：patient（患者情報）と session.timeSeriesLogs（1秒ごとのデータ）
 // ・clips.json：音声ファイルの一覧（startSec＝記録開始からの秒数、codec＝音声の方式）
 // ・summary.json / seconds.csv / events.csv / README.txt：人が確認する用（圧縮して保存）
@@ -2408,7 +2445,7 @@ async function shareSession(sid) {
 
   const blob = await makeZip(files);
   const fname = zipName(sess);
-  await deliverZip(blob, fname);
+  downloadZip(blob, fname);
 }
 
 /* ===== 環境音の音声削除 ===== */
@@ -2420,6 +2457,41 @@ async function deleteEnvClips() {
   for (const c of clips) await DB.del("clips", c.id);
   for (const e of evs) { e.clipId = null; await DB.put("events", e); }
   alert(clips.length + "件の環境音の音声を削除しました。");
+}
+
+/* ===== 睡眠記録の共有画面（V32） ===== */
+// 共有先アドレス（QRから読み取った「ログ共有通知先」）を表示する
+function renderSharePage() {
+  const addr = S.patient && S.patient.logShareEmail ? S.patient.logShareEmail : "";
+  $("sh-addr").textContent = addr || "（未記入）";
+  $("sh-copy").disabled = !addr;
+  $("sh-usage-box").hidden = true;
+}
+
+// アドレスをクリップボードへコピーする
+async function copyAddress() {
+  const addr = S.patient && S.patient.logShareEmail ? S.patient.logShareEmail : "";
+  if (!addr) return;
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(addr);
+    } else {
+      const ta = document.createElement("textarea");
+      ta.value = addr;
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      const ok = document.execCommand("copy");
+      ta.remove();
+      if (!ok) throw new Error("コピーできませんでした");
+    }
+    const b = $("sh-copy");
+    b.textContent = "コピーしました";
+    setTimeout(() => { b.textContent = "①アドレスをコピー"; }, 1500);
+  } catch (e) {
+    showError("アドレスをコピーできませんでした: " + e.message);
+  }
 }
 
 /* ===== ボタン・入力の接続 ===== */
@@ -2545,13 +2617,6 @@ $("detail-back").onclick = () => {
   renderCalendar();
   renderDaySummary();
 };
-$("d-share").onclick = async () => {
-  S.saving = true;
-  renderUpdate();
-  try { await shareSession(S.detailSid); }
-  catch (e) { showError(e.message); }
-  finally { S.saving = false; renderUpdate(); }
-};
 
 // タイムライン（V24）
 const tlArea = $("d-chart");
@@ -2580,8 +2645,23 @@ $("tl-cur").addEventListener("input", (e) => {
 $("tl-listen").onclick = () => listenAtCursor();
 $("tl-save").onclick = () => saveMark().catch((err) => showSaveMsg("保存できませんでした: " + err.message, true));
 
-// 保存した記録の共有（V26）
-$("saved-share").onclick = async () => {
+// 「保存した記録を共有する」：睡眠記録の共有画面（4-1）へ移る（V32）
+$("saved-share").onclick = () => {
+  if (!S.detailSid) return;
+  renderSharePage();
+  showPage("share");
+};
+
+// 睡眠記録の共有画面（V32）
+$("sh-all").onclick = async () => {
+  if (!S.detailSid) return;
+  S.saving = true;
+  renderUpdate();
+  try { await shareSession(S.detailSid); }
+  catch (e) { showError(e.message); }
+  finally { S.saving = false; renderUpdate(); }
+};
+$("sh-sel").onclick = async () => {
   if (!S.detailSid) return;
   S.saving = true;
   renderUpdate();
@@ -2589,6 +2669,15 @@ $("saved-share").onclick = async () => {
   catch (e) { showError(e.message); }
   finally { S.saving = false; renderUpdate(); }
 };
+$("sh-copy").onclick = () => copyAddress();
+$("sh-pick").onclick = () => $("sh-file").click();
+$("sh-file").addEventListener("change", (e) => {
+  const f = e.target.files && e.target.files[0];
+  e.target.value = "";
+  sendPickedFile(f).catch((err) => showError(err.message));
+});
+$("sh-usage").onclick = () => { $("sh-usage-box").hidden = !$("sh-usage-box").hidden; };
+$("sh-back").onclick = () => showPage("record");
 
 // GitHub更新（V30：確認と再読み込みの2ボタン）
 $("upd-check").onclick = () => checkUpdate();
