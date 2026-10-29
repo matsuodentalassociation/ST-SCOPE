@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
 <meta name="theme-color" content="#000000">
 <meta http-equiv="Cache-Control" content="no-cache">
-<title>SomnoLog V32</title>
+<title>SomnoLog V33</title>
 <script src="./ort.min.js"></script>
 <style>
 :root{color-scheme:dark}
@@ -75,7 +75,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 1-1 起動・QR読み取り -->
 <main id="page-start" class="page" hidden>
   <header class="head">
-    <h1>SomnoLog V32</h1>
+    <h1>SomnoLog V33</h1>
     <span class="tag">患者情報確認</span>
   </header>
   <p class="muted">②が発行した患者用QRを読み取ってください。</p>
@@ -131,7 +131,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 記録画面 -->
 <main id="page-record" class="page" hidden>
   <header class="head">
-    <h1>SomnoLog V32</h1>
+    <h1>SomnoLog V33</h1>
     <span id="rec-badge" class="tag">待機中</span>
   </header>
 
@@ -160,7 +160,6 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
   <section class="card">
     <label class="muted"><input type="checkbox" id="env-save"> 環境音も記録する（通常はOFF）</label>
     <p class="muted">ONにすると、話し声が録音される場合があります。</p>
-    <button id="env-del" class="sub">保存済みの環境音の音声を削除</button>
   </section>
 
   <!-- 記録の開始・停止 -->
@@ -177,7 +176,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 
   <!-- バージョン・更新 -->
   <section class="card">
-    <div class="kv"><span>アプリのバージョン</span><b id="ver-text">SomnoLog V32</b></div>
+    <div class="kv"><span>アプリのバージョン</span><b id="ver-text">SomnoLog V33</b></div>
     <p class="muted">このアプリは自動でアップデートしません。アプリ更新のお知らせが届いたときは、更新を確認後にキャッシュ回避で再読み込みをクリックしてください。</p>
     <p id="upd-msg" class="muted"></p>
     <button id="upd-check" class="sub">更新を確認</button>
@@ -290,7 +289,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 
 /* ===== バージョン ===== */
 // 修正のたびに数字を1つ増やす。GitHub更新の確認はこの数字を比べる
-const APP_VERSION = 32;
+const APP_VERSION = 33;
 const APP = "SomnoLogV" + APP_VERSION;
 
 /* ===== GitHub更新の取得元 ===== */
@@ -310,7 +309,7 @@ const ENV_RUN_SEC = 10, ENV_DB = 6, ENV_COOLDOWN = 300, ENV_CLIP_SEC = 60; // �
 const FLUSH_SEC = 60, MAX_QUEUE = 40;
 const UI_MS = 250, LIVE_N = 240;
 const DB_NAME = "somnolog-v3"; // V3以降のデータを引き継ぐため名前は据え置き
-const DB_VERSION = 2;          // V10で settings を追加（V20〜V32でも変更なし）
+const DB_VERSION = 2;          // V10で settings を追加（V20〜V33でも変更なし）
 const DB_WAIT_MS = 4000;       // 保存領域の読み込みを待つ上限（これを超えたら待たずに先へ進む）
 const TL_PLAY_SEC = 5;         // タイムラインの再生：線の位置の前後の秒数（V24）
 const MARK_HALF_MS = 60 * 1000; // 「保存する」の範囲：線の時刻の前後1分（V26）
@@ -1572,36 +1571,15 @@ function renderDaySummary() {
     '<div class="kv"><span>寝言・話し声として除外</span><b>' + (c.speech || 0) + "</b></div>" +
     '<div class="kv"><span>環境音の変化</span><b>' + (c.env || 0) + "</b></div>" +
     '<div id="cs-detail"><p class="muted">評価を計算中…</p></div>' +
-    '<button id="cs-open" class="primary">詳細を見る</button>' +
-    '<button id="cs-del" class="danger">この記録を削除</button>';
+    '<button id="cs-open" class="primary">詳細を見る</button>';
 
   $("cs-prev").onclick = () => { cal.index = Math.max(0, cal.index - 1); renderDaySummary(); };
   $("cs-next").onclick = () => { cal.index = Math.min(list.length - 1, cal.index + 1); renderDaySummary(); };
   $("cs-open").onclick = () => openDetail(s.id).catch((err) => showError("詳細を開けませんでした: " + err.message));
-  $("cs-del").onclick = () => deleteSession(s.id).catch((err) => showError("削除できませんでした: " + err.message));
   loadDayDetail(s, token);
 }
 
 /* ===== 詳細 ===== */
-// 1件の記録を、その記録のデータ（sessions・secs・events・clips・保存分）すべてから削除する
-async function deleteSession(sid) {
-  if ((S.running || S.saving) && S.sid === sid) {
-    showError("記録中・保存中の記録は削除できません。");
-    return;
-  }
-  if (!confirm("この記録を削除します。保存した記録も一緒に消えます。元に戻せません。よろしいですか？")) return;
-  const secs = await DB.byIndex("secs", "sid", sid);
-  const evs = await DB.byIndex("events", "sid", sid);
-  const clips = await DB.byIndex("clips", "sid", sid);
-  for (const x of secs) await DB.del("secs", x.key);
-  for (const x of evs) await DB.del("events", x.id);
-  for (const x of clips) await DB.del("clips", x.id);
-  await DB.del("settings", marksKey(sid));
-  await DB.del("sessions", sid);
-  if (S.detailSid === sid) S.detailSid = null;
-  await refreshCalendar();
-}
-
 let blobUrls = [];
 function revokeUrls() { blobUrls.forEach((u) => URL.revokeObjectURL(u)); blobUrls = []; }
 
@@ -2448,17 +2426,6 @@ async function shareSession(sid) {
   downloadZip(blob, fname);
 }
 
-/* ===== 環境音の音声削除 ===== */
-async function deleteEnvClips() {
-  if (!confirm("保存済みの環境音の音声をすべて削除します。数値の記録は残ります。よろしいですか？")) return;
-  const clips = (await DB.all("clips")).filter((c) => c.kind === "env");
-  const ids = new Set(clips.map((c) => c.id));
-  const evs = (await DB.all("events")).filter((e) => e.clipId && ids.has(e.clipId));
-  for (const c of clips) await DB.del("clips", c.id);
-  for (const e of evs) { e.clipId = null; await DB.put("events", e); }
-  alert(clips.length + "件の環境音の音声を削除しました。");
-}
-
 /* ===== 睡眠記録の共有画面（V32） ===== */
 // 共有先アドレス（QRから読み取った「ログ共有通知先」）を表示する
 function renderSharePage() {
@@ -2568,7 +2535,6 @@ $("gain").addEventListener("input", (e) => {
 });
 
 $("env-save").addEventListener("change", (e) => { S.envSave = e.target.checked; });
-$("env-del").onclick = () => deleteEnvClips().catch((err) => showError(err.message));
 
 $("motion-btn").onclick = async () => {
   try {
