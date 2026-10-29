@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
 <meta name="theme-color" content="#000000">
 <meta http-equiv="Cache-Control" content="no-cache">
-<title>SomnoLog V30</title>
+<title>SomnoLog V31</title>
 <script src="./ort.min.js"></script>
 <style>
 :root{color-scheme:dark}
@@ -75,7 +75,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 1-1 起動・QR読み取り -->
 <main id="page-start" class="page" hidden>
   <header class="head">
-    <h1>SomnoLog V30</h1>
+    <h1>SomnoLog V31</h1>
     <span class="tag">患者情報確認</span>
   </header>
   <p class="muted">②が発行した患者用QRを読み取ってください。</p>
@@ -131,7 +131,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 記録画面 -->
 <main id="page-record" class="page" hidden>
   <header class="head">
-    <h1>SomnoLog V30</h1>
+    <h1>SomnoLog V31</h1>
     <span id="rec-badge" class="tag">待機中</span>
   </header>
 
@@ -177,7 +177,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 
   <!-- バージョン・更新 -->
   <section class="card">
-    <div class="kv"><span>アプリのバージョン</span><b id="ver-text">SomnoLog V30</b></div>
+    <div class="kv"><span>アプリのバージョン</span><b id="ver-text">SomnoLog V31</b></div>
     <p class="muted">このアプリは自動でアップデートしません。アプリ更新のお知らせが届いたときは、更新を確認後にキャッシュ回避で再読み込みをクリックしてください。</p>
     <p id="upd-msg" class="muted"></p>
     <button id="upd-check" class="sub">更新を確認</button>
@@ -261,7 +261,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 
 /* ===== バージョン ===== */
 // 修正のたびに数字を1つ増やす。GitHub更新の確認はこの数字を比べる
-const APP_VERSION = 30;
+const APP_VERSION = 31;
 const APP = "SomnoLogV" + APP_VERSION;
 
 /* ===== GitHub更新の取得元 ===== */
@@ -287,6 +287,17 @@ const TL_PLAY_SEC = 5;         // タイムラインの再生：線の位置の�
 const MARK_HALF_MS = 60 * 1000; // 「保存する」の範囲：線の時刻の前後1分（V26）
 const DISCLAIMER = "本アプリは診断を行うものではありません。医師の判断の参考資料です。";
 const LABELS = { snore: "いびき", speech: "寝言・話し声", env: "環境音", unknown: "判定不能", short: "短い音" };
+
+/* ===== 夜の評価（V31）：カレンダーの簡易表示用。すべて暫定値（実データで調整する） ===== */
+const ENV_QUIET_MAX = 0;       // 環境音の変化がこの回数以下：「とても静かな環境でした」
+const ENV_CALM_MAX = 2;        // この回数以下：「静かな環境でした」。これを超えると「やや騒がしい環境でした」
+const MOVE_TH = 0.3;           // 体動（m/s²）がこの値以上の秒を「動きのある秒」とする
+const LINK_SEC = 2;            // 動きの前後この秒数以内に音の上昇があれば「音と連動する動き」とする
+const TURN_MIN = 3;            // 「寝返りが多い」：音と連動する動きの最低回数
+const TURN_PER_HOUR = 3;       // 「寝返りが多い」：1時間あたりの回数
+const PERIOD_MIN = 6;          // 「定期的な振動」：同じ間隔で続く動きの最低回数
+const PERIOD_TOL_RATE = 0.2;   // 「定期的な振動」：間隔のばらつきの許容（間隔の最小値に対する割合）
+const PERIOD_TOL_SEC = 2;      // 「定期的な振動」：間隔のばらつきの許容（秒）。割合とこの秒のうち大きい方
 
 /* ===== 補助関数 ===== */
 const $ = (id) => document.getElementById(id);
@@ -1380,8 +1391,133 @@ function onDayTap(key) {
   renderDaySummary();
 }
 
+/* ===== 夜の評価（V31） =====
+   ・カレンダーの簡易表示で、選んだ記録の1秒データとイベントを読み込んで評価する
+   ・環境音：環境音の変化の回数で3段階に分ける
+   ・体動：音と連動する動き（寝返りの目安）と、連動しない動き（定期的な振動の目安）を分けて数える
+   ・閾値はすべて暫定値。診断ではなく、目安として表示する */
+
+// 環境音の評価（環境音の変化の回数 → 文言）
+function evalEnv(n) {
+  if (n <= ENV_QUIET_MAX) return "とても静かな環境でした";
+  if (n <= ENV_CALM_MAX) return "静かな環境でした";
+  return "やや騒がしい環境でした";
+}
+
+// 開始秒の一覧（昇順）から、ほぼ同じ間隔で続いた動きの最大回数を返す
+function longestPeriodicRun(starts) {
+  if (starts.length < 2) return starts.length;
+  const iv = [];
+  for (let i = 1; i < starts.length; i++) iv.push(starts[i] - starts[i - 1]);
+  let best = 2;
+  for (let i = 0; i < iv.length; i++) {
+    let lo = iv[i], hi = iv[i], n = 1;
+    for (let j = i + 1; j < iv.length; j++) {
+      lo = Math.min(lo, iv[j]);
+      hi = Math.max(hi, iv[j]);
+      if (hi - lo > Math.max(PERIOD_TOL_SEC, lo * PERIOD_TOL_RATE)) break;
+      n++;
+    }
+    best = Math.max(best, n + 1);
+  }
+  return best;
+}
+
+// 体動の評価。secs は sec 昇順。音の上昇は「基準値＋LOUD_DB 以上」（いびき検出と同じ値）で見る
+function analyzeMotion(sess, secs) {
+  const withMot = secs.filter((s) => s.motion != null);
+  if (!withMot.length) return { status: "nodata" };
+  if (sess.base == null) return { status: "nobase" };
+
+  const thr = sess.base + LOUD_DB;
+  const dbBySec = new Map(secs.map((s) => [s.sec, s.dbApplied]));
+
+  // 動きのある秒（連続する秒は1回の動き）
+  const moves = [];
+  let cur = null;
+  for (const s of withMot) {
+    if (s.motion >= MOVE_TH) {
+      if (cur && s.sec === cur.end + 1) cur.end = s.sec;
+      else { cur = { start: s.sec, end: s.sec }; moves.push(cur); }
+    } else {
+      cur = null;
+    }
+  }
+
+  const turns = [], others = [];
+  for (const m of moves) {
+    let linked = false;
+    for (let k = m.start - LINK_SEC; k <= m.end + LINK_SEC; k++) {
+      const db = dbBySec.get(k);
+      if (db != null && db >= thr) { linked = true; break; }
+    }
+    (linked ? turns : others).push(m);
+  }
+
+  const hours = Math.max(1, secs[secs.length - 1].sec + 1) / 3600;
+  const perHour = turns.length / hours;
+  const run = longestPeriodicRun(others.map((m) => m.start));
+  return {
+    status: "ok",
+    turns: turns.length, others: others.length, perHour,
+    turnMany: turns.length >= TURN_MIN && perHour >= TURN_PER_HOUR,
+    periodic: run >= PERIOD_MIN, run
+  };
+}
+
+// いびき（保存対象）の音圧。生音（ゲイン調整前）の値で、いびきがなければ null
+function snoreStats(evs) {
+  const sn = evs.filter((e) => e.type === "snore");
+  const means = sn.map((e) => e.meanSourceDb).filter((v) => v != null);
+  const peaks = sn.map((e) => e.peakSourceDb).filter((v) => v != null);
+  return { n: sn.length, mean: means.length ? mean(means) : null, peak: peaks.length ? maxOf(peaks) : null };
+}
+
+function nightHtml(sess, secs, evs) {
+  const row = (k, v) => '<div class="kv"><span>' + esc(k) + "</span><b>" + esc(v) + "</b></div>";
+  const c = sess.counts || {};
+  const sn = snoreStats(evs);
+  const mo = analyzeMotion(sess, secs);
+
+  let h = row("いびきの平均音圧（生音）", sn.mean == null ? "-" : round1(sn.mean) + " dB") +
+    row("いびきのピーク最大（生音）", sn.peak == null ? "-" : round1(sn.peak) + " dB") +
+    row("環境音", evalEnv(c.env || 0));
+
+  if (mo.status === "nodata") {
+    h += row("体動", "体動データなし");
+  } else if (mo.status === "nobase") {
+    h += row("体動", "判定できません（基準値がありません）");
+  } else {
+    if (mo.turnMany) h += row("体動", "寝返りが多いみたいです");
+    if (mo.periodic) h += row("体動", "定期的な振動がありました");
+    if (!mo.turnMany && !mo.periodic) h += row("体動", "体動は少ない");
+    h += '<p class="muted">体動の内訳：音と連動する動き ' + mo.turns + "回（1時間あたり " + round1(mo.perHour) +
+      "回）／音と連動しない動き " + mo.others + "回" + (mo.periodic ? "（同じ間隔で " + mo.run + "回続いた）" : "") + "</p>";
+  }
+  h += '<p class="muted">環境音・体動の評価は暫定の基準による目安です。診断ではありません。</p>';
+  return h;
+}
+
+let daySumToken = 0;
+
+// 簡易表示の評価欄を、選んだ記録のデータから埋める（表示中の記録が変わっていたら描かない）
+async function loadDayDetail(s, token) {
+  try {
+    const secs = (await DB.byIndex("secs", "sid", s.id)).sort((a, b) => a.sec - b.sec);
+    const evs = await DB.byIndex("events", "sid", s.id);
+    const box = $("cs-detail");
+    if (token !== daySumToken || !box) return;
+    box.innerHTML = nightHtml(s, secs, evs);
+  } catch (e) {
+    console.error(e);
+    const box = $("cs-detail");
+    if (token === daySumToken && box) box.innerHTML = '<p class="muted">評価を計算できませんでした: ' + esc(e.message) + "</p>";
+  }
+}
+
 // 選んだ日の簡易情報（同じ日に複数あれば ▲ ▼ で切り替える）
 function renderDaySummary() {
+  const token = ++daySumToken;
   const box = $("cal-summary");
   if (!cal.selected) {
     box.innerHTML = '<p class="muted">日付を選んでください。</p>';
@@ -1406,6 +1542,7 @@ function renderDaySummary() {
     '<div class="kv"><span>いびき検出</span><b>' + (c.snore || 0) + "</b></div>" +
     '<div class="kv"><span>寝言・話し声として除外</span><b>' + (c.speech || 0) + "</b></div>" +
     '<div class="kv"><span>環境音の変化</span><b>' + (c.env || 0) + "</b></div>" +
+    '<div id="cs-detail"><p class="muted">評価を計算中…</p></div>' +
     '<button id="cs-open" class="primary">詳細を見る</button>' +
     '<button id="cs-del" class="danger">この記録を削除</button>';
 
@@ -1413,6 +1550,7 @@ function renderDaySummary() {
   $("cs-next").onclick = () => { cal.index = Math.min(list.length - 1, cal.index + 1); renderDaySummary(); };
   $("cs-open").onclick = () => openDetail(s.id).catch((err) => showError("詳細を開けませんでした: " + err.message));
   $("cs-del").onclick = () => deleteSession(s.id).catch((err) => showError("削除できませんでした: " + err.message));
+  loadDayDetail(s, token);
 }
 
 /* ===== 詳細 ===== */
