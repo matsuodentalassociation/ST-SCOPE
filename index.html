@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
 <meta name="theme-color" content="#000000">
 <meta http-equiv="Cache-Control" content="no-cache">
-<title>SomnoLog V28</title>
+<title>SomnoLog V30</title>
 <script src="./ort.min.js"></script>
 <style>
 :root{color-scheme:dark}
@@ -28,7 +28,6 @@ h1{margin:0;font-size:22px}
 h2{margin:0;font-size:17px}
 .card{background:#161d26;border:1px solid #2a3643;border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:10px}
 .muted{color:#aebbc9;font-size:12px;line-height:1.7;margin:0}
-.boot{color:#9fd8b5;font-size:12px;margin:0}
 .warn{background:#3a2f1a;border:1px solid #7a6a3a;color:#f3e7c9;padding:10px 12px;border-radius:10px;font-size:13px;line-height:1.6}
 .err{background:#4a1f1f;border:1px solid #9a4a4a;color:#ffd9d6;padding:10px 12px;border-radius:10px;font-size:13px;line-height:1.6;white-space:pre-wrap;word-break:break-all}
 .tag{font-size:11px;padding:4px 9px;border-radius:999px;background:#263b38;color:#bfdbd1;white-space:nowrap}
@@ -76,11 +75,11 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 1-1 起動・QR読み取り -->
 <main id="page-start" class="page" hidden>
   <header class="head">
-    <h1>SomnoLog V28</h1>
+    <h1>SomnoLog V30</h1>
     <span class="tag">患者情報確認</span>
   </header>
-  <p id="boot-start" class="boot">起動中…</p>
   <p class="muted">②が発行した患者用QRを読み取ってください。</p>
+  <p class="muted">本アプリは診断を行うものではありません。医師の判断の参考資料です。</p>
 
   <div id="scan-msg" class="err" hidden></div>
 
@@ -107,7 +106,6 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
       <li>正しければ「始める」を押すと、記録の画面に進みます。</li>
       <li>違う場合は「情報が間違っています」を押してください。診療所にご連絡ください。</li>
     </ol>
-    <p class="muted">本アプリは診断を行うものではありません。医師の判断の参考資料です。</p>
   </section>
   <canvas id="scan-canvas" hidden></canvas>
 </main>
@@ -127,27 +125,20 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
     <button id="cf-ng" class="warnbtn">情報が間違っています</button>
   </section>
   <p class="muted">患者情報が違う場合は「始める」を押さず、診療所に確認してください。</p>
+  <p class="muted">本アプリは診断を行うものではありません。医師の判断の参考資料です。</p>
 </main>
 
-<!-- 記録画面（上から順に、音・体動・環境音の設定 → 記録の開始/停止 → 履歴・更新） -->
+<!-- 記録画面 -->
 <main id="page-record" class="page" hidden>
   <header class="head">
-    <h1>SomnoLog V28</h1>
+    <h1>SomnoLog V30</h1>
     <span id="rec-badge" class="tag">待機中</span>
   </header>
-  <p id="boot" class="boot">スクリプト読込中…</p>
-  <p class="muted">就寝中の音とセンサーを記録します。本アプリは診断を行うものではありません。医師の判断の参考資料です。</p>
-  <p class="muted">患者：<b id="pt-line" style="color:#f3e7c9">-</b></p>
 
   <div id="mic-msg" class="err" hidden></div>
 
-  <div id="vad-warn" class="warn" hidden>
-    寝言除外（VAD）が無効です。onnxruntime（ort.min.js）またはモデル（silero_vad.onnx）が読み込めていません。このため、いびき候補は寝言の区別なしで保存されます。寝言が混ざる可能性があります。このHTMLと同じ場所に ort.min.js・ort-wasm-simd.wasm・ort-wasm.wasm・silero_vad.onnx を置き、再読み込みしてください。マイクの許可には影響しません。
-  </div>
-
   <!-- 音声 -->
   <section class="card">
-    <div class="kv"><span>寝言除外（VAD）</span><b id="vad-state">読込中</b></div>
     <div class="kv"><span>マイク</span><b id="mic-state">未許可</b></div>
     <button id="mic-btn">マイクを許可</button>
     <div class="meter"><i id="level-bar"></i></div>
@@ -156,7 +147,6 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
     <div class="chart"><div id="live-audio"></div></div>
     <div class="kv"><span>音量調整</span><output id="gain-out">0dB</output></div>
     <input id="gain" type="range" min="-9" max="9" step="1" value="0">
-    <p class="muted">iPhoneはマイクのdB表示と録音音圧に差があるため調整します。記録中は固定されます。</p>
   </section>
 
   <!-- 体動 -->
@@ -168,8 +158,8 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 
   <!-- 環境音 -->
   <section class="card">
-    <label class="muted"><input type="checkbox" id="env-save"> 環境音も記録する（既定はOFF）</label>
-    <p class="muted">ONにすると、環境音の変化の前後60秒を保存します。話し声が入る場合があります。数値の記録は常に残ります。</p>
+    <label class="muted"><input type="checkbox" id="env-save"> 環境音も記録する（通常はOFF）</label>
+    <p class="muted">ONにすると、話し声が録音される場合があります。</p>
     <button id="env-del" class="sub">保存済みの環境音の音声を削除</button>
   </section>
 
@@ -181,31 +171,21 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
   <button id="btn-enter-black" class="sub" disabled>黒画面に切り替え</button>
   <button id="history-btn" class="sub">記録カレンダーを見る</button>
 
-  <!-- 患者情報 -->
   <section class="card">
     <button id="pt-change" class="sub">患者情報を読み直す</button>
   </section>
 
-  <!-- GitHub更新 -->
+  <!-- バージョン・更新 -->
   <section class="card">
-    <h2>GitHub更新</h2>
-    <p class="muted">matsuodentalassociation/ST-SCOPE / main / index.html</p>
-    <div class="kv"><span>現在</span><b id="upd-cur">SomnoLog V28</b></div>
-    <div class="kv"><span>最新</span><b id="upd-latest">未確認</b></div>
-    <p id="upd-msg" class="muted">起動時にGitHubの更新を確認します。</p>
+    <div class="kv"><span>アプリのバージョン</span><b id="ver-text">SomnoLog V30</b></div>
+    <p class="muted">このアプリは自動でアップデートしません。アプリ更新のお知らせが届いたときは、更新を確認後にキャッシュ回避で再読み込みをクリックしてください。</p>
+    <p id="upd-msg" class="muted"></p>
     <button id="upd-check" class="sub">更新を確認</button>
-    <button id="upd-apply" class="sub" disabled>更新を適用</button>
     <button id="upd-reload" class="sub">キャッシュ回避で再読み込み</button>
-    <p class="muted">起動時と10分ごとに確認します。取得時はキャッシュを回避します。記録・保存・共有中は適用・再読み込みできません。適用すると画面を開き直します。再読み込み後の版は GitHub Pages への反映状況に依存します。</p>
-  </section>
-
-  <section class="card">
-    <div class="kv"><span>バージョン</span><b id="ver-text">V28</b></div>
-    <p class="muted">この版は自動で書き換わりません。新しい版を使うときは、新しいファイルを開くか、上の「更新を適用」を使ってください。</p>
   </section>
 </main>
 
-<!-- 記録カレンダー（旧・履歴画面の代わり） -->
+<!-- 記録カレンダー -->
 <main id="page-calendar" class="page" hidden>
   <header class="head">
     <h1>記録カレンダー</h1>
@@ -281,7 +261,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 
 /* ===== バージョン ===== */
 // 修正のたびに数字を1つ増やす。GitHub更新の確認はこの数字を比べる
-const APP_VERSION = 28;
+const APP_VERSION = 30;
 const APP = "SomnoLogV" + APP_VERSION;
 
 /* ===== GitHub更新の取得元 ===== */
@@ -301,7 +281,7 @@ const ENV_RUN_SEC = 10, ENV_DB = 6, ENV_COOLDOWN = 300, ENV_CLIP_SEC = 60; // �
 const FLUSH_SEC = 60, MAX_QUEUE = 40;
 const UI_MS = 250, LIVE_N = 240;
 const DB_NAME = "somnolog-v3"; // V3以降のデータを引き継ぐため名前は据え置き
-const DB_VERSION = 2;          // V10で settings を追加（V20〜V28でも変更なし）
+const DB_VERSION = 2;          // V10で settings を追加（V20〜V30でも変更なし）
 const DB_WAIT_MS = 4000;       // 保存領域の読み込みを待つ上限（これを超えたら待たずに先へ進む）
 const TL_PLAY_SEC = 5;         // タイムラインの再生：線の位置の前後の秒数（V24）
 const MARK_HALF_MS = 60 * 1000; // 「保存する」の範囲：線の時刻の前後1分（V26）
@@ -513,7 +493,7 @@ const cal = { year: 0, month: 0, selected: null, index: 0, byDay: new Map() };
 const ZOOM_DEFAULT = 0;
 const tl = { data: null, total: 0, winStart: 0, winLen: 0, cursor: 0, zoomSec: ZOOM_DEFAULT, mMax: 0.5, marks: [] };
 
-// 記録中・保存中・共有中は、更新の適用や再読み込みをさせない
+// 記録中・保存中・共有中は、更新の再読み込みをさせない
 function isBusy() { return S.running || S.saving; }
 
 /* ===== 画面切り替え ===== */
@@ -522,11 +502,8 @@ function showPage(name) {
   window.scrollTo(0, 0);
 }
 
+// V30：記録画面には患者情報を出さない（QR読み取り・確認画面で表示する）
 function renderPatientCard() {
-  const p = S.patient;
-  $("pt-line").textContent = p
-    ? [p.name, "カルテNo " + (p.chartNo || "-"), p.clinic].filter(Boolean).join("　")
-    : "-";
   $("pt-change").disabled = S.running;
 }
 
@@ -850,12 +827,11 @@ function onAudio(data) {
   pump();
 }
 
-/* ===== Silero VAD（寝言除外の第1段） ===== */
+/* ===== Silero VAD（寝言除外の第1段） =====
+   V30：VADが使えない時も、記録画面には何も出さない。有効かどうかは詳細画面とZIP（vadEnabled）に残る */
 async function loadVad() {
   if (typeof ort === "undefined") {
     S.vad = null; S.vadOk = false;
-    setVadState("ort未読込");
-    $("vad-warn").hidden = false;
     return;
   }
   let buf;
@@ -866,26 +842,18 @@ async function loadVad() {
   } catch (e) {
     console.warn(e);
     S.vad = null; S.vadOk = false;
-    setVadState("モデル未配置");
-    $("vad-warn").hidden = false;
     return;
   }
   try {
     ort.env.wasm.numThreads = 1;
     ort.env.wasm.wasmPaths = "./";
     S.vad = await ort.InferenceSession.create(buf, { executionProviders: ["wasm"] });
-    setVadState("有効");
-    $("vad-warn").hidden = true;
   } catch (e) {
     console.warn(e);
     S.vad = null;
-    setVadState("読込失敗");
-    $("vad-warn").hidden = false;
   }
   S.vadOk = !!S.vad;
 }
-
-function setVadState(text) { $("vad-state").textContent = text; }
 
 async function vadProb(frame) {
   const inp = new Float32Array(VAD_CTX + FRAME);
@@ -914,8 +882,6 @@ async function pump() {
         catch (e) {
           console.error(e);
           S.vadOk = false;
-          setVadState("エラー");
-          showError("VADの実行に失敗しました。寝言除外は無効になり、以後のいびき候補は寝言の区別なしで保存されます。");
         }
       }
       if (!S.running || f.ep !== S.epoch) break;
@@ -1230,27 +1196,24 @@ function setButtons() {
   renderUpdate();
 }
 
-/* ===== GitHub更新 ===== */
+/* ===== GitHub更新 =====
+   V30：「更新を確認」と「キャッシュ回避で再読み込み」の2ボタン。結果は1行だけ表示する */
 const upd = { latest: null, checkedAt: null, error: null, checking: false };
 
 function renderUpdate() {
   const busy = isBusy();
-  const newer = upd.latest != null && upd.latest > APP_VERSION;
-  $("upd-cur").textContent = "SomnoLog V" + APP_VERSION;
-  $("upd-latest").textContent = upd.latest == null ? "未確認" : "V" + upd.latest;
-
-  let msg;
+  let msg = "";
   if (upd.checking) msg = "確認中…";
   else if (upd.error) msg = "確認できませんでした（" + upd.error + "）";
-  else if (upd.latest == null) msg = "起動時にGitHubの更新を確認します。";
-  else if (newer) msg = "新しい版があります（V" + upd.latest + "）。" + (busy ? "記録・保存・共有が終わってから適用してください。" : "");
+  else if (upd.latest == null) msg = "";
+  else if (upd.latest > APP_VERSION) msg = "新しい版があります（V" + upd.latest + "）。" + (busy ? "記録・保存・共有が終わってから再読み込みしてください。" : "「キャッシュ回避で再読み込み」を押してください。");
   else if (upd.latest === APP_VERSION) msg = "最新です。";
-  else msg = "取得した版（V" + upd.latest + "）は現在より古いため、適用しません。";
-  if (!upd.checking && upd.checkedAt) msg += "（" + fmtClock(upd.checkedAt.getTime()) + " 確認）";
+  else msg = "GitHubの版（V" + upd.latest + "）は現在より古いです。";
+  if (!upd.checking && upd.checkedAt && msg) msg += "（" + fmtClock(upd.checkedAt.getTime()) + " 確認）";
   $("upd-msg").textContent = msg;
+  $("upd-msg").hidden = !msg;
 
   $("upd-check").disabled = upd.checking;
-  $("upd-apply").disabled = busy || !newer;
   $("upd-reload").disabled = busy;
 }
 
@@ -1283,12 +1246,6 @@ function reloadNoCache() {
   u.hash = "";
   u.searchParams.set("v", String(Date.now()));
   location.replace(u.toString());
-}
-
-function applyUpdate() {
-  if (isBusy() || !(upd.latest > APP_VERSION)) return;
-  if (!confirm("新しい版（V" + upd.latest + "）を開きます。よろしいですか？")) return;
-  reloadNoCache();
 }
 
 /* ===== 黒画面 ===== */
@@ -2495,9 +2452,8 @@ $("saved-share").onclick = async () => {
   finally { S.saving = false; renderUpdate(); }
 };
 
-// GitHub更新
+// GitHub更新（V30：確認と再読み込みの2ボタン）
 $("upd-check").onclick = () => checkUpdate();
-$("upd-apply").onclick = () => applyUpdate();
 $("upd-reload").onclick = () => {
   if (!confirm("キャッシュを避けて、画面を開き直します。よろしいですか？")) return;
   reloadNoCache();
@@ -2517,9 +2473,7 @@ document.addEventListener("visibilitychange", async () => {
 /* ===== 起動 ===== */
 async function init() {
   // 1. まず画面を出す（保存領域の読み込みを待たない）
-  $("ver-text").textContent = "V" + APP_VERSION;
-  $("boot").textContent = "スクリプト読込OK（V" + APP_VERSION + "・" + new Date().toLocaleTimeString("ja-JP") + "）";
-  $("boot-start").textContent = "V" + APP_VERSION + " 起動OK（" + new Date().toLocaleTimeString("ja-JP") + "）";
+  $("ver-text").textContent = "SomnoLog V" + APP_VERSION;
   $("start-back").hidden = true;
   showPage("start");
 
