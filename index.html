@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
 <meta name="theme-color" content="#000000">
 <meta http-equiv="Cache-Control" content="no-cache">
-<title>SomnoLog V33</title>
+<title>SomnoLog V34</title>
 <script src="./ort.min.js"></script>
 <style>
 :root{color-scheme:dark}
@@ -75,7 +75,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 1-1 起動・QR読み取り -->
 <main id="page-start" class="page" hidden>
   <header class="head">
-    <h1>SomnoLog V33</h1>
+    <h1>SomnoLog V34</h1>
     <span class="tag">患者情報確認</span>
   </header>
   <p class="muted">②が発行した患者用QRを読み取ってください。</p>
@@ -131,7 +131,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 記録画面 -->
 <main id="page-record" class="page" hidden>
   <header class="head">
-    <h1>SomnoLog V33</h1>
+    <h1>SomnoLog V34</h1>
     <span id="rec-badge" class="tag">待機中</span>
   </header>
 
@@ -176,7 +176,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 
   <!-- バージョン・更新 -->
   <section class="card">
-    <div class="kv"><span>アプリのバージョン</span><b id="ver-text">SomnoLog V33</b></div>
+    <div class="kv"><span>アプリのバージョン</span><b id="ver-text">SomnoLog V34</b></div>
     <p class="muted">このアプリは自動でアップデートしません。アプリ更新のお知らせが届いたときは、更新を確認後にキャッシュ回避で再読み込みをクリックしてください。</p>
     <p id="upd-msg" class="muted"></p>
     <button id="upd-check" class="sub">更新を確認</button>
@@ -209,10 +209,6 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
   <div class="sticky-bar">
     <button id="detail-back" class="sub">カレンダーに戻る</button>
   </div>
-  <section class="card">
-    <h2 id="d-title"></h2>
-    <div id="d-summary"></div>
-  </section>
   <section class="card">
     <div class="head">
       <h2>タイムライン</h2>
@@ -289,7 +285,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 
 /* ===== バージョン ===== */
 // 修正のたびに数字を1つ増やす。GitHub更新の確認はこの数字を比べる
-const APP_VERSION = 33;
+const APP_VERSION = 34;
 const APP = "SomnoLogV" + APP_VERSION;
 
 /* ===== GitHub更新の取得元 ===== */
@@ -1591,8 +1587,6 @@ async function openDetail(sid) {
   revokeUrls();
   const sess = await DB.get("sessions", sid);
   if (!sess) return;
-  $("d-title").textContent = fmtDate(sess.startedAt) + " の記録";
-  $("d-summary").innerHTML = '<p class="muted">読み込み中…</p>';
   $("d-chart").innerHTML = '<p class="muted">読み込み中…</p>';
   $("saved-list").innerHTML = '<p class="muted">読み込み中…</p>';
   showSaveMsg("", false);
@@ -1603,29 +1597,8 @@ async function openDetail(sid) {
   const marks = await loadMarks(sid);
   if (S.detailSid !== sid) return; // 別の記録に切り替えられていたら描かない
   tl.marks = marks;
-  renderSummary(sess, secs);
   initTimeline(sess, secs, evs);
   renderMarks();
-}
-
-function renderSummary(sess, secs) {
-  const c = sess.counts || {};
-  const p = sess.patient || {};
-  const motions = secs.filter((s) => s.motion != null).map((s) => s.motion);
-  const last = secs.length ? secs[secs.length - 1].sec : 0;
-  $("d-summary").innerHTML =
-    '<div class="kv"><span>患者名</span><b>' + esc(p.name || "-") + "</b></div>" +
-    '<div class="kv"><span>カルテNo</span><b>' + esc(p.chartNo || "-") + "</b></div>" +
-    '<div class="kv"><span>開始</span><b>' + esc(fmtDate(sess.startedAt)) + "</b></div>" +
-    '<div class="kv"><span>記録時間</span><b>' + fmtTime(last * 1000) + "</b></div>" +
-    '<div class="kv"><span>基準値（生音）</span><b>' + (sess.base == null ? "-" : round1(sess.base) + " dB") + "</b></div>" +
-    '<div class="kv"><span>いびき（保存）</span><b>' + (c.snore || 0) + "</b></div>" +
-    '<div class="kv"><span>寝言・話し声の疑い（除外）</span><b>' + (c.speech || 0) + "</b></div>" +
-    '<div class="kv"><span>判定不能（保存なし）</span><b>' + (c.unknown || 0) + "</b></div>" +
-    '<div class="kv"><span>環境音の変化</span><b>' + (c.env || 0) + "</b></div>" +
-    '<div class="kv"><span>短い音（除外）</span><b>' + (c.short || 0) + "</b></div>" +
-    '<div class="kv"><span>寝言除外（VAD）</span><b>' + (sess.vadOk ? "有効" : "無効（寝言の区別なし。候補はいびきとして保存）") + "</b></div>" +
-    '<div class="kv"><span>体動（平均）</span><b>' + mean(motions).toFixed(2) + "</b></div>";
 }
 
 /* ===== タイムライン（V24） =====
