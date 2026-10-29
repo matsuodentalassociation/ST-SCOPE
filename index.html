@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
 <meta name="theme-color" content="#000000">
 <meta http-equiv="Cache-Control" content="no-cache">
-<title>SomnoLog V27</title>
+<title>SomnoLog V28</title>
 <script src="./ort.min.js"></script>
 <style>
 :root{color-scheme:dark}
@@ -76,7 +76,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 1-1 起動・QR読み取り -->
 <main id="page-start" class="page" hidden>
   <header class="head">
-    <h1>SomnoLog V27</h1>
+    <h1>SomnoLog V28</h1>
     <span class="tag">患者情報確認</span>
   </header>
   <p id="boot-start" class="boot">起動中…</p>
@@ -132,7 +132,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 記録画面（上から順に、音・体動・環境音の設定 → 記録の開始/停止 → 履歴・更新） -->
 <main id="page-record" class="page" hidden>
   <header class="head">
-    <h1>SomnoLog V27</h1>
+    <h1>SomnoLog V28</h1>
     <span id="rec-badge" class="tag">待機中</span>
   </header>
   <p id="boot" class="boot">スクリプト読込中…</p>
@@ -190,7 +190,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
   <section class="card">
     <h2>GitHub更新</h2>
     <p class="muted">matsuodentalassociation/ST-SCOPE / main / index.html</p>
-    <div class="kv"><span>現在</span><b id="upd-cur">SomnoLog V27</b></div>
+    <div class="kv"><span>現在</span><b id="upd-cur">SomnoLog V28</b></div>
     <div class="kv"><span>最新</span><b id="upd-latest">未確認</b></div>
     <p id="upd-msg" class="muted">起動時にGitHubの更新を確認します。</p>
     <button id="upd-check" class="sub">更新を確認</button>
@@ -200,7 +200,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
   </section>
 
   <section class="card">
-    <div class="kv"><span>バージョン</span><b id="ver-text">V27</b></div>
+    <div class="kv"><span>バージョン</span><b id="ver-text">V28</b></div>
     <p class="muted">この版は自動で書き換わりません。新しい版を使うときは、新しいファイルを開くか、上の「更新を適用」を使ってください。</p>
   </section>
 </main>
@@ -281,7 +281,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 
 /* ===== バージョン ===== */
 // 修正のたびに数字を1つ増やす。GitHub更新の確認はこの数字を比べる
-const APP_VERSION = 27;
+const APP_VERSION = 28;
 const APP = "SomnoLogV" + APP_VERSION;
 
 /* ===== GitHub更新の取得元 ===== */
@@ -301,7 +301,7 @@ const ENV_RUN_SEC = 10, ENV_DB = 6, ENV_COOLDOWN = 300, ENV_CLIP_SEC = 60; // �
 const FLUSH_SEC = 60, MAX_QUEUE = 40;
 const UI_MS = 250, LIVE_N = 240;
 const DB_NAME = "somnolog-v3"; // V3以降のデータを引き継ぐため名前は据え置き
-const DB_VERSION = 2;          // V10で settings を追加（V20〜V27でも変更なし）
+const DB_VERSION = 2;          // V10で settings を追加（V20〜V28でも変更なし）
 const DB_WAIT_MS = 4000;       // 保存領域の読み込みを待つ上限（これを超えたら待たずに先へ進む）
 const TL_PLAY_SEC = 5;         // タイムラインの再生：線の位置の前後の秒数（V24）
 const MARK_HALF_MS = 60 * 1000; // 「保存する」の範囲：線の時刻の前後1分（V26）
@@ -1747,22 +1747,27 @@ async function saveMark() {
 }
 
 // 保存分の音声を、範囲の中で時刻順に組み立てる（音のない所は無音）
+// V28：音声が見つからなかった候補の件数と、音のあるサンプル数を返す（無音で黙って進まないようにする）
 async function buildMarkPcm(mark, evs) {
   const n = Math.max(0, Math.round((mark.toMs - mark.fromMs) / 1000 * SR));
   const out = new Int16Array(n);
   const list = evs.filter((e) => e.type === "snore" && e.clipId &&
     e.startMs - PRE_MS < mark.toMs && e.endMs + POST_MS > mark.fromMs);
+  let found = 0, missing = 0;
   for (const e of list) {
     const clip = await DB.get("clips", e.clipId);
-    if (!clip) continue;
+    if (!clip) { missing++; continue; }
     const pcm = clipPcm(clip);
     const base = Math.round((clip.startMs - mark.fromMs) / 1000 * SR);
     for (let i = 0; i < pcm.length; i++) {
       const j = base + i;
       if (j >= 0 && j < n) out[j] = pcm[i];
     }
+    found++;
   }
-  return out;
+  let nonZero = 0;
+  for (let i = 0; i < out.length; i++) if (out[i] !== 0) nonZero++;
+  return { pcm: out, candidates: list.length, found, missing, nonZero };
 }
 
 // 保存した記録の一覧（タイムラインの直下）
@@ -1794,8 +1799,8 @@ function renderMarks() {
       play.disabled = true;
       play.textContent = "読み込み中…";
       try {
-        const pcm = await buildMarkPcm(m, tl.data.evs);
-        const url = URL.createObjectURL(wavBlob(pcm, SR));
+        const built = await buildMarkPcm(m, tl.data.evs);
+        const url = URL.createObjectURL(wavBlob(built.pcm, SR));
         blobUrls.push(url);
         const au = document.createElement("audio");
         au.controls = true;
@@ -1827,13 +1832,18 @@ function renderMarks() {
   }
 }
 
-// 保存分をZIPにまとめる：各保存分のWAV（PCM16）と marks.json、README
+// 保存分をZIPにまとめる（V28）
+// ・saved/*.wav：各保存分の音声（PCM16 WAV、前後1分）
+// ・clips.json：保存分WAVの一覧（分析アプリと同じ形式。startSec＝記録開始からの秒数）
+// ・session.json：保存分の時間範囲の時系列データ（記録開始時刻はそのまま、sec は記録開始からの秒数）
+// ・marks.json：保存分の一覧と、音声の確認値（見つかった件数・欠落件数・音のあるサンプル数）
 async function shareMarks(sid) {
   const sess = await DB.get("sessions", sid);
   if (!sess) return;
   const marks = await loadMarks(sid);
   if (!marks.length) { alert("保存した記録がありません。"); return; }
   const evs = (await DB.byIndex("events", "sid", sid)).sort((a, b) => a.startMs - b.startMs);
+  const secs = (await DB.byIndex("secs", "sid", sid)).sort((a, b) => a.sec - b.sec);
   const enc = new TextEncoder();
   const files = [];
   const txt = (name, str) => ({ name, nameBytes: enc.encode(name), data: enc.encode(str), compress: true });
@@ -1846,20 +1856,50 @@ async function shareMarks(sid) {
   };
 
   const outMarks = [];
+  const clipEntries = [];
+  const logSecs = new Map();
   for (let i = 0; i < marks.length; i++) {
     const m = marks[i];
     const file = "saved/saved_" + pad(i + 1) + ".wav";
-    const pcm = await buildMarkPcm(m, evs);
-    files.push({ name: file, nameBytes: enc.encode(file), data: wavBytes(pcm, SR) });
+    const built = await buildMarkPcm(m, evs);
+    files.push({ name: file, nameBytes: enc.encode(file), data: wavBytes(built.pcm, SR) });
+
+    const fromSec = m.fromMs / 1000, toSec = m.toMs / 1000;
+    clipEntries.push({
+      id: "saved_" + pad(i + 1),
+      eventId: null,
+      audioFile: file,
+      codec: "pcm16",
+      category: "saved",
+      type: "saved",
+      label: null,
+      startSec: round2(fromSec),
+      durationSec: round2(built.pcm.length / SR),
+      sampleRate: SR,
+      gainDb: sess.gainDb,
+      dataIsSource: true,
+    });
+
+    for (const s of secs) {
+      if (s.sec >= Math.floor(fromSec) && s.sec <= Math.ceil(toSec) && !logSecs.has(s.sec)) logSecs.set(s.sec, s);
+    }
+
     outMarks.push({
       index: i + 1,
       audioFile: file,
-      audioStartSec: round1(m.fromMs / 1000),
-      audioEndSec: round1(m.toMs / 1000),
+      audioStartSec: round1(fromSec),
+      audioEndSec: round1(toSec),
       durationSec: round1((m.toMs - m.fromMs) / 1000),
       centerSec: round1(m.centerMs / 1000),
       centerTime: isoOf(sess.startedAt + m.centerMs),
       savedAt: isoOf(m.savedAt),
+      audioCheck: {
+        snoreCandidates: built.candidates,
+        clipsFound: built.found,
+        clipsMissing: built.missing,
+        samples: built.pcm.length,
+        nonZeroSamples: built.nonZero,
+      },
       snoreCandidates: m.items.map((it) => ({
         startSec: round1(it.startMs / 1000),
         startTime: isoOf(sess.startedAt + it.startMs),
@@ -1868,6 +1908,41 @@ async function shareMarks(sid) {
     });
   }
 
+  const timeSeriesLogs = [...logSecs.values()].sort((a, b) => a.sec - b.sec).map((s) => ({
+    sec: s.sec,
+    db: s.dbApplied,
+    dbSource: s.dbSource,
+    peakDb: s.peakApplied,
+    vadMean: s.vadMean,
+    motionMs2: s.motion,
+    motionG: s.motion == null ? null : round3(s.motion / G_ACC),
+  }));
+
+  const session = {
+    exporter: APP,
+    disclaimer: DISCLAIMER,
+    note: "保存分の時間範囲のみ。sec は記録開始からの秒数（startedAt が 0 秒）",
+    patient,
+    session: {
+      id: sess.id,
+      startedAt: isoOf(sess.startedAt),
+      endedAt: sess.endedAt ? isoOf(sess.endedAt) : null,
+      gainDb: sess.gainDb,
+      vadEnabled: sess.vadOk,
+      micMode: sess.micMode || "",
+      baselineDbApplied: sess.base,
+      counts: sess.counts,
+      timeSeriesLogs,
+    },
+  };
+
+  const clipsJson = {
+    exporter: APP,
+    patient,
+    note: "startSec は記録開始からの秒数。音声ファイルの0秒は startSec に対応する",
+    clips: clipEntries,
+  };
+
   const marksJson = {
     exporter: APP,
     disclaimer: DISCLAIMER,
@@ -1875,15 +1950,20 @@ async function shareMarks(sid) {
     sessionId: sess.id,
     startedAt: isoOf(sess.startedAt),
     note: "audioStartSec は記録開始からの秒数。音声ファイルの0秒は audioStartSec に対応する。",
+    files: { session: "session.json", clips: "clips.json" },
     marks: outMarks,
   };
   const readme = DISCLAIMER + "\n\n" +
-    "- marks.json: 保存した記録の一覧（記録開始からの秒数、時刻、いびき候補）\n" +
+    "- marks.json: 保存した記録の一覧（記録開始からの秒数、時刻、いびき候補、音声の確認値）\n" +
+    "- session.json: 保存分の時間範囲の時系列データ（1秒ごとの音圧・体動）\n" +
+    "- clips.json: 保存分WAVの一覧（分析アプリで読み込む形式。startSec＝記録開始からの秒数）\n" +
     "- saved/*.wav: 保存した記録の音声（PCM16 WAV、16kHz・モノラル、前後1分）。音のない所は無音\n";
 
   files.unshift(
     txt("README.txt", readme),
-    txt("marks.json", JSON.stringify(marksJson, null, 2))
+    txt("marks.json", JSON.stringify(marksJson, null, 2)),
+    txt("session.json", JSON.stringify(session)),
+    txt("clips.json", JSON.stringify(clipsJson, null, 2))
   );
 
   const blob = await makeZip(files);
@@ -2218,7 +2298,7 @@ async function shareSession(sid) {
     "- session.json: 患者情報（patient）と1秒ごとのデータ（session.timeSeriesLogs）\n" +
     "- clips.json: 音声ファイルの一覧（startSec＝記録開始からの秒数、codec＝音声の方式）\n" +
     "- summary.json: 記録の概要と検知区間\n" +
-    "- seconds.csv: 1秒ごとの音圧（dbApplied=ゲイン適用値、dbSource=調整前の生音）、音声確率、体動（motionMs2=m/s²、motionG=G）\n" +
+    "- seconds.csv: 1秒ごとの音圧（dbApplied=ゲイン適用値、dbSource=調整前の生音）、音声確認値、体動（motionMs2=m/s²、motionG=G）\n" +
     "- events.csv: 検知区間の一覧\n" +
     "- clips/*.wav: 音声（PCM16 WAV、16kHz・モノラル、調整前の生音。ゲイン値はclips.jsonのgainDbを参照）\n";
 
