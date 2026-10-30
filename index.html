@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
 <meta name="theme-color" content="#000000">
 <meta http-equiv="Cache-Control" content="no-cache">
-<title>SomnoLog V36</title>
+<title>SomnoLog V37</title>
 <script src="./ort.min.js"></script>
 <style>
 :root{color-scheme:dark}
@@ -92,7 +92,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 1-1 起動・QR読み取り -->
 <main id="page-start" class="page" hidden>
   <header class="head">
-    <h1>SomnoLog V36</h1>
+    <h1>SomnoLog V37</h1>
     <span class="tag">患者情報確認</span>
   </header>
   <p class="muted">②が発行した患者用QRを読み取ってください。</p>
@@ -148,7 +148,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 記録画面 -->
 <main id="page-record" class="page" hidden>
   <header class="head">
-    <h1>SomnoLog V36</h1>
+    <h1>SomnoLog V37</h1>
     <span id="rec-badge" class="tag">待機中</span>
   </header>
 
@@ -192,7 +192,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 
   <!-- バージョン・更新 -->
   <section class="card">
-    <div class="kv"><span>アプリのバージョン</span><b id="ver-text">SomnoLog V36</b></div>
+    <div class="kv"><span>アプリのバージョン</span><b id="ver-text">SomnoLog V37</b></div>
     <p class="muted">このアプリは自動でアップデートしません。アプリ更新のお知らせが届いたときは、更新を確認後にキャッシュ回避で再読み込みをクリックしてください。</p>
     <p id="upd-msg" class="muted"></p>
     <button id="upd-check" class="sub">更新を確認</button>
@@ -241,6 +241,8 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
     <div id="d-chart" class="chart tl-area"></div>
     <!-- V36：タグバー。タップで表示／非表示を切り替える -->
     <div id="tl-tags" class="tagbar"></div>
+    <!-- V37：表示中のタグごとの件数グラフ -->
+    <div id="tl-tagchart" class="chart" hidden></div>
     <p id="tl-cur-text" class="tl-info"></p>
     <label class="muted">表示位置（右へ動かすと終了時刻の方へ進みます）</label>
     <input id="tl-pos" type="range" min="0" max="0" step="1" value="0">
@@ -335,7 +337,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 
 /* ===== バージョン ===== */
 // 修正のたびに数字を1つ増やす。GitHub更新の確認はこの数字を比べる
-const APP_VERSION = 36;
+const APP_VERSION = 37;
 const APP = "SomnoLogV" + APP_VERSION;
 
 /* ===== GitHub更新の取得元 ===== */
@@ -571,9 +573,9 @@ const S = {
 
 const cal = { year: 0, month: 0, selected: null, index: 0, byDay: new Map() };
 
-// タイムラインの表示状態。tags は V36：表示するタグ（初期は snore のみ）
+// タイムラインの表示状態。tags は表示するタグ（V37：初期は全部オフ）
 const ZOOM_DEFAULT = 0;
-const tl = { data: null, total: 0, winStart: 0, winLen: 0, cursor: 0, zoomSec: ZOOM_DEFAULT, mMax: 0.5, marks: [], tags: { snore: true, unknown: false, env: false, speech: false } };
+const tl = { data: null, total: 0, winStart: 0, winLen: 0, cursor: 0, zoomSec: ZOOM_DEFAULT, mMax: 0.5, marks: [], tags: { snore: false, unknown: false, env: false, speech: false } };
 
 function isBusy() { return S.running || S.saving; }
 
@@ -1632,12 +1634,14 @@ async function openDetail(sid) {
   S.detailSid = sid;
   tl.data = null;
   tl.marks = [];
-  tl.tags = { snore: true, unknown: false, env: false, speech: false }; // V36：開くたびに「いびきのみ」に戻す
+  tl.tags = { snore: false, unknown: false, env: false, speech: false }; // V37：開くたびに全部オフに戻す
   revokeUrls();
   const sess = await DB.get("sessions", sid);
   if (!sess) return;
   $("d-chart").innerHTML = '<p class="muted">読み込み中…</p>';
   $("tl-tags").innerHTML = "";
+  $("tl-tagchart").hidden = true;
+  $("tl-tagchart").innerHTML = "";
   $("saved-list").innerHTML = '<p class="muted">読み込み中…</p>';
   showSaveMsg("", false);
   showPage("detail");
@@ -1662,7 +1666,7 @@ async function deleteSession(sid) {
 }
 
 /* ===== タイムライン =====
-   V36：グラフの下にタグバーを置く。表示中のタグのイベントだけを、色つきの縦線で描く */
+   V37：グラフの下にタグバーを置く。表示中のタグごとに、時間帯ごとの件数を棒グラフで描く */
 
 function initTimeline(sess, secs, evs) {
   const last = secs.length ? secs[secs.length - 1].sec : 0;
@@ -1684,7 +1688,7 @@ function clampTl() {
   tl.cursor = clamp(tl.cursor, tl.winStart, tl.winStart + tl.winLen);
 }
 
-// V36：タグバー。各タグの件数（音声ありの件数）を出し、タップで表示／非表示を切り替える
+// タグバー。各タグの件数（音声ありの件数）を出し、タップで表示／非表示を切り替える
 function renderTagBar() {
   const box = $("tl-tags");
   box.innerHTML = "";
@@ -1709,10 +1713,61 @@ function renderTagBar() {
   }
 }
 
+// V37：表示中のタグごとに、時間帯ごとの件数を棒グラフで描く（音のグラフと横軸をそろえる）
+function renderTagChart() {
+  const box = $("tl-tagchart");
+  const shown = TAG_ORDER.filter((t) => tl.tags[t]);
+  if (!tl.data || !tl.data.secs.length || !shown.length) {
+    box.hidden = true;
+    box.innerHTML = "";
+    return;
+  }
+  box.hidden = false;
+  clampTl();
+  const W = 480, PL = 36, PR = 8, ROW = 44, GAP = 6, PT = 4, PB = 4;
+  const H = PT + shown.length * (ROW + GAP) - GAP + PB;
+  const t0 = tl.winStart, t1 = tl.winStart + tl.winLen;
+  const NB = 60;
+  const binSec = tl.winLen / NB;
+  const plotW = W - PL - PR;
+  const bw = plotW / NB;
+  const X = (t) => PL + (t - t0) / tl.winLen * plotW;
+
+  let g = "";
+  shown.forEach((t, r) => {
+    const bins = new Array(NB).fill(0);
+    for (const e of tl.data.evs) {
+      if (e.type !== t) continue;
+      const s = e.startMs / 1000;
+      if (s < t0 || s > t1) continue;
+      bins[Math.min(NB - 1, Math.floor((s - t0) / binSec))]++;
+    }
+    const mx = Math.max(1, ...bins);
+    const y0 = PT + r * (ROW + GAP);
+    const base = y0 + ROW;
+    g += '<rect x="' + PL + '" y="' + y0 + '" width="' + plotW + '" height="' + ROW + '" fill="none" stroke="#2a3643"/>';
+    for (let i = 0; i < NB; i++) {
+      if (!bins[i]) continue;
+      const h = bins[i] / mx * (ROW - 14);
+      g += '<rect x="' + (PL + i * bw + 0.5).toFixed(1) + '" y="' + (base - h).toFixed(1) +
+        '" width="' + Math.max(1, bw - 1).toFixed(1) + '" height="' + h.toFixed(1) + '" fill="' + TAG_COLOR[t] + '"/>';
+    }
+    g += '<text x="' + (PL + 4) + '" y="' + (y0 + 11) + '" font-size="10" fill="' + TAG_COLOR[t] + '">' + esc(TAG_NAME[t]) + "</text>";
+    g += '<text x="2" y="' + (y0 + 11) + '" font-size="10" fill="#aebbc9">' + mx + "</text>";
+    g += '<text x="2" y="' + (base - 2) + '" font-size="10" fill="#aebbc9">0</text>';
+  });
+  const cx = X(tl.cursor).toFixed(1);
+  g += '<line x1="' + cx + '" x2="' + cx + '" y1="' + PT + '" y2="' + (H - PB) + '" stroke="#ffd54a" stroke-width="2"/>';
+
+  box.innerHTML = '<svg viewBox="0 0 ' + W + " " + H + '" xmlns="http://www.w3.org/2000/svg">' + g + "</svg>" +
+    '<p class="muted">棒1本＝' + round1(binSec) + "秒あたりの件数。左端の数字は、その段の最大件数です。</p>";
+}
+
 function renderTimeline() {
   if (!tl.data) return;
   clampTl();
   renderTagBar();
+  renderTagChart();
   const { secs, sess } = tl.data;
   const box = $("d-chart");
 
@@ -1746,16 +1801,6 @@ function renderTimeline() {
   const motPts = inWin.filter((s) => s.motion != null).filter((_, i) => i % step === 0)
     .map((s) => X(s.sec).toFixed(1) + "," + MY(s.motion).toFixed(1)).join(" ");
 
-  // V36：表示中のタグのイベントを縦線で描く（描く順：人声 → 環境音 → 判定不能 → いびき。いびきを最前面にする）
-  const tagLines = ["speech", "env", "unknown", "snore"].filter((t) => tl.tags[t]).map((t) => {
-    const lines = tl.data.evs.filter((e) => e.type === t && e.startMs / 1000 >= t0 && e.startMs / 1000 <= t1)
-      .map((e) => {
-        const x = X(e.startMs / 1000).toFixed(1);
-        return '<line x1="' + x + '" x2="' + x + '" y1="' + PT + '" y2="' + (H - PB) + '"/>';
-      }).join("");
-    return '<g stroke="' + TAG_COLOR[t] + '" stroke-width="1.5" stroke-opacity=".8">' + lines + "</g>";
-  }).join("");
-
   const savedLines = tl.marks.filter((m) => m.centerMs / 1000 >= t0 && m.centerMs / 1000 <= t1).map((m) => {
     const x = X(m.centerMs / 1000).toFixed(1);
     return '<line x1="' + x + '" x2="' + x + '" y1="' + PT + '" y2="' + (H - PB) + '" stroke="#ff9f43" stroke-width="1.5" stroke-dasharray="2 3"/>';
@@ -1770,7 +1815,7 @@ function renderTimeline() {
     baseLine + savedLines +
     '<polyline points="' + pts + '" fill="none" stroke="#84b9cf" stroke-width="1.2"/>' +
     '<polyline points="' + motPts + '" fill="none" stroke="#ffffff" stroke-width="1" opacity=".7"/>' +
-    tagLines + cursorLine +
+    cursorLine +
     '<text x="2" y="' + (Y(ymax) + 8) + '" font-size="10" fill="#aebbc9">' + ymax + "</text>" +
     '<text x="2" y="' + Y(ymin) + '" font-size="10" fill="#aebbc9">' + ymin + "</text>" +
     '<text x="' + PL + '" y="' + (H - 6) + '" font-size="10" fill="#aebbc9">' + fmtTime(t0 * 1000) + "</text>" +
@@ -1810,13 +1855,13 @@ function tlPointerMove(e) {
 
 function tlPointerEnd() { tlDrag = null; }
 
-// V36：音声の範囲（イベントの前後）。環境音は前後60秒、それ以外は前後（PRE_MS／POST_MS）
+// 音声の範囲（イベントの前後）。環境音は前後60秒、それ以外は前後（PRE_MS／POST_MS）
 function evClipRange(e) {
   if (e.type === "env") return [e.startMs - ENV_CLIP_SEC * 1000, e.endMs + ENV_CLIP_SEC * 1000];
   return [e.startMs - PRE_MS, e.endMs + POST_MS];
 }
 
-// V36：線の位置の前後 TL_PLAY_SEC 秒にある、表示中のタグの音声を、押したときだけ1件読み込んで再生する
+// 線の位置の前後 TL_PLAY_SEC 秒にある、表示中のタグの音声を、押したときだけ1件読み込んで再生する
 async function listenAtCursor() {
   const msg = $("tl-msg"), box = $("tl-audio");
   box.innerHTML = "";
@@ -2992,5 +3037,4 @@ init().catch((e) => showError("起動に失敗しました: " + e.message));
 </script>
 </body>
 </html>
-
 
