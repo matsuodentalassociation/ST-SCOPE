@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
 <meta name="theme-color" content="#000000">
 <meta http-equiv="Cache-Control" content="no-cache">
-<title>SomnoLog V35</title>
+<title>SomnoLog V36</title>
 <script src="./ort.min.js"></script>
 <style>
 :root{color-scheme:dark}
@@ -76,6 +76,13 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 .rv-row.drop{background:#1b1f24}
 .rv-row.drop .rv-time{opacity:.6}
 .rv-chart svg{cursor:pointer}
+/* V36：タグバー（タイムラインの下） */
+.tagbar{display:flex;flex-wrap:wrap;gap:8px}
+.tagbtn{width:auto;min-height:40px;padding:8px 12px;font-size:13px;display:flex;align-items:center;gap:6px;background:#171f29;border-color:#34424f;color:#d3dde7}
+.tagbtn i{display:inline-block;width:12px;height:12px;border-radius:3px}
+.tagbtn.off{opacity:.45;border-style:dashed}
+.tagbtn.off i{background:transparent!important;border:1px solid #8fa0b3}
+.tagbtn small{font-size:11px;color:#aebbc9;font-weight:400}
 </style>
 </head>
 <body>
@@ -85,7 +92,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 1-1 起動・QR読み取り -->
 <main id="page-start" class="page" hidden>
   <header class="head">
-    <h1>SomnoLog V35</h1>
+    <h1>SomnoLog V36</h1>
     <span class="tag">患者情報確認</span>
   </header>
   <p class="muted">②が発行した患者用QRを読み取ってください。</p>
@@ -141,7 +148,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 記録画面 -->
 <main id="page-record" class="page" hidden>
   <header class="head">
-    <h1>SomnoLog V35</h1>
+    <h1>SomnoLog V36</h1>
     <span id="rec-badge" class="tag">待機中</span>
   </header>
 
@@ -166,7 +173,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
     <div class="chart"><div id="live-motion"></div></div>
   </section>
 
-  <!-- 環境音（V35：常に記録。人声と判定された部分は無音にする） -->
+  <!-- 環境音（常に記録。人声と判定された部分は無音にする） -->
   <section class="card">
     <p class="muted">環境音の変化は常に記録します。人声と判定された部分は無音にして保存します。</p>
   </section>
@@ -185,7 +192,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 
   <!-- バージョン・更新 -->
   <section class="card">
-    <div class="kv"><span>アプリのバージョン</span><b id="ver-text">SomnoLog V35</b></div>
+    <div class="kv"><span>アプリのバージョン</span><b id="ver-text">SomnoLog V36</b></div>
     <p class="muted">このアプリは自動でアップデートしません。アプリ更新のお知らせが届いたときは、更新を確認後にキャッシュ回避で再読み込みをクリックしてください。</p>
     <p id="upd-msg" class="muted"></p>
     <button id="upd-check" class="sub">更新を確認</button>
@@ -232,12 +239,14 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
     </div>
     <p id="tl-info" class="tl-info"></p>
     <div id="d-chart" class="chart tl-area"></div>
+    <!-- V36：タグバー。タップで表示／非表示を切り替える -->
+    <div id="tl-tags" class="tagbar"></div>
     <p id="tl-cur-text" class="tl-info"></p>
     <label class="muted">表示位置（右へ動かすと終了時刻の方へ進みます）</label>
     <input id="tl-pos" type="range" min="0" max="0" step="1" value="0">
     <label class="muted">黄色い線（時刻の位置）</label>
     <input id="tl-cur" type="range" min="0" max="0" step="1" value="0">
-    <button id="tl-listen" class="primary">タイムラインのいびきを聴く</button>
+    <button id="tl-listen" class="primary">タイムラインの音を聴く</button>
     <div id="tl-audio"></div>
     <p id="tl-msg" class="muted"></p>
     <button id="tl-save" class="sub">保存する（黄色い線の前後1分）</button>
@@ -288,7 +297,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
   <p class="muted">本アプリは診断を行うものではありません。医師の判断の参考資料です。</p>
 </main>
 
-<!-- V35：人声の確認画面 -->
+<!-- 人声の確認画面 -->
 <main id="page-review" class="page" hidden>
   <div class="sticky-bar">
     <button id="rv-back" class="sub">保存せずに戻る</button>
@@ -306,7 +315,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
   </section>
 </main>
 
-<!-- V35：人声確認の案内ダイアログ -->
+<!-- 人声確認の案内ダイアログ -->
 <div id="rv-dialog" class="modal" hidden>
   <div class="modal-box">
     <h2>人声の確認</h2>
@@ -326,45 +335,48 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 
 /* ===== バージョン ===== */
 // 修正のたびに数字を1つ増やす。GitHub更新の確認はこの数字を比べる
-const APP_VERSION = 35;
+const APP_VERSION = 36;
 const APP = "SomnoLogV" + APP_VERSION;
 
 /* ===== GitHub更新の取得元 ===== */
-// 取得元のHTML。この中の「const APP_VERSION = 数字」を読んで、新しい版かどうかを判断する
 const UPDATE_SRC = "https://raw.githubusercontent.com/matsuodentalassociation/ST-SCOPE/main/index.html";
 const UPDATE_EVERY_MS = 10 * 60 * 1000;
 
 /* ===== 設定 ===== */
 const SR = 16000, FRAME = 512;
-const RING_SEC = 130;          // 環境音の保存（前後60秒）に必要な長さ。V20で62→130
+const RING_SEC = 130;
 const G_ACC = 9.80665;
 const VAD_CTX = 64, VAD_URL = "./silero_vad.onnx?v=" + APP_VERSION, VAD_TH = 0.3;
 const LOUD_DB = 6, SEG_MIN = 0.5, SEG_MAX = 4, QUIET_FRAMES = 5;
 const PRE_MS = 3000, POST_MS = 1000;
 const CALIB_SEC = 300, BASE_EVERY = 600, POOL_MAX = 600, POOL_MIN = 60;
-const ENV_RUN_SEC = 10, ENV_DB = 6, ENV_COOLDOWN = 300, ENV_CLIP_SEC = 60; // 環境音の前後保存：60秒
+const ENV_RUN_SEC = 10, ENV_DB = 6, ENV_COOLDOWN = 300, ENV_CLIP_SEC = 60;
 const FLUSH_SEC = 60, MAX_QUEUE = 40;
 const UI_MS = 250, LIVE_N = 240;
-const DB_NAME = "somnolog-v3"; // V3以降のデータを引き継ぐため名前は据え置き
-const DB_VERSION = 2;          // V10で settings を追加（V20〜V35でも変更なし）
-const DB_WAIT_MS = 4000;       // 保存領域の読み込みを待つ上限（これを超えたら待たずに先へ進む）
-const TL_PLAY_SEC = 5;         // タイムラインの再生：線の位置の前後の秒数（V24）
-const MARK_HALF_MS = 60 * 1000; // 「保存する」の範囲：線の時刻の前後1分（V26）
-const PLOG_LEN = Math.ceil(SR * RING_SEC / FRAME) + 8; // V35：フレームごとのVAD値の記録数（リングバッファと同じ長さ）
-const VOICE_PAD = 3;           // V35：環境音の無音化で、人声フレームの前後に足すフレーム数（約0.1秒）
+const DB_NAME = "somnolog-v3";
+const DB_VERSION = 2;
+const DB_WAIT_MS = 4000;
+const TL_PLAY_SEC = 5;
+const MARK_HALF_MS = 60 * 1000;
+const PLOG_LEN = Math.ceil(SR * RING_SEC / FRAME) + 8;
+const VOICE_PAD = 3;
 const DISCLAIMER = "本アプリは診断を行うものではありません。医師の判断の参考資料です。";
 const LABELS = { snore: "いびき", speech: "寝言・話し声", env: "環境音", unknown: "判定不能", short: "短い音" };
+// V36：タグバー。表示順と色
+const TAG_ORDER = ["snore", "unknown", "env", "speech"];
+const TAG_COLOR = { snore: "#4a90d9", unknown: "#ff9f43", env: "#4caf7a", speech: "#9aa5b1" };
+const TAG_NAME = { snore: "いびき", unknown: "判定不能", env: "環境音", speech: "人声" };
 
-/* ===== 夜の評価（V31）：カレンダーの簡易表示用。すべて暫定値（実データで調整する） ===== */
-const ENV_QUIET_MAX = 0;       // 環境音の変化がこの回数以下：「とても静かな環境でした」
-const ENV_CALM_MAX = 2;        // この回数以下：「静かな環境でした」。これを超えると「やや騒がしい環境でした」
-const MOVE_TH = 0.3;           // 体動（m/s²）がこの値以上の秒を「動きのある秒」とする
-const LINK_SEC = 2;            // 動きの前後この秒数以内に音の上昇があれば「音と連動する動き」とする
-const TURN_MIN = 3;            // 「寝返りが多い」：音と連動する動きの最低回数
-const TURN_PER_HOUR = 3;       // 「寝返りが多い」：1時間あたりの回数
-const PERIOD_MIN = 6;          // 「定期的な振動」：同じ間隔で続く動きの最低回数
-const PERIOD_TOL_RATE = 0.2;   // 「定期的な振動」：間隔のばらつきの許容（間隔の最小値に対する割合）
-const PERIOD_TOL_SEC = 2;      // 「定期的な振動」：間隔のばらつきの許容（秒）。割合とこの秒のうち大きい方
+/* ===== 夜の評価（V31）===== */
+const ENV_QUIET_MAX = 0;
+const ENV_CALM_MAX = 2;
+const MOVE_TH = 0.3;
+const LINK_SEC = 2;
+const TURN_MIN = 3;
+const TURN_PER_HOUR = 3;
+const PERIOD_MIN = 6;
+const PERIOD_TOL_RATE = 0.2;
+const PERIOD_TOL_SEC = 2;
 
 /* ===== 補助関数 ===== */
 const $ = (id) => document.getElementById(id);
@@ -388,7 +400,6 @@ const fmtTime = (ms) => {
   const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
   return h ? h + ":" + pad(m) + ":" + pad(sec) : m + ":" + pad(sec);
 };
-// 「2時間5分」の形（カレンダーの簡易表示用）
 const fmtHM = (ms) => {
   const s = Math.max(0, Math.floor(ms / 1000));
   return Math.floor(s / 3600) + "時間" + Math.floor((s % 3600) / 60) + "分";
@@ -398,12 +409,10 @@ const fmtDate = (ms) => new Date(ms).toLocaleString("ja-JP", { month: "numeric",
 const isoOf = (ms) => new Date(ms).toISOString();
 const esc = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const newCounts = () => ({ snore: 0, speech: 0, env: 0, unknown: 0, short: 0 });
-// 端末の日付（年-月-日）の文字列。カレンダーの日付の照合に使う
 const dayKey = (ms) => {
   const d = new Date(ms);
   return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
 };
-// 「2026年10月26日（月）」の形
 const dayLabel = (key) => {
   const [y, m, d] = key.split("-").map(Number);
   const w = "日月火水木金土"[new Date(y, m - 1, d).getDay()];
@@ -425,12 +434,10 @@ function showMicMsg(text) {
 }
 
 /* ===== 患者情報（QR） ===== */
-// QRの中身：https://<③の公開URL>/#slp=<Base64URL化したJSON>
 const S_PATIENT_PENDING = { value: null };
 
 class PatientError extends Error {}
 
-// Base64URL → UTF-8文字列 → JSON（日本語の文字化けを防ぐためTextDecoderを使う）
 function decodeSlp(payload) {
   let s = String(payload).trim().replace(/[^A-Za-z0-9\-_]/g, "");
   if (!s) throw new PatientError("QRの中身が空です。");
@@ -442,7 +449,6 @@ function decodeSlp(payload) {
   return JSON.parse(json);
 }
 
-// 読み取った文字列（URL全体、またはハッシュ部分）から患者情報を作る
 function patientFromText(text) {
   const str = String(text || "");
   const idx = str.indexOf("#slp=");
@@ -470,7 +476,6 @@ function normalizePatient(o) {
   return p;
 }
 
-// ファイル名用の安全な文字列（禁止記号・制御文字を _ に置換、NFC正規化）
 function sanitize(v, max = 40) {
   const s = String(v ?? "").normalize("NFC")
     .replace(/[\\/:*?"<>|\u0000-\u001f\u007f]/g, "_")
@@ -481,9 +486,6 @@ function sanitize(v, max = 40) {
   return s || "未設定";
 }
 
-// ZIPの名前（人が見て分かる形）：日付_時刻_診療所_カルテNo_患者名.zip
-// 例：20261027_1915_サンプル中央クリニック_123456_山田太郎.zip
-// 時刻は記録開始の時・分（24時間表記）。シリアルNoはファイル名には入れず、中身（session.json）に残す
 function zipName(sess) {
   const p = sess.patient || {};
   const d = new Date(sess.startedAt);
@@ -544,7 +546,6 @@ const DB = (() => {
     get: (store, key) => run(store, "readonly", (s) => s.get(key)),
     all: (store) => run(store, "readonly", (s) => s.getAll()),
     byIndex: (store, idx, key) => run(store, "readonly", (s) => s.index(idx).getAll(IDBKeyRange.only(key))),
-    // V35：削除用。音声データを読み込まず、キーだけを取り出す
     keysByIndex: (store, idx, key) => run(store, "readonly", (s) => s.index(idx).getAllKeys(IDBKeyRange.only(key))),
     del: (store, key) => run(store, "readwrite", (s) => s.delete(key)),
     delMany: (store, keys) => run(store, "readwrite", (s) => { keys.forEach((k) => s.delete(k)); return null; }),
@@ -568,14 +569,12 @@ const S = {
   bucket: null, secBuf: [], envRun: 0, lastEnvMs: -1e9,
 };
 
-// カレンダーの表示状態（年・月・選んだ日・同じ日の何件目か・日付ごとの記録）
 const cal = { year: 0, month: 0, selected: null, index: 0, byDay: new Map() };
 
-// タイムラインの表示状態（V24）。秒単位。cursor は黄色い線の時刻。marks は保存した位置（V26）
+// タイムラインの表示状態。tags は V36：表示するタグ（初期は snore のみ）
 const ZOOM_DEFAULT = 0;
-const tl = { data: null, total: 0, winStart: 0, winLen: 0, cursor: 0, zoomSec: ZOOM_DEFAULT, mMax: 0.5, marks: [] };
+const tl = { data: null, total: 0, winStart: 0, winLen: 0, cursor: 0, zoomSec: ZOOM_DEFAULT, mMax: 0.5, marks: [], tags: { snore: true, unknown: false, env: false, speech: false } };
 
-// 記録中・保存中・共有中は、更新の再読み込みをさせない
 function isBusy() { return S.running || S.saving; }
 
 /* ===== 画面切り替え ===== */
@@ -584,7 +583,6 @@ function showPage(name) {
   window.scrollTo(0, 0);
 }
 
-// V30：記録画面には患者情報を出さない（QR読み取り・確認画面で表示する）
 function renderPatientCard() {
   $("pt-change").disabled = S.running;
 }
@@ -598,7 +596,6 @@ function showScanMsg(text) {
   b.textContent = text || "";
 }
 
-// 読み取った文字列を確認する（OKなら1-2へ、NGなら1-1に留まる）
 function handleQrText(text) {
   try {
     const p = patientFromText(text);
@@ -619,7 +616,6 @@ function showConfirm(p) {
   showPage("confirm");
 }
 
-// 1枚の画像・映像から QR の文字列を探す（BarcodeDetector → jsQR の順）
 async function decodeCanvas(canvas) {
   if (window.BarcodeDetector) {
     try {
@@ -724,18 +720,15 @@ async function readQrFile(file) {
   }
 }
 
-// 標準カメラで開いた時（#slp=付きURL）は、自動で1-2へ進む
 function checkHashOnLoad() {
   if (location.hash.indexOf("#slp=") < 0) return false;
   const text = location.href;
-  // 読み取った後はURLからハッシュを消し、再読み込みで二重に扱わないようにする
   history.replaceState(null, "", location.pathname + location.search);
   handleQrText(text);
   return true;
 }
 
 /* ===== 患者情報の保存・読み込み ===== */
-// 保存領域の読み込みが止まっても、DB_WAIT_MS で打ち切って先へ進む
 function withTimeout(promise, ms, label) {
   let timer;
   const timeout = new Promise((_, rej) => {
@@ -909,8 +902,7 @@ function onAudio(data) {
   pump();
 }
 
-/* ===== Silero VAD（寝言除外の第1段） =====
-   V30：VADが使えない時も、記録画面には何も出さない。有効かどうかは詳細画面とZIP（vadEnabled）に残る */
+/* ===== Silero VAD ===== */
 async function loadVad() {
   if (typeof ort === "undefined") {
     S.vad = null; S.vadOk = false;
@@ -972,8 +964,7 @@ async function pump() {
   } finally { S.busy = false; }
 }
 
-/* ===== V35：フレームごとのVAD値の記録（環境音の人声部分を無音にするために使う） ===== */
-// 記録がないフレーム（取りこぼし・未処理）は、安全側で「人声あり」として扱う
+/* ===== フレームごとのVAD値の記録（環境音の人声部分を無音にするために使う） ===== */
 function isVoiceFrame(k) {
   for (let d = -VOICE_PAD; d <= VOICE_PAD; d++) {
     const kk = k + d;
@@ -996,7 +987,6 @@ function processFrame(f, p) {
   S.lastLv = lv;
   S.nowMs = t + FRAME / SR * 1000;
 
-  // V35：このフレームのVAD値を記録する（VADが使えない時は「人声あり」とする）
   const fk = Math.round(t / 1000 * SR / FRAME);
   S.pLog[fk % PLOG_LEN] = S.vadOk ? p : 1;
   S.pIdx[fk % PLOG_LEN] = fk;
@@ -1074,7 +1064,6 @@ function decideCand(it) {
     vadMax: vadOn ? round2(inside) : null, vadNear: vadOn ? round2(near) : null,
     gainDb: S.gainDb, label: null, clipId: null, review: null
   };
-  // V35：いびき・判定不能・人声は音声を保存する（人声は、あとでスマホで聴いて保存か破棄かを決める）
   if (type === "snore" || type === "unknown" || type === "speech") {
     ev.clipId = saveClip(c.startMs - PRE_MS, endMs + POST_MS, ev.id, type, false);
   }
@@ -1092,9 +1081,7 @@ function tickPending(now) {
   }
 }
 
-// fromMs / toMs は記録開始からの時間（ミリ秒）。clips.json の startSec はここから作る
-// V13以降：音声は 4bit IMA ADPCM（WAV形式）で保存する（約1/4）。ZIPに書き出す時だけ PCM16 に戻す（V19）
-// V35：silenceVoice が true の時（環境音）は、人声と判定されたフレームの前後を無音にしてから保存する
+// silenceVoice が true の時（環境音）は、人声と判定されたフレームの前後を無音にしてから保存する
 function saveClip(fromMs, toMs, eventId, kind, silenceVoice) {
   const a = Math.round(fromMs / 1000 * SR), b = Math.round(toMs / 1000 * SR);
   const actualA = Math.max(a, 0, S.ring.total - S.ring.len);
@@ -1150,7 +1137,6 @@ function finishSecond(b) {
     };
     S.counts.env++;
     DB.put("events", ev).catch(console.error);
-    // V35：環境音の音声は常に保存する。ただしVADが使えない時は人声を無音にできないため保存しない
     if (S.vadOk) {
       S.pendingEnv.push({
         ev, from: startMs - ENV_CLIP_SEC * 1000, to: startMs + ENV_CLIP_SEC * 1000,
@@ -1195,7 +1181,6 @@ function onMotion(e) {
   S.motionNow = m;
   if (S.bucket) S.bucket.mot.push(m);
 }
-
 /* ===== 記録の開始・停止 ===== */
 async function acquireWake() {
   try { if ("wakeLock" in navigator) S.wake = await navigator.wakeLock.request("screen"); }
@@ -1313,8 +1298,7 @@ function setButtons() {
   renderUpdate();
 }
 
-/* ===== GitHub更新 =====
-   V30：「更新を確認」と「キャッシュ回避で再読み込み」の2ボタン。結果は1行だけ表示する */
+/* ===== GitHub更新 ===== */
 const upd = { latest: null, checkedAt: null, error: null, checking: false };
 
 function renderUpdate() {
@@ -1334,7 +1318,6 @@ function renderUpdate() {
   $("upd-reload").disabled = busy;
 }
 
-// GitHubの版を確認する（画面は変えない）
 async function checkUpdate() {
   if (upd.checking) return;
   upd.checking = true;
@@ -1356,7 +1339,6 @@ async function checkUpdate() {
   }
 }
 
-// キャッシュを避けて、同じページを開き直す
 function reloadNoCache() {
   if (isBusy()) return;
   const u = new URL(location.href);
@@ -1431,7 +1413,6 @@ function exitBlack() {
 }
 
 /* ===== 記録カレンダー ===== */
-// 記録（sessions）を日付ごとにまとめる。同じ日は開始時刻の早い順（1件目から）
 async function loadCalendarData() {
   const sessions = (await DB.all("sessions")).sort((a, b) => a.startedAt - b.startedAt);
   cal.byDay = new Map();
@@ -1442,7 +1423,6 @@ async function loadCalendarData() {
   }
 }
 
-// データを読み直して、カレンダーと簡易表示を描く
 async function refreshCalendar() {
   await loadCalendarData();
   renderCalendar();
@@ -1481,7 +1461,6 @@ function renderCalendar() {
   });
 }
 
-// 1回目：簡易表示。同じ日付をもう一度押すと詳細を開く
 function onDayTap(key) {
   if (cal.selected === key) {
     const list = cal.byDay.get(key) || [];
@@ -1497,20 +1476,13 @@ function onDayTap(key) {
   renderDaySummary();
 }
 
-/* ===== 夜の評価（V31） =====
-   ・カレンダーの簡易表示で、選んだ記録の1秒データとイベントを読み込んで評価する
-   ・環境音：環境音の変化の回数で3段階に分ける
-   ・体動：音と連動する動き（寝返りの目安）と、連動しない動き（定期的な振動の目安）を分けて数える
-   ・閾値はすべて暫定値。診断ではなく、目安として表示する */
-
-// 環境音の評価（環境音の変化の回数 → 文言）
+/* ===== 夜の評価（V31） ===== */
 function evalEnv(n) {
   if (n <= ENV_QUIET_MAX) return "とても静かな環境でした";
   if (n <= ENV_CALM_MAX) return "静かな環境でした";
   return "やや騒がしい環境でした";
 }
 
-// 開始秒の一覧（昇順）から、ほぼ同じ間隔で続いた動きの最大回数を返す
 function longestPeriodicRun(starts) {
   if (starts.length < 2) return starts.length;
   const iv = [];
@@ -1529,7 +1501,6 @@ function longestPeriodicRun(starts) {
   return best;
 }
 
-// 体動の評価。secs は sec 昇順。音の上昇は「基準値＋LOUD_DB 以上」（いびき検出と同じ値）で見る
 function analyzeMotion(sess, secs) {
   const withMot = secs.filter((s) => s.motion != null);
   if (!withMot.length) return { status: "nodata" };
@@ -1538,7 +1509,6 @@ function analyzeMotion(sess, secs) {
   const thr = sess.base + LOUD_DB;
   const dbBySec = new Map(secs.map((s) => [s.sec, s.dbApplied]));
 
-  // 動きのある秒（連続する秒は1回の動き）
   const moves = [];
   let cur = null;
   for (const s of withMot) {
@@ -1571,7 +1541,6 @@ function analyzeMotion(sess, secs) {
   };
 }
 
-// いびき（保存対象）の音圧。生音（ゲイン調整前）の値で、いびきがなければ null
 function snoreStats(evs) {
   const sn = evs.filter((e) => e.type === "snore");
   const means = sn.map((e) => e.meanSourceDb).filter((v) => v != null);
@@ -1606,7 +1575,6 @@ function nightHtml(sess, secs, evs) {
 
 let daySumToken = 0;
 
-// 簡易表示の評価欄を、選んだ記録のデータから埋める（表示中の記録が変わっていたら描かない）
 async function loadDayDetail(s, token) {
   try {
     const secs = (await DB.byIndex("secs", "sid", s.id)).sort((a, b) => a.sec - b.sec);
@@ -1621,7 +1589,6 @@ async function loadDayDetail(s, token) {
   }
 }
 
-// 選んだ日の簡易情報（同じ日に複数あれば ▲ ▼ で切り替える）
 function renderDaySummary() {
   const token = ++daySumToken;
   const box = $("cal-summary");
@@ -1661,15 +1628,16 @@ function renderDaySummary() {
 let blobUrls = [];
 function revokeUrls() { blobUrls.forEach((u) => URL.revokeObjectURL(u)); blobUrls = []; }
 
-// 詳細画面を先に表示し、そのあとで中身を描く（音声は読み込まない）
 async function openDetail(sid) {
   S.detailSid = sid;
   tl.data = null;
   tl.marks = [];
+  tl.tags = { snore: true, unknown: false, env: false, speech: false }; // V36：開くたびに「いびきのみ」に戻す
   revokeUrls();
   const sess = await DB.get("sessions", sid);
   if (!sess) return;
   $("d-chart").innerHTML = '<p class="muted">読み込み中…</p>';
+  $("tl-tags").innerHTML = "";
   $("saved-list").innerHTML = '<p class="muted">読み込み中…</p>';
   showSaveMsg("", false);
   showPage("detail");
@@ -1677,15 +1645,13 @@ async function openDetail(sid) {
   const secs = (await DB.byIndex("secs", "sid", sid)).sort((a, b) => a.sec - b.sec);
   const evs = (await DB.byIndex("events", "sid", sid)).sort((a, b) => a.startMs - b.startMs);
   const marks = await loadMarks(sid);
-  if (S.detailSid !== sid) return; // 別の記録に切り替えられていたら描かない
+  if (S.detailSid !== sid) return;
   tl.marks = marks;
   initTimeline(sess, secs, evs);
   renderMarks();
 }
 
-/* ===== 記録の削除（V35） =====
-   ・グラフ（secs）・イベント・音声（clips）・保存位置（marks）をすべて削除する
-   ・途中で失敗しても再実行できるよう、記録本体（sessions）は最後に消す */
+/* ===== 記録の削除（V35） ===== */
 async function deleteSession(sid) {
   for (const store of ["clips", "events", "secs"]) {
     const keys = await DB.keysByIndex(store, "sid", sid);
@@ -1695,13 +1661,9 @@ async function deleteSession(sid) {
   await DB.del("sessions", sid);
 }
 
-/* ===== タイムライン（V24） =====
-   ・全記録を1本のグラフで持ち、表示幅（圧縮）と表示位置だけを変える
-   ・右へ動かすと記録の終了時刻の方へ進む
-   ・黄色い線は時刻の位置。前後 TL_PLAY_SEC 秒のいびき候補の音声だけを、押したときに1件読み込む
-   ・V32：グラフ上の点（いびき・寝言・判定不能）は表示しない */
+/* ===== タイムライン =====
+   V36：グラフの下にタグバーを置く。表示中のタグのイベントだけを、色つきの縦線で描く */
 
-// 詳細を開いたときに、タイムラインの元データと初期位置を用意する
 function initTimeline(sess, secs, evs) {
   const last = secs.length ? secs[secs.length - 1].sec : 0;
   tl.data = { sess, secs, evs };
@@ -1716,16 +1678,41 @@ function initTimeline(sess, secs, evs) {
   renderTimeline();
 }
 
-// 表示幅・表示位置・線の位置を、範囲内に収める
 function clampTl() {
   tl.winLen = tl.zoomSec > 0 ? Math.min(tl.zoomSec, tl.total) : tl.total;
   tl.winStart = clamp(tl.winStart, 0, Math.max(0, tl.total - tl.winLen));
   tl.cursor = clamp(tl.cursor, tl.winStart, tl.winStart + tl.winLen);
 }
 
+// V36：タグバー。各タグの件数（音声ありの件数）を出し、タップで表示／非表示を切り替える
+function renderTagBar() {
+  const box = $("tl-tags");
+  box.innerHTML = "";
+  if (!tl.data) return;
+  const cnt = {}, aud = {};
+  for (const t of TAG_ORDER) { cnt[t] = 0; aud[t] = 0; }
+  for (const e of tl.data.evs) {
+    if (cnt[e.type] == null) continue;
+    cnt[e.type]++;
+    if (e.clipId) aud[e.type]++;
+  }
+  for (const t of TAG_ORDER) {
+    const b = document.createElement("button");
+    b.className = "tagbtn" + (tl.tags[t] ? "" : " off");
+    b.innerHTML = '<i style="background:' + TAG_COLOR[t] + '"></i>' + esc(TAG_NAME[t]) +
+      " <small>" + cnt[t] + (aud[t] !== cnt[t] ? "（音声" + aud[t] + "）" : "") + "</small>";
+    b.onclick = () => {
+      tl.tags[t] = !tl.tags[t];
+      renderTimeline();
+    };
+    box.appendChild(b);
+  }
+}
+
 function renderTimeline() {
   if (!tl.data) return;
   clampTl();
+  renderTagBar();
   const { secs, sess } = tl.data;
   const box = $("d-chart");
 
@@ -1759,13 +1746,16 @@ function renderTimeline() {
   const motPts = inWin.filter((s) => s.motion != null).filter((_, i) => i % step === 0)
     .map((s) => X(s.sec).toFixed(1) + "," + MY(s.motion).toFixed(1)).join(" ");
 
-  // 環境音の変化（薄い破線）だけを描く。いびき・寝言・判定不能の点は描かない（V32）
-  const marks = tl.data.evs.filter((e) => e.type === "env" && e.startMs / 1000 >= t0 && e.startMs / 1000 <= t1).map((e) => {
-    const x = X(e.startMs / 1000).toFixed(1);
-    return '<line x1="' + x + '" x2="' + x + '" y1="' + PT + '" y2="' + (H - PB) + '" stroke="#f3e7c9" stroke-opacity=".6" stroke-dasharray="4 3"/>';
+  // V36：表示中のタグのイベントを縦線で描く（描く順：人声 → 環境音 → 判定不能 → いびき。いびきを最前面にする）
+  const tagLines = ["speech", "env", "unknown", "snore"].filter((t) => tl.tags[t]).map((t) => {
+    const lines = tl.data.evs.filter((e) => e.type === t && e.startMs / 1000 >= t0 && e.startMs / 1000 <= t1)
+      .map((e) => {
+        const x = X(e.startMs / 1000).toFixed(1);
+        return '<line x1="' + x + '" x2="' + x + '" y1="' + PT + '" y2="' + (H - PB) + '"/>';
+      }).join("");
+    return '<g stroke="' + TAG_COLOR[t] + '" stroke-width="1.5" stroke-opacity=".8">' + lines + "</g>";
   }).join("");
 
-  // 保存した位置（橙の破線）
   const savedLines = tl.marks.filter((m) => m.centerMs / 1000 >= t0 && m.centerMs / 1000 <= t1).map((m) => {
     const x = X(m.centerMs / 1000).toFixed(1);
     return '<line x1="' + x + '" x2="' + x + '" y1="' + PT + '" y2="' + (H - PB) + '" stroke="#ff9f43" stroke-width="1.5" stroke-dasharray="2 3"/>';
@@ -1777,10 +1767,10 @@ function renderTimeline() {
 
   box.innerHTML = '<svg viewBox="0 0 ' + W + " " + H + '" xmlns="http://www.w3.org/2000/svg">' +
     '<rect x="' + PL + '" y="' + PT + '" width="' + (W - PL - PR) + '" height="' + (H - PT - PB) + '" fill="none" stroke="#2a3643"/>' +
-    baseLine + marks + savedLines +
+    baseLine + savedLines +
     '<polyline points="' + pts + '" fill="none" stroke="#84b9cf" stroke-width="1.2"/>' +
     '<polyline points="' + motPts + '" fill="none" stroke="#ffffff" stroke-width="1" opacity=".7"/>' +
-    cursorLine +
+    tagLines + cursorLine +
     '<text x="2" y="' + (Y(ymax) + 8) + '" font-size="10" fill="#aebbc9">' + ymax + "</text>" +
     '<text x="2" y="' + Y(ymin) + '" font-size="10" fill="#aebbc9">' + ymin + "</text>" +
     '<text x="' + PL + '" y="' + (H - 6) + '" font-size="10" fill="#aebbc9">' + fmtTime(t0 * 1000) + "</text>" +
@@ -1793,7 +1783,6 @@ function renderTimeline() {
     "（" + fmtClock(sess.startedAt + tl.cursor * 1000) + "）";
 }
 
-// 指の位置で、黄色い線を動かすか、表示位置を動かすかを決める
 let tlDrag = null;
 function tlPointerDown(e) {
   if (!tl.data || !tl.data.secs.length) return;
@@ -1815,27 +1804,44 @@ function tlPointerMove(e) {
   const dx = e.clientX - tlDrag.lastX;
   tlDrag.lastX = e.clientX;
   if (tlDrag.mode === "cursor") tl.cursor += dx / tlDrag.pxSec;
-  else tl.winStart += dx / tlDrag.pxSec; // 右へ動かすと終了時刻の方へ進む
+  else tl.winStart += dx / tlDrag.pxSec;
   renderTimeline();
 }
 
 function tlPointerEnd() { tlDrag = null; }
 
-// 線の位置の前後 TL_PLAY_SEC 秒にあるいびき候補の音声を、押したときだけ1件読み込んで再生する
+// V36：音声の範囲（イベントの前後）。環境音は前後60秒、それ以外は前後（PRE_MS／POST_MS）
+function evClipRange(e) {
+  if (e.type === "env") return [e.startMs - ENV_CLIP_SEC * 1000, e.endMs + ENV_CLIP_SEC * 1000];
+  return [e.startMs - PRE_MS, e.endMs + POST_MS];
+}
+
+// V36：線の位置の前後 TL_PLAY_SEC 秒にある、表示中のタグの音声を、押したときだけ1件読み込んで再生する
 async function listenAtCursor() {
   const msg = $("tl-msg"), box = $("tl-audio");
   box.innerHTML = "";
   if (!tl.data) return;
+  const shown = TAG_ORDER.filter((t) => tl.tags[t]);
+  if (!shown.length) { msg.textContent = "表示しているタグがありません。タグを1つ以上表示してください。"; return; }
   const c = tl.cursor * 1000;
   const half = TL_PLAY_SEC * 1000;
-  const cands = tl.data.evs
-    .filter((e) => e.type === "snore" && e.clipId && e.startMs - PRE_MS <= c + half && e.endMs + POST_MS >= c - half)
-    .sort((a, b) => Math.abs(a.startMs - c) - Math.abs(b.startMs - c));
-  if (!cands.length) { msg.textContent = "音なし（この位置にいびきの音声はありません）"; return; }
+  const near = tl.data.evs.filter((e) => {
+    if (!tl.tags[e.type]) return false;
+    const [a, b] = evClipRange(e);
+    return a <= c + half && b >= c - half;
+  });
+  const cands = near.filter((e) => e.clipId).sort((a, b) => Math.abs(a.startMs - c) - Math.abs(b.startMs - c));
+  if (!cands.length) {
+    msg.textContent = near.length
+      ? "音なし（この位置のイベントには音声が保存されていません。古い記録の判定不能・人声は、音声がありません）"
+      : "音なし（表示中のタグの音声が、この位置にありません）";
+    return;
+  }
 
   msg.textContent = "読み込み中…";
   try {
-    const clip = await DB.get("clips", cands[0].clipId);
+    const ev = cands[0];
+    const clip = await DB.get("clips", ev.clipId);
     if (!clip) { msg.textContent = "音なし（音声が見つかりません）"; return; }
     const pcm = clipPcm(clip);
     const from = Math.max(0, Math.round((c - half - clip.startMs) / 1000 * SR));
@@ -1848,19 +1854,14 @@ async function listenAtCursor() {
     au.preload = "auto";
     au.src = url;
     box.appendChild(au);
-    msg.textContent = "線の位置の前後" + TL_PLAY_SEC + "秒を再生できます（いびき候補の音声のみ）。";
+    msg.textContent = "線の位置の前後" + TL_PLAY_SEC + "秒を再生できます（" + TAG_NAME[ev.type] + "の音声）。";
   } catch (err) {
     console.error(err);
     msg.textContent = "読み込めませんでした。もう一度押してください。";
   }
 }
 
-/* ===== 保存した位置（V26）=====
-   ・「保存する」：黄色い線の時刻の前後1分を、参照として保存する（音声はコピーしない）
-   ・同じ時刻は重複として保存しない
-   ・前後1分に、いびき候補の音声が1件もなければ保存しない
-   ・保存分は settings（キー：marks:記録ID）に入れる。IndexedDBの版は変えない */
-
+/* ===== 保存した位置（V26） ===== */
 function marksKey(sid) { return "marks:" + sid; }
 
 async function loadMarks(sid) {
@@ -1872,7 +1873,6 @@ async function saveMarks(sid, list) {
   await DB.put("settings", { key: marksKey(sid), value: list, savedAt: Date.now() });
 }
 
-// 保存の結果を、保存ボタンの真下に表示して、そこまで画面を移す（V27）
 function showSaveMsg(text, isErr) {
   const b = $("save-msg");
   b.hidden = !text;
@@ -1881,7 +1881,6 @@ function showSaveMsg(text, isErr) {
   if (text) b.scrollIntoView({ block: "center" });
 }
 
-// 黄色い線の時刻を保存する
 async function saveMark() {
   if (!tl.data || !tl.data.secs.length) return;
   const sess = tl.data.sess;
@@ -1912,8 +1911,6 @@ async function saveMark() {
   showSaveMsg("保存しました：記録から " + fmtTime(centerMs) + "（前後1分・いびき候補 " + snores.length + "件）", false);
 }
 
-// 保存分の音声を、範囲の中で時刻順に組み立てる（音のない所は無音）
-// V28：音声が見つからなかった候補の件数と、音のあるサンプル数を返す（無音で黙って進まないようにする）
 async function buildMarkPcm(mark, evs) {
   const n = Math.max(0, Math.round((mark.toMs - mark.fromMs) / 1000 * SR));
   const out = new Int16Array(n);
@@ -1936,7 +1933,6 @@ async function buildMarkPcm(mark, evs) {
   return { pcm: out, candidates: list.length, found, missing, nonZero };
 }
 
-// 保存した記録の一覧（タイムラインの直下）
 function renderMarks() {
   const box = $("saved-list");
   box.innerHTML = "";
@@ -1997,12 +1993,7 @@ function renderMarks() {
     box.appendChild(row);
   }
 }
-
-// 保存分をZIPにまとめる（V28）。V32：共有シートは使わず、ダウンロードへ保存する
-// ・saved/*.wav：各保存分の音声（PCM16 WAV、前後1分）
-// ・clips.json：保存分WAVの一覧（分析アプリと同じ形式。startSec＝記録開始からの秒数）
-// ・session.json：保存分の時間範囲の時系列データ（記録開始時刻はそのまま、sec は記録開始からの秒数）
-// ・marks.json：保存分の一覧と、音声の確認値（見つかった件数・欠落件数・音のあるサンプル数）
+/* ===== 選択したいびき記録の保存（V28）。V32：共有シートは使わず、ダウンロードへ保存する ===== */
 async function shareMarks(sid) {
   const sess = await DB.get("sessions", sid);
   if (!sess) return;
@@ -2137,7 +2128,6 @@ async function shareMarks(sid) {
   downloadZip(blob, fname);
 }
 
-// V32：ZIPをダウンロードへ保存する（共有シートは使わない）
 function downloadZip(blob, fname) {
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
@@ -2148,7 +2138,6 @@ function downloadZip(blob, fname) {
   setTimeout(() => URL.revokeObjectURL(a.href), 10000);
 }
 
-// V32：選んだZIPファイルを、端末の共有画面で渡す（メールなどを選んで送る）
 async function sendPickedFile(file) {
   if (!file) return;
   if (!(navigator.canShare && navigator.canShare({ files: [file] }))) {
@@ -2176,16 +2165,11 @@ function wavBytes(i16, sr) {
 }
 const wavBlob = (i16, sr) => new Blob([wavBytes(i16, sr)], { type: "audio/wav" });
 
-/* ===== 4bit IMA ADPCM（V13で追加） =====
-   ・1サンプル16bit → 4bit に圧縮（約1/4）
-   ・保存用の形式。ブラウザ内の再生と、ZIP書き出し時の復号に使う
-   ・1ブロック256バイト（先頭4バイトは予測値と段階番号）
-   ・旧版（V12以前）の音声は PCM16 のまま。clips の codec で判別する */
+/* ===== 4bit IMA ADPCM ===== */
 const IMA_STEP = [7,8,9,10,11,12,13,14,16,17,19,21,23,25,28,31,34,37,41,45,50,55,60,66,73,80,88,97,107,118,130,143,157,173,190,209,230,253,279,307,337,371,408,449,494,544,598,658,724,796,876,963,1060,1166,1282,1411,1552,1707,1878,2066,2272,2499,2749,3024,3327,3660,4026,4428,4871,5358,5894,6484,7132,7845,8630,9493,10442,11487,12635,13899,15289,16818,18500,20350,22385,24623,27086,29794,32767];
 const IMA_IDX = [-1, -1, -1, -1, 2, 4, 6, 8];
-const IMA_BLOCK = 256, IMA_SPB = 505; // 1ブロックのバイト数／1ブロックのサンプル数
+const IMA_BLOCK = 256, IMA_SPB = 505;
 
-// 状態（st.pred=予測値, st.idx=段階番号）を、4bitの符号 code で更新する（符号化・復号で共通）
 function imaApply(code, st) {
   const step = IMA_STEP[st.idx];
   let dq = step >> 3;
@@ -2197,7 +2181,6 @@ function imaApply(code, st) {
   st.idx = Math.max(0, Math.min(88, st.idx + IMA_IDX[code & 7]));
 }
 
-// 1サンプルを 4bit の符号に変換し、状態を更新する
 function imaEncodeSample(s, st) {
   const step = IMA_STEP[st.idx];
   let diff = s - st.pred;
@@ -2213,7 +2196,6 @@ function imaEncodeSample(s, st) {
   return code;
 }
 
-// Int16Array → IMA ADPCM の WAV（バイト列）
 function encodeImaWav(i16, sr) {
   const n = i16.length;
   const blocks = Math.max(1, Math.ceil(n / IMA_SPB));
@@ -2224,14 +2206,14 @@ function encodeImaWav(i16, sr) {
   const put = (o, s) => { for (let i = 0; i < 4; i++) u8[o + i] = s.charCodeAt(i); };
   put(0, "RIFF"); v.setUint32(4, buf.byteLength - 8, true); put(8, "WAVE");
   put(12, "fmt "); v.setUint32(16, 20, true);
-  v.setUint16(20, 17, true);                              // 形式：IMA ADPCM
-  v.setUint16(22, 1, true);                               // モノラル
+  v.setUint16(20, 17, true);
+  v.setUint16(22, 1, true);
   v.setUint32(24, sr, true);
   v.setUint32(28, Math.round(sr * IMA_BLOCK / IMA_SPB), true);
   v.setUint16(32, IMA_BLOCK, true);
-  v.setUint16(34, 4, true);                               // 4bit
-  v.setUint16(36, 2, true);                               // 追加情報の長さ
-  v.setUint16(38, IMA_SPB, true);                         // 1ブロックのサンプル数
+  v.setUint16(34, 4, true);
+  v.setUint16(36, 2, true);
+  v.setUint16(38, IMA_SPB, true);
   put(40, "fact"); v.setUint32(44, 4, true); v.setUint32(48, n, true);
   put(52, "data"); v.setUint32(56, dataLen, true);
   const sampleAt = (i) => (i < n ? i16[i] : 0);
@@ -2253,7 +2235,6 @@ function encodeImaWav(i16, sr) {
   return u8;
 }
 
-// IMA ADPCM の WAV（バイト列）→ Int16Array（再生・確認用に復号する）
 function decodeImaWav(u8) {
   const v = new DataView(u8.buffer, u8.byteOffset, u8.byteLength);
   const tag = (o) => String.fromCharCode(u8[o], u8[o + 1], u8[o + 2], u8[o + 3]);
@@ -2287,16 +2268,12 @@ function decodeImaWav(u8) {
   return out;
 }
 
-// 保存された音声（V13以降のADPCM、V12以前のPCM16の両方）をPCM16として取り出す
 function clipPcm(c) {
   return c.codec === "ima-adpcm" ? decodeImaWav(c.data) : c.data;
 }
-// 共有用（ZIP）の音声：どの端末でも再生できるよう、必ず PCM16 のWAVにする（V19）
-// ADPCMで保存された分は、ここで復号してから書き出す
 function clipBytes(c) {
   return wavBytes(clipPcm(c), c.sr);
 }
-// 音声のサンプル数
 function clipSamples(c) {
   return c.codec === "ima-adpcm" ? c.samples : c.data.length;
 }
@@ -2316,7 +2293,6 @@ function crc32(u8) {
   return (c ^ 0xFFFFFFFF) >>> 0;
 }
 
-// deflate（ZIP内のraw deflate）で圧縮する。ブラウザが対応していない場合は null を返す（無圧縮で保存する）
 async function deflateRaw(u8) {
   if (typeof CompressionStream === "undefined") return null;
   try {
@@ -2328,7 +2304,6 @@ async function deflateRaw(u8) {
   }
 }
 
-// ZIP作成。compress:true のファイルだけ圧縮する（音声は無圧縮のまま）
 async function makeZip(files) {
   const parts = [], cd = [];
   let off = 0;
@@ -2361,12 +2336,7 @@ async function makeZip(files) {
   return new Blob([...parts, ...cd, e], { type: "application/zip" });
 }
 
-// ZIPの中身（V32：共有シートは使わず、ダウンロードへ保存する）
-// ・session.json：patient（患者情報）と session.timeSeriesLogs（1秒ごとのデータ）
-// ・clips.json：音声ファイルの一覧（startSec＝記録開始からの秒数、codec＝音声の方式）
-// ・summary.json / seconds.csv / events.csv / README.txt：人が確認する用（圧縮して保存）
-// ・clips/*.wav：音声（PCM16 WAV。無圧縮のまま）
-// V35：snore・unknown・env の音声はすべて入れる。speech の音声は、確認画面で「保存」を選んだものだけ入れる
+// 全記録のZIP。snore・unknown・env の音声はすべて入れる。speech の音声は、確認画面で「保存」を選んだものだけ入れる
 async function shareSession(sid) {
   if (!sid) return;
   const sess = await DB.get("sessions", sid);
@@ -2375,7 +2345,6 @@ async function shareSession(sid) {
   const evs = (await DB.byIndex("events", "sid", sid)).sort((a, b) => a.startMs - b.startMs);
   const evById = new Map(evs.map((e) => [e.id, e]));
   const allClips = (await DB.byIndex("clips", "sid", sid)).sort((a, b) => a.startMs - b.startMs);
-  // V35：人声（speech）の音声は、「保存」を選んだものだけ
   const clips = allClips.filter((c) => {
     if (c.kind !== "speech") return true;
     const ev = c.eventId ? evById.get(c.eventId) : null;
@@ -2501,8 +2470,7 @@ async function shareSession(sid) {
   downloadZip(blob, fname);
 }
 
-/* ===== 睡眠記録の共有画面（V32） ===== */
-// 共有先アドレス（QRから読み取った「ログ共有通知先」）を表示する
+/* ===== 睡眠記録の共有画面 ===== */
 function renderSharePage() {
   const addr = S.patient && S.patient.logShareEmail ? S.patient.logShareEmail : "";
   $("sh-addr").textContent = addr || "（未記入）";
@@ -2510,7 +2478,6 @@ function renderSharePage() {
   $("sh-usage-box").hidden = true;
 }
 
-// アドレスをクリップボードへコピーする
 async function copyAddress() {
   const addr = S.patient && S.patient.logShareEmail ? S.patient.logShareEmail : "";
   if (!addr) return;
@@ -2536,13 +2503,10 @@ async function copyAddress() {
   }
 }
 
-/* ===== 人声の確認（V35） =====
-   ・「全てのいびき記録を保存」を押した時、音声つきの人声（speech）が1件以上あれば、案内を出して確認画面へ進む
-   ・確認画面：上にspeechだけのグラフ、下に一覧。各行で再生・保存・破棄を選ぶ
-   ・判断は events の review に残す（keep＝保存／drop＝破棄／null＝未判断）。ZIPには keep の音声だけが入る */
-const rv = { sid: null, sess: null, secs: [], evs: [], sel: null, urls: [], rows: new Map() };
+/* ===== 人声の確認 =====
+   判断は events の review に残す（keep＝保存／drop＝破棄／null＝未判断）。ZIPには keep の音声だけが入る */
+const rv = { sid: null, sess: null, secs: [], evs: [], sel: null, urls: [], rows: new Map(), total: 0, geom: null };
 
-// 音声つきの人声（speech）の件数
 async function countSpeechClips(sid) {
   const evs = await DB.byIndex("events", "sid", sid);
   return evs.filter((e) => e.type === "speech" && e.clipId).length;
@@ -2637,7 +2601,6 @@ function buildReviewList() {
   }
 }
 
-// 行の見た目（判断済みの色・選択中の枠）を更新する
 function rvUpdateRows() {
   for (const ev of rv.evs) {
     const row = rv.rows.get(ev.id);
@@ -2663,7 +2626,6 @@ function rvSelect(id, scroll) {
   }
 }
 
-// 保存か破棄を選ぶ。選んだら、次の未判断の行へ進む
 async function rvDecide(ev, val) {
   const prev = ev.review || null;
   ev.review = val;
@@ -2699,7 +2661,6 @@ function drawReviewChart() {
   rv.geom = { W, PL, PR };
   const X = (t) => PL + t / total * (W - PL - PR);
 
-  // 音圧の線（薄く）。位置の目安として描く
   let line = "";
   if (rv.secs.length) {
     const vals = rv.secs.map((s) => s.dbApplied);
@@ -2729,7 +2690,6 @@ function drawReviewChart() {
     "</svg>";
 }
 
-// グラフを押したら、いちばん近い人声の行を選ぶ
 $("rv-chart").addEventListener("click", (e) => {
   if (!rv.evs.length || !rv.total || !rv.geom) return;
   const svg = $("rv-chart").querySelector("svg");
@@ -2745,7 +2705,6 @@ $("rv-chart").addEventListener("click", (e) => {
   if (best) rvSelect(best.id, true);
 });
 
-// 確認を終えて、ZIPを作る。未判断が残っていれば1回だけ確認する
 async function runShareAll() {
   if (!S.detailSid) return;
   S.saving = true;
@@ -2767,13 +2726,11 @@ $("rv-done").onclick = async () => {
   }
 };
 
-// 保存せずに戻る（ZIPは作らない。ここまでの判断は残る）
 $("rv-back").onclick = () => {
   rvCleanup();
   showPage("share");
 };
 
-// 案内ダイアログ：ボタンは「人声を確認する」だけ
 $("rv-open").onclick = () => {
   $("rv-dialog").hidden = true;
   if (!S.detailSid) return;
@@ -2781,7 +2738,6 @@ $("rv-open").onclick = () => {
 };
 
 /* ===== ボタン・入力の接続 ===== */
-// 1-1
 $("cam-btn").onclick = () => startCamera();
 $("cam-stop").onclick = () => stopCamera();
 $("qr-file-btn").onclick = () => $("qr-file").click();
@@ -2792,7 +2748,6 @@ $("qr-file").addEventListener("change", (e) => {
 $("usage-btn").onclick = () => { $("usage-box").hidden = !$("usage-box").hidden; };
 $("start-back").onclick = () => { stopCamera(); showScanMsg(""); showPage("record"); };
 
-// 1-2
 $("cf-ok").onclick = async () => {
   const p = S_PATIENT_PENDING.value;
   if (!p) { showPage("start"); return; }
@@ -2812,7 +2767,6 @@ $("cf-ng").onclick = () => {
   showPage("start");
 };
 
-// 記録画面
 $("pt-change").onclick = () => {
   if (isBusy()) return;
   stopCamera();
@@ -2878,7 +2832,6 @@ $("stop-btn").onclick = () => {
 $("btn-enter-black").onclick = enterBlack;
 $("black-screen").onclick = exitBlack;
 
-// 記録カレンダーを開く
 $("history-btn").onclick = async () => {
   try {
     if (!cal.year) {
@@ -2901,7 +2854,6 @@ $("detail-back").onclick = () => {
   renderDaySummary();
 };
 
-// タイムライン（V24）
 const tlArea = $("d-chart");
 tlArea.addEventListener("pointerdown", tlPointerDown);
 tlArea.addEventListener("pointermove", tlPointerMove);
@@ -2912,7 +2864,7 @@ $("tl-zoom").addEventListener("change", (e) => {
   const center = tl.cursor;
   tl.zoomSec = Number(e.target.value);
   const len = tl.zoomSec > 0 ? Math.min(tl.zoomSec, tl.total) : tl.total;
-  tl.winStart = center - len / 2; // 線の位置が見える範囲で表示幅を変える
+  tl.winStart = center - len / 2;
   renderTimeline();
 });
 $("tl-pos").addEventListener("input", (e) => {
@@ -2928,14 +2880,13 @@ $("tl-cur").addEventListener("input", (e) => {
 $("tl-listen").onclick = () => listenAtCursor();
 $("tl-save").onclick = () => saveMark().catch((err) => showSaveMsg("保存できませんでした: " + err.message, true));
 
-// 「保存した記録を共有する」：睡眠記録の共有画面（4-1）へ移る（V32）
 $("saved-share").onclick = () => {
   if (!S.detailSid) return;
   renderSharePage();
   showPage("share");
 };
 
-// V35：この記録の削除（グラフ・イベント・音声・保存位置をすべて消す）
+// この記録の削除（グラフ・イベント・音声・保存位置をすべて消す）
 $("detail-delete").onclick = async () => {
   const sid = S.detailSid;
   if (!sid) return;
@@ -2959,8 +2910,7 @@ $("detail-delete").onclick = async () => {
   }
 };
 
-// 睡眠記録の共有画面（V32）
-// V35：「全てのいびき記録を保存」は、音声つきの人声があれば、先に案内を出して確認画面へ進む
+// 「全てのいびき記録を保存」：音声つきの人声があれば、先に案内を出して確認画面へ進む
 $("sh-all").onclick = async () => {
   if (!S.detailSid) return;
   try {
@@ -2990,14 +2940,12 @@ $("sh-file").addEventListener("change", (e) => {
 $("sh-usage").onclick = () => { $("sh-usage-box").hidden = !$("sh-usage-box").hidden; };
 $("sh-back").onclick = () => showPage("record");
 
-// GitHub更新（V30：確認と再読み込みの2ボタン）
 $("upd-check").onclick = () => checkUpdate();
 $("upd-reload").onclick = () => {
   if (!confirm("キャッシュを避けて、画面を開き直します。よろしいですか？")) return;
   reloadNoCache();
 };
 
-// 別のQRをハッシュで開いた時も確認画面へ
 window.addEventListener("hashchange", () => { checkHashOnLoad(); });
 
 document.addEventListener("visibilitychange", async () => {
@@ -3010,12 +2958,10 @@ document.addEventListener("visibilitychange", async () => {
 
 /* ===== 起動 ===== */
 async function init() {
-  // 1. まず画面を出す（保存領域の読み込みを待たない）
   $("ver-text").textContent = "SomnoLog V" + APP_VERSION;
   $("start-back").hidden = true;
   showPage("start");
 
-  // 2. 任意：jsQRが同じフォルダにあれば、アプリ内の読み取りに使う（無くても動く）
   const jq = document.createElement("script");
   jq.src = "./jsqr.min.js";
   document.head.appendChild(jq);
@@ -3024,17 +2970,15 @@ async function init() {
     showMicMsg(micErrorMessage({ name: "InsecureContext", stage: "接続の確認" }));
   }
 
-  // 3. 画面を出した後で、保存済みの患者情報を読む（失敗しても止まらない）
   startUiLoop();
   setButtons();
   updateUI();
   loadVad().then(() => setButtons());
-  checkUpdate();                                   // 起動時にGitHubの版を確認（表示のみ）
-  setInterval(checkUpdate, UPDATE_EVERY_MS);       // 10分ごとに確認
+  checkUpdate();
+  setInterval(checkUpdate, UPDATE_EVERY_MS);
   await loadPatient();
 
-  // 4. 読み込みの結果に応じて画面を切り替える
-  if (checkHashOnLoad()) return;          // 標準カメラで開いた場合は1-2へ
+  if (checkHashOnLoad()) return;
   if (S.patient) {
     $("start-back").hidden = false;
     showPage("record");
@@ -3048,3 +2992,5 @@ init().catch((e) => showError("起動に失敗しました: " + e.message));
 </script>
 </body>
 </html>
+
+
