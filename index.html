@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
 <meta name="theme-color" content="#000000">
 <meta http-equiv="Cache-Control" content="no-cache">
-<title>SomnoLog V34</title>
+<title>SomnoLog V35</title>
 <script src="./ort.min.js"></script>
 <style>
 :root{color-scheme:dark}
@@ -66,6 +66,16 @@ video{width:100%;border-radius:10px;background:#000}
 ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 #black-screen{background-color:#000000 !important;width:100vw;height:100dvh;min-height:100vh;position:fixed;top:0;left:0;right:0;bottom:0;margin:0;padding:0;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;color:#756f61;touch-action:none;overflow:hidden}
 #black-clock{font-size:64px;font-variant-numeric:tabular-nums}
+/* V35：人声の確認 */
+.modal{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.75);z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px}
+.modal-box{background:#161d26;border:1px solid #2a3643;border-radius:12px;padding:18px;max-width:420px;width:100%;display:flex;flex-direction:column;gap:12px}
+.modal-box p{margin:0;font-size:14px;line-height:1.8}
+.rv-row{border:1px solid #2a3643;border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:8px;background:#111820}
+.rv-row.sel{border-color:#ffd54a}
+.rv-row.keep{background:#17283a}
+.rv-row.drop{background:#1b1f24}
+.rv-row.drop .rv-time{opacity:.6}
+.rv-chart svg{cursor:pointer}
 </style>
 </head>
 <body>
@@ -75,7 +85,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 1-1 起動・QR読み取り -->
 <main id="page-start" class="page" hidden>
   <header class="head">
-    <h1>SomnoLog V34</h1>
+    <h1>SomnoLog V35</h1>
     <span class="tag">患者情報確認</span>
   </header>
   <p class="muted">②が発行した患者用QRを読み取ってください。</p>
@@ -131,7 +141,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 記録画面 -->
 <main id="page-record" class="page" hidden>
   <header class="head">
-    <h1>SomnoLog V34</h1>
+    <h1>SomnoLog V35</h1>
     <span id="rec-badge" class="tag">待機中</span>
   </header>
 
@@ -156,10 +166,9 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
     <div class="chart"><div id="live-motion"></div></div>
   </section>
 
-  <!-- 環境音 -->
+  <!-- 環境音（V35：常に記録。人声と判定された部分は無音にする） -->
   <section class="card">
-    <label class="muted"><input type="checkbox" id="env-save"> 環境音も記録する（通常はOFF）</label>
-    <p class="muted">ONにすると、話し声が録音される場合があります。</p>
+    <p class="muted">環境音の変化は常に記録します。人声と判定された部分は無音にして保存します。</p>
   </section>
 
   <!-- 記録の開始・停止 -->
@@ -176,7 +185,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 
   <!-- バージョン・更新 -->
   <section class="card">
-    <div class="kv"><span>アプリのバージョン</span><b id="ver-text">SomnoLog V34</b></div>
+    <div class="kv"><span>アプリのバージョン</span><b id="ver-text">SomnoLog V35</b></div>
     <p class="muted">このアプリは自動でアップデートしません。アプリ更新のお知らせが届いたときは、更新を確認後にキャッシュ回避で再読み込みをクリックしてください。</p>
     <p id="upd-msg" class="muted"></p>
     <button id="upd-check" class="sub">更新を確認</button>
@@ -240,6 +249,11 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
     <div id="saved-list" class="list"></div>
     <button id="saved-share" class="primary">保存した記録を共有する</button>
   </section>
+  <section class="card">
+    <h2>この記録の削除</h2>
+    <p class="muted">この記録のグラフ・イベント・音声（いびき・判定不能・環境音・人声）をすべて削除します。元に戻せません。</p>
+    <button id="detail-delete" class="danger">この記録を削除</button>
+  </section>
   <p class="muted">本アプリは診断を行うものではありません。医師の判断の参考資料です。</p>
 </main>
 
@@ -274,6 +288,33 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
   <p class="muted">本アプリは診断を行うものではありません。医師の判断の参考資料です。</p>
 </main>
 
+<!-- V35：人声の確認画面 -->
+<main id="page-review" class="page" hidden>
+  <div class="sticky-bar">
+    <button id="rv-back" class="sub">保存せずに戻る</button>
+  </div>
+  <section class="card">
+    <h2>人声と判定された音の確認</h2>
+    <p class="muted">各行の音を聴いて、「保存」か「破棄」を選んでください。保存した音だけがZIPに入ります。</p>
+    <div class="kv"><span>未判断</span><b id="rv-left">-</b></div>
+    <div id="rv-chart" class="chart rv-chart"></div>
+    <p class="muted">灰：未判断／青：保存／暗い灰：破棄／黄：選択中（グラフを押しても選べます）</p>
+  </section>
+  <section class="card">
+    <div id="rv-list" class="list"></div>
+    <button id="rv-done" class="primary">判断を終えてZIPを作る</button>
+  </section>
+</main>
+
+<!-- V35：人声確認の案内ダイアログ -->
+<div id="rv-dialog" class="modal" hidden>
+  <div class="modal-box">
+    <h2>人声の確認</h2>
+    <p>いびきが人声と判定され、記録に残らない場合があります。お手数ですが、人声と判定された音を聴いて、保存か破棄かをご判断ください。</p>
+    <button id="rv-open" class="primary">人声を確認する</button>
+  </div>
+</div>
+
 <!-- 黒画面 -->
 <div id="black-screen" hidden>
   <span id="black-clock"></span>
@@ -285,7 +326,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 
 /* ===== バージョン ===== */
 // 修正のたびに数字を1つ増やす。GitHub更新の確認はこの数字を比べる
-const APP_VERSION = 34;
+const APP_VERSION = 35;
 const APP = "SomnoLogV" + APP_VERSION;
 
 /* ===== GitHub更新の取得元 ===== */
@@ -305,10 +346,12 @@ const ENV_RUN_SEC = 10, ENV_DB = 6, ENV_COOLDOWN = 300, ENV_CLIP_SEC = 60; // �
 const FLUSH_SEC = 60, MAX_QUEUE = 40;
 const UI_MS = 250, LIVE_N = 240;
 const DB_NAME = "somnolog-v3"; // V3以降のデータを引き継ぐため名前は据え置き
-const DB_VERSION = 2;          // V10で settings を追加（V20〜V33でも変更なし）
+const DB_VERSION = 2;          // V10で settings を追加（V20〜V35でも変更なし）
 const DB_WAIT_MS = 4000;       // 保存領域の読み込みを待つ上限（これを超えたら待たずに先へ進む）
 const TL_PLAY_SEC = 5;         // タイムラインの再生：線の位置の前後の秒数（V24）
 const MARK_HALF_MS = 60 * 1000; // 「保存する」の範囲：線の時刻の前後1分（V26）
+const PLOG_LEN = Math.ceil(SR * RING_SEC / FRAME) + 8; // V35：フレームごとのVAD値の記録数（リングバッファと同じ長さ）
+const VOICE_PAD = 3;           // V35：環境音の無音化で、人声フレームの前後に足すフレーム数（約0.1秒）
 const DISCLAIMER = "本アプリは診断を行うものではありません。医師の判断の参考資料です。";
 const LABELS = { snore: "いびき", speech: "寝言・話し声", env: "環境音", unknown: "判定不能", short: "短い音" };
 
@@ -501,7 +544,10 @@ const DB = (() => {
     get: (store, key) => run(store, "readonly", (s) => s.get(key)),
     all: (store) => run(store, "readonly", (s) => s.getAll()),
     byIndex: (store, idx, key) => run(store, "readonly", (s) => s.index(idx).getAll(IDBKeyRange.only(key))),
+    // V35：削除用。音声データを読み込まず、キーだけを取り出す
+    keysByIndex: (store, idx, key) => run(store, "readonly", (s) => s.index(idx).getAllKeys(IDBKeyRange.only(key))),
     del: (store, key) => run(store, "readwrite", (s) => s.delete(key)),
+    delMany: (store, keys) => run(store, "readwrite", (s) => { keys.forEach((k) => s.delete(k)); return null; }),
   };
 })();
 
@@ -509,7 +555,7 @@ const DB = (() => {
 const S = {
   ctx: null, pendingCtx: null, stream: null, tap: null, micMode: "",
   vad: null, vadOk: false, vadState: null, vadCtx: new Float32Array(VAD_CTX),
-  gainDb: 0, envSave: false,
+  gainDb: 0,
   patient: null,
   running: false, saving: false, epoch: 0, sid: null, sess: null, counts: newCounts(),
   wake: null, timers: [], uiTimer: null, blackOn: false, savedStyle: null, detailSid: null,
@@ -518,6 +564,7 @@ const S = {
   nowMs: 0, lastLv: -100, motionNow: null, grav: null, live: [],
   calibrated: false, calibVals: [], base: null, pool: [], lastBaseSec: 0,
   cand: null, pHist: [], pendingCands: [], pendingEnv: [],
+  pLog: new Float32Array(PLOG_LEN), pIdx: new Int32Array(PLOG_LEN).fill(-1),
   bucket: null, secBuf: [], envRun: 0, lastEnvMs: -1e9,
 };
 
@@ -533,7 +580,7 @@ function isBusy() { return S.running || S.saving; }
 
 /* ===== 画面切り替え ===== */
 function showPage(name) {
-  ["start", "confirm", "record", "calendar", "detail", "share"].forEach((n) => { $("page-" + n).hidden = n !== name; });
+  ["start", "confirm", "record", "calendar", "detail", "share", "review"].forEach((n) => { $("page-" + n).hidden = n !== name; });
   window.scrollTo(0, 0);
 }
 
@@ -925,6 +972,19 @@ async function pump() {
   } finally { S.busy = false; }
 }
 
+/* ===== V35：フレームごとのVAD値の記録（環境音の人声部分を無音にするために使う） ===== */
+// 記録がないフレーム（取りこぼし・未処理）は、安全側で「人声あり」として扱う
+function isVoiceFrame(k) {
+  for (let d = -VOICE_PAD; d <= VOICE_PAD; d++) {
+    const kk = k + d;
+    if (kk < 0) continue;
+    const j = kk % PLOG_LEN;
+    if (S.pIdx[j] !== kk) return true;
+    if (S.pLog[j] > VAD_TH) return true;
+  }
+  return false;
+}
+
 /* ===== 1フレーム（32ms）の処理 ===== */
 function processFrame(f, p) {
   const t = f.t;
@@ -935,6 +995,11 @@ function processFrame(f, p) {
   const lv = srcDb + S.gainDb;
   S.lastLv = lv;
   S.nowMs = t + FRAME / SR * 1000;
+
+  // V35：このフレームのVAD値を記録する（VADが使えない時は「人声あり」とする）
+  const fk = Math.round(t / 1000 * SR / FRAME);
+  S.pLog[fk % PLOG_LEN] = S.vadOk ? p : 1;
+  S.pIdx[fk % PLOG_LEN] = fk;
 
   S.pHist.push({ t, p });
   while (S.pHist.length && S.pHist[0].t < t - 10000) S.pHist.shift();
@@ -1007,9 +1072,12 @@ function decideCand(it) {
     peakSourceDb: round1(c.peakDb - S.gainDb), peakAppliedDb: round1(c.peakDb),
     meanSourceDb: round1(c.sumDb / c.n - S.gainDb), meanAppliedDb: round1(c.sumDb / c.n),
     vadMax: vadOn ? round2(inside) : null, vadNear: vadOn ? round2(near) : null,
-    gainDb: S.gainDb, label: null, clipId: null
+    gainDb: S.gainDb, label: null, clipId: null, review: null
   };
-  if (type === "snore") ev.clipId = saveClip(c.startMs - PRE_MS, endMs + POST_MS, ev.id, "snore");
+  // V35：いびき・判定不能・人声は音声を保存する（人声は、あとでスマホで聴いて保存か破棄かを決める）
+  if (type === "snore" || type === "unknown" || type === "speech") {
+    ev.clipId = saveClip(c.startMs - PRE_MS, endMs + POST_MS, ev.id, type, false);
+  }
   S.counts[type]++;
   DB.put("events", ev).catch(console.error);
 }
@@ -1019,18 +1087,30 @@ function tickPending(now) {
   while (S.pendingCands.length && S.pendingCands[0].due <= now) decideCand(S.pendingCands.shift());
   while (S.pendingEnv.length && S.pendingEnv[0].due <= now) {
     const it = S.pendingEnv.shift();
-    it.ev.clipId = saveClip(it.from, it.to, it.ev.id, "env");
+    it.ev.clipId = saveClip(it.from, it.to, it.ev.id, "env", true);
     DB.put("events", it.ev).catch(console.error);
   }
 }
 
 // fromMs / toMs は記録開始からの時間（ミリ秒）。clips.json の startSec はここから作る
 // V13以降：音声は 4bit IMA ADPCM（WAV形式）で保存する（約1/4）。ZIPに書き出す時だけ PCM16 に戻す（V19）
-function saveClip(fromMs, toMs, eventId, kind) {
+// V35：silenceVoice が true の時（環境音）は、人声と判定されたフレームの前後を無音にしてから保存する
+function saveClip(fromMs, toMs, eventId, kind, silenceVoice) {
   const a = Math.round(fromMs / 1000 * SR), b = Math.round(toMs / 1000 * SR);
   const actualA = Math.max(a, 0, S.ring.total - S.ring.len);
   const f = S.ring.get(a, b);
   if (!f.length) return null;
+  if (silenceVoice) {
+    const k0 = Math.floor(actualA / FRAME);
+    const nFr = Math.ceil(f.length / FRAME) + 1;
+    for (let q = 0; q <= nFr; q++) {
+      const k = k0 + q;
+      if (!isVoiceFrame(k)) continue;
+      const s0 = Math.max(0, k * FRAME - actualA);
+      const e0 = Math.min(f.length, (k + 1) * FRAME - actualA);
+      if (e0 > s0) f.fill(0, s0, e0);
+    }
+  }
   const i16 = new Int16Array(f.length);
   for (let i = 0; i < f.length; i++) i16[i] = Math.max(-32768, Math.min(32767, Math.round(f[i] * 32767)));
   const id = uid();
@@ -1066,11 +1146,12 @@ function finishSecond(b) {
       id: uid(), sid: S.sid, type: "env", startMs, endMs: startMs + ENV_RUN_SEC * 1000,
       durMs: ENV_RUN_SEC * 1000, peakSourceDb: null, peakAppliedDb: null,
       meanSourceDb: round1(qLv - S.gainDb), meanAppliedDb: round1(qLv),
-      vadMax: round2(mP), vadNear: null, gainDb: S.gainDb, label: null, clipId: null
+      vadMax: round2(mP), vadNear: null, gainDb: S.gainDb, label: null, clipId: null, review: null
     };
     S.counts.env++;
     DB.put("events", ev).catch(console.error);
-    if (S.envSave) {
+    // V35：環境音の音声は常に保存する。ただしVADが使えない時は人声を無音にできないため保存しない
+    if (S.vadOk) {
       S.pendingEnv.push({
         ev, from: startMs - ENV_CLIP_SEC * 1000, to: startMs + ENV_CLIP_SEC * 1000,
         due: startMs + ENV_CLIP_SEC * 1000
@@ -1131,6 +1212,7 @@ async function startRec() {
   S.epoch++;
   S.sid = uid();
   S.recv = 0; S.nowMs = 0; S.ring = new Ring(RING_SEC); S.queue = []; S.dropped = 0;
+  S.pLog = new Float32Array(PLOG_LEN); S.pIdx = new Int32Array(PLOG_LEN).fill(-1);
   S.calibrated = false; S.calibVals = []; S.base = null; S.pool = []; S.lastBaseSec = 0;
   S.cand = null; S.pHist = []; S.pendingCands = []; S.pendingEnv = [];
   S.bucket = null; S.secBuf = []; S.envRun = 0; S.lastEnvMs = -1e9;
@@ -1599,6 +1681,18 @@ async function openDetail(sid) {
   tl.marks = marks;
   initTimeline(sess, secs, evs);
   renderMarks();
+}
+
+/* ===== 記録の削除（V35） =====
+   ・グラフ（secs）・イベント・音声（clips）・保存位置（marks）をすべて削除する
+   ・途中で失敗しても再実行できるよう、記録本体（sessions）は最後に消す */
+async function deleteSession(sid) {
+  for (const store of ["clips", "events", "secs"]) {
+    const keys = await DB.keysByIndex(store, "sid", sid);
+    if (keys.length) await DB.delMany(store, keys);
+  }
+  await DB.del("settings", marksKey(sid));
+  await DB.del("sessions", sid);
 }
 
 /* ===== タイムライン（V24） =====
@@ -2272,15 +2366,22 @@ async function makeZip(files) {
 // ・clips.json：音声ファイルの一覧（startSec＝記録開始からの秒数、codec＝音声の方式）
 // ・summary.json / seconds.csv / events.csv / README.txt：人が確認する用（圧縮して保存）
 // ・clips/*.wav：音声（PCM16 WAV。無圧縮のまま）
+// V35：snore・unknown・env の音声はすべて入れる。speech の音声は、確認画面で「保存」を選んだものだけ入れる
 async function shareSession(sid) {
   if (!sid) return;
   const sess = await DB.get("sessions", sid);
   if (!sess) return;
   const secs = (await DB.byIndex("secs", "sid", sid)).sort((a, b) => a.sec - b.sec);
   const evs = (await DB.byIndex("events", "sid", sid)).sort((a, b) => a.startMs - b.startMs);
-  const clips = (await DB.byIndex("clips", "sid", sid)).sort((a, b) => a.startMs - b.startMs);
-  const clipById = new Map(clips.map((c) => [c.id, c]));
   const evById = new Map(evs.map((e) => [e.id, e]));
+  const allClips = (await DB.byIndex("clips", "sid", sid)).sort((a, b) => a.startMs - b.startMs);
+  // V35：人声（speech）の音声は、「保存」を選んだものだけ
+  const clips = allClips.filter((c) => {
+    if (c.kind !== "speech") return true;
+    const ev = c.eventId ? evById.get(c.eventId) : null;
+    return !!ev && ev.review === "keep";
+  });
+  const clipById = new Map(clips.map((c) => [c.id, c]));
   const enc = new TextEncoder();
   const files = [];
   const recordedSec = secs.length ? secs[secs.length - 1].sec : 0;
@@ -2309,6 +2410,7 @@ async function shareSession(sid) {
       peakSourceDb: e.peakSourceDb, peakAppliedDb: e.peakAppliedDb,
       meanSourceDb: e.meanSourceDb, meanAppliedDb: e.meanAppliedDb,
       vadMax: e.vadMax, vadNear: e.vadNear, gainDb: e.gainDb,
+      review: e.review || null,
       clip: clip ? clipFile(clip) : null,
       clipStartTime: clip ? isoOf(sess.startedAt + clip.startMs) : null
     };
@@ -2379,11 +2481,11 @@ async function shareSession(sid) {
     evOut.map((e) => [e.id, e.type, e.label ?? "", e.startTime, e.durationSec, e.peakSourceDb ?? "", e.peakAppliedDb ?? "", e.meanSourceDb ?? "", e.vadMax ?? "", e.vadNear ?? "", e.gainDb, e.clip ?? ""].join(",")).join("\n");
   const readme = DISCLAIMER + "\n\n" +
     "- session.json: 患者情報（patient）と1秒ごとのデータ（session.timeSeriesLogs）\n" +
-    "- clips.json: 音声ファイルの一覧（startSec＝記録開始からの秒数、codec＝音声の方式）\n" +
-    "- summary.json: 記録の概要と検知区間\n" +
+    "- clips.json: 音声ファイルの一覧（startSec＝記録開始からの秒数、codec＝音声の方式、category＝音の種類：snore／unknown／env／speech）\n" +
+    "- summary.json: 記録の概要と検知区間（review＝人声の確認結果：keep＝保存／drop＝破棄／null＝未判断または対象外）\n" +
     "- seconds.csv: 1秒ごとの音圧（dbApplied=ゲイン適用値、dbSource=調整前の生音）、音声確認値、体動（motionMs2=m/s²、motionG=G）\n" +
     "- events.csv: 検知区間の一覧\n" +
-    "- clips/*.wav: 音声（PCM16 WAV、16kHz・モノラル、調整前の生音。ゲイン値はclips.jsonのgainDbを参照）\n";
+    "- clips/*.wav: 音声（PCM16 WAV、16kHz・モノラル、調整前の生音。ゲイン値はclips.jsonのgainDbを参照）。env（環境音）は人声と判定された部分を無音にしてある。speech（人声）は、確認画面で保存を選んだものだけ\n";
 
   files.unshift(
     txt("README.txt", readme),
@@ -2433,6 +2535,250 @@ async function copyAddress() {
     showError("アドレスをコピーできませんでした: " + e.message);
   }
 }
+
+/* ===== 人声の確認（V35） =====
+   ・「全てのいびき記録を保存」を押した時、音声つきの人声（speech）が1件以上あれば、案内を出して確認画面へ進む
+   ・確認画面：上にspeechだけのグラフ、下に一覧。各行で再生・保存・破棄を選ぶ
+   ・判断は events の review に残す（keep＝保存／drop＝破棄／null＝未判断）。ZIPには keep の音声だけが入る */
+const rv = { sid: null, sess: null, secs: [], evs: [], sel: null, urls: [], rows: new Map() };
+
+// 音声つきの人声（speech）の件数
+async function countSpeechClips(sid) {
+  const evs = await DB.byIndex("events", "sid", sid);
+  return evs.filter((e) => e.type === "speech" && e.clipId).length;
+}
+
+function rvCleanup() {
+  rv.urls.forEach((u) => URL.revokeObjectURL(u));
+  rv.urls = [];
+  rv.rows = new Map();
+  $("rv-list").innerHTML = "";
+}
+
+async function openReview(sid) {
+  rvCleanup();
+  const sess = await DB.get("sessions", sid);
+  if (!sess) return;
+  const secs = (await DB.byIndex("secs", "sid", sid)).sort((a, b) => a.sec - b.sec);
+  const evs = (await DB.byIndex("events", "sid", sid))
+    .filter((e) => e.type === "speech" && e.clipId)
+    .sort((a, b) => a.startMs - b.startMs);
+  rv.sid = sid; rv.sess = sess; rv.secs = secs; rv.evs = evs; rv.sel = null;
+  buildReviewList();
+  updateReviewCount();
+  const first = evs.find((e) => !e.review);
+  rv.sel = first ? first.id : null;
+  rvUpdateRows();
+  drawReviewChart();
+  showPage("review");
+}
+
+function rvStatusText(ev) {
+  return ev.review === "keep" ? "保存" : ev.review === "drop" ? "破棄" : "未判断";
+}
+
+function buildReviewList() {
+  const box = $("rv-list");
+  box.innerHTML = "";
+  if (!rv.evs.length) {
+    box.innerHTML = '<p class="muted">人声と判定された音声はありません。</p>';
+    return;
+  }
+  for (const ev of rv.evs) {
+    const row = document.createElement("div");
+    row.className = "rv-row";
+    row.innerHTML =
+      '<div class="kv rv-time"><span>' + esc(fmtClock(rv.sess.startedAt + ev.startMs)) + "（記録から " + esc(fmtTime(ev.startMs)) + "）</span><b>" +
+      round1(ev.durMs / 1000) + "秒</b></div>" +
+      '<div class="kv"><span>判断</span><b class="rv-st"></b></div>';
+
+    const slot = document.createElement("div");
+    const play = document.createElement("button");
+    play.className = "sub";
+    play.textContent = "再生";
+    play.onclick = async () => {
+      play.disabled = true;
+      play.textContent = "読み込み中…";
+      try {
+        const clip = await DB.get("clips", ev.clipId);
+        if (!clip) throw new Error("音声が見つかりません");
+        const url = URL.createObjectURL(wavBlob(clipPcm(clip), clip.sr));
+        rv.urls.push(url);
+        const au = document.createElement("audio");
+        au.controls = true;
+        au.preload = "auto";
+        au.src = url;
+        slot.appendChild(au);
+        play.hidden = true;
+        au.play().catch(() => {});
+      } catch (err) {
+        console.error(err);
+        play.disabled = false;
+        play.textContent = "読み込めませんでした。もう一度押してください";
+      }
+    };
+
+    const btns = document.createElement("div");
+    btns.className = "row";
+    const keep = document.createElement("button");
+    keep.className = "primary";
+    keep.textContent = "保存";
+    keep.onclick = () => rvDecide(ev, "keep");
+    const drop = document.createElement("button");
+    drop.className = "sub";
+    drop.textContent = "破棄";
+    drop.onclick = () => rvDecide(ev, "drop");
+    btns.append(keep, drop);
+
+    row.append(play, slot, btns);
+    row.addEventListener("click", () => { if (rv.sel !== ev.id) rvSelect(ev.id, false); });
+    box.appendChild(row);
+    rv.rows.set(ev.id, row);
+  }
+}
+
+// 行の見た目（判断済みの色・選択中の枠）を更新する
+function rvUpdateRows() {
+  for (const ev of rv.evs) {
+    const row = rv.rows.get(ev.id);
+    if (!row) continue;
+    row.className = "rv-row" + (ev.review === "keep" ? " keep" : ev.review === "drop" ? " drop" : "") + (rv.sel === ev.id ? " sel" : "");
+    const st = row.querySelector(".rv-st");
+    if (st) st.textContent = rvStatusText(ev);
+  }
+}
+
+function updateReviewCount() {
+  const left = rv.evs.filter((e) => !e.review).length;
+  $("rv-left").textContent = left + "件（全 " + rv.evs.length + "件）";
+}
+
+function rvSelect(id, scroll) {
+  rv.sel = id;
+  rvUpdateRows();
+  drawReviewChart();
+  if (scroll) {
+    const row = rv.rows.get(id);
+    if (row) row.scrollIntoView({ block: "center", behavior: "smooth" });
+  }
+}
+
+// 保存か破棄を選ぶ。選んだら、次の未判断の行へ進む
+async function rvDecide(ev, val) {
+  const prev = ev.review || null;
+  ev.review = val;
+  try {
+    await DB.put("events", ev);
+  } catch (e) {
+    ev.review = prev;
+    showError("判断を保存できませんでした: " + e.message);
+    return;
+  }
+  updateReviewCount();
+  const i = rv.evs.indexOf(ev);
+  const next = rv.evs.slice(i + 1).find((e) => !e.review) || rv.evs.find((e) => !e.review) || null;
+  if (next) {
+    rvSelect(next.id, true);
+  } else {
+    rvUpdateRows();
+    drawReviewChart();
+  }
+}
+
+// 人声（speech）だけのグラフ。灰：未判断／青：保存／暗い灰：破棄／黄：選択中
+function drawReviewChart() {
+  const box = $("rv-chart");
+  if (!rv.evs.length) {
+    box.innerHTML = '<p class="muted">表示する人声はありません。</p>';
+    return;
+  }
+  const W = 480, H = 140, PL = 8, PR = 8, PT = 8, PB = 22;
+  const lastSec = rv.secs.length ? rv.secs[rv.secs.length - 1].sec + 1 : 0;
+  const total = Math.max(60, lastSec, Math.ceil(maxOf(rv.evs.map((e) => e.endMs)) / 1000));
+  rv.total = total;
+  rv.geom = { W, PL, PR };
+  const X = (t) => PL + t / total * (W - PL - PR);
+
+  // 音圧の線（薄く）。位置の目安として描く
+  let line = "";
+  if (rv.secs.length) {
+    const vals = rv.secs.map((s) => s.dbApplied);
+    const ymin = minOf(vals), ymax = Math.max(ymin + 1, maxOf(vals));
+    const Y = (db) => PT + ((ymax - db) / (ymax - ymin)) * (H - PT - PB);
+    const step = Math.max(1, Math.ceil(rv.secs.length / 600));
+    const pts = rv.secs.filter((_, i) => i % step === 0).map((s) => X(s.sec).toFixed(1) + "," + Y(s.dbApplied).toFixed(1)).join(" ");
+    line = '<polyline points="' + pts + '" fill="none" stroke="#84b9cf" stroke-width="1" opacity=".35"/>';
+  }
+
+  let bars = "", selBar = "";
+  for (const e of rv.evs) {
+    const x = X(e.startMs / 1000);
+    const w = Math.max(4, X(e.endMs / 1000) - x);
+    const isSel = rv.sel === e.id;
+    const color = isSel ? "#ffd54a" : e.review === "keep" ? "#4a90d9" : e.review === "drop" ? "#4a525c" : "#9aa5b1";
+    const bar = '<rect x="' + (x - (w < 6 ? 1 : 0)).toFixed(1) + '" y="' + PT + '" width="' + w.toFixed(1) + '" height="' + (H - PT - PB) +
+      '" fill="' + color + '" opacity="' + (isSel ? 1 : 0.85) + '"/>';
+    if (isSel) selBar = bar; else bars += bar;
+  }
+
+  box.innerHTML = '<svg viewBox="0 0 ' + W + " " + H + '" xmlns="http://www.w3.org/2000/svg">' +
+    '<rect x="' + PL + '" y="' + PT + '" width="' + (W - PL - PR) + '" height="' + (H - PT - PB) + '" fill="none" stroke="#2a3643"/>' +
+    line + bars + selBar +
+    '<text x="' + PL + '" y="' + (H - 6) + '" font-size="10" fill="#aebbc9">0:00</text>' +
+    '<text x="' + (W - PR) + '" y="' + (H - 6) + '" font-size="10" fill="#aebbc9" text-anchor="end">' + fmtTime(total * 1000) + "</text>" +
+    "</svg>";
+}
+
+// グラフを押したら、いちばん近い人声の行を選ぶ
+$("rv-chart").addEventListener("click", (e) => {
+  if (!rv.evs.length || !rv.total || !rv.geom) return;
+  const svg = $("rv-chart").querySelector("svg");
+  if (!svg) return;
+  const rect = svg.getBoundingClientRect();
+  const x = (e.clientX - rect.left) / rect.width * rv.geom.W;
+  const tMs = (x - rv.geom.PL) / (rv.geom.W - rv.geom.PL - rv.geom.PR) * rv.total * 1000;
+  let best = null, bestD = Infinity;
+  for (const ev of rv.evs) {
+    const d = tMs < ev.startMs ? ev.startMs - tMs : tMs > ev.endMs ? tMs - ev.endMs : 0;
+    if (d < bestD) { bestD = d; best = ev; }
+  }
+  if (best) rvSelect(best.id, true);
+});
+
+// 確認を終えて、ZIPを作る。未判断が残っていれば1回だけ確認する
+async function runShareAll() {
+  if (!S.detailSid) return;
+  S.saving = true;
+  renderUpdate();
+  try { await shareSession(S.detailSid); }
+  catch (e) { showError(e.message); }
+  finally { S.saving = false; renderUpdate(); }
+}
+
+$("rv-done").onclick = async () => {
+  const left = rv.evs.filter((e) => !e.review).length;
+  if (left > 0 && !confirm("未判断の音が " + left + "件あります。未判断の音はZIPに入りません。このままZIPを作りますか？")) return;
+  const sid = rv.sid;
+  rvCleanup();
+  showPage("share");
+  if (sid) {
+    S.detailSid = sid;
+    await runShareAll();
+  }
+};
+
+// 保存せずに戻る（ZIPは作らない。ここまでの判断は残る）
+$("rv-back").onclick = () => {
+  rvCleanup();
+  showPage("share");
+};
+
+// 案内ダイアログ：ボタンは「人声を確認する」だけ
+$("rv-open").onclick = () => {
+  $("rv-dialog").hidden = true;
+  if (!S.detailSid) return;
+  openReview(S.detailSid).catch((err) => showError("確認画面を開けませんでした: " + err.message));
+};
 
 /* ===== ボタン・入力の接続 ===== */
 // 1-1
@@ -2506,8 +2852,6 @@ $("gain").addEventListener("input", (e) => {
   S.gainDb = Number(e.target.value);
   $("gain-out").textContent = (S.gainDb > 0 ? "+" : "") + S.gainDb + "dB";
 });
-
-$("env-save").addEventListener("change", (e) => { S.envSave = e.target.checked; });
 
 $("motion-btn").onclick = async () => {
   try {
@@ -2591,14 +2935,42 @@ $("saved-share").onclick = () => {
   showPage("share");
 };
 
-// 睡眠記録の共有画面（V32）
-$("sh-all").onclick = async () => {
-  if (!S.detailSid) return;
+// V35：この記録の削除（グラフ・イベント・音声・保存位置をすべて消す）
+$("detail-delete").onclick = async () => {
+  const sid = S.detailSid;
+  if (!sid) return;
+  if (S.running && S.sid === sid) { alert("記録中のため削除できません。停止してから削除してください。"); return; }
+  if (!confirm("この記録のグラフ・イベント・音声をすべて削除します。元に戻せません。よろしいですか？")) return;
   S.saving = true;
   renderUpdate();
-  try { await shareSession(S.detailSid); }
-  catch (e) { showError(e.message); }
-  finally { S.saving = false; renderUpdate(); }
+  try {
+    await deleteSession(sid);
+    tl.data = null;
+    tl.marks = [];
+    S.detailSid = null;
+    revokeUrls();
+    await refreshCalendar();
+    showPage("calendar");
+  } catch (e) {
+    showError("削除できませんでした: " + e.message);
+  } finally {
+    S.saving = false;
+    renderUpdate();
+  }
+};
+
+// 睡眠記録の共有画面（V32）
+// V35：「全てのいびき記録を保存」は、音声つきの人声があれば、先に案内を出して確認画面へ進む
+$("sh-all").onclick = async () => {
+  if (!S.detailSid) return;
+  try {
+    const n = await countSpeechClips(S.detailSid);
+    if (n > 0) { $("rv-dialog").hidden = false; return; }
+  } catch (e) {
+    showError(e.message);
+    return;
+  }
+  await runShareAll();
 };
 $("sh-sel").onclick = async () => {
   if (!S.detailSid) return;
