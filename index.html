@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
 <meta name="theme-color" content="#000000">
 <meta http-equiv="Cache-Control" content="no-cache">
-<title>SomnoLog V48 基準音圧版</title>
+<title>SomnoLog V51 基準音圧版</title>
 <script src="./ort.min.js"></script>
 <style>
 :root{color-scheme:dark}
@@ -41,7 +41,9 @@ h2{margin:0;font-size:17px}
 .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .meter{position:relative;height:12px;background:#111820;border-radius:6px;overflow:hidden}
 .meter i{display:block;height:100%;width:0;background:#84b9cf}
+.meter .tk{position:absolute;top:0;bottom:0;width:1px;background:#3c4f63}
 .meter .mid{position:absolute;left:50%;top:0;bottom:0;width:2px;background:#f3e7c9}
+.scale-row{display:flex;justify-content:space-between;font-size:11px;color:#8fa0b3}
 input[type=range]{width:100%;accent-color:#84b9cf}
 .chart{background:#101923;border:1px solid #2a3643;border-radius:10px;padding:6px}
 .chart svg{width:100%;height:auto;display:block}
@@ -90,8 +92,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 1-1 起動・QR読み取り -->
 <main id="page-start" class="page" hidden>
   <header class="head">
-    <h1>SomnoLog V50
-</h1>
+    <h1>SomnoLog V49</h1>
     <span class="tag">患者情報確認</span>
   </header>
 
@@ -141,8 +142,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
     <button id="back-rec-confirm" class="sub" hidden>記録画面に戻る</button>
   </section>
   <section class="card">
-    <div class="kv"><span>アプリのバージョン</span><b id="ver-text">SomnoLog V50
-</b></div>
+    <div class="kv"><span>アプリのバージョン</span><b id="ver-text">SomnoLog V49</b></div>
     <p class="muted">このアプリは自動でアップデートしません。アプリ更新のお知らせが届いたときは、「更新を確認」を押してから「最新版に変更」を押してください。</p>
     <p id="upd-msg" class="muted"></p>
     <button id="upd-check" class="sub">更新を確認</button>
@@ -153,8 +153,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 記録画面 -->
 <main id="page-record" class="page" hidden>
   <header class="head">
-    <h1>SomnoLog V50
-</h1>
+    <h1>SomnoLog V49</h1>
     <span id="rec-badge" class="tag">待機中</span>
   </header>
 
@@ -165,7 +164,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
       <li>「マイクを許可」を押して、録音の許可をください。</li>
       <li>「iPhoneの音圧調整」のスライダーで、録音の音量を調整します。このスライダーは、iPhoneの音圧を合わせるためだけに使います。</li>
       <li>「基準音圧を測定する」を押すと、まず2秒間静かにして環境音を測り、続けて2秒間「あ〜」と声を出します。</li>
-      <li>測定が終わると、バーの下端が環境音、白い線が「あ〜」の大きさ、上端がその晩に一番大きかった音になります。</li>
+      <li>測定が終わると、バーの下端が環境音、白い線が「あ〜」の大きさ、上端が記録中に一番大きかった音になります。</li>
       <li>基準音圧は、もう一度「基準音圧を測り直す」を押すまで使い続けます。</li>
       <li>音量を変えたら、基準音圧を測り直してください。</li>
       <li>基準音圧を決めたら「記録開始」を押します。「停止」を押すと記録が終わります。</li>
@@ -178,10 +177,11 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
   <section class="card">
     <div class="kv"><span>マイク</span><b id="mic-state">未許可</b></div>
     <button id="mic-btn">マイクを許可</button>
-    <div class="meter"><i id="level-bar"></i><b id="mid-line" class="mid"></b></div>
+    <div class="meter"><i id="level-bar"></i><i class="tk" style="left:25%"></i><i class="tk" style="left:50%"></i><i class="tk" style="left:75%"></i><b id="mid-line" class="mid"></b></div>
+    <div id="scale-row" class="scale-row"></div>
     <div class="kv"><span>下端：環境音</span><b id="g-env">-</b></div>
     <div class="kv"><span>白い線：「あ〜」</span><b id="g-ah">-</b></div>
-    <div class="kv"><span>上端：その晩の最大</span><b id="g-top">-</b></div>
+    <div class="kv"><span>上端：記録中の最大</span><b id="g-top">-</b></div>
     <div class="kv"><span id="level-text">-</span><span id="base-text">待機中</span></div>
     <label class="muted">iPhoneの音圧調整（録音の音量を変えます）</label>
     <input id="gain" type="range" min="-9" max="9" step="1" value="0">
@@ -403,6 +403,7 @@ const TAG_NAME = { snore: "いびき", unknown: "判定不能", env: "環境音"
 const REF_SEC = 2;                                             // 環境音・「あ〜」それぞれを測る時間（秒）
 const REF_MIN_FRAMES = Math.floor(SR * REF_SEC / FRAME * 0.8); // これより少ないと測り直す
 const REF_QUIET_DB = -60;                                      // これより小さい音は、声が届いていないとみなす
+const DISP_FRAMES = Math.round(SR / FRAME * REF_SEC);          // 表示バーの平均の長さ（基準の測り方とそろえる）
 const REF_WORD_DB = 3;                                         // 基準から±3dB以内は「基準くらい」
 
 /* ===== タイムラインの設定 ===== */
@@ -461,7 +462,7 @@ const dayLabel = (key) => {
   return y + "年" + m + "月" + d + "日（" + w + "）";
 };
 
-// 棒の高さ（0〜1）。下端＝環境音（0）、中央＝「あ〜」（0.5）、上端＝その晩の最大音（1）。
+// 音圧の高さ（0〜1）。下端＝環境音、中央（0.5）＝「あ〜」、上端＝その晩の最大音。
 // 下半分は環境音→「あ〜」、上半分は「あ〜」→最大音。目盛りは均等割りにしない。
 function scalePos(db, envDb, refDb, topDb) {
   if (db == null) return 0;
@@ -655,13 +656,13 @@ const S = {
   ref: null,        // 基準音圧。{ db: 「あ〜」の平均, envDb: 直前の環境音, at: 測った時刻 }。測り直すまで使い続ける
   refColl: null,    // 測定中だけ、音の大きさを集める配列（環境音→「あ〜」の順に使う）
   refEnv: null,     // 環境音の測定結果（「あ〜」を測っている間だけ保持）
-  peakDb: -Infinity, // その晩に出た一番大きい音（バーの上端）。待機中も集計し、記録開始でリセットする
+  peakDb: -Infinity, // 記録中に出た一番大きい音（ゲージの上端）
   patient: null,
   running: false, saving: false, epoch: 0, sid: null, sess: null, counts: newCounts(),
   wake: null, timers: [], uiTimer: null, blackOn: false, savedStyle: null, detailSid: null,
   blackTimer: null,
   ring: new Ring(RING_SEC), recv: 0, queue: [], busy: false, dropped: 0,
-  nowMs: 0, lastLv: -100, motionNow: null, grav: null,
+  nowMs: 0, lastLv: -100, dispWin: [], dispLv: -100, motionNow: null, grav: null,
   calibrated: false, calibVals: [], base: null, pool: [], lastBaseSec: 0,
   cand: null, pHist: [], pendingCands: [], pendingEnv: [],
   pLog: new Float32Array(PLOG_LEN), pIdx: new Int32Array(PLOG_LEN).fill(-1),
@@ -1019,8 +1020,8 @@ function onAudio(raw) {
     for (let i = 0; i < data.length; i++) ss += data[i] * data[i];
     const lv = toDb(Math.sqrt(ss / data.length));
     S.lastLv = lv;
-    if (lv > S.peakDb) S.peakDb = lv;          // 待機中も、その晩の最大音を集計する（上端になる）
-    if (S.refColl) S.refColl.push(lv);         // 測定中は、音の大きさを集める（環境音・「あ〜」のどちらも）
+    pushDisp(lv);
+    if (S.refColl) S.refColl.push(lv); // 測定中は、音の大きさを集める（環境音・「あ〜」のどちらも）
     return;
   }
   const t = S.recv / SR * 1000;
@@ -1043,6 +1044,7 @@ function startRefMeasure() {
   if (!S.ctx || S.running || S.refColl) return;
   S.refEnv = null;
   S.refColl = [];
+  S.dispWin = []; S.dispLv = -100;
   setButtons();
   showRefMsg("静かにしてください…（環境音を" + REF_SEC + "秒測ります）");
   setTimeout(finishRefEnv, REF_SEC * 1000);
@@ -1079,7 +1081,7 @@ function finishRefMeasure() {
   S.ref = { db: round2(db), envDb: round2(env), at: Date.now() };
   S.refColl = null;
   S.refEnv = null;
-  showRefMsg("基準音圧を設定しました。下端が環境音、白い線が「あ〜」、上端がその晩の最大音です。");
+  showRefMsg("基準音圧を設定しました。下端が環境音、白い線が「あ〜」、上端が記録中の最大音です。");
   setButtons();
   updateUI();
 }
@@ -1166,7 +1168,8 @@ function processFrame(f, p) {
   for (let i = 0; i < d.length; i++) ss += d[i] * d[i];
   const lv = toDb(Math.sqrt(ss / d.length)); // すでに感度を掛けた音の大きさ
   S.lastLv = lv;
-  if (lv > S.peakDb) S.peakDb = lv;          // その晩の最大音（バーの上端）
+  pushDisp(lv);
+  if (lv > S.peakDb) S.peakDb = lv;          // 記録中の最大音（ゲージの上端）
   S.nowMs = t + FRAME / SR * 1000;
 
   const fk = Math.round(t / 1000 * SR / FRAME);
@@ -1381,7 +1384,8 @@ async function startRec() {
   S.epoch++;
   S.sid = uid();
   S.recv = 0; S.nowMs = 0; S.ring = new Ring(RING_SEC); S.queue = []; S.dropped = 0;
-  S.peakDb = -Infinity; // その晩の最大音は、記録開始でリセットして数え直す
+  S.peakDb = -Infinity;
+  S.dispWin = []; S.dispLv = -100;
   S.pLog = new Float32Array(PLOG_LEN); S.pIdx = new Int32Array(PLOG_LEN).fill(-1);
   S.calibrated = false; S.calibVals = []; S.base = null; S.pool = []; S.lastBaseSec = 0;
   S.cand = null; S.pHist = []; S.pendingCands = []; S.pendingEnv = [];
@@ -1432,12 +1436,20 @@ function startUiLoop() {
   S.uiTimer = setInterval(updateUI, UI_MS);
 }
 
-// バーの計算。下端＝環境音、中央＝「あ〜」、上端＝その晩の最大音（「あ〜」より小さくはならない）
+// 表示バー用の音量。基準の「あ〜」と同じ長さ（REF_SEC秒）の平均にそろえる。
+// 瞬間値のままだと、平均で決めた基準を上回るフレームが出るたびにバーが中央を超えて跳ねるため、バーはこの値で動かす
+function pushDisp(lv) {
+  S.dispWin.push(lv);
+  if (S.dispWin.length > DISP_FRAMES) S.dispWin.shift();
+  S.dispLv = mean(S.dispWin);
+}
+
+// リアルタイムの音圧バーの計算。下端＝環境音、中央＝「あ〜」、上端＝記録中の最大音（「あ〜」より小さくはならない）
 // 目盛りは均等割りにせず、下端・中央・上端の実数値だけを表示する
 function gaugeOf(lv) {
   const env = S.ref.envDb;
   const ref = S.ref.db;
-  const top = Math.max(S.peakDb, ref, lv); // 今の音が上端を超えないように、現在値も含める
+  const top = Math.max(S.peakDb, ref + 6); // 上端は基準より最低6dB上に取る（幅が無いと少しの音で天井に張り付く）
   return {
     env, ref, top,
     pos: scalePos(lv, env, ref, top),
@@ -1445,21 +1457,25 @@ function gaugeOf(lv) {
 }
 
 function updateUI() {
-  const lv = S.lastLv;
+  const lv = S.dispLv;
   const bar = $("level-bar");
   if (S.ref) {
     const g = gaugeOf(lv);
     bar.style.width = (g.pos * 100).toFixed(1) + "%";
+    $("mid-line").style.left = "50%";
     $("level-text").textContent = "いまの音：" + wordOf(lv, S.ref.db);
     $("g-env").textContent = g.env.toFixed(1) + " dB";
     $("g-ah").textContent = g.ref.toFixed(1) + " dB";
     $("g-top").textContent = g.top.toFixed(1) + " dB";
+    $("scale-row").innerHTML = "<span>" + g.env.toFixed(0) + "</span><span>" + g.ref.toFixed(0) + "</span><span>" + g.top.toFixed(0) + "</span>";
   } else {
     bar.style.width = clamp((lv + 80) / 80 * 100, 0, 100).toFixed(1) + "%";
+    $("mid-line").style.left = "50%";
     $("level-text").textContent = "基準音圧が未設定です";
     $("g-env").textContent = "-";
     $("g-ah").textContent = "-";
     $("g-top").textContent = "-";
+    $("scale-row").innerHTML = "";
   }
   if (!S.running) {
     $("base-text").textContent = "待機中";
@@ -2801,7 +2817,7 @@ function wire() {
 
   $("mic-btn").onclick = onMicBtn;
   $("ref-btn").onclick = startRefMeasure;
-  $("gain").oninput = (e) => { S.gainDb = Number(e.target.value); updateUI(); };
+  $("gain").oninput = (e) => { S.gainDb = Number(e.target.value); if (S.ref) { S.ref = null; showRefMsg("音圧調整を変えたので、基準音圧を測り直してください。", true); } setButtons(); updateUI(); };
   $("motion-btn").onclick = onMotionBtn;
   $("start-btn").onclick = () => startRec().catch((e) => showError(e.message));
   $("stop-btn").onclick = () => stopRec().catch((e) => showError(e.message));
