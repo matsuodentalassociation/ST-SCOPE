@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
 <meta name="theme-color" content="#000000">
 <meta http-equiv="Cache-Control" content="no-cache">
-<title>SomnoLog V39</title>
+<title>SomnoLog V40</title>
 <script src="./ort.min.js"></script>
 <style>
 :root{color-scheme:dark}
@@ -32,8 +32,6 @@ h2{margin:0;font-size:17px}
 .err{background:#4a1f1f;border:1px solid #9a4a4a;color:#ffd9d6;padding:10px 12px;border-radius:10px;font-size:13px;line-height:1.6;white-space:pre-wrap;word-break:break-all}
 .tag{font-size:11px;padding:4px 9px;border-radius:999px;background:#263b38;color:#bfdbd1;white-space:nowrap}
 .tag.rec{background:#7a2e2e;color:#ffd9d6}
-.tag.env{background:#343129;color:#f3e7c9}
-.tag.rej{background:#3a2a2a;color:#f2d2cf}
 .kv{display:flex;justify-content:space-between;gap:8px;font-size:14px;padding:4px 0;border-bottom:1px solid #2a3643}
 .kv b{color:#f3e7c9;font-weight:600;text-align:right;word-break:break-all}
 .field{background:#0d1117;border:1px solid #2a3643;border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:4px}
@@ -43,7 +41,6 @@ h2{margin:0;font-size:17px}
 .meter{height:10px;background:#111820;border-radius:6px;overflow:hidden}
 .meter i{display:block;height:100%;width:0;background:#84b9cf}
 input[type=range]{width:100%;accent-color:#84b9cf}
-input[type=checkbox]{width:18px;height:18px;accent-color:#84b9cf;vertical-align:middle}
 .chart{background:#101923;border:1px solid #2a3643;border-radius:10px;padding:6px}
 .chart svg{width:100%;height:auto;display:block}
 .tl-area{touch-action:none;user-select:none;-webkit-user-select:none;cursor:ew-resize}
@@ -62,7 +59,6 @@ audio{width:100%}
 .pager{display:flex;align-items:center;gap:8px}
 .cal-sum-head{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
 .tl-info{font-size:12px;color:#d3dde7;line-height:1.7;margin:0}
-video{width:100%;border-radius:10px;background:#000}
 ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 #black-screen{background-color:#000000 !important;width:100vw;height:100dvh;min-height:100vh;position:fixed;top:0;left:0;right:0;bottom:0;margin:0;padding:0;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;color:#756f61;touch-action:none;overflow:hidden}
 #black-clock{font-size:64px;font-variant-numeric:tabular-nums}
@@ -92,7 +88,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 1-1 起動・QR読み取り -->
 <main id="page-start" class="page" hidden>
   <header class="head">
-    <h1>SomnoLog V39</h1>
+    <h1>SomnoLog V40</h1>
     <span class="tag">患者情報確認</span>
   </header>
 
@@ -139,7 +135,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
     <button id="cf-ng" class="warnbtn">情報が間違っています</button>
   </section>
   <section class="card">
-    <div class="kv"><span>アプリのバージョン</span><b id="ver-text">SomnoLog V39</b></div>
+    <div class="kv"><span>アプリのバージョン</span><b id="ver-text">SomnoLog V40</b></div>
     <p class="muted">このアプリは自動でアップデートしません。アプリ更新のお知らせが届いたときは、「最新版に変更」を押してください。</p>
     <p id="upd-msg" class="muted"></p>
     <button id="upd-reload" class="sub">最新版に変更</button>
@@ -149,7 +145,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 記録画面 -->
 <main id="page-record" class="page" hidden>
   <header class="head">
-    <h1>SomnoLog V39</h1>
+    <h1>SomnoLog V40</h1>
     <span id="rec-badge" class="tag">待機中</span>
   </header>
 
@@ -228,6 +224,18 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
   <div class="sticky-bar">
     <button id="detail-back" class="sub">カレンダーに戻る</button>
   </div>
+  <button id="det-usage-btn" class="warnbtn">使い方を見る</button>
+  <section id="det-usage-box" class="card" hidden>
+    <h2>使い方</h2>
+    <ol class="steps">
+      <li>上のボタンで「いびき」「判定不能」「環境音」「人声」を切り替えます。最初は「いびき」が選ばれています。</li>
+      <li>選んだ種類の件数が、棒グラフで表示されます。件数が少ない小さい棒は表示されません。</li>
+      <li>黄色い線を動かして、聴きたい位置に合わせます。</li>
+      <li>「タイムラインの音を聴く」を押すと、黄色い線の棒の中で最初に出た音から、最大1分間を再生します。</li>
+      <li>白い棒は、保存済みの前後1分の範囲です。</li>
+      <li>人声の音はスマホで再生して確認できます。人声と判定されたが特殊ないびきだと思われる場合は、「保存する」を押して保存し、医師に確認できます。</li>
+    </ol>
+  </section>
   <section class="card">
     <div class="head">
       <h2>タイムライン</h2>
@@ -242,10 +250,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
     </div>
     <p id="tl-info" class="tl-info"></p>
     <div id="d-chart" class="chart tl-area"></div>
-    <!-- V39：タグバー。押すと、上のグラフがそのタグの件数グラフに入れ替わる（1つだけ選べる） -->
     <div id="tl-tags" class="tagbar"></div>
-    <!-- 使わない。2/3の openDetail がこの名前を使うので、置き場だけ残してある（常に非表示） -->
-    <div id="tl-tagchart" class="chart" hidden></div>
     <p id="tl-cur-text" class="tl-info"></p>
     <label class="muted">表示位置（右へ動かすと終了時刻の方へ進みます）</label>
     <input id="tl-pos" type="range" min="0" max="0" step="1" value="0">
@@ -259,7 +264,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
   </section>
   <section class="card">
     <h2>保存した記録</h2>
-    <p class="muted">黄色い線で選んだ時刻の前後1分を保存します。音声はコピーせず、記録への参照だけを持ちます。共有を押したときに音声をWAVにまとめます。</p>
+    <p class="muted">黄色い線で選んだ時刻の前後1分を保存します。いびきと人声の音が対象です。音声はコピーせず、記録への参照だけを持ちます。共有を押したときに音声をWAVにまとめます。</p>
     <div id="saved-list" class="list"></div>
     <button id="saved-share" class="primary">保存した記録を共有する</button>
   </section>
@@ -339,7 +344,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 "use strict";
 
 /* ===== バージョン ===== */
-const APP_VERSION = 39;
+const APP_VERSION = 40;
 const APP = "SomnoLogV" + APP_VERSION;
 
 /* ===== GitHub更新の取得元 ===== */
@@ -370,6 +375,12 @@ const LABELS = { snore: "いびき", speech: "寝言・話し声", env: "環境�
 const TAG_ORDER = ["snore", "unknown", "env", "speech"];
 const TAG_COLOR = { snore: "#4a90d9", unknown: "#ff9f43", env: "#4caf7a", speech: "#9aa5b1" };
 const TAG_NAME = { snore: "いびき", unknown: "判定不能", env: "環境音", speech: "人声" };
+
+/* ===== タイムラインの設定（V40） ===== */
+const TAG_CUT_RATE = 0.2;          // 最大値の20%未満の棒は描かない（変えるときはこの数字）
+const SAVED_BAR_COLOR = "#ffffff"; // 保存済みの範囲の棒の色
+const PLAY_MAX_MS = 60 * 1000;     // 再生は最初の音から最大1分
+const SAVE_TYPES = ["snore", "speech"]; // 「保存する」で対象になる音（いびき・人声）
 
 /* ===== 夜の評価（V31）===== */
 const ENV_QUIET_MAX = 0;
@@ -575,9 +586,9 @@ const S = {
 
 const cal = { year: 0, month: 0, selected: null, index: 0, byDay: new Map() };
 
-// タイムラインの表示状態。tags は選んだタグ（1つだけ選べる。初期は全部オフ）
+// タイムラインの表示状態。tags は選んだタグ（1つだけ選べる。初期はいびき）
 const ZOOM_DEFAULT = 0;
-const tl = { data: null, total: 0, winStart: 0, winLen: 0, cursor: 0, zoomSec: ZOOM_DEFAULT, mMax: 0.5, marks: [], tags: { snore: false, unknown: false, env: false, speech: false } };
+const tl = { data: null, total: 0, winStart: 0, winLen: 0, cursor: 0, zoomSec: ZOOM_DEFAULT, marks: [], tags: { snore: true, unknown: false, env: false, speech: false } };
 
 function isBusy() { return S.running || S.saving; }
 
@@ -1610,14 +1621,11 @@ async function openDetail(sid) {
   S.detailSid = sid;
   tl.data = null;
   tl.marks = [];
-  tl.tags = { snore: false, unknown: false, env: false, speech: false };
   revokeUrls();
   const sess = await DB.get("sessions", sid);
   if (!sess) return;
   $("d-chart").innerHTML = '<p class="muted">読み込み中…</p>';
   $("tl-tags").innerHTML = "";
-  $("tl-tagchart").hidden = true;
-  $("tl-tagchart").innerHTML = "";
   $("saved-list").innerHTML = '<p class="muted">読み込み中…</p>';
   showSaveMsg("", false);
   showPage("detail");
@@ -1641,18 +1649,19 @@ async function deleteSession(sid) {
   await DB.del("sessions", sid);
 }
 
-/* ===== タイムライン =====
-   V39：グラフの場所は1か所。タグを押すと、その場所のグラフが、そのタグの件数グラフ（棒）に入れ替わる。
-   同じタグをもう一度押すと、元の音のグラフに戻る */
+/* ===== タイムライン（V40）=====
+   いびき・判定不能・環境音・人声の件数グラフ。タグを押すと、そのグラフに切り替わる。
+   いびきは最初から選ばれていて、選択中のボタンは消えない。
+   小さい棒（最大値の一定割合未満）は描かない。この画面のグラフだけで、録音音声は足切りしない。 */
 
 function initTimeline(sess, secs, evs) {
   const last = secs.length ? secs[secs.length - 1].sec : 0;
   tl.data = { sess, secs, evs };
   tl.total = Math.max(60, last + 1);
-  tl.mMax = secs.reduce((a, s) => Math.max(a, s.motion || 0), 0.5);
   tl.zoomSec = ZOOM_DEFAULT;
   tl.winStart = 0;
   tl.cursor = 0;
+  tl.tags = { snore: true, unknown: false, env: false, speech: false };
   $("tl-zoom").value = String(ZOOM_DEFAULT);
   $("tl-msg").textContent = "";
   $("tl-audio").innerHTML = "";
@@ -1665,7 +1674,7 @@ function clampTl() {
   tl.cursor = clamp(tl.cursor, tl.winStart, tl.winStart + tl.winLen);
 }
 
-// タグバー。タップでグラフを切り替える（1つだけ選べる。もう一度押すと解除）
+// タグボタン。選んだものが1つだけ選ばれた状態になる（選択中を押しても消えない）
 function renderTagBar() {
   const box = $("tl-tags");
   box.innerHTML = "";
@@ -1678,27 +1687,28 @@ function renderTagBar() {
     if (e.clipId) aud[e.type]++;
   }
   for (const t of TAG_ORDER) {
+    const on = !!tl.tags[t];
     const b = document.createElement("button");
-    b.className = "tagbtn" + (tl.tags[t] ? "" : " off");
+    b.className = "tagbtn" + (on ? "" : " off");
     b.innerHTML = '<i style="background:' + TAG_COLOR[t] + '"></i>' + esc(TAG_NAME[t]) +
       " <small>" + cnt[t] + (aud[t] !== cnt[t] ? "（音声" + aud[t] + "）" : "") + "</small>";
     b.onclick = () => {
-      const on = !tl.tags[t];
+      if (tl.tags[t]) return;
       for (const k of TAG_ORDER) tl.tags[k] = false;
-      tl.tags[t] = on;
+      tl.tags[t] = true;
       renderTimeline();
     };
     box.appendChild(b);
   }
 }
 
-// 選んでいるタグ（なければ null）
+// 選んでいるタグ（いびきが基本。何も選ばれていなければいびき）
 function selectedTag() {
-  return TAG_ORDER.find((t) => tl.tags[t]) || null;
+  return TAG_ORDER.find((t) => tl.tags[t]) || "snore";
 }
 
-// 件数グラフ（棒）。音のグラフと同じ場所・同じ大きさ・同じ横軸で描く
-function tagGraphSvg(tag, W, H, PL, PR, PT, PB, X, t0, t1) {
+// 件数グラフ（棒）。最大値の TAG_CUT_RATE 未満の棒は描かない。保存済みの範囲は白
+function tagGraphSvg(tag, W, H, PL, PR, PT, PB, t0, t1) {
   const NB = 60;
   const binSec = tl.winLen / NB;
   const plotW = W - PL - PR;
@@ -1711,13 +1721,19 @@ function tagGraphSvg(tag, W, H, PL, PR, PT, PB, X, t0, t1) {
     bins[Math.min(NB - 1, Math.floor((s - t0) / binSec))]++;
   }
   const mx = Math.max(1, ...bins);
+  const cut = mx * TAG_CUT_RATE;
   const plotH = H - PT - PB;
   let g = '<rect x="' + PL + '" y="' + PT + '" width="' + plotW + '" height="' + plotH + '" fill="none" stroke="#2a3643"/>';
   for (let i = 0; i < NB; i++) {
-    if (!bins[i]) continue;
-    const h = bins[i] / mx * (plotH - 4);
+    const n = bins[i];
+    if (!n || n < cut) continue;
+    const h = n / mx * (plotH - 4);
+    const bStartMs = (t0 + i * binSec) * 1000;
+    const bEndMs = bStartMs + binSec * 1000;
+    const saved = tl.marks.some((m) => bEndMs > m.fromMs && bStartMs < m.toMs);
+    const color = saved ? SAVED_BAR_COLOR : TAG_COLOR[tag];
     g += '<rect x="' + (PL + i * bw + 0.5).toFixed(1) + '" y="' + (PT + plotH - h).toFixed(1) +
-      '" width="' + Math.max(1, bw - 1).toFixed(1) + '" height="' + h.toFixed(1) + '" fill="' + TAG_COLOR[tag] + '"/>';
+      '" width="' + Math.max(1, bw - 1).toFixed(1) + '" height="' + h.toFixed(1) + '" fill="' + color + '"/>';
   }
   g += '<text x="2" y="' + (PT + 8) + '" font-size="10" fill="#aebbc9">' + mx + "</text>";
   g += '<text x="2" y="' + (PT + plotH) + '" font-size="10" fill="#aebbc9">0</text>';
@@ -1730,7 +1746,7 @@ function renderTimeline() {
   if (!tl.data) return;
   clampTl();
   renderTagBar();
-  const { secs, sess } = tl.data;
+  const { secs } = tl.data;
   const box = $("d-chart");
 
   $("tl-pos").max = String(Math.round(tl.total - tl.winLen));
@@ -1755,47 +1771,13 @@ function renderTimeline() {
     '<text x="' + (W - PR) + '" y="' + (H - 6) + '" font-size="10" fill="#aebbc9" text-anchor="end">' + fmtTime(t1 * 1000) + "</text>";
 
   const tag = selectedTag();
-  if (tag) {
-    box.innerHTML = '<svg viewBox="0 0 ' + W + " " + H + '" xmlns="http://www.w3.org/2000/svg">' +
-      tagGraphSvg(tag, W, H, PL, PR, PT, PB, X, t0, t1) + cursorLine + axisText + "</svg>";
-  } else {
-    const vals = secs.map((s) => s.dbApplied);
-    if (sess.base != null) vals.push(sess.base);
-    const ymin = Math.floor(minOf(vals) / 5) * 5 - 5;
-    const ymax = Math.ceil(maxOf(vals) / 5) * 5 + 5;
-    const Y = (db) => PT + ((ymax - db) / (ymax - ymin)) * (H - PT - PB);
-    const MY = (m) => H - PB - Math.min(1, m / tl.mMax) * 18;
-
-    const inWin = secs.filter((s) => s.sec >= t0 && s.sec <= t1);
-    const step = Math.max(1, Math.ceil(inWin.length / 900));
-    const pts = inWin.filter((_, i) => i % step === 0)
-      .map((s) => X(s.sec).toFixed(1) + "," + Y(s.dbApplied).toFixed(1)).join(" ");
-    const motPts = inWin.filter((s) => s.motion != null).filter((_, i) => i % step === 0)
-      .map((s) => X(s.sec).toFixed(1) + "," + MY(s.motion).toFixed(1)).join(" ");
-
-    const savedLines = tl.marks.filter((m) => m.centerMs / 1000 >= t0 && m.centerMs / 1000 <= t1).map((m) => {
-      const x = X(m.centerMs / 1000).toFixed(1);
-      return '<line x1="' + x + '" x2="' + x + '" y1="' + PT + '" y2="' + (H - PB) + '" stroke="#ff9f43" stroke-width="1.5" stroke-dasharray="2 3"/>';
-    }).join("");
-
-    const baseLine = sess.base == null ? "" :
-      '<line x1="' + PL + '" x2="' + (W - PR) + '" y1="' + Y(sess.base).toFixed(1) + '" y2="' + Y(sess.base).toFixed(1) + '" stroke="#84b9cf" stroke-dasharray="4 3"/>';
-
-    box.innerHTML = '<svg viewBox="0 0 ' + W + " " + H + '" xmlns="http://www.w3.org/2000/svg">' +
-      '<rect x="' + PL + '" y="' + PT + '" width="' + (W - PL - PR) + '" height="' + (H - PT - PB) + '" fill="none" stroke="#2a3643"/>' +
-      baseLine + savedLines +
-      '<polyline points="' + pts + '" fill="none" stroke="#84b9cf" stroke-width="1.2"/>' +
-      '<polyline points="' + motPts + '" fill="none" stroke="#ffffff" stroke-width="1" opacity=".7"/>' +
-      cursorLine +
-      '<text x="2" y="' + (Y(ymax) + 8) + '" font-size="10" fill="#aebbc9">' + ymax + "</text>" +
-      '<text x="2" y="' + Y(ymin) + '" font-size="10" fill="#aebbc9">' + ymin + "</text>" +
-      axisText + "</svg>";
-  }
+  box.innerHTML = '<svg viewBox="0 0 ' + W + " " + H + '" xmlns="http://www.w3.org/2000/svg">' +
+    tagGraphSvg(tag, W, H, PL, PR, PT, PB, t0, t1) + cursorLine + axisText + "</svg>";
 
   $("tl-info").textContent = "表示：" + fmtTime(t0 * 1000) + " 〜 " + fmtTime(t1 * 1000) +
-    "（記録の終了 " + fmtTime(tl.total * 1000) + "）" + (tag ? "　グラフ：" + TAG_NAME[tag] + "の件数" : "　グラフ：音圧");
+    "（記録の終了 " + fmtTime(tl.total * 1000) + "）　グラフ：" + TAG_NAME[tag] + "の件数";
   $("tl-cur-text").textContent = "黄色い線：記録から " + fmtTime(tl.cursor * 1000) +
-    "（" + fmtClock(sess.startedAt + tl.cursor * 1000) + "）";
+    "（" + fmtClock(tl.data.sess.startedAt + tl.cursor * 1000) + "）";
 }
 
 let tlDrag = null;
@@ -1825,44 +1807,58 @@ function tlPointerMove(e) {
 
 function tlPointerEnd() { tlDrag = null; }
 
-// 音声の範囲（イベントの前後）。環境音は前後60秒、それ以外は前後（PRE_MS／POST_MS）
-function evClipRange(e) {
-  if (e.type === "env") return [e.startMs - ENV_CLIP_SEC * 1000, e.endMs + ENV_CLIP_SEC * 1000];
-  return [e.startMs - PRE_MS, e.endMs + POST_MS];
+// 指定した範囲の音を1本にまとめる（渡されたイベントの音声だけを使う）
+async function buildRangePcm(fromMs, toMs, list) {
+  const n = Math.max(0, Math.round((toMs - fromMs) / 1000 * SR));
+  const out = new Int16Array(n);
+  for (const e of list) {
+    if (!e.clipId) continue;
+    const clip = await DB.get("clips", e.clipId);
+    if (!clip) continue;
+    const pcm = clipPcm(clip);
+    const base = Math.round((clip.startMs - fromMs) / 1000 * SR);
+    for (let i = 0; i < pcm.length; i++) {
+      const j = base + i;
+      if (j >= 0 && j < n) out[j] = pcm[i];
+    }
+  }
+  return out;
 }
 
-// 線の位置の前後 TL_PLAY_SEC 秒にある、選んだタグの音声を、押したときだけ1件読み込んで再生する
+// 黄色い線の位置の棒（件数グラフの1本）の中で、最初に出た音から最大1分間を再生する
 async function listenAtCursor() {
   const msg = $("tl-msg"), box = $("tl-audio");
   box.innerHTML = "";
   if (!tl.data) return;
-  const shown = TAG_ORDER.filter((t) => tl.tags[t]);
-  if (!shown.length) { msg.textContent = "タグが選ばれていません。タグを1つ選んでください。"; return; }
-  const c = tl.cursor * 1000;
-  const half = TL_PLAY_SEC * 1000;
-  const near = tl.data.evs.filter((e) => {
-    if (!tl.tags[e.type]) return false;
-    const [a, b] = evClipRange(e);
-    return a <= c + half && b >= c - half;
-  });
-  const cands = near.filter((e) => e.clipId).sort((a, b) => Math.abs(a.startMs - c) - Math.abs(b.startMs - c));
-  if (!cands.length) {
-    msg.textContent = near.length
-      ? "音なし（この位置のイベントには音声が保存されていません。古い記録の判定不能・人声は、音声がありません）"
-      : "音なし（選んだタグの音声が、この位置にありません）";
+  const tag = selectedTag();
+  const binSec = tl.winLen / 60;
+  const binStart = tl.winStart + Math.floor((tl.cursor - tl.winStart) / binSec) * binSec;
+  const binEnd = binStart + binSec;
+
+  const inBin = tl.data.evs
+    .filter((e) => e.type === tag && e.startMs / 1000 >= binStart && e.startMs / 1000 < binEnd)
+    .sort((a, b) => a.startMs - b.startMs);
+  if (!inBin.length) {
+    msg.textContent = "音なし（この棒には" + TAG_NAME[tag] + "がありません）";
+    return;
+  }
+  const first = inBin.find((e) => e.clipId);
+  if (!first) {
+    msg.textContent = "音なし（この棒の" + TAG_NAME[tag] + "は音声が保存されていません）";
     return;
   }
 
+  const fromMs = first.startMs;
+  const toMs = Math.min(fromMs + PLAY_MAX_MS, tl.total * 1000);
+  const list = tl.data.evs
+    .filter((e) => e.type === tag && e.clipId && e.startMs >= fromMs && e.startMs < toMs)
+    .sort((a, b) => a.startMs - b.startMs);
+
   msg.textContent = "読み込み中…";
   try {
-    const ev = cands[0];
-    const clip = await DB.get("clips", ev.clipId);
-    if (!clip) { msg.textContent = "音なし（音声が見つかりません）"; return; }
-    const pcm = clipPcm(clip);
-    const from = Math.max(0, Math.round((c - half - clip.startMs) / 1000 * SR));
-    const to = Math.min(pcm.length, Math.round((c + half - clip.startMs) / 1000 * SR));
-    if (to <= from) { msg.textContent = "音なし（この位置に音声がありません）"; return; }
-    const url = URL.createObjectURL(wavBlob(pcm.slice(from, to), clip.sr));
+    const pcm = await buildRangePcm(fromMs, toMs, list);
+    if (!pcm.length) { msg.textContent = "音なし（音声が見つかりません）"; return; }
+    const url = URL.createObjectURL(wavBlob(pcm, SR));
     blobUrls.push(url);
     const au = document.createElement("audio");
     au.controls = true;
@@ -1870,7 +1866,7 @@ async function listenAtCursor() {
     au.src = url;
     box.appendChild(au);
     au.play().catch(() => {});
-    msg.textContent = "線の位置の前後" + TL_PLAY_SEC + "秒を再生します（" + TAG_NAME[ev.type] + "の音声）。鳴らないときは、プレーヤーの再生ボタンを押してください。";
+    msg.textContent = TAG_NAME[tag] + "の最初の音（" + fmtTime(fromMs) + "）から、最大1分間を再生します。鳴らないときは、プレーヤーの再生ボタンを押してください。";
   } catch (err) {
     console.error(err);
     msg.textContent = "読み込めませんでした。もう一度押してください。";
@@ -1908,29 +1904,31 @@ async function saveMark() {
   }
   const from = Math.max(0, centerMs - MARK_HALF_MS);
   const to = Math.min(tl.total * 1000, centerMs + MARK_HALF_MS);
-  const snores = tl.data.evs.filter((e) => e.type === "snore" && e.clipId &&
+  const items = tl.data.evs.filter((e) => SAVE_TYPES.includes(e.type) && e.clipId &&
     e.startMs - PRE_MS < to && e.endMs + POST_MS > from);
-  if (!snores.length) {
-    showSaveMsg("音声がないため保存しません：記録から " + fmtTime(centerMs) + " の前後1分に、いびき候補の音声がありません。", true);
+  if (!items.length) {
+    showSaveMsg("音声がないため保存しません：記録から " + fmtTime(centerMs) + " の前後1分に、いびき・人声の音声がありません。", true);
     return;
   }
 
   const mark = {
     id: uid(), centerMs, fromMs: from, toMs: to, savedAt: Date.now(),
-    items: snores.map((e) => ({ startMs: e.startMs, durMs: e.durMs }))
+    items: items.map((e) => ({ type: e.type, startMs: e.startMs, durMs: e.durMs }))
   };
   const next = tl.marks.concat(mark).sort((a, b) => a.centerMs - b.centerMs);
   await saveMarks(sess.id, next);
   tl.marks = next;
   renderTimeline();
   renderMarks();
-  showSaveMsg("保存しました：記録から " + fmtTime(centerMs) + "（前後1分・いびき候補 " + snores.length + "件）", false);
+  const sn = items.filter((e) => e.type === "snore").length;
+  const sp = items.length - sn;
+  showSaveMsg("保存しました：記録から " + fmtTime(centerMs) + "（前後1分・いびき " + sn + "件／人声 " + sp + "件）", false);
 }
 
 async function buildMarkPcm(mark, evs) {
   const n = Math.max(0, Math.round((mark.toMs - mark.fromMs) / 1000 * SR));
   const out = new Int16Array(n);
-  const list = evs.filter((e) => e.type === "snore" && e.clipId &&
+  const list = evs.filter((e) => SAVE_TYPES.includes(e.type) && e.clipId &&
     e.startMs - PRE_MS < mark.toMs && e.endMs + POST_MS > mark.fromMs);
   let found = 0, missing = 0;
   for (const e of list) {
@@ -1961,11 +1959,13 @@ function renderMarks() {
   for (const m of tl.marks) {
     const row = document.createElement("div");
     row.className = "event";
-    const list = m.items.map((it) => fmtTime(it.startMs) + "（" + round1(it.durMs / 1000) + "秒）").join("、");
+    const list = m.items.map((it) => (TAG_NAME[it.type] || "音") + " " + fmtTime(it.startMs) + "（" + round1(it.durMs / 1000) + "秒）").join("、");
+    const sn = m.items.filter((it) => it.type === "snore").length;
+    const sp = m.items.length - sn;
     row.innerHTML =
       '<div class="kv"><span>記録から ' + esc(fmtTime(m.centerMs)) + "（" + esc(fmtClock(sess.startedAt + m.centerMs)) + '）</span><span class="tag">前後1分</span></div>' +
       '<div class="kv"><span>範囲</span><b>' + esc(fmtTime(m.fromMs)) + " 〜 " + esc(fmtTime(m.toMs)) + "</b></div>" +
-      '<div class="kv"><span>いびき候補</span><b>' + m.items.length + "件</b></div>" +
+      '<div class="kv"><span>いびき／人声</span><b>' + sn + "件／" + sp + "件</b></div>" +
       '<p class="muted">' + esc(list) + "</p>" +
       '<p class="muted">保存：' + esc(fmtDate(m.savedAt)) + "</p>";
 
@@ -2484,6 +2484,7 @@ function wire() {
   $("cal-next").onclick = () => shiftMonth(1);
 
   $("detail-back").onclick = async () => { revokeUrls(); await refreshCalendar(); showPage("calendar"); };
+  $("det-usage-btn").onclick = () => { $("det-usage-box").hidden = !$("det-usage-box").hidden; };
   $("tl-zoom").onchange = (e) => { if (!tl.data) return; tl.zoomSec = Number(e.target.value); renderTimeline(); };
   $("tl-pos").oninput = (e) => { tl.winStart = Number(e.target.value); renderTimeline(); };
   $("tl-cur").oninput = (e) => { tl.cursor = Number(e.target.value); renderTimeline(); };
