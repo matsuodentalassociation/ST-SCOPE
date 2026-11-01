@@ -81,6 +81,8 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 .tagbtn.off{opacity:.45;border-style:dashed}
 .tagbtn.off i{background:transparent!important;border:1px solid #8fa0b3}
 .tagbtn small{font-size:11px;color:#aebbc9;font-weight:400}
+#level-bar{background:#ff9f43}
+#motion-bar{background:#e04848}
 </style>
 </head>
 <body>
@@ -93,8 +95,6 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
     <h1>SomnoLog V39</h1>
     <span class="tag">患者情報確認</span>
   </header>
-  <p class="muted">②が発行した患者用QRを読み取ってください。</p>
-  <p class="muted">本アプリは診断を行うものではありません。医師の判断の参考資料です。</p>
 
   <div id="scan-msg" class="err" hidden></div>
 
@@ -103,7 +103,6 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
     <button id="qr-file-btn">QR画像を選択</button>
     <input id="qr-file" type="file" accept="image/*" hidden>
     <button id="usage-btn" class="warnbtn">使い方を見る</button>
-    <button id="start-back" class="sub" hidden>患者情報を変えずに戻る</button>
   </section>
 
   <section id="cam-box" class="card" hidden>
@@ -125,7 +124,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
   <canvas id="scan-canvas" hidden></canvas>
 </main>
 
-<!-- 1-2 患者情報の確認 -->
+<!-- 1-2 患者情報の確認（バージョン欄と最新版に変更ボタンを含む） -->
 <main id="page-confirm" class="page" hidden>
   <header class="head">
     <h1>患者情報の確認</h1>
@@ -139,8 +138,12 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
     <button id="cf-ok" class="primary">始める</button>
     <button id="cf-ng" class="warnbtn">情報が間違っています</button>
   </section>
-  <p class="muted">患者情報が違う場合は「始める」を押さず、診療所に確認してください。</p>
-  <p class="muted">本アプリは診断を行うものではありません。医師の判断の参考資料です。</p>
+  <section class="card">
+    <div class="kv"><span>アプリのバージョン</span><b id="ver-text">SomnoLog V39</b></div>
+    <p class="muted">このアプリは自動でアップデートしません。アプリ更新のお知らせが届いたときは、「最新版に変更」を押してください。</p>
+    <p id="upd-msg" class="muted"></p>
+    <button id="upd-reload" class="sub">最新版に変更</button>
+  </section>
 </main>
 
 <!-- 記録画面 -->
@@ -150,6 +153,19 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
     <span id="rec-badge" class="tag">待機中</span>
   </header>
 
+  <button id="rec-usage-btn" class="warnbtn">使い方を見る</button>
+  <section id="rec-usage-box" class="card" hidden>
+    <h2>使い方</h2>
+    <ol class="steps">
+      <li>「マイクを許可」を押して、いびきを録音する許可をください。</li>
+      <li>マイクが許可されると、音に合わせてオレンジ色のバーが動きます。音の大きさは、バーの長さと数字（dB）で確認できます。</li>
+      <li>感度調整スライダーは、マイクの感度を調整するものです。感度を変えると、録音される音量とオレンジ色のバーが同じように変わります。最初は「あ〜」と声を出して、オレンジ色のバーが真ん中くらいになるように調整してください。</li>
+      <li>モーションセンサーは寝相または睡眠環境を記録する機能です。スマホの動きで赤いバーが動くことを確認してください。</li>
+      <li>「記録開始」を押すと記録が始まります。「停止」を押すと記録が終わります。</li>
+      <li>「黒画面に切り替え」を押すと、画面を暗くして記録を続けられます。</li>
+    </ol>
+  </section>
+
   <div id="mic-msg" class="err" hidden></div>
 
   <section class="card">
@@ -157,20 +173,14 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
     <button id="mic-btn">マイクを許可</button>
     <div class="meter"><i id="level-bar"></i></div>
     <div class="kv"><span id="level-text">-</span><span id="base-text">待機中</span></div>
-    <div class="kv"><span>音声（音圧）</span><b id="live-lv-text">-</b></div>
-    <div class="chart"><div id="live-audio"></div></div>
-    <div class="kv"><span>音量調整</span><output id="gain-out">0dB</output></div>
+    <div class="kv"><span>感度調整</span><output id="gain-out">0dB</output></div>
     <input id="gain" type="range" min="-9" max="9" step="1" value="0">
   </section>
 
   <section class="card">
     <button id="motion-btn">モーションセンサーを許可</button>
     <div class="kv"><span>体動（重力除去）</span><b id="motion-text">-</b></div>
-    <div class="chart"><div id="live-motion"></div></div>
-  </section>
-
-  <section class="card">
-    <p class="muted">環境音の変化は常に記録します。人声と判定された部分は無音にして保存します。</p>
+    <div class="meter"><i id="motion-bar"></i></div>
   </section>
 
   <div class="row">
@@ -179,18 +189,6 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
   </div>
   <button id="btn-enter-black" class="sub" disabled>黒画面に切り替え</button>
   <button id="history-btn" class="sub">記録カレンダーを見る</button>
-
-  <section class="card">
-    <button id="pt-change" class="sub">患者情報を読み直す</button>
-  </section>
-
-  <section class="card">
-    <div class="kv"><span>アプリのバージョン</span><b id="ver-text">SomnoLog V39</b></div>
-    <p class="muted">このアプリは自動でアップデートしません。アプリ更新のお知らせが届いたときは、更新を確認後にキャッシュ回避で再読み込みをクリックしてください。</p>
-    <p id="upd-msg" class="muted"></p>
-    <button id="upd-check" class="sub">更新を確認</button>
-    <button id="upd-reload" class="sub">キャッシュ回避で再読み込み</button>
-  </section>
 </main>
 
 <!-- 記録カレンダー -->
@@ -199,7 +197,19 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
     <h1>記録カレンダー</h1>
     <button id="cal-back" class="sub mini">戻る</button>
   </header>
-  <p class="muted">記録がある日には●が付きます。日付を1回押すと簡易情報を表示し、同じ日付をもう一度押すと詳細を開きます。</p>
+  <p class="muted">記録がある日には●が付きます。日付を1回押すと簡易睡眠記録を表示し、同じ日付をもう一度押すと詳細を開きます。</p>
+  <button id="cal-usage-btn" class="warnbtn">使い方を見る</button>
+  <section id="cal-usage-box" class="card" hidden>
+    <h2>使い方</h2>
+    <ol class="steps">
+      <li>記録がある日には●が付きます。</li>
+      <li>印のある日付を1回押すと、簡易睡眠記録が表示されます。</li>
+      <li>同じ日付をもう一度押すと、いびき音声詳細画面が開きます。</li>
+      <li>‹ › で前後の月に移動できます。</li>
+      <li>昼寝や仮眠を記録したときは、▲ ▼ で、同じ日の記録を1件ずつ切り替えられます。</li>
+      <li>「詳細を見る」を押しても、その日の記録の詳細を確認できます。</li>
+    </ol>
+  </section>
   <section class="card">
     <div class="cal-nav">
       <button id="cal-prev" class="sub mini">‹</button>
@@ -346,7 +356,8 @@ const PRE_MS = 3000, POST_MS = 1000;
 const CALIB_SEC = 300, BASE_EVERY = 600, POOL_MAX = 600, POOL_MIN = 60;
 const ENV_RUN_SEC = 10, ENV_DB = 6, ENV_COOLDOWN = 300, ENV_CLIP_SEC = 60;
 const FLUSH_SEC = 60, MAX_QUEUE = 40;
-const UI_MS = 250, LIVE_N = 240;
+const UI_MS = 250;
+const MOTION_BAR_MAX = 2; // m/s²。この値で赤いバーが満タンになります
 const DB_NAME = "somnolog-v3";
 const DB_VERSION = 2;
 const DB_WAIT_MS = 4000;
@@ -487,7 +498,7 @@ function zipName(sess) {
   return [day, time, sanitize(p.clinic, 30), sanitize(p.chartNo, 20), sanitize(p.name, 20)].join("_") + ".zip";
 }
 
-/* ===== リングバッファ（直近130秒・16kHz・調整前の生音） ===== */
+/* ===== リングバッファ（直近130秒・16kHz・感度適用後の音） ===== */
 class Ring {
   constructor(sec) { this.len = SR * sec; this.buf = new Float32Array(this.len); this.total = 0; }
   push(arr) {
@@ -555,7 +566,7 @@ const S = {
   wake: null, timers: [], uiTimer: null, blackOn: false, savedStyle: null, detailSid: null,
   blackTimer: null,
   ring: new Ring(RING_SEC), recv: 0, queue: [], busy: false, dropped: 0,
-  nowMs: 0, lastLv: -100, motionNow: null, grav: null, live: [],
+  nowMs: 0, lastLv: -100, motionNow: null, grav: null,
   calibrated: false, calibVals: [], base: null, pool: [], lastBaseSec: 0,
   cand: null, pHist: [], pendingCands: [], pendingEnv: [],
   pLog: new Float32Array(PLOG_LEN), pIdx: new Int32Array(PLOG_LEN).fill(-1),
@@ -574,10 +585,6 @@ function isBusy() { return S.running || S.saving; }
 function showPage(name) {
   ["start", "confirm", "record", "calendar", "detail", "share", "review"].forEach((n) => { $("page-" + n).hidden = n !== name; });
   window.scrollTo(0, 0);
-}
-
-function renderPatientCard() {
-  $("pt-change").disabled = S.running;
 }
 
 /* ===== QR読み取り（カメラ・画像） ===== */
@@ -880,11 +887,21 @@ function micErrorMessage(e) {
   return "マイクを開始できませんでした。" + detail;
 }
 
-function onAudio(data) {
+// 感度（dB）を音に掛ける。録音データも表示バーも、この音を使う
+function gainScale(data) {
+  const k = Math.pow(10, S.gainDb / 20);
+  if (k === 1) return data;
+  const out = new Float32Array(data.length);
+  for (let i = 0; i < data.length; i++) out[i] = clamp(data[i] * k, -1, 1);
+  return out;
+}
+
+function onAudio(raw) {
+  const data = gainScale(raw);
   if (!S.running) {
     let ss = 0;
     for (let i = 0; i < data.length; i++) ss += data[i] * data[i];
-    S.lastLv = toDb(Math.sqrt(ss / data.length)) + S.gainDb;
+    S.lastLv = toDb(Math.sqrt(ss / data.length));
     return;
   }
   const t = S.recv / SR * 1000;
@@ -975,8 +992,7 @@ function processFrame(f, p) {
   let ss = 0;
   const d = f.data;
   for (let i = 0; i < d.length; i++) ss += d[i] * d[i];
-  const srcDb = toDb(Math.sqrt(ss / d.length));
-  const lv = srcDb + S.gainDb;
+  const lv = toDb(Math.sqrt(ss / d.length)); // すでに感度を掛けた音の大きさ
   S.lastLv = lv;
   S.nowMs = t + FRAME / SR * 1000;
 
@@ -1174,6 +1190,7 @@ function onMotion(e) {
   S.motionNow = m;
   if (S.bucket) S.bucket.mot.push(m);
 }
+
 /* ===== 記録の開始・停止 ===== */
 async function acquireWake() {
   try { if ("wakeLock" in navigator) S.wake = await navigator.wakeLock.request("screen"); }
@@ -1239,9 +1256,6 @@ function startUiLoop() {
 
 function updateUI() {
   const lv = S.lastLv;
-  S.live.push({ lv: Math.max(-90, lv), mot: S.motionNow });
-  if (S.live.length > LIVE_N) S.live.shift();
-
   $("level-bar").style.width = clamp((lv + 80) / 80 * 100, 0, 100) + "%";
   $("level-text").textContent = round1(lv) + " dB";
   if (!S.running) {
@@ -1252,30 +1266,7 @@ function updateUI() {
     $("base-text").textContent = "基準計測中 残り " + Math.max(0, Math.ceil(CALIB_SEC - S.nowMs / 1000)) + " 秒";
   }
   $("motion-text").textContent = S.motionNow == null ? "-" : S.motionNow.toFixed(2) + " m/s²";
-  $("live-lv-text").textContent = S.ctx ? round1(lv) + " dB" : "-";
-  drawSpark("live-audio", S.live.map((x) => x.lv), -90, 0, "#84b9cf");
-  drawSpark("live-motion", S.live.map((x) => x.mot), 0, 1, "#ffffff");
-}
-
-function drawSpark(id, arr, min, max, color) {
-  const box = $(id);
-  if (!box) return;
-  const W = 480, H = 110, PT = 6, PB = 6;
-  const pad0 = LIVE_N - arr.length;
-  const pts = [];
-  arr.forEach((v, i) => {
-    if (v == null) return;
-    const x = (i + pad0) / (LIVE_N - 1) * W;
-    const r = clamp((v - min) / (max - min), 0, 1);
-    const y = H - PB - r * (H - PT - PB);
-    pts.push(x.toFixed(1) + "," + y.toFixed(1));
-  });
-  box.innerHTML = '<svg viewBox="0 0 ' + W + " " + H + '" xmlns="http://www.w3.org/2000/svg">' +
-    '<rect x="0" y="0" width="' + W + '" height="' + H + '" fill="none" stroke="#2a3643"/>' +
-    '<polyline points="' + pts.join(" ") + '" fill="none" stroke="' + color + '" stroke-width="1.5"/>' +
-    '<text x="4" y="12" font-size="10" fill="#aebbc9">' + max + "</text>" +
-    '<text x="4" y="' + (H - 3) + '" font-size="10" fill="#aebbc9">' + min + "</text>" +
-    "</svg>";
+  $("motion-bar").style.width = S.motionNow == null ? "0%" : clamp(S.motionNow / MOTION_BAR_MAX * 100, 0, 100) + "%";
 }
 
 function setButtons() {
@@ -1287,7 +1278,6 @@ function setButtons() {
   $("gain").disabled = S.running;
   $("rec-badge").textContent = S.running ? "記録中" : "待機中";
   $("rec-badge").className = S.running ? "tag rec" : "tag";
-  renderPatientCard();
   renderUpdate();
 }
 
@@ -1300,14 +1290,12 @@ function renderUpdate() {
   if (upd.checking) msg = "確認中…";
   else if (upd.error) msg = "確認できませんでした（" + upd.error + "）";
   else if (upd.latest == null) msg = "";
-  else if (upd.latest > APP_VERSION) msg = "新しい版があります（V" + upd.latest + "）。" + (busy ? "記録・保存・共有が終わってから再読み込みしてください。" : "「キャッシュ回避で再読み込み」を押してください。");
+  else if (upd.latest > APP_VERSION) msg = "新しい版があります（V" + upd.latest + "）。" + (busy ? "記録・保存・共有が終わってから「最新版に変更」を押してください。" : "「最新版に変更」を押してください。");
   else if (upd.latest === APP_VERSION) msg = "最新です。";
   else msg = "GitHubの版（V" + upd.latest + "）は現在より古いです。";
   if (!upd.checking && upd.checkedAt && msg) msg += "（" + fmtClock(upd.checkedAt.getTime()) + " 確認）";
   $("upd-msg").textContent = msg;
   $("upd-msg").hidden = !msg;
-
-  $("upd-check").disabled = upd.checking;
   $("upd-reload").disabled = busy;
 }
 
@@ -1559,10 +1547,7 @@ function nightHtml(sess, secs, evs) {
     if (mo.turnMany) h += row("体動", "寝返りが多いみたいです");
     if (mo.periodic) h += row("体動", "定期的な振動がありました");
     if (!mo.turnMany && !mo.periodic) h += row("体動", "体動は少ない");
-    h += '<p class="muted">体動の内訳：音と連動する動き ' + mo.turns + "回（1時間あたり " + round1(mo.perHour) +
-      "回）／音と連動しない動き " + mo.others + "回" + (mo.periodic ? "（同じ間隔で " + mo.run + "回続いた）" : "") + "</p>";
   }
-  h += '<p class="muted">環境音・体動の評価は暫定の基準による目安です。診断ではありません。</p>';
   return h;
 }
 
@@ -2024,6 +2009,7 @@ function renderMarks() {
     box.appendChild(row);
   }
 }
+
 /* ===== 音声の変換（IMA ADPCM と WAV） ===== */
 const IMA_STEP = [7,8,9,10,11,12,13,14,16,17,19,21,23,25,28,31,34,37,41,45,50,55,60,66,73,80,88,97,107,118,130,143,157,173,190,209,230,253,279,307,337,371,408,449,494,544,598,658,724,796,876,963,1060,1166,1282,1411,1552,1707,1878,2066,2272,2499,2749,3024,3327,3660,4026,4428,4871,5358,5894,6484,7132,7845,8630,9493,10442,11487,12635,13899,15289,16818,18500,20350,22385,24623,27086,29794,32767];
 const IMA_IDX = [-1, -1, -1, -1, 2, 4, 6, 8];
@@ -2462,7 +2448,6 @@ async function onMotionBtn() {
 }
 
 function goStart() {
-  $("start-back").hidden = !S.patient;
   showScanMsg("");
   showPage("start");
 }
@@ -2473,7 +2458,6 @@ function wire() {
   $("qr-file-btn").onclick = () => $("qr-file").click();
   $("qr-file").onchange = (e) => { readQrFile(e.target.files[0]); e.target.value = ""; };
   $("usage-btn").onclick = () => { $("usage-box").hidden = !$("usage-box").hidden; };
-  $("start-back").onclick = () => { stopCamera(); showPage("record"); };
   $("cf-ok").onclick = async () => {
     try {
       await savePatient(S_PATIENT_PENDING.value);
@@ -2481,7 +2465,7 @@ function wire() {
       showPage("record");
     } catch (e) { showError("患者情報を保存できませんでした: " + e.message); }
   };
-  $("cf-ng").onclick = () => { S_PATIENT_PENDING.value = null; goStart(); showScanMsg("患者情報が違う場合は、診療所に連絡してQRを再発行してもらってください。"); };
+  $("cf-ng").onclick = () => { S_PATIENT_PENDING.value = null; goStart(); };
 
   $("mic-btn").onclick = onMicBtn;
   $("motion-btn").onclick = onMotionBtn;
@@ -2491,11 +2475,11 @@ function wire() {
   $("btn-enter-black").onclick = enterBlack;
   $("black-screen").onclick = exitBlack;
   $("history-btn").onclick = async () => { await refreshCalendar(); showPage("calendar"); };
-  $("pt-change").onclick = goStart;
-  $("upd-check").onclick = checkUpdate;
   $("upd-reload").onclick = reloadNoCache;
+  $("rec-usage-btn").onclick = () => { $("rec-usage-box").hidden = !$("rec-usage-box").hidden; };
 
   $("cal-back").onclick = () => showPage("record");
+  $("cal-usage-btn").onclick = () => { $("cal-usage-box").hidden = !$("cal-usage-box").hidden; };
   $("cal-prev").onclick = () => shiftMonth(-1);
   $("cal-next").onclick = () => shiftMonth(1);
 
