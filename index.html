@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
 <meta name="theme-color" content="#000000">
 <meta http-equiv="Cache-Control" content="no-cache">
-<title>SomnoLog V45 基準音圧版</title>
+<title>SomnoLog V46 基準音圧版</title>
 <script src="./ort.min.js"></script>
 <style>
 :root{color-scheme:dark}
@@ -90,7 +90,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 1-1 起動・QR読み取り -->
 <main id="page-start" class="page" hidden>
   <header class="head">
-    <h1>SomnoLog V45</h1>
+    <h1>SomnoLog V46</h1>
     <span class="tag">患者情報確認</span>
   </header>
 
@@ -101,6 +101,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
     <button id="qr-file-btn">QR画像を選択</button>
     <input id="qr-file" type="file" accept="image/*" hidden>
     <button id="usage-btn" class="warnbtn">使い方を見る</button>
+    <button id="back-rec-start" class="primary" hidden>記録画面に戻る</button>
   </section>
 
   <section id="cam-box" class="card" hidden>
@@ -117,6 +118,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
       <li>患者情報（診療所名・患者名など）が正しいか確認します。</li>
       <li>正しければ「始める」を押すと、記録の画面に進みます。</li>
       <li>違う場合は「情報が間違っています」を押してください。診療所にご連絡ください。</li>
+      <li>すでに患者情報が登録されている場合は、「記録画面に戻る」を押すと、QRを読み直さずに記録の画面に戻れます。</li>
     </ol>
   </section>
   <canvas id="scan-canvas" hidden></canvas>
@@ -135,19 +137,21 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
     <div class="field"><span>ログ共有通知先（宛先）</span><b id="cf-email"></b></div>
     <button id="cf-ok" class="primary">始める</button>
     <button id="cf-ng" class="warnbtn">情報が間違っています</button>
+    <button id="back-rec-confirm" class="sub" hidden>記録画面に戻る</button>
   </section>
   <section class="card">
-    <div class="kv"><span>アプリのバージョン</span><b id="ver-text">SomnoLog V45</b></div>
-    <p class="muted">このアプリは自動でアップデートしません。アプリ更新のお知らせが届いたときは、「最新版に変更」を押してください。</p>
+    <div class="kv"><span>アプリのバージョン</span><b id="ver-text">SomnoLog V46</b></div>
+    <p class="muted">このアプリは自動でアップデートしません。アプリ更新のお知らせが届いたときは、「更新を確認」を押してから「最新版に変更」を押してください。</p>
     <p id="upd-msg" class="muted"></p>
-    <button id="upd-reload" class="sub">最新版に変更</button>
+    <button id="upd-check" class="sub">更新を確認</button>
+    <button id="upd-reload" class="sub">最新版に変更（キャッシュを避けて再読み込み）</button>
   </section>
 </main>
 
 <!-- 記録画面 -->
 <main id="page-record" class="page" hidden>
   <header class="head">
-    <h1>SomnoLog V45</h1>
+    <h1>SomnoLog V46</h1>
     <span id="rec-badge" class="tag">待機中</span>
   </header>
 
@@ -354,11 +358,16 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 "use strict";
 
 /* ===== バージョン ===== */
-const APP_VERSION = 45;
+const APP_VERSION = 46;
 const APP = "SomnoLogV" + APP_VERSION + "_ref";
 
-/* ===== GitHub更新の取得元 ===== */
-const UPDATE_SRC = "https://raw.githubusercontent.com/matsuodentalassociation/ST-SCOPE/main/index.html";
+/* ===== 更新の取得元（GitHub） =====
+   index.html を最後に変更したコミットIDを取得し、そのコミットのindex.htmlを読む。
+   取得に失敗した場合は main のindex.html、最後に公開ページの順に試す。 */
+const UPD_REPO = "matsuodentalassociation/ST-SCOPE";
+const UPD_BRANCH = "main";
+const UPD_FILE = "index.html";
+const UPD_PAGES = "https://matsuodentalassociation.github.io/ST-SCOPE/";
 const UPDATE_EVERY_MS = 10 * 60 * 1000;
 
 /* ===== 設定 ===== */
@@ -644,6 +653,20 @@ function showPage(name) {
   window.scrollTo(0, 0);
 }
 
+// 患者情報が登録済みのときだけ、「記録画面に戻る」を出す
+function updateBackButtons() {
+  const has = !!S.patient;
+  $("back-rec-start").hidden = !has;
+  $("back-rec-confirm").hidden = !has;
+}
+
+function goRecord() {
+  if (!S.patient) { showError("患者情報が登録されていません。QRを読み取ってください。"); return; }
+  clearError();
+  setButtons();
+  showPage("record");
+}
+
 /* ===== QR読み取り（カメラ・画像） ===== */
 let camStream = null, camTimer = 0, detector = null, scanBusy = false;
 
@@ -671,6 +694,7 @@ function showConfirm(p) {
   $("cf-name").textContent = p.name;
   $("cf-serial").textContent = p.serialNumber || "（未記入）";
   $("cf-email").textContent = p.logShareEmail || "（未記入）";
+  updateBackButtons();
   showPage("confirm");
 }
 
@@ -1388,39 +1412,64 @@ function setButtons() {
   $("gain").disabled = S.running || measuring;
   $("rec-badge").textContent = S.running ? "記録中" : "待機中";
   $("rec-badge").className = S.running ? "tag rec" : "tag";
+  updateBackButtons();
   renderUpdate();
 }
 
-/* ===== GitHub更新 ===== */
-const upd = { latest: null, checkedAt: null, error: null, checking: false };
+/* ===== 更新の確認（GitHubの最新コミットから取得） ===== */
+const upd = { latest: null, sha: null, source: "", checkedAt: null, error: null, checking: false };
 
-function renderUpdate() {
-  const busy = isBusy();
-  let msg = "";
-  if (upd.checking) msg = "確認中…";
-  else if (upd.error) msg = "確認できませんでした（" + upd.error + "）";
-  else if (upd.latest == null) msg = "";
-  else if (upd.latest > APP_VERSION) msg = "新しい版があります（V" + upd.latest + "）。" + (busy ? "記録・保存・共有が終わってから「最新版に変更」を押してください。" : "「最新版に変更」を押してください。");
-  else if (upd.latest === APP_VERSION) msg = "最新です。";
-  else msg = "GitHubの版（V" + upd.latest + "）は現在より古いです。";
-  if (!upd.checking && upd.checkedAt && msg) msg += "（" + fmtClock(upd.checkedAt.getTime()) + " 確認）";
-  $("upd-msg").textContent = msg;
-  $("upd-msg").hidden = !msg;
-  $("upd-reload").disabled = busy;
+async function fetchText(url) {
+  const r = await fetch(url, { cache: "no-store" });
+  if (!r.ok) throw new Error("HTTP " + r.status);
+  return r.text();
+}
+
+function parseVersion(txt) {
+  const m = String(txt).match(/const\s+APP_VERSION\s*=\s*(\d+)/);
+  if (!m) throw new Error("版番号を読み取れませんでした");
+  return Number(m[1]);
+}
+
+async function fetchLatest() {
+  const t = Date.now();
+  // 1) GitHub APIで、index.html を最後に変更したコミットIDを取得
+  let sha = null;
+  try {
+    const r = await fetch("https://api.github.com/repos/" + UPD_REPO + "/commits?sha=" + UPD_BRANCH +
+      "&path=" + UPD_FILE + "&per_page=1&_=" + t, { cache: "no-store" });
+    if (r.ok) {
+      const j = await r.json();
+      if (Array.isArray(j) && j[0] && j[0].sha) sha = j[0].sha;
+    }
+  } catch (e) { console.warn("コミットIDを取得できませんでした", e); }
+
+  // 2) そのコミットのindex.htmlを読む（コミットIDを指定するので、古いキャッシュを避けられる）
+  const tries = [];
+  if (sha) tries.push({ url: "https://raw.githubusercontent.com/" + UPD_REPO + "/" + sha + "/" + UPD_FILE + "?_=" + t, src: "GitHub（コミット）" });
+  tries.push({ url: "https://raw.githubusercontent.com/" + UPD_REPO + "/" + UPD_BRANCH + "/" + UPD_FILE + "?_=" + t, src: "GitHub（main）" });
+  tries.push({ url: UPD_PAGES + "?_=" + t, src: "公開ページ" });
+
+  let lastErr = null;
+  for (const x of tries) {
+    try {
+      const txt = await fetchText(x.url);
+      return { latest: parseVersion(txt), sha, source: x.src };
+    } catch (e) { lastErr = e; }
+  }
+  throw lastErr || new Error("取得できませんでした");
 }
 
 async function checkUpdate() {
   if (upd.checking) return;
   upd.checking = true;
+  upd.error = null;
   renderUpdate();
   try {
-    const r = await fetch(UPDATE_SRC + "?t=" + Date.now(), { cache: "no-store" });
-    if (!r.ok) throw new Error("HTTP " + r.status);
-    const txt = await r.text();
-    const m = txt.match(/const\s+APP_VERSION\s*=\s*(\d+)/);
-    if (!m) throw new Error("版番号を読み取れませんでした");
-    upd.latest = Number(m[1]);
-    upd.error = null;
+    const r = await fetchLatest();
+    upd.latest = r.latest;
+    upd.sha = r.sha;
+    upd.source = r.source;
   } catch (e) {
     upd.error = e.message;
   } finally {
@@ -1430,8 +1479,36 @@ async function checkUpdate() {
   }
 }
 
-function reloadNoCache() {
+function renderUpdate() {
+  const busy = isBusy();
+  let msg = "";
+  if (upd.checking) msg = "確認中…";
+  else if (upd.error) msg = "確認できませんでした（" + upd.error + "）";
+  else if (upd.latest == null) msg = "";
+  else if (upd.latest > APP_VERSION) msg = "新しい版があります（V" + upd.latest + "）。" + (busy ? "記録・保存・共有が終わってから「最新版に変更」を押してください。" : "「最新版に変更」を押してください。");
+  else if (upd.latest === APP_VERSION) msg = "最新です（V" + APP_VERSION + "）。";
+  else msg = "GitHubの版（V" + upd.latest + "）は現在より古いです。";
+  if (!upd.checking && upd.checkedAt && msg) {
+    msg += "（" + fmtClock(upd.checkedAt.getTime()) + " 確認";
+    if (upd.source) msg += "／" + upd.source;
+    if (upd.sha) msg += "／コミット " + upd.sha.slice(0, 7);
+    msg += "）";
+  }
+  $("upd-msg").textContent = msg;
+  $("upd-msg").hidden = !msg;
+  $("upd-check").disabled = busy || upd.checking;
+  $("upd-reload").disabled = busy;
+}
+
+// 「最新版に変更」：アプリのキャッシュを消してから、時刻付きのURLで読み直す
+async function reloadNoCache() {
   if (isBusy()) return;
+  try {
+    if (window.caches && caches.keys) {
+      const keys = await caches.keys();
+      await Promise.all(keys.map((k) => caches.delete(k)));
+    }
+  } catch (e) { console.warn(e); }
   const u = new URL(location.href);
   u.hash = "";
   u.searchParams.set("v", String(Date.now()));
@@ -2574,6 +2651,7 @@ async function onMotionBtn() {
 
 function goStart() {
   showScanMsg("");
+  updateBackButtons();
   showPage("start");
 }
 
@@ -2584,6 +2662,8 @@ function wire() {
   $("qr-file-btn").onclick = () => $("qr-file").click();
   $("qr-file").onchange = (e) => { readQrFile(e.target.files[0]); e.target.value = ""; };
   $("usage-btn").onclick = () => { $("usage-box").hidden = !$("usage-box").hidden; };
+  $("back-rec-start").onclick = goRecord;
+  $("back-rec-confirm").onclick = goRecord;
   $("cf-ok").onclick = async () => {
     try {
       await savePatient(S_PATIENT_PENDING.value);
@@ -2603,6 +2683,7 @@ function wire() {
   $("btn-enter-black").onclick = enterBlack;
   $("black-screen").onclick = exitBlack;
   $("history-btn").onclick = async () => { await refreshCalendar(); showPage("calendar"); };
+  $("upd-check").onclick = checkUpdate;
   $("upd-reload").onclick = reloadNoCache;
   $("rec-usage-btn").onclick = () => { $("rec-usage-box").hidden = !$("rec-usage-box").hidden; };
 
@@ -2662,6 +2743,7 @@ async function init() {
   const d = new Date();
   cal.year = d.getFullYear();
   cal.month = d.getMonth() + 1;
+  $("ver-text").textContent = "SomnoLog V" + APP_VERSION;
   wire();
   await loadPatient();
   setButtons();
