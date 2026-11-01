@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
 <meta name="theme-color" content="#000000">
 <meta http-equiv="Cache-Control" content="no-cache">
-<title>SomnoLog V40</title>
+<title>SomnoLog V41</title>
 <script src="./ort.min.js"></script>
 <style>
 :root{color-scheme:dark}
@@ -30,6 +30,7 @@ h2{margin:0;font-size:17px}
 .muted{color:#aebbc9;font-size:12px;line-height:1.7;margin:0}
 .warn{background:#3a2f1a;border:1px solid #7a6a3a;color:#f3e7c9;padding:10px 12px;border-radius:10px;font-size:13px;line-height:1.6}
 .err{background:#4a1f1f;border:1px solid #9a4a4a;color:#ffd9d6;padding:10px 12px;border-radius:10px;font-size:13px;line-height:1.6;white-space:pre-wrap;word-break:break-all}
+.err.tap{cursor:pointer}
 .tag{font-size:11px;padding:4px 9px;border-radius:999px;background:#263b38;color:#bfdbd1;white-space:nowrap}
 .tag.rec{background:#7a2e2e;color:#ffd9d6}
 .kv{display:flex;justify-content:space-between;gap:8px;font-size:14px;padding:4px 0;border-bottom:1px solid #2a3643}
@@ -83,12 +84,12 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 </head>
 <body>
 
-<div id="errbox" class="err" hidden></div>
+<div id="errbox" class="err tap" hidden></div>
 
 <!-- 1-1 起動・QR読み取り -->
 <main id="page-start" class="page" hidden>
   <header class="head">
-    <h1>SomnoLog V40</h1>
+    <h1>SomnoLog V41</h1>
     <span class="tag">患者情報確認</span>
   </header>
 
@@ -135,7 +136,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
     <button id="cf-ng" class="warnbtn">情報が間違っています</button>
   </section>
   <section class="card">
-    <div class="kv"><span>アプリのバージョン</span><b id="ver-text">SomnoLog V40</b></div>
+    <div class="kv"><span>アプリのバージョン</span><b id="ver-text">SomnoLog V41</b></div>
     <p class="muted">このアプリは自動でアップデートしません。アプリ更新のお知らせが届いたときは、「最新版に変更」を押してください。</p>
     <p id="upd-msg" class="muted"></p>
     <button id="upd-reload" class="sub">最新版に変更</button>
@@ -145,7 +146,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 記録画面 -->
 <main id="page-record" class="page" hidden>
   <header class="head">
-    <h1>SomnoLog V40</h1>
+    <h1>SomnoLog V41</h1>
     <span id="rec-badge" class="tag">待機中</span>
   </header>
 
@@ -344,7 +345,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 "use strict";
 
 /* ===== バージョン ===== */
-const APP_VERSION = 40;
+const APP_VERSION = 41;
 const APP = "SomnoLogV" + APP_VERSION;
 
 /* ===== GitHub更新の取得元 ===== */
@@ -365,7 +366,7 @@ const UI_MS = 250;
 const MOTION_BAR_MAX = 2; // m/s²。この値で赤いバーが満タンになります
 const DB_NAME = "somnolog-v3";
 const DB_VERSION = 2;
-const DB_WAIT_MS = 4000;
+const DB_WAIT_MS = 8000;
 const TL_PLAY_SEC = 5;
 const MARK_HALF_MS = 60 * 1000;
 const PLOG_LEN = Math.ceil(SR * RING_SEC / FRAME) + 8;
@@ -376,8 +377,8 @@ const TAG_ORDER = ["snore", "unknown", "env", "speech"];
 const TAG_COLOR = { snore: "#4a90d9", unknown: "#ff9f43", env: "#4caf7a", speech: "#9aa5b1" };
 const TAG_NAME = { snore: "いびき", unknown: "判定不能", env: "環境音", speech: "人声" };
 
-/* ===== タイムラインの設定（V40） ===== */
-const TAG_CUT_RATE = 0.2;          // 最大値の20%未満の棒は描かない（変えるときはこの数字）
+/* ===== タイムラインの設定 ===== */
+const TAG_CUT_RATE = 0.2;          // 記録全体の最大値の20%未満の棒は描かない（変えるときはこの数字）
 const SAVED_BAR_COLOR = "#ffffff"; // 保存済みの範囲の棒の色
 const PLAY_MAX_MS = 60 * 1000;     // 再生は最初の音から最大1分
 const SAVE_TYPES = ["snore", "speech"]; // 「保存する」で対象になる音（いびき・人声）
@@ -437,7 +438,11 @@ const dayLabel = (key) => {
 function showError(msg) {
   const b = $("errbox");
   b.hidden = false;
-  b.textContent = "エラー: " + msg;
+  b.textContent = "エラー: " + msg + "\n（タップで閉じます）";
+}
+function clearError() {
+  const b = $("errbox");
+  if (b) b.hidden = true;
 }
 window.addEventListener("error", (e) => showError(e.message));
 window.addEventListener("unhandledrejection", (e) => showError((e.reason && e.reason.message) || String(e.reason)));
@@ -541,7 +546,12 @@ const DB = (() => {
       if (!names.contains("clips")) d.createObjectStore("clips", { keyPath: "id" }).createIndex("sid", "sid");
       if (!names.contains("settings")) d.createObjectStore("settings", { keyPath: "key" });
     };
-    r.onsuccess = () => res(r.result);
+    r.onsuccess = () => {
+      const d = r.result;
+      // 別のタブで新しい版が開かれたときに、古い接続を閉じて詰まりを防ぐ
+      d.onversionchange = () => { d.close(); p = null; };
+      res(d);
+    };
     r.onerror = () => { p = null; rej(r.error || new Error("保存領域を開けませんでした")); };
     r.onblocked = () => { p = null; rej(new Error("保存領域が他のタブで使用中です。他のSomnoLogの画面を閉じてから開き直してください")); };
   }));
@@ -619,6 +629,7 @@ function handleQrText(text) {
 }
 
 function showConfirm(p) {
+  clearError();
   $("cf-clinic").textContent = p.clinic || "（未記入）";
   $("cf-chart").textContent = p.chartNo || "（未記入）";
   $("cf-name").textContent = p.name;
@@ -748,15 +759,19 @@ function withTimeout(promise, ms, label) {
   return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
 }
 
+// 起動時の読み込み。失敗しても赤い表示は出さない（QRで読み直せるため）。2回まで再試行する
 async function loadPatient() {
-  try {
-    const row = await withTimeout(DB.get("settings", "patient"), DB_WAIT_MS, "患者情報の読み込み");
-    S.patient = row && row.value ? row.value : null;
-  } catch (e) {
-    console.warn(e);
-    S.patient = null;
-    showError("保存済みの患者情報を読めませんでした（" + e.message + "）。QRを読み直してください。");
+  for (let i = 0; i < 2; i++) {
+    try {
+      const row = await withTimeout(DB.get("settings", "patient"), DB_WAIT_MS, "患者情報の読み込み");
+      S.patient = row && row.value ? row.value : null;
+      clearError();
+      return;
+    } catch (e) {
+      console.warn("患者情報の読み込み（" + (i + 1) + "回目）:", e);
+    }
   }
+  S.patient = null;
 }
 
 async function savePatient(p) {
@@ -1639,7 +1654,7 @@ async function openDetail(sid) {
   renderMarks();
 }
 
-/* ===== 記録の削除（V35） ===== */
+/* ===== 記録の削除 ===== */
 async function deleteSession(sid) {
   for (const store of ["clips", "events", "secs"]) {
     const keys = await DB.keysByIndex(store, "sid", sid);
@@ -1649,10 +1664,30 @@ async function deleteSession(sid) {
   await DB.del("sessions", sid);
 }
 
-/* ===== タイムライン（V40）=====
+/* ===== タイムライン =====
    いびき・判定不能・環境音・人声の件数グラフ。タグを押すと、そのグラフに切り替わる。
    いびきは最初から選ばれていて、選択中のボタンは消えない。
-   小さい棒（最大値の一定割合未満）は描かない。この画面のグラフだけで、録音音声は足切りしない。 */
+   縦軸の最大値は記録全体で決める（表示範囲が変わっても高さの意味がそろう）。
+   最大値の一定割合未満の棒は描かない。この画面のグラフだけで、録音音声は足切りしない。 */
+
+// 記録全体での棒の最大値（棒の幅ごとに保存しておく）
+const tagMaxCache = {};
+
+function globalBinMax(tag, binSec) {
+  const key = tag + ":" + binSec.toFixed(3);
+  if (tagMaxCache[key] != null) return tagMaxCache[key];
+  const n = Math.max(1, Math.ceil(tl.total / binSec));
+  const bins = new Uint32Array(n);
+  for (const e of tl.data.evs) {
+    if (e.type !== tag) continue;
+    const i = Math.min(n - 1, Math.floor(e.startMs / 1000 / binSec));
+    bins[i]++;
+  }
+  let mx = 1;
+  for (let i = 0; i < n; i++) if (bins[i] > mx) mx = bins[i];
+  tagMaxCache[key] = mx;
+  return mx;
+}
 
 function initTimeline(sess, secs, evs) {
   const last = secs.length ? secs[secs.length - 1].sec : 0;
@@ -1662,6 +1697,7 @@ function initTimeline(sess, secs, evs) {
   tl.winStart = 0;
   tl.cursor = 0;
   tl.tags = { snore: true, unknown: false, env: false, speech: false };
+  for (const k of Object.keys(tagMaxCache)) delete tagMaxCache[k];
   $("tl-zoom").value = String(ZOOM_DEFAULT);
   $("tl-msg").textContent = "";
   $("tl-audio").innerHTML = "";
@@ -1707,7 +1743,7 @@ function selectedTag() {
   return TAG_ORDER.find((t) => tl.tags[t]) || "snore";
 }
 
-// 件数グラフ（棒）。最大値の TAG_CUT_RATE 未満の棒は描かない。保存済みの範囲は白
+// 件数グラフ（棒）。記録全体の最大値を基準にし、その TAG_CUT_RATE 未満の棒は描かない。保存済みの範囲は白
 function tagGraphSvg(tag, W, H, PL, PR, PT, PB, t0, t1) {
   const NB = 60;
   const binSec = tl.winLen / NB;
@@ -1720,14 +1756,14 @@ function tagGraphSvg(tag, W, H, PL, PR, PT, PB, t0, t1) {
     if (s < t0 || s > t1) continue;
     bins[Math.min(NB - 1, Math.floor((s - t0) / binSec))]++;
   }
-  const mx = Math.max(1, ...bins);
+  const mx = globalBinMax(tag, binSec);
   const cut = mx * TAG_CUT_RATE;
   const plotH = H - PT - PB;
   let g = '<rect x="' + PL + '" y="' + PT + '" width="' + plotW + '" height="' + plotH + '" fill="none" stroke="#2a3643"/>';
   for (let i = 0; i < NB; i++) {
     const n = bins[i];
     if (!n || n < cut) continue;
-    const h = n / mx * (plotH - 4);
+    const h = Math.min(1, n / mx) * (plotH - 4);
     const bStartMs = (t0 + i * binSec) * 1000;
     const bEndMs = bStartMs + binSec * 1000;
     const saved = tl.marks.some((m) => bEndMs > m.fromMs && bStartMs < m.toMs);
@@ -1873,7 +1909,7 @@ async function listenAtCursor() {
   }
 }
 
-/* ===== 保存した位置（V26） ===== */
+/* ===== 保存した位置 ===== */
 function marksKey(sid) { return "marks:" + sid; }
 
 async function loadMarks(sid) {
@@ -2453,6 +2489,7 @@ function goStart() {
 }
 
 function wire() {
+  $("errbox").onclick = clearError;
   $("cam-btn").onclick = startCamera;
   $("cam-stop").onclick = stopCamera;
   $("qr-file-btn").onclick = () => $("qr-file").click();
@@ -2461,6 +2498,7 @@ function wire() {
   $("cf-ok").onclick = async () => {
     try {
       await savePatient(S_PATIENT_PENDING.value);
+      clearError();
       setButtons();
       showPage("record");
     } catch (e) { showError("患者情報を保存できませんでした: " + e.message); }
