@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
 <meta name="theme-color" content="#000000">
 <meta http-equiv="Cache-Control" content="no-cache">
-<title>SomnoLog V51 基準音圧版</title>
+<title>SomnoLog V52 基準音圧版</title>
 <script src="./ort.min.js"></script>
 <style>
 :root{color-scheme:dark}
@@ -1050,13 +1050,21 @@ function startRefMeasure() {
   setTimeout(finishRefEnv, REF_SEC * 1000);
 }
 
+// 測定窓の代表値。環境音は静かな方半分、「あ〜」は大きい方半分の平均にする。
+// 窓の最初は合図に気づくまでの遅れや物音が混ざり、そのまま平均すると基準が実際より小さくなるため
+function halfMean(arr, upper) {
+  const a = [...arr].sort((x, y) => x - y);
+  const half = upper ? a.slice(Math.floor(a.length / 2)) : a.slice(0, Math.ceil(a.length / 2));
+  return mean(half);
+}
+
 function finishRefEnv() {
   const arr = S.refColl || [];
   if (arr.length < REF_MIN_FRAMES) {
     refFail("音を十分に取れませんでした。もう一度「基準音圧を測定する」を押してください。");
     return;
   }
-  S.refEnv = round2(mean(arr));
+  S.refEnv = round2(halfMean(arr, false));
   S.refColl = [];
   showRefMsg("「あ〜」と声を出し続けてください…（" + REF_SEC + "秒）");
   setTimeout(finishRefMeasure, REF_SEC * 1000);
@@ -1069,7 +1077,7 @@ function finishRefMeasure() {
     refFail("音を十分に取れませんでした。もう一度「基準音圧を測定する」を押してください。");
     return;
   }
-  const db = mean(arr);
+  const db = halfMean(arr, true);
   if (db < REF_QUIET_DB) {
     refFail("声が小さすぎます。iPhoneの音圧調整を上げてから、もう一度押してください。");
     return;
@@ -1449,7 +1457,7 @@ function pushDisp(lv) {
 function gaugeOf(lv) {
   const env = S.ref.envDb;
   const ref = S.ref.db;
-  const top = Math.max(S.peakDb, ref + 6); // 上端は基準より最低6dB上に取る（幅が無いと少しの音で天井に張り付く）
+  const top = Math.max(S.peakDb, ref + 10); // 上端は基準より最低10dB上に取る（幅が無いと少しの音で天井に張り付く）
   return {
     env, ref, top,
     pos: scalePos(lv, env, ref, top),
