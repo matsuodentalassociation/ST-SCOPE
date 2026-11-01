@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
 <meta name="theme-color" content="#000000">
 <meta http-equiv="Cache-Control" content="no-cache">
-<title>SomnoLog V43</title>
+<title>SomnoLog V45 基準音圧版</title>
 <script src="./ort.min.js"></script>
 <style>
 :root{color-scheme:dark}
@@ -39,8 +39,9 @@ h2{margin:0;font-size:17px}
 .field span{font-size:11px;color:#8fa0b3}
 .field b{font-size:16px;font-weight:600;word-break:break-all}
 .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.meter{height:10px;background:#111820;border-radius:6px;overflow:hidden}
+.meter{position:relative;height:12px;background:#111820;border-radius:6px;overflow:hidden}
 .meter i{display:block;height:100%;width:0;background:#84b9cf}
+.meter .mid{position:absolute;left:50%;top:0;bottom:0;width:2px;background:#f3e7c9}
 input[type=range]{width:100%;accent-color:#84b9cf}
 .chart{background:#101923;border:1px solid #2a3643;border-radius:10px;padding:6px}
 .chart svg{width:100%;height:auto;display:block}
@@ -89,7 +90,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 1-1 起動・QR読み取り -->
 <main id="page-start" class="page" hidden>
   <header class="head">
-    <h1>SomnoLog V43</h1>
+    <h1>SomnoLog V45</h1>
     <span class="tag">患者情報確認</span>
   </header>
 
@@ -121,7 +122,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
   <canvas id="scan-canvas" hidden></canvas>
 </main>
 
-<!-- 1-2 患者情報の確認（バージョン欄と最新版に変更ボタンを含む） -->
+<!-- 1-2 患者情報の確認 -->
 <main id="page-confirm" class="page" hidden>
   <header class="head">
     <h1>患者情報の確認</h1>
@@ -136,7 +137,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
     <button id="cf-ng" class="warnbtn">情報が間違っています</button>
   </section>
   <section class="card">
-    <div class="kv"><span>アプリのバージョン</span><b id="ver-text">SomnoLog V43</b></div>
+    <div class="kv"><span>アプリのバージョン</span><b id="ver-text">SomnoLog V45</b></div>
     <p class="muted">このアプリは自動でアップデートしません。アプリ更新のお知らせが届いたときは、「最新版に変更」を押してください。</p>
     <p id="upd-msg" class="muted"></p>
     <button id="upd-reload" class="sub">最新版に変更</button>
@@ -146,7 +147,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 記録画面 -->
 <main id="page-record" class="page" hidden>
   <header class="head">
-    <h1>SomnoLog V43</h1>
+    <h1>SomnoLog V45</h1>
     <span id="rec-badge" class="tag">待機中</span>
   </header>
 
@@ -154,11 +155,13 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
   <section id="rec-usage-box" class="card" hidden>
     <h2>使い方</h2>
     <ol class="steps">
-      <li>「マイクを許可」を押して、いびきを録音する許可をください。</li>
-      <li>マイクが許可されると、音に合わせてオレンジ色のバーが動きます。音の大きさは、バーの長さと数字（dB）で確認できます。</li>
-      <li>感度調整スライダーは、マイクの感度を調整するものです。感度を変えると、録音される音量とオレンジ色のバーが同じように変わります。最初は「あ〜」と声を出して、オレンジ色のバーが真ん中くらいになるように調整してください。</li>
-      <li>モーションセンサーは寝相または睡眠環境を記録する機能です。スマホの動きで赤いバーが動くことを確認してください。</li>
-      <li>「記録開始」を押すと記録が始まります。「停止」を押すと記録が終わります。</li>
+      <li>「マイクを許可」を押して、録音の許可をください。</li>
+      <li>「iPhoneの音圧調整」のスライダーで、録音の音量を調整します。このスライダーは、iPhoneの音圧を合わせるためだけに使います。</li>
+      <li>「基準音圧を測定する」を押したら、2秒間「あ〜」と声を出し続けます。</li>
+      <li>測定が終わると、バーの真ん中の白い線が基準になります。真ん中より上は基準より大きい音、下は小さい音です。</li>
+      <li>基準音圧は、もう一度「基準音圧を測り直す」を押すまで使い続けます。</li>
+      <li>音量を変えたら、基準音圧を測り直してください。</li>
+      <li>基準音圧を決めたら「記録開始」を押します。「停止」を押すと記録が終わります。</li>
       <li>「黒画面に切り替え」を押すと、画面を暗くして記録を続けられます。</li>
     </ol>
   </section>
@@ -168,10 +171,16 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
   <section class="card">
     <div class="kv"><span>マイク</span><b id="mic-state">未許可</b></div>
     <button id="mic-btn">マイクを許可</button>
-    <div class="meter"><i id="level-bar"></i></div>
+    <div class="meter"><i id="level-bar"></i><b class="mid"></b></div>
     <div class="kv"><span id="level-text">-</span><span id="base-text">待機中</span></div>
-    <div class="kv"><span>感度調整</span><output id="gain-out">0dB</output></div>
+    <label class="muted">iPhoneの音圧調整（録音の音量を変えます）</label>
     <input id="gain" type="range" min="-9" max="9" step="1" value="0">
+    <p class="muted">音量を変えたら、基準音圧を測り直してください。</p>
+  </section>
+
+  <section class="card">
+    <button id="ref-btn" class="primary" disabled>基準音圧を測定する（「あ〜」2秒）</button>
+    <p id="ref-msg" class="muted">基準音圧が未設定です。測定すると、バーの見方が決まります。</p>
   </section>
 
   <section class="card">
@@ -230,7 +239,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
     <h2>使い方</h2>
     <ol class="steps">
       <li>上のボタンで「いびき」「判定不能」「環境音」「人声」を切り替えます。最初は「いびき」が選ばれています。</li>
-      <li>選んだ種類の音の大きさ（dB）が、棒の高さで表示されます。大きい音ほど高い棒になります。</li>
+      <li>棒の高さは、録音時の基準音圧（真ん中の線）との比です。真ん中より上は基準より大きい音、下は小さい音です。</li>
       <li>黄色い線を動かして、聴きたい位置に合わせます。</li>
       <li>「タイムラインの音を聴く」を押すと、黄色い線の棒の中で最初に出た音から、最大1分間を再生します。</li>
       <li>白い棒は、保存済みの前後1分の範囲です。</li>
@@ -345,8 +354,8 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 "use strict";
 
 /* ===== バージョン ===== */
-const APP_VERSION = 43;
-const APP = "SomnoLogV" + APP_VERSION;
+const APP_VERSION = 45;
+const APP = "SomnoLogV" + APP_VERSION + "_ref";
 
 /* ===== GitHub更新の取得元 ===== */
 const UPDATE_SRC = "https://raw.githubusercontent.com/matsuodentalassociation/ST-SCOPE/main/index.html";
@@ -355,7 +364,6 @@ const UPDATE_EVERY_MS = 10 * 60 * 1000;
 /* ===== 設定 ===== */
 const SR = 16000, FRAME = 512;
 const RING_SEC = 130;
-const G_ACC = 9.80665;
 const VAD_CTX = 64, VAD_URL = "./silero_vad.onnx?v=" + APP_VERSION, VAD_TH = 0.3;
 const LOUD_DB = 6, SEG_MIN = 0.5, SEG_MAX = 4, QUIET_FRAMES = 5;
 const PRE_MS = 3000, POST_MS = 1000;
@@ -367,22 +375,27 @@ const MOTION_BAR_MAX = 2; // m/s²。この値で赤いバーが満タンにな�
 const DB_NAME = "somnolog-v3";
 const DB_VERSION = 2;
 const DB_WAIT_MS = 8000;
-const TL_PLAY_SEC = 5;
 const MARK_HALF_MS = 60 * 1000;
 const PLOG_LEN = Math.ceil(SR * RING_SEC / FRAME) + 8;
 const VOICE_PAD = 3;
-const DISCLAIMER = "本アプリは診断を行うものではありません。医師の判断の参考資料です。";
-const LABELS = { snore: "いびき", speech: "寝言・話し声", env: "環境音", unknown: "判定不能", short: "短い音" };
 const TAG_ORDER = ["snore", "unknown", "env", "speech"];
 const TAG_COLOR = { snore: "#4a90d9", unknown: "#ff9f43", env: "#4caf7a", speech: "#9aa5b1" };
 const TAG_NAME = { snore: "いびき", unknown: "判定不能", env: "環境音", speech: "人声" };
 
+/* ===== 基準音圧（「あ〜」の平均）の設定 ===== */
+const REF_SEC = 2;                                             // 測定する時間（秒）
+const REF_MIN_FRAMES = Math.floor(SR * REF_SEC / FRAME * 0.8); // これより少ないと測り直す
+const REF_QUIET_DB = -60;                                      // これより小さい音は、声が届いていないとみなす
+const REF_SCALE_DB = 12.04;                                    // 基準から±12.04dB（＝4倍・1/4倍）でバーの端
+const REF_WORD_DB = 3;                                         // 基準から±3dB以内は「基準くらい」
+
 /* ===== タイムラインの設定 ===== */
+const TL_W = 480, TL_H = 220, TL_PL = 62, TL_PR = 8, TL_PT = 8, TL_PB = 22;
 const SAVED_BAR_COLOR = "#ffffff"; // 保存済みの範囲の棒の色
 const PLAY_MAX_MS = 60 * 1000;     // 再生は最初の音から最大1分
 const SAVE_TYPES = ["snore", "speech"]; // 「保存する」で対象になる音（いびき・人声）
 
-/* ===== 夜の評価（V31）===== */
+/* ===== 夜の評価 ===== */
 const ENV_QUIET_MAX = 0;
 const ENV_CALM_MAX = 2;
 const MOVE_TH = 0.3;
@@ -400,7 +413,6 @@ const uid = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now() + "-" + 
 const toDb = (a) => (a > 1e-5 ? Math.max(-100, 20 * Math.log10(a)) : -100);
 const round1 = (v) => Math.round(v * 10) / 10;
 const round2 = (v) => Math.round(v * 100) / 100;
-const round3 = (v) => Math.round(v * 1000) / 1000;
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 const mean = (a) => (a.length ? a.reduce((s, v) => s + v, 0) / a.length : 0);
 const lowerMean = (arr) => {
@@ -408,7 +420,6 @@ const lowerMean = (arr) => {
   const s = arr.slice().sort((a, b) => a - b);
   return mean(s.slice(0, Math.max(1, Math.ceil(s.length / 2))));
 };
-const minOf = (a) => a.reduce((m, v) => Math.min(m, v), Infinity);
 const maxOf = (a) => a.reduce((m, v) => Math.max(m, v), -Infinity);
 const fmtTime = (ms) => {
   const s = Math.max(0, Math.floor(ms / 1000));
@@ -434,6 +445,24 @@ const dayLabel = (key) => {
   return y + "年" + m + "月" + d + "日（" + w + "）";
 };
 
+// 基準との比で、バーの位置（0〜1）を決める。基準＝0.5、4倍＝1、1/4倍＝0
+function barPosOf(db, refDb) {
+  return clamp(0.5 + (db - refDb) / REF_SCALE_DB, 0, 1);
+}
+// 基準との大きさを言葉で表す（数字は出さない）
+function wordOf(db, refDb) {
+  if (db == null || refDb == null) return "-";
+  const d = db - refDb;
+  if (d >= REF_WORD_DB) return "大きい音";
+  if (d <= -REF_WORD_DB) return "小さい音";
+  return "基準くらい";
+}
+// 記録に基準が無い場合の代わり（古い記録の対策）。いびきの平均を基準の代わりにする
+function fallbackRefDb(evs) {
+  const v = evs.filter((e) => e.type === "snore").map((e) => e.meanAppliedDb).filter((x) => x != null);
+  return v.length ? mean(v) : -40;
+}
+
 function showError(msg) {
   const b = $("errbox");
   b.hidden = false;
@@ -450,6 +479,12 @@ function showMicMsg(text) {
   const b = $("mic-msg");
   b.hidden = !text;
   b.textContent = text || "";
+}
+
+function showRefMsg(text, isErr) {
+  const b = $("ref-msg");
+  b.textContent = text || "";
+  b.className = isErr ? "err" : "muted";
 }
 
 /* ===== 患者情報（QR） ===== */
@@ -580,7 +615,9 @@ const DB = (() => {
 const S = {
   ctx: null, pendingCtx: null, stream: null, tap: null, micMode: "",
   vad: null, vadOk: false, vadState: null, vadCtx: new Float32Array(VAD_CTX),
-  gainDb: 0,
+  gainDb: 0,        // iPhoneの音圧調整（スライダー）の値
+  ref: null,        // 基準音圧。{ db: 「あ〜」の平均（感度適用後の音）, at: 測った時刻 }。測り直すまで使い続ける
+  refColl: null,    // 測定中だけ、音の大きさを集める配列
   patient: null,
   running: false, saving: false, epoch: 0, sid: null, sess: null, counts: newCounts(),
   wake: null, timers: [], uiTimer: null, blackOn: false, savedStyle: null, detailSid: null,
@@ -597,7 +634,7 @@ const cal = { year: 0, month: 0, selected: null, index: 0, byDay: new Map() };
 
 // タイムラインの表示状態。tags は選んだタグ（1つだけ選べる。初期はいびき）
 const ZOOM_DEFAULT = 0;
-const tl = { data: null, total: 0, winStart: 0, winLen: 0, cursor: 0, zoomSec: ZOOM_DEFAULT, marks: [], tags: { snore: true, unknown: false, env: false, speech: false } };
+const tl = { data: null, total: 0, winStart: 0, winLen: 0, cursor: 0, zoomSec: ZOOM_DEFAULT, marks: [], refDb: -40, tags: { snore: true, unknown: false, env: false, speech: false } };
 
 function isBusy() { return S.running || S.saving; }
 
@@ -912,7 +949,7 @@ function micErrorMessage(e) {
   return "マイクを開始できませんでした。" + detail;
 }
 
-// 感度（dB）を音に掛ける。録音データも表示バーも、この音を使う
+// iPhoneの音圧調整（スライダー）を音に掛ける。録音データも表示バーも、この音を使う
 function gainScale(data) {
   const k = Math.pow(10, S.gainDb / 20);
   if (k === 1) return data;
@@ -926,7 +963,9 @@ function onAudio(raw) {
   if (!S.running) {
     let ss = 0;
     for (let i = 0; i < data.length; i++) ss += data[i] * data[i];
-    S.lastLv = toDb(Math.sqrt(ss / data.length));
+    const lv = toDb(Math.sqrt(ss / data.length));
+    S.lastLv = lv;
+    if (S.refColl) S.refColl.push(lv); // 測定中は、音の大きさを集める
     return;
   }
   const t = S.recv / SR * 1000;
@@ -935,6 +974,35 @@ function onAudio(raw) {
   if (S.queue.length >= MAX_QUEUE) { S.queue.shift(); S.dropped++; }
   S.queue.push({ data, t, ep: S.epoch });
   pump();
+}
+
+/* ===== 基準音圧（「あ〜」の平均）を測る ===== */
+function startRefMeasure() {
+  if (!S.ctx || S.running || S.refColl) return;
+  S.refColl = [];
+  setButtons();
+  showRefMsg("「あ〜」と声を出し続けてください…（" + REF_SEC + "秒）");
+  setTimeout(finishRefMeasure, REF_SEC * 1000);
+}
+
+function finishRefMeasure() {
+  const arr = S.refColl || [];
+  S.refColl = null;
+  if (arr.length < REF_MIN_FRAMES) {
+    showRefMsg("音を十分に取れませんでした。もう一度「基準音圧を測定する」を押してください。", true);
+    setButtons();
+    return;
+  }
+  const db = mean(arr);
+  if (db < REF_QUIET_DB) {
+    showRefMsg("声が小さすぎます。iPhoneの音圧調整を上げてから、もう一度押してください。", true);
+    setButtons();
+    return;
+  }
+  S.ref = { db: round2(db), at: Date.now() };
+  showRefMsg("基準音圧を設定しました。バーの真ん中の白い線が「あ〜」の大きさです。");
+  setButtons();
+  updateUI();
 }
 
 /* ===== Silero VAD ===== */
@@ -1228,6 +1296,7 @@ function releaseWake() {
 async function startRec() {
   if (S.running || !S.ctx) return;
   if (!S.patient) { showError("患者情報がありません。最初からQRを読み取ってください。"); showPage("start"); return; }
+  if (!S.ref) { showRefMsg("先に「基準音圧を測定する」を押してください。", true); return; }
   if (S.ctx.state !== "running") await S.ctx.resume().catch(() => {});
   S.epoch++;
   S.sid = uid();
@@ -1242,7 +1311,9 @@ async function startRec() {
   S.vadState = S.vad ? new ort.Tensor("float32", new Float32Array(2 * 128), [2, 1, 128]) : null;
   S.sess = {
     id: S.sid, startedAt: Date.now(), endedAt: null, gainDb: S.gainDb, vadOk: S.vadOk,
-    base: null, counts: newCounts(), app: APP, ua: navigator.userAgent, micMode: S.micMode,
+    base: null,
+    refDb: S.ref.db,   // この記録で使う基準音圧。タイムラインの真ん中の線になる
+    counts: newCounts(), app: APP, ua: navigator.userAgent, micMode: S.micMode,
     patient: { ...S.patient }
   };
   await DB.put("sessions", S.sess);
@@ -1281,14 +1352,22 @@ function startUiLoop() {
 
 function updateUI() {
   const lv = S.lastLv;
-  $("level-bar").style.width = clamp((lv + 80) / 80 * 100, 0, 100) + "%";
-  $("level-text").textContent = round1(lv) + " dB";
+  const bar = $("level-bar");
+  if (S.ref) {
+    // 基準音圧あり：真ん中を基準にして、基準との比で位置を決める
+    bar.style.width = (barPosOf(lv, S.ref.db) * 100).toFixed(1) + "%";
+    $("level-text").textContent = "いまの音：" + wordOf(lv, S.ref.db);
+  } else {
+    // 基準音圧なし：音量調整用の目安の表示
+    bar.style.width = clamp((lv + 80) / 80 * 100, 0, 100).toFixed(1) + "%";
+    $("level-text").textContent = "基準音圧が未設定です";
+  }
   if (!S.running) {
     $("base-text").textContent = "待機中";
   } else if (S.calibrated) {
-    $("base-text").textContent = "基準 " + round1(S.base) + " dB";
+    $("base-text").textContent = "記録中";
   } else {
-    $("base-text").textContent = "基準計測中 残り " + Math.max(0, Math.ceil(CALIB_SEC - S.nowMs / 1000)) + " 秒";
+    $("base-text").textContent = "雑音を計測中 残り " + Math.max(0, Math.ceil(CALIB_SEC - S.nowMs / 1000)) + " 秒";
   }
   $("motion-text").textContent = S.motionNow == null ? "-" : S.motionNow.toFixed(2) + " m/s²";
   $("motion-bar").style.width = S.motionNow == null ? "0%" : clamp(S.motionNow / MOTION_BAR_MAX * 100, 0, 100) + "%";
@@ -1297,10 +1376,16 @@ function updateUI() {
 function setButtons() {
   $("mic-btn").disabled = !!S.ctx;
   $("mic-btn").textContent = S.ctx ? "マイク許可済み" : "マイクを許可";
-  $("start-btn").disabled = S.running || !S.ctx || !S.patient;
+
+  const measuring = !!S.refColl;
+  $("ref-btn").disabled = !S.ctx || S.running || measuring;
+  $("ref-btn").textContent = measuring ? "測定中…（「あ〜」と声を出す）"
+    : (S.ref ? "基準音圧を測り直す（「あ〜」2秒）" : "基準音圧を測定する（「あ〜」2秒）");
+
+  $("start-btn").disabled = S.running || !S.ctx || !S.patient || !S.ref;
   $("stop-btn").disabled = !S.running;
   $("btn-enter-black").disabled = !S.running;
-  $("gain").disabled = S.running;
+  $("gain").disabled = S.running || measuring;
   $("rec-badge").textContent = S.running ? "記録中" : "待機中";
   $("rec-badge").className = S.running ? "tag rec" : "tag";
   renderUpdate();
@@ -1482,7 +1567,7 @@ function onDayTap(key) {
   renderDaySummary();
 }
 
-/* ===== 夜の評価（V31） ===== */
+/* ===== 夜の評価 ===== */
 function evalEnv(n) {
   if (n <= ENV_QUIET_MAX) return "とても静かな環境でした";
   if (n <= ENV_CALM_MAX) return "静かな環境でした";
@@ -1549,8 +1634,8 @@ function analyzeMotion(sess, secs) {
 
 function snoreStats(evs) {
   const sn = evs.filter((e) => e.type === "snore");
-  const means = sn.map((e) => e.meanSourceDb).filter((v) => v != null);
-  const peaks = sn.map((e) => e.peakSourceDb).filter((v) => v != null);
+  const means = sn.map((e) => e.meanAppliedDb).filter((v) => v != null);
+  const peaks = sn.map((e) => e.peakAppliedDb).filter((v) => v != null);
   return { n: sn.length, mean: means.length ? mean(means) : null, peak: peaks.length ? maxOf(peaks) : null };
 }
 
@@ -1559,9 +1644,10 @@ function nightHtml(sess, secs, evs) {
   const c = sess.counts || {};
   const sn = snoreStats(evs);
   const mo = analyzeMotion(sess, secs);
+  const ref = sess.refDb != null ? sess.refDb : fallbackRefDb(evs);
 
-  let h = row("いびきの平均音圧（生音）", sn.mean == null ? "-" : round1(sn.mean) + " dB") +
-    row("いびきのピーク最大（生音）", sn.peak == null ? "-" : round1(sn.peak) + " dB") +
+  let h = row("いびきの平均の大きさ", sn.mean == null ? "-" : wordOf(sn.mean, ref)) +
+    row("いびきの最大の大きさ", sn.peak == null ? "-" : wordOf(sn.peak, ref)) +
     row("環境音", evalEnv(c.env || 0));
 
   if (mo.status === "nodata") {
@@ -1664,34 +1750,20 @@ async function deleteSession(sid) {
 }
 
 /* ===== タイムライン =====
-   選んだ種類の音を、音圧（dB）の高さの棒で表示する。
-   縦軸は記録全体の最小〜最大の音圧。棒の中は、その時間に出た音のうち一番大きい音圧。 */
+   選んだ種類の音を、基準音圧との比の高さの棒で表示する。
+   上＝基準の4倍、真ん中＝基準、下＝基準の1/4。棒の中は、その時間に出た音のうち一番大きい音。 */
 
-// 音圧（dB）。いびき・判定不能・人声はピーク、環境音は平均を使う
+// 音圧（内部の値）。いびき・判定不能・人声はピーク、環境音は平均を使う
 function dbOf(e) {
   if (e.peakAppliedDb != null) return e.peakAppliedDb;
   if (e.meanAppliedDb != null) return e.meanAppliedDb;
   return null;
 }
 
-// 記録全体での、その種類の音圧の範囲
-function tagDbRange(tag) {
-  let mn = Infinity, mx = -Infinity;
-  for (const e of tl.data.evs) {
-    if (e.type !== tag) continue;
-    const db = dbOf(e);
-    if (db == null) continue;
-    if (db < mn) mn = db;
-    if (db > mx) mx = db;
-  }
-  if (!isFinite(mn)) return null;
-  if (mx - mn < 3) mn = mx - 3; // 差が小さすぎても、高さの違いが見えるようにする
-  return { min: Math.floor(mn), max: Math.ceil(mx) };
-}
-
 function initTimeline(sess, secs, evs) {
   const last = secs.length ? secs[secs.length - 1].sec : 0;
   tl.data = { sess, secs, evs };
+  tl.refDb = sess.refDb != null ? sess.refDb : fallbackRefDb(evs);
   tl.total = Math.max(60, last + 1);
   tl.zoomSec = ZOOM_DEFAULT;
   tl.winStart = 0;
@@ -1742,16 +1814,16 @@ function selectedTag() {
   return TAG_ORDER.find((t) => tl.tags[t]) || "snore";
 }
 
-// 音圧の棒グラフ。高さは音圧（dB）に比例する。保存済みの範囲は白
-function tagGraphSvg(tag, W, H, PL, PR, PT, PB, t0, t1) {
+// 棒グラフ。高さは基準との比。保存済みの範囲は白
+function tagGraphSvg(tag, t0, t1) {
   const NB = 60;
   const binSec = tl.winLen / NB;
-  const plotW = W - PL - PR;
-  const plotH = H - PT - PB;
+  const plotW = TL_W - TL_PL - TL_PR;
+  const plotH = TL_H - TL_PT - TL_PB;
   const bw = plotW / NB;
-  const range = tagDbRange(tag);
+  const yMid = TL_PT + plotH / 2;
 
-  // 各棒の中で一番大きい音圧
+  // 各棒の中で一番大きい音
   const bins = new Array(NB).fill(null);
   for (const e of tl.data.evs) {
     if (e.type !== tag) continue;
@@ -1763,28 +1835,34 @@ function tagGraphSvg(tag, W, H, PL, PR, PT, PB, t0, t1) {
     if (bins[i] == null || db > bins[i]) bins[i] = db;
   }
 
-  let g = '<rect x="' + PL + '" y="' + PT + '" width="' + plotW + '" height="' + plotH + '" fill="none" stroke="#2a3643"/>';
-  if (range) {
-    const span = range.max - range.min;
-    for (let i = 0; i < NB; i++) {
-      const db = bins[i];
-      if (db == null) continue;
-      const ratio = clamp((db - range.min) / span, 0, 1);
-      const h = Math.max(3, ratio * (plotH - 4));
-      const bStartMs = (t0 + i * binSec) * 1000;
-      const bEndMs = bStartMs + binSec * 1000;
-      const saved = tl.marks.some((m) => bEndMs > m.fromMs && bStartMs < m.toMs);
-      const color = saved ? SAVED_BAR_COLOR : TAG_COLOR[tag];
-      g += '<rect x="' + (PL + i * bw + 0.5).toFixed(1) + '" y="' + (PT + plotH - h).toFixed(1) +
-        '" width="' + Math.max(1, bw - 1).toFixed(1) + '" height="' + h.toFixed(1) + '" fill="' + color + '"/>';
-    }
-    g += '<text x="2" y="' + (PT + 8) + '" font-size="10" fill="#aebbc9">' + range.max + "dB</text>";
-    g += '<text x="2" y="' + (PT + plotH) + '" font-size="10" fill="#aebbc9">' + range.min + "dB</text>";
-  } else {
-    g += '<text x="' + (PL + 8) + '" y="' + (PT + plotH / 2) + '" font-size="12" fill="#aebbc9">この種類の音はありません</text>';
+  let g = '<rect x="' + TL_PL + '" y="' + TL_PT + '" width="' + plotW + '" height="' + plotH + '" fill="none" stroke="#2a3643"/>';
+  g += '<line x1="' + TL_PL + '" x2="' + (TL_PL + plotW) + '" y1="' + yMid.toFixed(1) + '" y2="' + yMid.toFixed(1) + '" stroke="#f3e7c9" stroke-width="1" stroke-dasharray="4 3"/>';
+
+  let any = false;
+  for (let i = 0; i < NB; i++) {
+    const db = bins[i];
+    if (db == null) continue;
+    any = true;
+    const pos = barPosOf(db, tl.refDb);
+    const h = Math.max(3, pos * (plotH - 4));
+    const bStartMs = (t0 + i * binSec) * 1000;
+    const bEndMs = bStartMs + binSec * 1000;
+    const saved = tl.marks.some((m) => bEndMs > m.fromMs && bStartMs < m.toMs);
+    const color = saved ? SAVED_BAR_COLOR : TAG_COLOR[tag];
+    g += '<rect x="' + (TL_PL + i * bw + 0.5).toFixed(1) + '" y="' + (TL_PT + plotH - h).toFixed(1) +
+      '" width="' + Math.max(1, bw - 1).toFixed(1) + '" height="' + h.toFixed(1) + '" fill="' + color + '"/>';
   }
-  g += '<text x="' + (PL + 4) + '" y="' + (PT + 12) + '" font-size="11" fill="' + TAG_COLOR[tag] + '">' +
-    esc(TAG_NAME[tag]) + "（棒1本＝" + round1(binSec) + "秒・音圧）</text>";
+  if (!any) {
+    g += '<text x="' + (TL_PL + 8) + '" y="' + (TL_PT + plotH / 2 + 30) + '" font-size="12" fill="#aebbc9">この種類の音はありません</text>';
+  }
+
+  // 縦軸の目盛り（基準の4倍・基準・基準の1/4）
+  g += '<text x="4" y="' + (TL_PT + 10) + '" font-size="10" fill="#aebbc9">基準の4倍</text>';
+  g += '<text x="4" y="' + (yMid + 4) + '" font-size="10" fill="#f3e7c9">基準</text>';
+  g += '<text x="4" y="' + (TL_PT + plotH) + '" font-size="10" fill="#aebbc9">基準の1/4</text>';
+
+  g += '<text x="' + (TL_PL + 4) + '" y="' + (TL_PT + 12) + '" font-size="11" fill="' + TAG_COLOR[tag] + '">' +
+    esc(TAG_NAME[tag]) + "（棒1本＝" + round1(binSec) + "秒）</text>";
   return g;
 }
 
@@ -1808,20 +1886,19 @@ function renderTimeline() {
     return;
   }
 
-  const W = 480, H = 220, PL = 36, PR = 8, PT = 8, PB = 22;
   const t0 = tl.winStart, t1 = tl.winStart + tl.winLen;
-  const X = (t) => PL + (t - t0) / tl.winLen * (W - PL - PR);
-  const cursorLine = '<line x1="' + X(tl.cursor).toFixed(1) + '" x2="' + X(tl.cursor).toFixed(1) + '" y1="' + PT + '" y2="' + (H - PB) + '" stroke="#ffd54a" stroke-width="2"/>';
+  const X = (t) => TL_PL + (t - t0) / tl.winLen * (TL_W - TL_PL - TL_PR);
+  const cursorLine = '<line x1="' + X(tl.cursor).toFixed(1) + '" x2="' + X(tl.cursor).toFixed(1) + '" y1="' + TL_PT + '" y2="' + (TL_H - TL_PB) + '" stroke="#ffd54a" stroke-width="2"/>';
   const axisText =
-    '<text x="' + PL + '" y="' + (H - 6) + '" font-size="10" fill="#aebbc9">' + fmtTime(t0 * 1000) + "</text>" +
-    '<text x="' + (W - PR) + '" y="' + (H - 6) + '" font-size="10" fill="#aebbc9" text-anchor="end">' + fmtTime(t1 * 1000) + "</text>";
+    '<text x="' + TL_PL + '" y="' + (TL_H - 6) + '" font-size="10" fill="#aebbc9">' + fmtTime(t0 * 1000) + "</text>" +
+    '<text x="' + (TL_W - TL_PR) + '" y="' + (TL_H - 6) + '" font-size="10" fill="#aebbc9" text-anchor="end">' + fmtTime(t1 * 1000) + "</text>";
 
   const tag = selectedTag();
-  box.innerHTML = '<svg viewBox="0 0 ' + W + " " + H + '" xmlns="http://www.w3.org/2000/svg">' +
-    tagGraphSvg(tag, W, H, PL, PR, PT, PB, t0, t1) + cursorLine + axisText + "</svg>";
+  box.innerHTML = '<svg viewBox="0 0 ' + TL_W + " " + TL_H + '" xmlns="http://www.w3.org/2000/svg">' +
+    tagGraphSvg(tag, t0, t1) + cursorLine + axisText + "</svg>";
 
   $("tl-info").textContent = "表示：" + fmtTime(t0 * 1000) + " 〜 " + fmtTime(t1 * 1000) +
-    "（記録の終了 " + fmtTime(tl.total * 1000) + "）　グラフ：" + TAG_NAME[tag] + "の音圧（dB）";
+    "（記録の終了 " + fmtTime(tl.total * 1000) + "）　グラフ：" + TAG_NAME[tag] + "の大きさ（基準との比）";
   $("tl-cur-text").textContent = "黄色い線：記録から " + fmtTime(tl.cursor * 1000) +
     "（" + fmtClock(tl.data.sess.startedAt + tl.cursor * 1000) + "）";
 }
@@ -1831,13 +1908,14 @@ function tlPointerDown(e) {
   if (!tl.data || !tl.data.secs.length) return;
   const box = $("d-chart");
   const rect = box.getBoundingClientRect();
-  const k = rect.width / 480;
+  const k = rect.width / TL_W;
   const x = e.clientX - rect.left;
-  const cx = (36 + (tl.cursor - tl.winStart) / tl.winLen * 440) * k;
+  const plotW = TL_W - TL_PL - TL_PR;
+  const cx = (TL_PL + (tl.cursor - tl.winStart) / tl.winLen * plotW) * k;
   tlDrag = {
     mode: Math.abs(x - cx) <= 24 ? "cursor" : "window",
     lastX: e.clientX,
-    pxSec: (440 * k) / tl.winLen
+    pxSec: (plotW * k) / tl.winLen
   };
   try { box.setPointerCapture(e.pointerId); } catch (_) {}
 }
@@ -2320,7 +2398,8 @@ async function makeZip() {
       name: "info.json",
       data: enc.encode(JSON.stringify({
         app: sess.app, startedAt: isoOf(sess.startedAt), endedAt: sess.endedAt ? isoOf(sess.endedAt) : null,
-        base: sess.base, counts: sess.counts, patient: sess.patient, audioFiles: files.length - 2, missingAudio: missing
+        base: sess.base, refDb: sess.refDb, counts: sess.counts, patient: sess.patient,
+        audioFiles: files.length - 2, missingAudio: missing
       }, null, 2))
     });
     const blob = buildZip(files);
@@ -2516,8 +2595,9 @@ function wire() {
   $("cf-ng").onclick = () => { S_PATIENT_PENDING.value = null; goStart(); };
 
   $("mic-btn").onclick = onMicBtn;
+  $("ref-btn").onclick = startRefMeasure;
+  $("gain").oninput = (e) => { S.gainDb = Number(e.target.value); updateUI(); };
   $("motion-btn").onclick = onMotionBtn;
-  $("gain").oninput = (e) => { S.gainDb = Number(e.target.value); $("gain-out").textContent = S.gainDb + "dB"; };
   $("start-btn").onclick = () => startRec().catch((e) => showError(e.message));
   $("stop-btn").onclick = () => stopRec().catch((e) => showError(e.message));
   $("btn-enter-black").onclick = enterBlack;
