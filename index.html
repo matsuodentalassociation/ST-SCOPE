@@ -92,7 +92,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 1-1 起動・QR読み取り -->
 <main id="page-start" class="page" hidden>
   <header class="head">
-    <h1>SomnoLog V48</h1>
+    <h1>SomnoLog V49</h1>
     <span class="tag">患者情報確認</span>
   </header>
 
@@ -142,7 +142,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
     <button id="back-rec-confirm" class="sub" hidden>記録画面に戻る</button>
   </section>
   <section class="card">
-    <div class="kv"><span>アプリのバージョン</span><b id="ver-text">SomnoLog V48</b></div>
+    <div class="kv"><span>アプリのバージョン</span><b id="ver-text">SomnoLog V49</b></div>
     <p class="muted">このアプリは自動でアップデートしません。アプリ更新のお知らせが届いたときは、「更新を確認」を押してから「最新版に変更」を押してください。</p>
     <p id="upd-msg" class="muted"></p>
     <button id="upd-check" class="sub">更新を確認</button>
@@ -153,7 +153,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 記録画面 -->
 <main id="page-record" class="page" hidden>
   <header class="head">
-    <h1>SomnoLog V48</h1>
+    <h1>SomnoLog V49</h1>
     <span id="rec-badge" class="tag">待機中</span>
   </header>
 
@@ -249,7 +249,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
     <h2>使い方</h2>
     <ol class="steps">
       <li>上のボタンで「いびき」「判定不能」「環境音」「人声」を切り替えます。最初は「いびき」が選ばれています。</li>
-      <li>棒の高さは、録音時の基準音圧（真ん中の線）との比です。真ん中より上は基準より大きい音、下は小さい音です。</li>
+      <li>棒の高さは、下端が環境音、真ん中の線が「あ〜」、上端がその晩の最大音です。真ん中より上は「あ〜」より大きい音、下は小さい音です。</li>
       <li>黄色い線を動かして、聴きたい位置に合わせます。</li>
       <li>「タイムラインの音を聴く」を押すと、黄色い線の棒の中で最初に出た音から、最大1分間を再生します。</li>
       <li>白い棒は、保存済みの前後1分の範囲です。</li>
@@ -403,7 +403,6 @@ const TAG_NAME = { snore: "いびき", unknown: "判定不能", env: "環境音"
 const REF_SEC = 2;                                             // 環境音・「あ〜」それぞれを測る時間（秒）
 const REF_MIN_FRAMES = Math.floor(SR * REF_SEC / FRAME * 0.8); // これより少ないと測り直す
 const REF_QUIET_DB = -60;                                      // これより小さい音は、声が届いていないとみなす
-const REF_SCALE_DB = 12.04;                                    // タイムラインの棒グラフ用（基準から±12.04dBで端）
 const REF_WORD_DB = 3;                                         // 基準から±3dB以内は「基準くらい」
 
 /* ===== タイムラインの設定 ===== */
@@ -462,10 +461,30 @@ const dayLabel = (key) => {
   return y + "年" + m + "月" + d + "日（" + w + "）";
 };
 
-// 基準との比で、バーの位置（0〜1）を決める（タイムラインの棒グラフ用）。基準＝0.5、4倍＝1、1/4倍＝0
-function barPosOf(db, refDb) {
-  return clamp(0.5 + (db - refDb) / REF_SCALE_DB, 0, 1);
+// 音圧の高さ（0〜1）。下端＝環境音、中央（0.5）＝「あ〜」、上端＝その晩の最大音。
+// 下半分は環境音→「あ〜」、上半分は「あ〜」→最大音。目盛りは均等割りにしない。
+function scalePos(db, envDb, refDb, topDb) {
+  if (db == null) return 0;
+  if (db <= refDb) {
+    const span = Math.max(refDb - envDb, 1);
+    return clamp(0.5 * (db - envDb) / span, 0, 0.5);
+  }
+  const span = Math.max(topDb - refDb, 1);
+  return clamp(0.5 + 0.5 * (db - refDb) / span, 0.5, 1);
 }
+
+// 記録ごとの目盛り（下端・中央・上端）を決める。上端はその晩の最大音に合わせて上に伸びる
+function nightScale(sess, evs) {
+  const refDb = sess.refDb != null ? sess.refDb : fallbackRefDb(evs);
+  const envDb = sess.refEnvDb != null ? sess.refEnvDb : refDb - 12;
+  let topDb = refDb;
+  for (const e of evs) {
+    const db = dbOf(e);
+    if (db != null && db > topDb) topDb = db;
+  }
+  return { refDb, envDb, topDb };
+}
+
 // 基準との大きさを言葉で表す（数字は出さない）
 function wordOf(db, refDb) {
   if (db == null || refDb == null) return "-";
@@ -652,8 +671,9 @@ const S = {
 const cal = { year: 0, month: 0, selected: null, index: 0, byDay: new Map() };
 
 // タイムラインの表示状態。tags は選んだタグ（1つだけ選べる。初期はいびき）
+// scale は記録ごとの目盛り（下端＝環境音、中央＝「あ〜」、上端＝その晩の最大音）
 const ZOOM_DEFAULT = 0;
-const tl = { data: null, total: 0, winStart: 0, winLen: 0, cursor: 0, zoomSec: ZOOM_DEFAULT, marks: [], refDb: -40, tags: { snore: true, unknown: false, env: false, speech: false } };
+const tl = { data: null, total: 0, winStart: 0, winLen: 0, cursor: 0, zoomSec: ZOOM_DEFAULT, marks: [], scale: { refDb: -40, envDb: -52, topDb: -40 }, tags: { snore: true, unknown: false, env: false, speech: false } };
 
 function isBusy() { return S.running || S.saving; }
 
@@ -1373,7 +1393,7 @@ async function startRec() {
     id: S.sid, startedAt: Date.now(), endedAt: null, gainDb: S.gainDb, vadOk: S.vadOk,
     base: null,
     refDb: S.ref.db,        // この記録で使う「あ〜」の音圧（タイムラインの真ん中の線になる）
-    refEnvDb: S.ref.envDb,  // この記録で使う環境音（ゲージの下端）
+    refEnvDb: S.ref.envDb,  // この記録で使う環境音（下端になる）
     counts: newCounts(), app: APP, ua: navigator.userAgent, micMode: S.micMode,
     patient: { ...S.patient }
   };
@@ -1411,16 +1431,15 @@ function startUiLoop() {
   S.uiTimer = setInterval(updateUI, UI_MS);
 }
 
-// 音圧ゲージの計算。下端＝環境音、上端＝記録中の最大音（「あ〜」より小さくはならない）
-// 目盛りはdBで等間隔。位置＝(音のdB − 下端) ÷ (上端 − 下端)
+// リアルタイムの音圧バーの計算。下端＝環境音、中央＝「あ〜」、上端＝記録中の最大音（「あ〜」より小さくはならない）
+// 目盛りは均等割りにせず、下端・中央・上端の実数値だけを表示する
 function gaugeOf(lv) {
   const env = S.ref.envDb;
-  const top = Math.max(S.peakDb, S.ref.db);
-  const span = Math.max(top - env, 1);
+  const ref = S.ref.db;
+  const top = Math.max(S.peakDb, ref);
   return {
-    env, top, span,
-    pos: clamp((lv - env) / span, 0, 1),
-    ahPos: clamp((S.ref.db - env) / span, 0, 1),
+    env, ref, top,
+    pos: scalePos(lv, env, ref, top),
   };
 }
 
@@ -1430,14 +1449,12 @@ function updateUI() {
   if (S.ref) {
     const g = gaugeOf(lv);
     bar.style.width = (g.pos * 100).toFixed(1) + "%";
-    $("mid-line").style.left = (g.ahPos * 100).toFixed(1) + "%";
+    $("mid-line").style.left = "50%";
     $("level-text").textContent = "いまの音：" + wordOf(lv, S.ref.db);
     $("g-env").textContent = g.env.toFixed(1) + " dB";
-    $("g-ah").textContent = S.ref.db.toFixed(1) + " dB";
+    $("g-ah").textContent = g.ref.toFixed(1) + " dB";
     $("g-top").textContent = g.top.toFixed(1) + " dB";
-    let h = "";
-    for (let k = 0; k <= 4; k++) h += "<span>" + (g.env + g.span * k / 4).toFixed(0) + "</span>";
-    $("scale-row").innerHTML = h;
+    $("scale-row").innerHTML = "<span>" + g.env.toFixed(0) + "</span><span>" + g.ref.toFixed(0) + "</span><span>" + g.top.toFixed(0) + "</span>";
   } else {
     bar.style.width = clamp((lv + 80) / 80 * 100, 0, 100).toFixed(1) + "%";
     $("mid-line").style.left = "50%";
@@ -1937,8 +1954,8 @@ async function deleteSession(sid) {
 }
 
 /* ===== タイムライン =====
-   選んだ種類の音を、基準音圧（「あ〜」）との比の高さの棒で表示する。
-   上＝基準の4倍、真ん中＝基準、下＝基準の1/4。棒の中は、その時間に出た音のうち一番大きい音。 */
+   選んだ種類の音を、棒の高さで表示する。
+   下端＝環境音、真ん中の線＝「あ〜」、上端＝その晩の最大音。棒の中は、その時間に出た音のうち一番大きい音。 */
 
 // 音圧（内部の値）。いびき・判定不能・人声はピーク、環境音は平均を使う
 function dbOf(e) {
@@ -1950,7 +1967,7 @@ function dbOf(e) {
 function initTimeline(sess, secs, evs) {
   const last = secs.length ? secs[secs.length - 1].sec : 0;
   tl.data = { sess, secs, evs };
-  tl.refDb = sess.refDb != null ? sess.refDb : fallbackRefDb(evs);
+  tl.scale = nightScale(sess, evs);
   tl.total = Math.max(60, last + 1);
   tl.zoomSec = ZOOM_DEFAULT;
   tl.winStart = 0;
@@ -2001,7 +2018,7 @@ function selectedTag() {
   return TAG_ORDER.find((t) => tl.tags[t]) || "snore";
 }
 
-// 棒グラフ。高さは基準との比。保存済みの範囲は白
+// 棒グラフ。高さは環境音・あ〜・その晩の最大音で決まる。保存済みの範囲は白
 function tagGraphSvg(tag, t0, t1) {
   const NB = 60;
   const binSec = tl.winLen / NB;
@@ -2009,6 +2026,7 @@ function tagGraphSvg(tag, t0, t1) {
   const plotH = TL_H - TL_PT - TL_PB;
   const bw = plotW / NB;
   const yMid = TL_PT + plotH / 2;
+  const sc = tl.scale;
 
   // 各棒の中で一番大きい音
   const bins = new Array(NB).fill(null);
@@ -2030,7 +2048,7 @@ function tagGraphSvg(tag, t0, t1) {
     const db = bins[i];
     if (db == null) continue;
     any = true;
-    const pos = barPosOf(db, tl.refDb);
+    const pos = scalePos(db, sc.envDb, sc.refDb, sc.topDb);
     const h = Math.max(3, pos * (plotH - 4));
     const bStartMs = (t0 + i * binSec) * 1000;
     const bEndMs = bStartMs + binSec * 1000;
@@ -2043,10 +2061,10 @@ function tagGraphSvg(tag, t0, t1) {
     g += '<text x="' + (TL_PL + 8) + '" y="' + (TL_PT + plotH / 2 + 30) + '" font-size="12" fill="#aebbc9">この種類の音はありません</text>';
   }
 
-  // 縦軸の目盛り（基準の4倍・基準・基準の1/4）
-  g += '<text x="4" y="' + (TL_PT + 10) + '" font-size="10" fill="#aebbc9">基準の4倍</text>';
-  g += '<text x="4" y="' + (yMid + 4) + '" font-size="10" fill="#f3e7c9">基準</text>';
-  g += '<text x="4" y="' + (TL_PT + plotH) + '" font-size="10" fill="#aebbc9">基準の1/4</text>';
+  // 縦軸の実数値（上端＝最大、中央＝あ〜、下端＝環境音）。均等割りはしない
+  g += '<text x="4" y="' + (TL_PT + 10) + '" font-size="9" fill="#aebbc9">最大 ' + sc.topDb.toFixed(1) + '</text>';
+  g += '<text x="4" y="' + (yMid + 4) + '" font-size="9" fill="#f3e7c9">あ〜 ' + sc.refDb.toFixed(1) + '</text>';
+  g += '<text x="4" y="' + (TL_PT + plotH) + '" font-size="9" fill="#aebbc9">環境 ' + sc.envDb.toFixed(1) + '</text>';
 
   g += '<text x="' + (TL_PL + 4) + '" y="' + (TL_PT + 12) + '" font-size="11" fill="' + TAG_COLOR[tag] + '">' +
     esc(TAG_NAME[tag]) + "（棒1本＝" + round1(binSec) + "秒）</text>";
@@ -2085,7 +2103,7 @@ function renderTimeline() {
     tagGraphSvg(tag, t0, t1) + cursorLine + axisText + "</svg>";
 
   $("tl-info").textContent = "表示：" + fmtTime(t0 * 1000) + " 〜 " + fmtTime(t1 * 1000) +
-    "（記録の終了 " + fmtTime(tl.total * 1000) + "）　グラフ：" + TAG_NAME[tag] + "の大きさ（基準との比）";
+    "（記録の終了 " + fmtTime(tl.total * 1000) + "）　下端＝環境音、真ん中＝「あ〜」、上端＝その晩の最大音";
   $("tl-cur-text").textContent = "黄色い線：記録から " + fmtTime(tl.cursor * 1000) +
     "（" + fmtClock(tl.data.sess.startedAt + tl.cursor * 1000) + "）";
 }
