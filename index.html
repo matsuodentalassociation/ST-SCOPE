@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
 <meta name="theme-color" content="#000000">
 <meta http-equiv="Cache-Control" content="no-cache">
-<title>SomnoLog V53 基準音圧版</title>
-<script src="./ort.min.js"></script>
+<title>SomnoLog V55 基準音圧版</title>
+<script src="./ort.min.js?v=55"></script>
 <style>
 :root{color-scheme:dark}
 *{box-sizing:border-box}
@@ -22,6 +22,9 @@ button:disabled{opacity:.4;cursor:not-allowed}
 select{min-height:40px;padding:8px 10px;border-radius:10px;border:1px solid #3c4f63;background:#223649;color:#e5f1fb;font-size:14px;width:auto}
 .mini{width:auto;min-width:44px;min-height:40px;padding:8px 12px;font-size:14px}
 .page{max-width:480px;margin:0 auto;padding:20px 16px 40px;display:flex;flex-direction:column;gap:14px}
+#page-start{min-height:100vh;min-height:100dvh}
+.update-area{margin-top:auto;display:flex;flex-direction:column;gap:10px}
+.update-title{text-align:center;border:1px solid #2a3643;border-radius:10px;padding:10px;font-size:17px;font-weight:400}
 .sticky-bar{position:sticky;top:0;z-index:10;background:#0d1117;padding:8px 0;display:grid;grid-template-columns:1fr;gap:10px}
 .head{display:flex;justify-content:space-between;align-items:center;gap:10px}
 h1{margin:0;font-size:22px}
@@ -92,7 +95,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 1-1 起動・QR読み取り -->
 <main id="page-start" class="page" hidden>
   <header class="head">
-    <h1 class="app-name">SomnoLog V53</h1>
+    <h1 class="app-name">SomnoLog V55</h1>
     <span class="tag">患者情報確認</span>
   </header>
 
@@ -123,6 +126,14 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
       <li>すでに患者情報が登録されている場合は、「記録画面に戻る」を押すと、QRを読み直さずに記録の画面に戻れます。</li>
     </ol>
   </section>
+  <div class="update-area">
+    <h2 class="update-title">アプリの更新</h2>
+    <section class="card">
+      <div class="kv"><span>現在のバージョン</span><b id="ver-text">SomnoLog V55</b></div>
+      <button id="upd-reload" class="sub">最新版に変更（キャッシュを避けて再読み込み）</button>
+      <p id="upd-msg" class="muted" hidden aria-live="polite"></p>
+    </section>
+  </div>
   <canvas id="scan-canvas" hidden></canvas>
 </main>
 
@@ -141,20 +152,17 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
     <button id="cf-ng" class="warnbtn">情報が間違っています</button>
     <button id="back-rec-confirm" class="sub" hidden>記録画面に戻る</button>
   </section>
-  <section class="card">
-    <div class="kv"><span>アプリのバージョン</span><b id="ver-text">SomnoLog V53</b></div>
-    <p class="muted">このアプリは自動でアップデートしません。アプリ更新のお知らせが届いたときは、「更新を確認」を押してから「最新版に変更」を押してください。</p>
-    <p id="upd-msg" class="muted"></p>
-    <button id="upd-check" class="sub">更新を確認</button>
-    <button id="upd-reload" class="sub">最新版に変更（キャッシュを避けて再読み込み）</button>
-  </section>
+
 </main>
 
 <!-- 記録画面 -->
 <main id="page-record" class="page" hidden>
   <header class="head">
-    <h1 class="app-name">SomnoLog V53</h1>
-    <span id="rec-badge" class="tag">待機中</span>
+    <h1 class="app-name">SomnoLog V55</h1>
+    <div style="display:flex;align-items:center;gap:10px">
+      <button id="rec-back" class="sub mini" type="button">戻る</button>
+      <span id="rec-badge" class="tag">待機中</span>
+    </div>
   </header>
 
   <button id="rec-usage-btn" class="warnbtn">使い方を見る</button>
@@ -364,7 +372,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 "use strict";
 
 /* ===== バージョン ===== */
-const APP_VERSION = 53;
+const APP_VERSION = 55;
 const APP = "SomnoLogV" + APP_VERSION + "_ref";
 
 /* ===== 更新の取得元（GitHub） =====
@@ -676,7 +684,8 @@ const cal = { year: 0, month: 0, selected: null, index: 0, byDay: new Map() };
 const ZOOM_DEFAULT = 0;
 const tl = { data: null, total: 0, winStart: 0, winLen: 0, cursor: 0, zoomSec: ZOOM_DEFAULT, marks: [], scale: { refDb: -40, envDb: -52, topDb: -40 }, tags: { snore: true, unknown: false, env: false, speech: false } };
 
-function isBusy() { return S.running || S.saving; }
+let recActionPending = false;
+function isBusy() { return S.running || S.saving || recActionPending || !!S.refColl; }
 
 /* ===== 画面切り替え ===== */
 function showPage(name) {
@@ -692,6 +701,7 @@ function updateBackButtons() {
 }
 
 function goRecord() {
+  stopCamera();
   if (!S.patient) { showError("患者情報が登録されていません。QRを読み取ってください。"); return; }
   clearError();
   setButtons();
@@ -1506,6 +1516,7 @@ function updateUI() {
 }
 
 function setButtons() {
+  $("rec-back").disabled = isBusy();
   $("mic-btn").disabled = !!S.ctx;
   $("mic-btn").textContent = S.ctx ? "マイク許可済み" : "マイクを許可";
 
@@ -1613,29 +1624,21 @@ async function checkUpdate() {
   return ok;
 }
 
+let updateByUser = false;
+
 function renderUpdate() {
   const busy = isBusy();
   let msg = "";
-  if (upd.checking) msg = "確認中…";
-  else if (upd.error) msg = "確認できませんでした（" + upd.error + "）";
-  else if (upd.latest == null) msg = "";
-  else if (upd.latest > APP_VERSION) {
-    msg = "新しい版があります（V" + upd.latest + "）。" + (busy ? "記録・保存・共有が終わってから「最新版に変更」を押してください。" : "「最新版に変更」を押してください。");
-    if (getUpdTarget() === String(upd.latest)) {
-      msg += "（直前に読み直しましたが、公開ページにまだ反映されていないようです。数分後にもう一度押してください）";
-    }
-  }
-  else if (upd.latest === APP_VERSION) msg = "最新です（V" + APP_VERSION + "）。";
-  else msg = "GitHubの版（V" + upd.latest + "）は現在より古いです。";
-  if (!upd.checking && upd.checkedAt && msg) {
-    msg += "（" + fmtClock(upd.checkedAt.getTime()) + " 確認";
-    if (upd.source) msg += "／" + upd.source;
-    if (upd.sha) msg += "／コミット " + upd.sha.slice(0, 7);
-    msg += "）";
+  if (updateByUser) {
+    if (upd.checking) msg = "最新版を確認しています…";
+    else if (upd.error) msg = "確認できませんでした。通信状態を確認して、もう一度お試しください。";
+    else if (upd.latest == null) msg = "";
+    else if (upd.latest > APP_VERSION) msg = "新しい版を確認しました。公開ページを確認しています…";
+    else if (upd.latest === APP_VERSION) msg = "現在のバージョンは最新版です。";
+    else msg = "公開されている版は、現在のバージョンより古いです。";
   }
   $("upd-msg").textContent = msg;
   $("upd-msg").hidden = !msg;
-  $("upd-check").disabled = busy || upd.checking;
   $("upd-reload").disabled = busy || upd.checking;
 }
 
@@ -1661,6 +1664,19 @@ async function applyLatest() {
   const ok = await checkUpdate();
   if (!ok) return;
   if (upd.latest <= APP_VERSION) return;
+  if (isBusy()) return;
+  try {
+    const published = await fetchText(UPD_PAGES + "?_=" + Date.now());
+    if (parseVersion(published) !== upd.latest) {
+      $("upd-msg").hidden = false;
+      $("upd-msg").textContent = "最新版が公開ページに反映されるまでお待ちください。数分後にもう一度お試しください。";
+      return;
+    }
+  } catch (e) {
+    $("upd-msg").hidden = false;
+    $("upd-msg").textContent = "公開ページの最新版を確認できませんでした。時間をおいてもう一度お試しください。";
+    return;
+  }
   if (isBusy()) return;
   await clearAppCache();
   setUpdTarget(String(upd.latest));
@@ -2832,17 +2848,38 @@ function wire() {
   };
   $("cf-ng").onclick = () => { S_PATIENT_PENDING.value = null; goStart(); };
 
+  $("rec-back").onclick = () => {
+    if (isBusy()) return;
+    clearError();
+    goStart();
+  };
   $("mic-btn").onclick = onMicBtn;
   $("ref-btn").onclick = startRefMeasure;
   $("gain").oninput = (e) => { S.gainDb = Number(e.target.value); if (S.ref) { S.ref = null; showRefMsg("音圧調整を変えたので、基準音圧を測り直してください。", true); } setButtons(); updateUI(); };
   $("motion-btn").onclick = onMotionBtn;
-  $("start-btn").onclick = () => startRec().catch((e) => showError(e.message));
-  $("stop-btn").onclick = () => stopRec().catch((e) => showError(e.message));
+  $("start-btn").onclick = async () => {
+    if (isBusy()) return;
+    recActionPending = true;
+    setButtons();
+    try { await startRec(); }
+    catch (e) { showError(e.message); }
+    finally { recActionPending = false; setButtons(); }
+  };
+  $("stop-btn").onclick = async () => {
+    if (recActionPending || !S.running) return;
+    recActionPending = true;
+    setButtons();
+    try { await stopRec(); }
+    catch (e) { showError(e.message); }
+    finally { recActionPending = false; setButtons(); }
+  };
   $("btn-enter-black").onclick = enterBlack;
   $("black-screen").onclick = exitBlack;
   $("history-btn").onclick = async () => { await refreshCalendar(); showPage("calendar"); };
-  $("upd-check").onclick = () => checkUpdate();
-  $("upd-reload").onclick = () => applyLatest();
+  $("upd-reload").onclick = () => {
+    updateByUser = true;
+    applyLatest();
+  };
   $("rec-usage-btn").onclick = () => { $("rec-usage-box").hidden = !$("rec-usage-box").hidden; };
 
   $("cal-back").onclick = () => showPage("record");
