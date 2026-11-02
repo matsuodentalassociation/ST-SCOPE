@@ -2958,5 +2958,291 @@ async function init() {
 
 init().catch((e) => showError(e.message));
 </script>
+
+
+<script>
+"use strict";
+
+/* ===== タイムラインの体動表示 ===== */
+(() => {
+  if (!TAG_ORDER.includes("motion")) TAG_ORDER.push("motion");
+  TAG_COLOR.motion = "#e04848";
+  TAG_NAME.motion = "体動";
+
+  const motionView = {
+    threshold: MOVE_TH,
+    max: MOTION_BAR_MAX,
+    lastTag: null
+  };
+
+  const controls = document.createElement("div");
+  controls.id = "tl-motion-controls";
+  controls.hidden = true;
+  controls.innerHTML =
+    '<label class="muted" for="tl-motion-th">' +
+      '体動のしきい値：<b id="tl-motion-th-value"></b>' +
+    '</label>' +
+    '<input id="tl-motion-th" type="range" ' +
+      'min="0.01" max="2" step="0.01" value="0.30">' +
+    '<label class="muted" for="tl-motion-max">' +
+      'グラフ上端：<b id="tl-motion-max-value"></b>' +
+    '</label>' +
+    '<input id="tl-motion-max" type="range" ' +
+      'min="0.1" max="5" step="0.1" value="2">' +
+    '<p class="muted">' +
+      'しきい値以上の体動を表示します。' +
+      'グラフ上端を下げると棒が高く見えます。' +
+      '上端を超えた値は天井で切って表示します。' +
+      '設定は表示だけに使い、保存済みデータや' +
+      'カレンダーの評価は変えません。' +
+    '</p>';
+
+  $("tl-tags").insertAdjacentElement("afterend", controls);
+
+  const help = document.createElement("p");
+  help.className = "muted";
+  help.textContent =
+    "「体動」では、センサーで記録した1秒ごとの平均値を表示します。" +
+    "しきい値以上の秒が連続した場合は1回として数えます。" +
+    "体動そのものに音声はありません。";
+  $("det-usage-box").appendChild(help);
+
+  function validMotion(s) {
+    return Number.isFinite(s.sec) &&
+      Number.isFinite(s.motion) &&
+      s.motion >= 0;
+  }
+
+  function motionCount(secs) {
+    let count = 0;
+    let previousSec = null;
+
+    for (const s of secs) {
+      if (!validMotion(s) || s.motion < motionView.threshold) {
+        previousSec = null;
+        continue;
+      }
+
+      if (previousSec === null || s.sec !== previousSec + 1) {
+        count++;
+      }
+      previousSec = s.sec;
+    }
+    return count;
+  }
+
+  renderTagBar = function () {
+    const box = $("tl-tags");
+    box.innerHTML = "";
+    if (!tl.data) return;
+
+    const cnt = {};
+    const aud = {};
+
+    for (const t of TAG_ORDER) {
+      cnt[t] = 0;
+      aud[t] = 0;
+    }
+
+    for (const e of tl.data.evs) {
+      if (e.type === "motion" || cnt[e.type] == null) continue;
+      cnt[e.type]++;
+      if (e.clipId) aud[e.type]++;
+    }
+
+    const hasMotion = tl.data.secs.some(validMotion);
+    cnt.motion = motionCount(tl.data.secs);
+
+    for (const t of TAG_ORDER) {
+      const on = !!tl.tags[t];
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "tagbtn" + (on ? "" : " off");
+      b.setAttribute("aria-pressed", String(on));
+
+      let detail;
+      if (t === "motion") {
+        detail = hasMotion ? cnt.motion + "回" : "データなし";
+      } else {
+        detail = String(cnt[t]);
+        if (aud[t] !== cnt[t]) {
+          detail += "（音声" + aud[t] + "）";
+        }
+      }
+
+      b.innerHTML =
+        '<i style="background:' + TAG_COLOR[t] + '"></i>' +
+        esc(TAG_NAME[t]) + " <small>" + esc(detail) + "</small>";
+
+      b.onclick = () => {
+        if (tl.tags[t]) return;
+        for (const k of TAG_ORDER) tl.tags[k] = false;
+        tl.tags[t] = true;
+        renderTimeline();
+      };
+      box.appendChild(b);
+    }
+  };
+
+  const originalGraph = tagGraphSvg;
+
+  tagGraphSvg = function (tag, t0, t1) {
+    if (tag !== "motion") return originalGraph(tag, t0, t1);
+
+    const NB = 60;
+    const binSec = (t1 - t0) / NB;
+    const plotW = TL_W - TL_PL - TL_PR;
+    const plotH = TL_H - TL_PT - TL_PB;
+    const bw = plotW / NB;
+    const bins = new Array(NB).fill(null);
+    let hasDataInWindow = false;
+
+    for (const s of tl.data.secs) {
+      if (!validMotion(s)) continue;
+      if (s.sec + 1 <= t0 || s.sec >= t1) continue;
+
+      hasDataInWindow = true;
+      if (s.motion < motionView.threshold) continue;
+
+      const first = Math.max(
+        0, Math.floor((s.sec - t0) / binSec)
+      );
+      const last = Math.min(
+        NB - 1, Math.ceil((s.sec + 1 - t0) / binSec) - 1
+      );
+
+      for (let i = first; i <= last; i++) {
+        if (bins[i] == null || s.motion > bins[i]) {
+          bins[i] = s.motion;
+        }
+      }
+    }
+
+    let g =
+      '<rect x="' + TL_PL + '" y="' + TL_PT +
+      '" width="' + plotW + '" height="' + plotH +
+      '" fill="none" stroke="#2a3643"/>';
+
+    let any = false;
+    let clipped = false;
+
+    for (let i = 0; i < NB; i++) {
+      const value = bins[i];
+      if (value == null) continue;
+
+      any = true;
+      if (value > motionView.max) clipped = true;
+
+      const h = Math.max(
+        2, Math.min(1, value / motionView.max) * plotH
+      );
+
+      g +=
+        '<rect x="' + (TL_PL + i * bw + 0.5).toFixed(1) +
+        '" y="' + (TL_PT + plotH - h).toFixed(1) +
+        '" width="' + Math.max(1, bw - 1).toFixed(1) +
+        '" height="' + h.toFixed(1) +
+        '" fill="' + TAG_COLOR.motion + '"/>';
+    }
+
+    const thresholdY = TL_PT + plotH *
+      (1 - Math.min(1, motionView.threshold / motionView.max));
+
+    g +=
+      '<line x1="' + TL_PL +
+      '" x2="' + (TL_PL + plotW) +
+      '" y1="' + thresholdY.toFixed(1) +
+      '" y2="' + thresholdY.toFixed(1) +
+      '" stroke="#ffb4a9" stroke-width="1" ' +
+      'stroke-dasharray="4 3"/>';
+
+    g +=
+      '<text x="4" y="' + (TL_PT + 10) +
+      '" font-size="10" fill="#aebbc9">' +
+      motionView.max.toFixed(1) + '</text>' +
+      '<text x="4" y="' + (TL_PT + plotH) +
+      '" font-size="10" fill="#aebbc9">0</text>' +
+      '<text x="' + (TL_PL + 4) +
+      '" y="' + (TL_PT + 12) +
+      '" font-size="11" fill="' + TAG_COLOR.motion + '">' +
+      '体動 m/s²（棒内の最大値）</text>';
+
+    if (!any) {
+      const message = hasDataInWindow
+        ? "この範囲にしきい値以上の体動はありません"
+        : "この範囲に体動データはありません";
+
+      g +=
+        '<text x="' + (TL_PL + 8) +
+        '" y="' + (TL_PT + plotH / 2 + 20) +
+        '" font-size="11" fill="#aebbc9">' +
+        esc(message) + '</text>';
+    }
+
+    if (clipped) {
+      g +=
+        '<text x="' + (TL_PL + 4) +
+        '" y="' + (TL_PT + 27) +
+        '" font-size="10" fill="#ffb4a9">' +
+        '上端を超えた値あり</text>';
+    }
+
+    return g;
+  };
+
+  const originalRender = renderTimeline;
+
+  renderTimeline = function () {
+    originalRender();
+    if (!tl.data) return;
+
+    const tag = selectedTag();
+    const isMotion = tag === "motion";
+    controls.hidden = !isMotion;
+
+    $("tl-motion-th-value").textContent =
+      motionView.threshold.toFixed(2) + " m/s²";
+    $("tl-motion-max-value").textContent =
+      motionView.max.toFixed(1) + " m/s²";
+
+    $("tl-listen").disabled = isMotion;
+
+    if (motionView.lastTag !== tag) {
+      $("tl-audio").innerHTML = "";
+      $("tl-msg").textContent = isMotion
+        ? "体動そのものに音声はありません。音を聴くには音声タグを選んでください。"
+        : "";
+      motionView.lastTag = tag;
+    }
+
+    if (isMotion && tl.data.secs.length) {
+      const t0 = tl.winStart;
+      const t1 = tl.winStart + tl.winLen;
+      const note = motionView.threshold > motionView.max
+        ? "（しきい値がグラフ上端を超えています）"
+        : "";
+
+      $("tl-info").textContent =
+        "表示：" + fmtTime(t0 * 1000) +
+        " 〜 " + fmtTime(t1 * 1000) +
+        "（記録の終了 " + fmtTime(tl.total * 1000) + "）" +
+        "　体動：各棒に含まれる1秒平均の最大値" + note;
+    }
+  };
+
+  $("tl-motion-th").addEventListener("input", (e) => {
+    motionView.threshold = Number(e.target.value);
+    renderTimeline();
+  });
+
+  $("tl-motion-max").addEventListener("input", (e) => {
+    motionView.max = Number(e.target.value);
+    renderTimeline();
+  });
+
+  if (tl.data) renderTimeline();
+})();
+</script>
+
 </body>
 </html>
