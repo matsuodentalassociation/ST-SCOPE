@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
 <meta name="theme-color" content="#000000">
 <meta http-equiv="Cache-Control" content="no-cache">
-<title>SomnoLog V57 基準音圧版</title>
-<script src="./ort.min.js?v=55"></script>
+<title>SomnoLog V58 基準音圧版</title>
+<script src="./ort.min.js?v=58"></script>
 <style>
 :root{color-scheme:dark}
 *{box-sizing:border-box}
@@ -95,7 +95,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 1-1 起動・QR読み取り -->
 <main id="page-start" class="page" hidden>
   <header class="head">
-    <h1 class="app-name">SomnoLog V57</h1>
+    <h1 class="app-name">SomnoLog V58</h1>
     <span class="tag">患者情報確認</span>
   </header>
 
@@ -129,7 +129,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
   <div class="update-area">
     <h2 class="update-title">アプリの更新</h2>
     <section class="card">
-      <div class="kv"><span>現在のバージョン</span><b id="ver-text">SomnoLog V57</b></div>
+      <div class="kv"><span>現在のバージョン</span><b id="ver-text">SomnoLog V58</b></div>
       <button id="upd-reload" class="sub">最新版に変更（キャッシュを避けて再読み込み）</button>
       <p id="upd-msg" class="muted" hidden aria-live="polite"></p>
     </section>
@@ -158,7 +158,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 記録画面 -->
 <main id="page-record" class="page" hidden>
   <header class="head">
-    <h1 class="app-name">SomnoLog V57</h1>
+    <h1 class="app-name">SomnoLog V58</h1>
     <div style="display:flex;align-items:center;gap:10px">
       <button id="rec-back" class="sub mini" type="button">戻る</button>
       <span id="rec-badge" class="tag">待機中</span>
@@ -372,10 +372,8 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 </div>
 
 <script>
-"use strict";
-
-/* ===== バージョン ===== */
-const APP_VERSION = 57;
+"use strict";/* ===== バージョン ===== */
+const APP_VERSION = 58;
 const APP = "SomnoLogV" + APP_VERSION + "_ref";
 
 /* ===== 更新の取得元（GitHub） =====
@@ -1114,9 +1112,7 @@ function finishRefMeasure() {
   showRefMsg("基準音圧を設定しました。下端が環境音、白い線が「あ〜」、上端が記録中の最大音です。");
   setButtons();
   updateUI();
-}
-
-/* ===== Silero VAD ===== */
+}/* ===== Silero VAD ===== */
 async function loadVad() {
   if (typeof ort === "undefined") {
     S.vad = null; S.vadOk = false;
@@ -1755,7 +1751,6 @@ function exitBlack() {
   setRootBlack(false);
   exitFs();
 }
-
 /* ===== 記録カレンダー ===== */
 async function loadCalendarData() {
   const sessions = (await DB.all("sessions")).sort((a, b) => a.startedAt - b.startedAt);
@@ -2510,7 +2505,6 @@ function wavBytes(pcm, sr) {
 function wavBlob(pcm, sr) {
   return new Blob([wavBytes(pcm, sr)], { type: "audio/wav" });
 }
-
 /* ===== ZIP（無圧縮） ===== */
 const CRC_TABLE = (() => {
   const t = new Uint32Array(256);
@@ -2528,42 +2522,72 @@ function crc32(u8) {
   return (c ^ 0xFFFFFFFF) >>> 0;
 }
 
-function buildZip(files) {
-  const enc = new TextEncoder();
-  const d = new Date();
-  const dosTime = (d.getHours() << 11) | (d.getMinutes() << 5) | (d.getSeconds() >> 1);
-  const dosDate = ((d.getFullYear() - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate();
-  const parts = [], central = [];
-  let offset = 0;
-  for (const f of files) {
-    const name = enc.encode(f.name);
-    const crc = crc32(f.data);
-    const lh = new Uint8Array(30 + name.length);
-    const lv = new DataView(lh.buffer);
-    lv.setUint32(0, 0x04034b50, true); lv.setUint16(4, 20, true); lv.setUint16(6, 0x0800, true);
-    lv.setUint16(8, 0, true); lv.setUint16(10, dosTime, true); lv.setUint16(12, dosDate, true);
-    lv.setUint32(14, crc, true); lv.setUint32(18, f.data.length, true); lv.setUint32(22, f.data.length, true);
-    lv.setUint16(26, name.length, true); lv.setUint16(28, 0, true);
-    lh.set(name, 30);
-    parts.push(lh, f.data);
-    const ch = new Uint8Array(46 + name.length);
-    const cv = new DataView(ch.buffer);
-    cv.setUint32(0, 0x02014b50, true); cv.setUint16(4, 20, true); cv.setUint16(6, 20, true); cv.setUint16(8, 0x0800, true);
-    cv.setUint16(10, 0, true); cv.setUint16(12, dosTime, true); cv.setUint16(14, dosDate, true);
-    cv.setUint32(16, crc, true); cv.setUint32(20, f.data.length, true); cv.setUint32(24, f.data.length, true);
-    cv.setUint16(28, name.length, true); cv.setUint32(42, offset, true);
-    ch.set(name, 46);
-    central.push(ch);
-    offset += lh.length + f.data.length;
+/* ===== ZIP（1件ずつ書き込み） ===== */
+class ZipWriter {
+  constructor() {
+    const d = new Date();
+    this.enc = new TextEncoder();
+    this.dosTime = (d.getHours() << 11) | (d.getMinutes() << 5) | (d.getSeconds() >> 1);
+    this.dosDate = ((d.getFullYear() - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate();
+    this.parts = [];
+    this.central = [];
+    this.offset = 0;
+    this.count = 0;
   }
-  let cdSize = 0;
-  for (const c of central) cdSize += c.length;
-  const end = new Uint8Array(22);
-  const ev = new DataView(end.buffer);
-  ev.setUint32(0, 0x06054b50, true);
-  ev.setUint16(8, files.length, true); ev.setUint16(10, files.length, true);
-  ev.setUint32(12, cdSize, true); ev.setUint32(16, offset, true);
-  return new Blob([...parts, ...central, end], { type: "application/zip" });
+
+  add(name, data) {
+    const nameBytes = this.enc.encode(name);
+    const crc = crc32(data);
+    const lh = new Uint8Array(30 + nameBytes.length);
+    const lv = new DataView(lh.buffer);
+    lv.setUint32(0, 0x04034b50, true);
+    lv.setUint16(4, 20, true);
+    lv.setUint16(6, 0x0800, true);
+    lv.setUint16(8, 0, true);
+    lv.setUint16(10, this.dosTime, true);
+    lv.setUint16(12, this.dosDate, true);
+    lv.setUint32(14, crc, true);
+    lv.setUint32(18, data.length, true);
+    lv.setUint32(22, data.length, true);
+    lv.setUint16(26, nameBytes.length, true);
+    lv.setUint16(28, 0, true);
+    lh.set(nameBytes, 30);
+
+    const ch = new Uint8Array(46 + nameBytes.length);
+    const cv = new DataView(ch.buffer);
+    cv.setUint32(0, 0x02014b50, true);
+    cv.setUint16(4, 20, true);
+    cv.setUint16(6, 20, true);
+    cv.setUint16(8, 0x0800, true);
+    cv.setUint16(10, 0, true);
+    cv.setUint16(12, this.dosTime, true);
+    cv.setUint16(14, this.dosDate, true);
+    cv.setUint32(16, crc, true);
+    cv.setUint32(20, data.length, true);
+    cv.setUint32(24, data.length, true);
+    cv.setUint16(28, nameBytes.length, true);
+    cv.setUint32(42, this.offset, true);
+    ch.set(nameBytes, 46);
+
+    // Blob にしておくと、元のデータをメモリに抱え続けずに済む
+    this.parts.push(lh, new Blob([data]));
+    this.central.push(ch);
+    this.offset += lh.length + data.length;
+    this.count++;
+  }
+
+  finish() {
+    let cdSize = 0;
+    for (const c of this.central) cdSize += c.length;
+    const end = new Uint8Array(22);
+    const ev = new DataView(end.buffer);
+    ev.setUint32(0, 0x06054b50, true);
+    ev.setUint16(8, this.count, true);
+    ev.setUint16(10, this.count, true);
+    ev.setUint32(12, cdSize, true);
+    ev.setUint32(16, this.offset, true);
+    return new Blob([...this.parts, ...this.central, end], { type: "application/zip" });
+  }
 }
 
 /* ===== 共有（ZIP作成） ===== */
@@ -2628,37 +2652,53 @@ async function startShare(kind) {
 async function makeZip() {
   S.saving = true;
   setButtons();
-  shMsg("ZIPを作っています…", false);
+  shMsg("ZIPを作っています…（音声を1件ずつ処理します）", false);
   try {
     const sess = await DB.get("sessions", SH.sid);
     const sc = await shareScope(SH.kind);
     const keep = sc.speeches.filter((e) => e.review === "keep");
     const items = sc.snores.concat(keep).sort((a, b) => a.startMs - b.startMs);
-    const files = [];
+
+    const zw = new ZipWriter();
+    let audioCount = 0;
     let missing = 0;
-    for (const e of items) {
+
+    for (let i = 0; i < items.length; i++) {
+      const e = items[i];
       const clip = await DB.get("clips", e.clipId);
       if (!clip) { missing++; continue; }
       const pcm = clipPcm(clip);
-      const nm = (e.type === "snore" ? "snore_" : "voice_") + fmtTime(e.startMs).replace(/:/g, "-") + "_" + e.id.slice(0, 4) + ".wav";
-      files.push({ name: nm, data: wavBytes(pcm, clip.sr) });
+      const nm = (e.type === "snore" ? "snore_" : "voice_") +
+        fmtTime(e.startMs).replace(/:/g, "-") + "_" + e.id.slice(0, 4) + ".wav";
+      zw.add(nm, wavBytes(pcm, clip.sr));
+      audioCount++;
+      // 1件ごとに画面へ戻して、固まりにくくする
+      await new Promise((r) => setTimeout(r, 0));
     }
+
     const csv = ["type,startSec,durSec,peakDb,meanDb,review,file"].concat(sc.evs.map((e) => [
       e.type, round1(e.startMs / 1000), round1(e.durMs / 1000), e.peakSourceDb, e.meanSourceDb, e.review || "", ""
     ].join(","))).join("\n");
-    const enc = new TextEncoder();
-    files.push({ name: "events.csv", data: enc.encode("\uFEFF" + csv) });
-    files.push({
-      name: "info.json",
-      data: enc.encode(JSON.stringify({
-        app: sess.app, startedAt: isoOf(sess.startedAt), endedAt: sess.endedAt ? isoOf(sess.endedAt) : null,
-        base: sess.base, refDb: sess.refDb, refEnvDb: sess.refEnvDb, counts: sess.counts, patient: sess.patient,
-        audioFiles: files.length - 2, missingAudio: missing
-      }, null, 2))
-    });
-    const blob = buildZip(files);
+    zw.add("events.csv", new TextEncoder().encode("\uFEFF" + csv));
+
+    const info = {
+      app: sess.app,
+      startedAt: isoOf(sess.startedAt),
+      endedAt: sess.endedAt ? isoOf(sess.endedAt) : null,
+      base: sess.base,
+      refDb: sess.refDb,
+      refEnvDb: sess.refEnvDb,
+      counts: sess.counts,
+      patient: sess.patient,
+      audioFiles: audioCount,
+      missingAudio: missing
+    };
+    zw.add("info.json", new TextEncoder().encode(JSON.stringify(info, null, 2)));
+
+    const blob = zw.finish();
     SH.zip = blob;
     SH.name = zipName(sess);
+
     const a = document.createElement("a");
     const url = URL.createObjectURL(blob);
     a.href = url;
@@ -2667,7 +2707,10 @@ async function makeZip() {
     a.click();
     a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 60000);
-    shMsg("保存しました：" + SH.name + "（音声 " + (files.length - 2) + "件" + (missing ? "／見つからない音声 " + missing + "件" : "") + "）。次に「②ファイルを選んで送信」を押してください。", false);
+
+    shMsg("保存しました：" + SH.name + "（音声 " + audioCount + "件" +
+      (missing ? "／見つからない音声 " + missing + "件" : "") +
+      "）。次に「②ファイルを選んで送信」を押してください。", false);
     showPage("share");
   } catch (e) {
     console.error(e);
@@ -3286,3 +3329,5 @@ init().catch((e) => showError(e.message));
 
 </body>
 </html>
+
+
