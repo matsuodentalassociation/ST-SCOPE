@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
 <meta name="theme-color" content="#000000">
 <meta http-equiv="Cache-Control" content="no-cache">
-<title>SomnoLog V59 基準音圧版</title>
-<script src="./ort.min.js?v=59"></script>
+<title>SomnoLog V60 基準音圧版</title>
+<script src="./ort.min.js?v=60"></script>
 <style>
 :root{color-scheme:dark}
 *{box-sizing:border-box}
@@ -72,12 +72,6 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 .modal{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.75);z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px}
 .modal-box{background:#161d26;border:1px solid #2a3643;border-radius:12px;padding:18px;max-width:420px;width:100%;display:flex;flex-direction:column;gap:12px}
 .modal-box p{margin:0;font-size:14px;line-height:1.8}
-.rv-row{border:1px solid #2a3643;border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:8px;background:#111820}
-.rv-row.sel{border-color:#ffd54a}
-.rv-row.keep{background:#17283a}
-.rv-row.drop{background:#1b1f24}
-.rv-row.drop .rv-time{opacity:.6}
-.rv-chart svg{cursor:pointer}
 .tagbar{display:flex;flex-wrap:wrap;gap:8px}
 .tagbtn{width:auto;min-height:40px;padding:8px 12px;font-size:13px;display:flex;align-items:center;gap:6px;background:#171f29;border-color:#34424f;color:#d3dde7}
 .tagbtn i{display:inline-block;width:12px;height:12px;border-radius:3px}
@@ -101,7 +95,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 1-1 起動・QR読み取り -->
 <main id="page-start" class="page" hidden>
   <header class="head">
-    <h1 class="app-name">SomnoLog V59</h1>
+    <h1 class="app-name">SomnoLog V60</h1>
     <span class="tag">患者情報確認</span>
   </header>
 
@@ -135,7 +129,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
   <div class="update-area">
     <h2 class="update-title">アプリの更新</h2>
     <section class="card">
-      <div class="kv"><span>現在のバージョン</span><b id="ver-text">SomnoLog V59</b></div>
+      <div class="kv"><span>現在のバージョン</span><b id="ver-text">SomnoLog V60</b></div>
       <button id="upd-reload" class="sub">最新版に変更（キャッシュを避けて再読み込み）</button>
       <p id="upd-msg" class="muted" hidden aria-live="polite"></p>
     </section>
@@ -164,7 +158,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 記録画面 -->
 <main id="page-record" class="page" hidden>
   <header class="head">
-    <h1 class="app-name">SomnoLog V59</h1>
+    <h1 class="app-name">SomnoLog V60</h1>
     <div style="display:flex;align-items:center;gap:10px">
       <button id="rec-back" class="sub mini" type="button">戻る</button>
       <span id="rec-badge" class="tag">待機中</span>
@@ -253,7 +247,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
   <section id="cal-summary" class="card"></section>
 </main>
 
-<!-- 詳細画面 -->
+<!-- 詳細画面（タイムライン） -->
 <main id="page-detail" class="page" hidden>
   <div class="sticky-bar">
     <button id="detail-back" class="sub">カレンダーに戻る</button>
@@ -266,8 +260,8 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
       <li>棒の高さは、下端が環境音、真ん中の線が「あ〜」、上端がその晩の最大音です。真ん中より上は「あ〜」より大きい音、下は小さい音です。</li>
       <li>黄色い線を動かして、聴きたい位置に合わせます。</li>
       <li>「タイムラインの音を聴く」を押すと、黄色い線の棒の中で最初に出た音から、最大1分間を再生します。</li>
-      <li>白い棒は、保存済みの前後1分の範囲です。</li>
-      <li>人声の音はスマホで再生して確認できます。人声と判定されたが特殊ないびきだと思われる場合は、「保存する」を押して保存し、医師に確認できます。</li>
+      <li>人声の音はスマホで再生して確認できます。不要な音は「この音声をタイムラインから削除する」で、元データから完全に削除できます。削除すると元に戻せません。</li>
+      <li>「共有画面に移行する」を押すと、睡眠記録の共有画面に戻ります。</li>
     </ol>
   </section>
   <section class="card">
@@ -293,19 +287,8 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
     <button id="tl-listen" class="primary">タイムラインの音を聴く</button>
     <div id="tl-audio"></div>
     <p id="tl-msg" class="muted"></p>
-    <button id="tl-save" class="sub">保存する（黄色い線の前後1分）</button>
-    <p id="save-msg" class="warn" hidden></p>
-  </section>
-  <section class="card">
-    <h2>保存した記録</h2>
-    <p class="muted">黄色い線で選んだ時刻の前後1分を保存します。いびきと人声の音が対象です。音声はコピーせず、記録への参照だけを持ちます。共有を押したときに音声をWAVにまとめます。</p>
-    <div id="saved-list" class="list"></div>
-    <button id="saved-share" class="primary">保存した記録を共有する</button>
-  </section>
-  <section class="card">
-    <h2>この記録の削除</h2>
-    <p class="muted">この記録のグラフ・イベント・音声（いびき・判定不能・環境音・人声）をすべて削除します。元に戻せません。</p>
-    <button id="detail-delete" class="danger">この記録を削除</button>
+    <button id="tl-delete" class="danger" disabled>この音声をタイムラインから削除する</button>
+    <button id="tl-go-share" class="sub">共有画面に移行する</button>
   </section>
   <p class="muted">本アプリは診断を行うものではありません。医師の判断の参考資料です。</p>
 </main>
@@ -315,9 +298,20 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
   <header class="head">
     <h1>睡眠記録の共有</h1>
   </header>
+  <button id="sh-usage" class="warnbtn">使い方を見る</button>
+  <section id="sh-usage-box" class="card" hidden>
+    <h2>送り方</h2>
+    <ol class="steps">
+      <li>「全てのいびき記録を保存」を押します。人声が含まれる場合は、確認の案内が出ます。</li>
+      <li>案内で「人声を確認する」を押すと、タイムラインで人声を聴けます。不要な音は「この音声をタイムラインから削除する」で、元データから完全に削除できます。</li>
+      <li>確認が終わったら「共有画面に移行する」を押して、この画面に戻ります。</li>
+      <li>「全てのいびき記録を保存」をもう一度押し、「確認した、保存」を押すと、ZIPファイルがダウンロードに保存されます。</li>
+      <li>「①アドレスをコピー」を押してから、「②ファイルを選んで送信」で、保存したZIPファイルを選びます。</li>
+      <li>共有の画面が開いたら、メールを選び、宛先の欄にコピーしたアドレスを貼り付けて送信します。</li>
+    </ol>
+  </section>
   <section class="card">
     <button id="sh-all" class="primary">全てのいびき記録を保存</button>
-    <button id="sh-sel">選択したいびき記録を保存</button>
   </section>
   <section class="card">
     <h2>共有先確認（宛先）</h2>
@@ -326,47 +320,19 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
     <button id="sh-pick">②ファイルを選んで送信</button>
     <input id="sh-file" type="file" accept=".zip,application/zip" hidden>
   </section>
-  <button id="sh-usage" class="warnbtn">使い方を見る</button>
-  <section id="sh-usage-box" class="card" hidden>
-    <h2>送り方</h2>
-    <ol class="steps">
-      <li>「全てのいびき記録を保存」または「選択したいびき記録を保存」を押します。ZIPファイルがダウンロードに保存されます。</li>
-      <li>「①アドレスをコピー」を押して、宛先のアドレスをコピーします。</li>
-      <li>「②ファイルを選んで送信」を押し、ダウンロードに保存したZIPファイルを選びます。</li>
-      <li>共有の画面が開いたら、メールを選びます。</li>
-      <li>宛先の欄にコピーしたアドレスを貼り付けて、送信します。</li>
-    </ol>
-  </section>
   <button id="sh-back" class="sub">記録画面に戻る</button>
   <p class="muted">本アプリは診断を行うものではありません。医師の判断の参考資料です。</p>
-</main>
-
-<!-- 人声の確認画面 -->
-<main id="page-review" class="page" hidden>
-  <div class="sticky-bar">
-    <button id="rv-back" class="sub">保存せずに戻る</button>
-  </div>
-  <section class="card">
-    <h2>人声と判定された音の確認</h2>
-    <p class="muted">各行の音を聴いて、「保存」か「破棄」を選んでください。保存した音だけがZIPに入ります。</p>
-    <div class="kv"><span>未判断</span><b id="rv-left">-</b></div>
-    <div id="rv-chart" class="chart rv-chart"></div>
-    <p class="muted">灰：未判断／青：保存／暗い灰：破棄／黄：選択中（グラフを押しても選べます）</p>
-  </section>
-  <section class="card">
-    <div id="rv-list" class="list"></div>
-    <button id="rv-done" class="primary">判断を終えてZIPを作る</button>
-  </section>
 </main>
 
 <!-- 人声確認の案内ダイアログ -->
 <div id="rv-dialog" class="modal" hidden>
   <div class="modal-box">
     <h2>人声の確認</h2>
-    <p>いびきが人声と判定され、記録に残らない場合があります。必要に応じて、人声と判定された音を聴き、保存か破棄かをご判断ください。</p>
+    <p>いびきが人声と判定され、記録に残らない場合があります。「人声を確認する」を押すと、タイムラインで人声を聴けます。不要な音は削除できます。</p>
     <button id="rv-open" class="primary" type="button">人声を確認する</button>
     <button id="rv-save-direct" class="sub" type="button">確認した、保存</button>
-    <p class="muted">未判断の人声はZIPに入りません。「保存」と判断した人声はZIPに入ります。</p>
+    <button id="rv-close" class="sub" type="button">閉じる</button>
+    <p class="muted">残っている人声は、ZIPに入ります。</p>
     <p id="rv-dialog-error" class="err" hidden role="alert"></p>
   </div>
 </div>
@@ -378,8 +344,9 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 </div>
 
 <script>
-"use strict";/* ===== バージョン ===== */
-const APP_VERSION = 59;
+"use strict";
+/* ===== バージョン ===== */
+const APP_VERSION = 60;
 const APP = "SomnoLogV" + APP_VERSION + "_ref";
 
 /* ===== 更新の取得元（GitHub） =====
@@ -423,9 +390,9 @@ const REF_WORD_DB = 3;                                         // 基準から±
 
 /* ===== タイムラインの設定 ===== */
 const TL_W = 480, TL_H = 220, TL_PL = 62, TL_PR = 8, TL_PT = 8, TL_PB = 22;
-const SAVED_BAR_COLOR = "#ffffff"; // 保存済みの範囲の棒の色
+const SAVED_BAR_COLOR = "#ffffff"; // 保存済みの範囲の棒の色（V60では保存機能を外したため未使用）
 const PLAY_MAX_MS = 60 * 1000;     // 再生は最初の音から最大1分
-const SAVE_TYPES = ["snore", "speech"]; // 「保存する」で対象になる音（いびき・人声）
+const SAVE_TYPES = ["snore", "speech"]; // 共有の対象になる音（いびき・人声）
 
 /* ===== 夜の評価 ===== */
 const ENV_QUIET_MAX = 0;
@@ -696,7 +663,7 @@ function isBusy() { return S.running || S.saving || recActionPending || !!S.refC
 
 /* ===== 画面切り替え ===== */
 function showPage(name) {
-  ["start", "confirm", "record", "calendar", "detail", "share", "review"].forEach((n) => { $("page-" + n).hidden = n !== name; });
+  ["start", "confirm", "record", "calendar", "detail", "share"].forEach((n) => { $("page-" + n).hidden = n !== name; });
   window.scrollTo(0, 0);
 }
 
@@ -1968,40 +1935,34 @@ function renderDaySummary() {
   loadDayDetail(s, token);
 }
 
-/* ===== 詳細 ===== */
+/* ===== 詳細（タイムライン） ===== */
 let blobUrls = [];
 function revokeUrls() { blobUrls.forEach((u) => URL.revokeObjectURL(u)); blobUrls = []; }
+
+// 今いま再生している音（削除の対象になる）
+const PLAY = { list: [] };
+
+function setDeleteEnabled(on) {
+  $("tl-delete").disabled = !on;
+}
 
 async function openDetail(sid) {
   S.detailSid = sid;
   tl.data = null;
   tl.marks = [];
+  PLAY.list = [];
   revokeUrls();
   const sess = await DB.get("sessions", sid);
   if (!sess) return;
   $("d-chart").innerHTML = '<p class="muted">読み込み中…</p>';
   $("tl-tags").innerHTML = "";
-  $("saved-list").innerHTML = '<p class="muted">読み込み中…</p>';
-  showSaveMsg("", false);
+  setDeleteEnabled(false);
   showPage("detail");
 
   const secs = (await DB.byIndex("secs", "sid", sid)).sort((a, b) => a.sec - b.sec);
   const evs = (await DB.byIndex("events", "sid", sid)).sort((a, b) => a.startMs - b.startMs);
-  const marks = await loadMarks(sid);
   if (S.detailSid !== sid) return;
-  tl.marks = marks;
   initTimeline(sess, secs, evs);
-  renderMarks();
-}
-
-/* ===== 記録の削除 ===== */
-async function deleteSession(sid) {
-  for (const store of ["clips", "events", "secs"]) {
-    const keys = await DB.keysByIndex(store, "sid", sid);
-    if (keys.length) await DB.delMany(store, keys);
-  }
-  await DB.del("settings", marksKey(sid));
-  await DB.del("sessions", sid);
 }
 
 /* ===== タイムライン =====
@@ -2023,10 +1984,13 @@ function initTimeline(sess, secs, evs) {
   tl.zoomSec = ZOOM_DEFAULT;
   tl.winStart = 0;
   tl.cursor = 0;
+  tl.marks = [];
   tl.tags = { snore: true, unknown: false, env: false, speech: false };
   $("tl-zoom").value = String(ZOOM_DEFAULT);
   $("tl-msg").textContent = "";
   $("tl-audio").innerHTML = "";
+  PLAY.list = [];
+  setDeleteEnabled(false);
   renderTimeline();
 }
 
@@ -2058,6 +2022,9 @@ function renderTagBar() {
       if (tl.tags[t]) return;
       for (const k of TAG_ORDER) tl.tags[k] = false;
       tl.tags[t] = true;
+      PLAY.list = [];
+      $("tl-audio").innerHTML = "";
+      setDeleteEnabled(false);
       renderTimeline();
     };
     box.appendChild(b);
@@ -2069,7 +2036,7 @@ function selectedTag() {
   return TAG_ORDER.find((t) => tl.tags[t]) || "snore";
 }
 
-// 棒グラフ。高さは環境音・あ〜・その晩の最大音で決まる。保存済みの範囲は白
+// 棒グラフ。高さは環境音・あ〜・その晩の最大音で決まる
 function tagGraphSvg(tag, t0, t1) {
   const NB = 60;
   const binSec = tl.winLen / NB;
@@ -2101,12 +2068,8 @@ function tagGraphSvg(tag, t0, t1) {
     any = true;
     const pos = scalePos(db, sc.envDb, sc.refDb, sc.topDb);
     const h = Math.max(3, pos * (plotH - 4));
-    const bStartMs = (t0 + i * binSec) * 1000;
-    const bEndMs = bStartMs + binSec * 1000;
-    const saved = tl.marks.some((m) => bEndMs > m.fromMs && bStartMs < m.toMs);
-    const color = saved ? SAVED_BAR_COLOR : TAG_COLOR[tag];
     g += '<rect x="' + (TL_PL + i * bw + 0.5).toFixed(1) + '" y="' + (TL_PT + plotH - h).toFixed(1) +
-      '" width="' + Math.max(1, bw - 1).toFixed(1) + '" height="' + h.toFixed(1) + '" fill="' + color + '"/>';
+      '" width="' + Math.max(1, bw - 1).toFixed(1) + '" height="' + h.toFixed(1) + '" fill="' + TAG_COLOR[tag] + '"/>';
   }
   if (!any) {
     g += '<text x="' + (TL_PL + 8) + '" y="' + (TL_PT + plotH / 2 + 30) + '" font-size="12" fill="#aebbc9">この種類の音はありません</text>';
@@ -2209,6 +2172,8 @@ async function buildRangePcm(fromMs, toMs, list) {
 async function listenAtCursor() {
   const msg = $("tl-msg"), box = $("tl-audio");
   box.innerHTML = "";
+  PLAY.list = [];
+  setDeleteEnabled(false);
   if (!tl.data) return;
   const tag = selectedTag();
   const binSec = tl.winLen / 60;
@@ -2246,147 +2211,46 @@ async function listenAtCursor() {
     au.src = url;
     box.appendChild(au);
     au.play().catch(() => {});
-    msg.textContent = TAG_NAME[tag] + "の最初の音（" + fmtTime(fromMs) + "）から、最大1分間を再生します。鳴らないときは、プレーヤーの再生ボタンを押してください。";
+    PLAY.list = list;
+    setDeleteEnabled(true);
+    msg.textContent = TAG_NAME[tag] + "の最初の音（" + fmtTime(fromMs) + "）から、最大1分間を再生します。" +
+      "この音声に含まれる " + list.length + "件を削除できます。鳴らないときは、プレーヤーの再生ボタンを押してください。";
   } catch (err) {
     console.error(err);
     msg.textContent = "読み込めませんでした。もう一度押してください。";
   }
 }
 
-/* ===== 保存した位置 ===== */
-function marksKey(sid) { return "marks:" + sid; }
+// 再生中の音声に含まれる音を、元データ（音声・記録）から完全に削除する
+async function deleteFromTimeline() {
+  const list = PLAY.list.slice();
+  if (!list.length || !tl.data) return;
 
-async function loadMarks(sid) {
-  const row = await DB.get("settings", marksKey(sid));
-  return row && Array.isArray(row.value) ? row.value : [];
-}
+  const counts = {};
+  for (const e of list) counts[e.type] = (counts[e.type] || 0) + 1;
+  const detail = Object.keys(counts).map((t) => (TAG_NAME[t] || t) + " " + counts[t] + "件").join("、");
+  const ok = confirm(
+    "この音声に含まれる " + list.length + "件（" + detail + "）を、元データから完全に削除します。\n" +
+    "元に戻せません。よろしいですか？"
+  );
+  if (!ok) return;
 
-async function saveMarks(sid, list) {
-  await DB.put("settings", { key: marksKey(sid), value: list, savedAt: Date.now() });
-}
+  setDeleteEnabled(false);
+  try {
+    await DB.delMany("clips", list.map((e) => e.clipId).filter(Boolean));
+    await DB.delMany("events", list.map((e) => e.id));
 
-function showSaveMsg(text, isErr) {
-  const b = $("save-msg");
-  b.hidden = !text;
-  b.textContent = text || "";
-  b.className = isErr ? "err" : "warn";
-  if (text) b.scrollIntoView({ block: "center" });
-}
-
-async function saveMark() {
-  if (!tl.data || !tl.data.secs.length) return;
-  const sess = tl.data.sess;
-  const centerMs = Math.round(tl.cursor * 1000);
-
-  if (tl.marks.some((m) => m.centerMs === centerMs)) {
-    showSaveMsg("重複のため保存しません：記録から " + fmtTime(centerMs) + " は保存済みです。", true);
-    return;
-  }
-  const from = Math.max(0, centerMs - MARK_HALF_MS);
-  const to = Math.min(tl.total * 1000, centerMs + MARK_HALF_MS);
-  const items = tl.data.evs.filter((e) => SAVE_TYPES.includes(e.type) && e.clipId &&
-    e.startMs - PRE_MS < to && e.endMs + POST_MS > from);
-  if (!items.length) {
-    showSaveMsg("音声がないため保存しません：記録から " + fmtTime(centerMs) + " の前後1分に、いびき・人声の音声がありません。", true);
-    return;
-  }
-
-  const mark = {
-    id: uid(), centerMs, fromMs: from, toMs: to, savedAt: Date.now(),
-    items: items.map((e) => ({ type: e.type, startMs: e.startMs, durMs: e.durMs }))
-  };
-  const next = tl.marks.concat(mark).sort((a, b) => a.centerMs - b.centerMs);
-  await saveMarks(sess.id, next);
-  tl.marks = next;
-  renderTimeline();
-  renderMarks();
-  const sn = items.filter((e) => e.type === "snore").length;
-  const sp = items.length - sn;
-  showSaveMsg("保存しました：記録から " + fmtTime(centerMs) + "（前後1分・いびき " + sn + "件／人声 " + sp + "件）", false);
-}
-
-async function buildMarkPcm(mark, evs) {
-  const n = Math.max(0, Math.round((mark.toMs - mark.fromMs) / 1000 * SR));
-  const out = new Int16Array(n);
-  const list = evs.filter((e) => SAVE_TYPES.includes(e.type) && e.clipId &&
-    e.startMs - PRE_MS < mark.toMs && e.endMs + POST_MS > mark.fromMs);
-  let found = 0, missing = 0;
-  for (const e of list) {
-    const clip = await DB.get("clips", e.clipId);
-    if (!clip) { missing++; continue; }
-    const pcm = clipPcm(clip);
-    const base = Math.round((clip.startMs - mark.fromMs) / 1000 * SR);
-    for (let i = 0; i < pcm.length; i++) {
-      const j = base + i;
-      if (j >= 0 && j < n) out[j] = pcm[i];
-    }
-    found++;
-  }
-  let nonZero = 0;
-  for (let i = 0; i < out.length; i++) if (out[i] !== 0) nonZero++;
-  return { pcm: out, candidates: list.length, found, missing, nonZero };
-}
-
-function renderMarks() {
-  const box = $("saved-list");
-  box.innerHTML = "";
-  if (!tl.data) return;
-  const sess = tl.data.sess;
-  if (!tl.marks.length) {
-    box.innerHTML = '<p class="muted">保存した記録はありません。黄色い線で気になる位置を選び、「保存する」を押してください。</p>';
-    return;
-  }
-  for (const m of tl.marks) {
-    const row = document.createElement("div");
-    row.className = "event";
-    const list = m.items.map((it) => (TAG_NAME[it.type] || "音") + " " + fmtTime(it.startMs) + "（" + round1(it.durMs / 1000) + "秒）").join("、");
-    const sn = m.items.filter((it) => it.type === "snore").length;
-    const sp = m.items.length - sn;
-    row.innerHTML =
-      '<div class="kv"><span>記録から ' + esc(fmtTime(m.centerMs)) + "（" + esc(fmtClock(sess.startedAt + m.centerMs)) + '）</span><span class="tag">前後1分</span></div>' +
-      '<div class="kv"><span>範囲</span><b>' + esc(fmtTime(m.fromMs)) + " 〜 " + esc(fmtTime(m.toMs)) + "</b></div>" +
-      '<div class="kv"><span>いびき／人声</span><b>' + sn + "件／" + sp + "件</b></div>" +
-      '<p class="muted">' + esc(list) + "</p>" +
-      '<p class="muted">保存：' + esc(fmtDate(m.savedAt)) + "</p>";
-
-    const slot = document.createElement("div");
-    const play = document.createElement("button");
-    play.className = "sub";
-    play.textContent = "再生";
-    play.onclick = async () => {
-      play.disabled = true;
-      play.textContent = "読み込み中…";
-      try {
-        const built = await buildMarkPcm(m, tl.data.evs);
-        const url = URL.createObjectURL(wavBlob(built.pcm, SR));
-        blobUrls.push(url);
-        const au = document.createElement("audio");
-        au.controls = true;
-        au.preload = "auto";
-        au.src = url;
-        slot.appendChild(au);
-        play.hidden = true;
-      } catch (err) {
-        console.error(err);
-        play.disabled = false;
-        play.textContent = "読み込めませんでした。もう一度押してください";
-      }
-    };
-
-    const del = document.createElement("button");
-    del.className = "danger";
-    del.textContent = "削除";
-    del.onclick = async () => {
-      if (!confirm("この保存した記録を削除します。よろしいですか？")) return;
-      const next = tl.marks.filter((x) => x.id !== m.id);
-      await saveMarks(sess.id, next);
-      tl.marks = next;
-      renderTimeline();
-      renderMarks();
-    };
-
-    row.append(play, slot, del);
-    box.appendChild(row);
+    const removed = new Set(list.map((e) => e.id));
+    tl.data.evs = tl.data.evs.filter((e) => !removed.has(e.id));
+    PLAY.list = [];
+    revokeUrls();
+    $("tl-audio").innerHTML = "";
+    $("tl-msg").textContent = "削除しました：" + list.length + "件（元に戻せません）";
+    renderTimeline();
+  } catch (e) {
+    console.error(e);
+    setDeleteEnabled(true);
+    showError("削除できませんでした: " + e.message);
   }
 }
 
@@ -2598,7 +2462,7 @@ class ZipWriter {
 }
 
 /* ===== 共有（ZIP作成） ===== */
-const SH = { sid: null, kind: "all", zip: null, name: "" };
+const SH = { sid: null, zip: null, name: "" };
 
 function shMsg(text, isErr) {
   let b = $("sh-msg");
@@ -2612,7 +2476,9 @@ function shMsg(text, isErr) {
   b.className = isErr ? "err" : "warn";
 }
 
+// 共有画面を開く（タイムラインの「共有画面に移行する」から呼ばれる）
 function openShare() {
+  if (!S.detailSid) return;
   SH.sid = S.detailSid;
   SH.zip = null;
   $("sh-addr").textContent = (S.patient && S.patient.logShareEmail) || "（未記入）";
@@ -2620,32 +2486,28 @@ function openShare() {
   showPage("share");
 }
 
-function inMarks(e, marks) {
-  return marks.some((m) => e.startMs - PRE_MS < m.toMs && e.endMs + POST_MS > m.fromMs);
-}
-
-async function shareScope(kind) {
+// 共有の対象：いびき・人声（削除されていない音声だけ）
+async function shareScope() {
   const evs = (await DB.byIndex("events", "sid", SH.sid)).sort((a, b) => a.startMs - b.startMs);
-  const marks = kind === "sel" ? await loadMarks(SH.sid) : null;
-  const inScope = (e) => !marks || inMarks(e, marks);
   return {
     evs,
-    snores: evs.filter((e) => e.type === "snore" && e.clipId && inScope(e)),
-    speeches: evs.filter((e) => e.type === "speech" && e.clipId && inScope(e))
+    snores: evs.filter((e) => e.type === "snore" && e.clipId),
+    speeches: evs.filter((e) => e.type === "speech" && e.clipId)
   };
 }
 
-async function startShare(kind) {
+// 「全てのいびき記録を保存」を押したとき
+async function startShare() {
   if (!SH.sid) return;
-  SH.kind = kind;
   shMsg("", false);
   try {
-    const sc = await shareScope(kind);
-    if (kind === "sel" && !sc.snores.length && !sc.speeches.length) {
-      shMsg("保存した記録がありません。詳細画面で黄色い線を合わせて「保存する」を押してください。", true);
+    const sc = await shareScope();
+    if (!sc.snores.length && !sc.speeches.length) {
+      shMsg("保存する音声がありません。", true);
       return;
     }
-    if (sc.speeches.some((e) => e.review == null)) {
+    // 人声が含まれる場合は、確認の案内を出してから作成する
+    if (sc.speeches.length) {
       $("rv-dialog").hidden = false;
       return;
     }
@@ -2694,7 +2556,7 @@ async function makeZip() {
   setButtons();
 
   // ZIP作成中は、関連するボタンを押せないようにする
-  const buttonIds = ["sh-all", "sh-sel", "sh-back", "rv-done", "rv-back", "rv-open", "rv-save-direct"];
+  const buttonIds = ["sh-all", "sh-back", "sh-copy", "sh-pick", "rv-open", "rv-save-direct", "rv-close", "tl-go-share"];
   const buttonStates = buttonIds.map((id) => {
     const button = $(id);
     const wasDisabled = button ? button.disabled : false;
@@ -2712,9 +2574,8 @@ async function makeZip() {
     const sess = await DB.get("sessions", SH.sid);
     if (!sess) throw new Error("記録が見つかりませんでした。");
 
-    const sc = await shareScope(SH.kind);
-    const keep = sc.speeches.filter((e) => e.review === "keep");
-    const items = sc.snores.concat(keep).sort((a, b) => a.startMs - b.startMs);
+    const sc = await shareScope();
+    const items = sc.snores.concat(sc.speeches).sort((a, b) => a.startMs - b.startMs);
     const total = items.length;
 
     const zw = new ZipWriter();
@@ -2759,15 +2620,13 @@ async function makeZip() {
     progress.set("音声の処理が終わりました。\n記録情報をまとめています…", 100);
     await yieldToScreen();
 
-    const csv = ["type,startSec,durSec,peakDb,meanDb,review,file"].concat(
+    const csv = ["type,startSec,durSec,peakDb,meanDb"].concat(
       sc.evs.map((e) => [
         e.type,
         round1(e.startMs / 1000),
         round1(e.durMs / 1000),
         e.peakSourceDb,
-        e.meanSourceDb,
-        e.review || "",
-        ""
+        e.meanSourceDb
       ].join(","))
     ).join("\n");
     zw.add("events.csv", new TextEncoder().encode("\uFEFF" + csv));
@@ -2817,8 +2676,7 @@ async function makeZip() {
     console.error(e);
     const message = "ZIPを作れませんでした: " + e.message;
     shMsg(message, true);
-    // 人声確認画面では共有画面のメッセージが見えないため、ダイアログでも知らせる
-    if (!$("page-review").hidden) alert(message);
+    if (!$("rv-dialog").hidden) alert(message);
   } finally {
     progress.remove();
     for (const state of buttonStates) {
@@ -2853,583 +2711,254 @@ async function copyAddr() {
   }
 }
 
-/* ===== 人声の確認 ===== */
-const RV = { items: [], sel: 0, total: 1 };
-
-async function openReview() {
+/* ===== 人声の確認（タイムラインで「人声」タグを選んで表示） ===== */
+async function openSpeechInTimeline() {
   $("rv-dialog").hidden = true;
-  const sc = await shareScope(SH.kind);
-  RV.items = sc.speeches;
-  RV.sel = 0;
-  RV.total = Math.max(60000, ...RV.items.map((e) => e.endMs));
-  renderReview();
-  showPage("review");
-}
-
-function reviewLeft() { return RV.items.filter((e) => e.review == null).length; }
-
-function renderReview() {
-  $("rv-left").textContent = reviewLeft() + "件 / 全" + RV.items.length + "件";
-  const W = 480, H = 60;
-  let g = '<svg viewBox="0 0 ' + W + " " + H + '" xmlns="http://www.w3.org/2000/svg"><rect x="0" y="0" width="' + W + '" height="' + H + '" fill="none" stroke="#2a3643"/>';
-  RV.items.forEach((e, i) => {
-    const x = e.startMs / RV.total * (W - 4) + 2;
-    const col = i === RV.sel ? "#ffd54a" : e.review === "keep" ? "#4a90d9" : e.review === "drop" ? "#3a4048" : "#9aa5b1";
-    g += '<rect x="' + x.toFixed(1) + '" y="8" width="4" height="44" fill="' + col + '"/>';
-  });
-  $("rv-chart").innerHTML = g + "</svg>";
-  const box = $("rv-list");
-  box.innerHTML = "";
-  RV.items.forEach((e, i) => {
-    const row = document.createElement("div");
-    row.className = "rv-row" + (i === RV.sel ? " sel" : "") + (e.review ? " " + e.review : "");
-    row.id = "rv-row-" + i;
-    const state = e.review === "keep" ? "保存" : e.review === "drop" ? "破棄" : "未判断";
-    row.innerHTML = '<div class="kv rv-time"><span>記録から ' + esc(fmtTime(e.startMs)) + "（" + round1(e.durMs / 1000) + '秒）</span><span class="tag">' + state + "</span></div>";
-    const slot = document.createElement("div");
-    const play = document.createElement("button");
-    play.className = "sub";
-    play.textContent = "聴く";
-    play.onclick = async () => {
-      RV.sel = i;
-      play.disabled = true;
-      try {
-        const clip = await DB.get("clips", e.clipId);
-        if (!clip) { play.textContent = "音声がありません"; return; }
-        const url = URL.createObjectURL(wavBlob(clipPcm(clip), clip.sr));
-        blobUrls.push(url);
-        const au = document.createElement("audio");
-        au.controls = true;
-        au.src = url;
-        slot.innerHTML = "";
-        slot.appendChild(au);
-        au.play().catch(() => {});
-        play.hidden = true;
-      } catch (err) {
-        console.error(err);
-        play.disabled = false;
-        play.textContent = "読み込めません。もう一度押してください";
-      }
-    };
-    const r = document.createElement("div");
-    r.className = "row";
-    const keep = document.createElement("button");
-    keep.className = "primary";
-    keep.textContent = "保存";
-    keep.onclick = () => setReview(i, "keep");
-    const drop = document.createElement("button");
-    drop.className = "danger";
-    drop.textContent = "破棄";
-    drop.onclick = () => setReview(i, "drop");
-    r.append(keep, drop);
-    row.append(play, slot, r);
-    box.appendChild(row);
-  });
-}
-
-async function setReview(i, v) {
-  const e = RV.items[i];
-  e.review = v;
-  RV.sel = i;
-  try { await DB.put("events", e); } catch (err) { showError("判断を保存できませんでした: " + err.message); }
-  renderReview();
-}
-
-function pickReviewFromChart(ev) {
-  if (!RV.items.length) return;
-  const rect = $("rv-chart").getBoundingClientRect();
-  const ms = (ev.clientX - rect.left) / rect.width * RV.total;
-  let best = 0;
-  RV.items.forEach((e, i) => { if (Math.abs(e.startMs - ms) < Math.abs(RV.items[best].startMs - ms)) best = i; });
-  RV.sel = best;
-  renderReview();
-  const el = $("rv-row-" + best);
-  if (el) el.scrollIntoView({ block: "center" });
-}
-
-/* ===== 起動・ボタンの接続 ===== */
-async function onMicBtn() {
-  showMicMsg("");
+  if (!SH.sid) return;
   try {
-    const Ctx = window.AudioContext || window.webkitAudioContext;
-    const ctx = Ctx ? new Ctx() : null;
-    S.pendingCtx = ctx;
-    await setupMic(ctx);
-    $("mic-state").textContent = "許可済み";
+    await openDetail(SH.sid);
+    if (S.detailSid !== SH.sid || !tl.data) return;
+    tl.tags = { snore: false, unknown: false, env: false, speech: true };
+    renderTimeline();
+    $("tl-msg").textContent = "人声を表示しています。聴くには「タイムラインの音を聴く」を押してください。不要な音は削除できます。";
   } catch (e) {
     console.error(e);
+    showError("タイムラインを開けませんでした: " + e.message);
+  }
+}
+/* ===== ボタンの接続 ===== */
+// 同期処理はそのまま実行し、非同期処理のエラーは赤い表示に出す（iPhoneでのユーザー操作の扱いを保つため）
+const handleErr = (err) => {
+  console.error(err);
+  showError(err && err.message ? err.message : String(err));
+};
+const run = (fn) => (e) => {
+  try {
+    const r = fn(e);
+    if (r && r.catch) r.catch(handleErr);
+  } catch (err) {
+    handleErr(err);
+  }
+};
+const on = (id, ev, fn) => $(id).addEventListener(ev, run(fn));
+const toggleBox = (btnId, boxId) => on(btnId, "click", () => { $(boxId).hidden = !$(boxId).hidden; });
+
+// 使い方の表示切り替え
+toggleBox("usage-btn", "usage-box");
+toggleBox("rec-usage-btn", "rec-usage-box");
+toggleBox("cal-usage-btn", "cal-usage-box");
+toggleBox("det-usage-btn", "det-usage-box");
+toggleBox("sh-usage", "sh-usage-box");
+
+// エラー表示を押すと閉じる
+on("errbox", "click", () => clearError());
+
+/* --- 起動画面（QR） --- */
+on("cam-btn", "click", () => startCamera());
+on("cam-stop", "click", () => stopCamera());
+on("qr-file-btn", "click", () => $("qr-file").click());
+on("qr-file", "change", (e) => {
+  const f = e.target.files && e.target.files[0];
+  e.target.value = "";
+  return readQrFile(f);
+});
+on("back-rec-start", "click", () => goRecord());
+on("back-rec-confirm", "click", () => goRecord());
+
+/* --- 患者情報の確認 --- */
+on("cf-ok", "click", async () => {
+  const p = S_PATIENT_PENDING.value;
+  if (!p) {
+    showScanMsg("QRを読み直してください。");
+    showPage("start");
+    return;
+  }
+  await savePatient(p);
+  S_PATIENT_PENDING.value = null;
+  goRecord();
+});
+on("cf-ng", "click", () => {
+  S_PATIENT_PENDING.value = null;
+  showScanMsg("患者情報が違う場合は、診療所にご連絡ください。QRを読み直す場合は、カメラかQR画像を選んでください。");
+  showPage("start");
+});
+
+/* --- アプリの更新 --- */
+on("upd-reload", "click", async () => {
+  updateByUser = true;
+  renderUpdate();
+  await applyLatest();
+  renderUpdate();
+});
+
+/* --- 記録画面 --- */
+on("rec-back", "click", () => {
+  if (isBusy()) return;
+  showPage("start");
+  updateBackButtons();
+});
+
+on("mic-btn", "click", async () => {
+  if (S.ctx) return;
+  const AC = window.AudioContext || window.webkitAudioContext;
+  if (!AC) {
+    showMicMsg("この端末では音声処理を使えません。");
+    return;
+  }
+  const ctx = new AC();
+  try {
+    await setupMic(ctx);
+    $("mic-state").textContent = "許可済み";
+    showMicMsg("");
+  } catch (e) {
+    try { ctx.close(); } catch (_) { /* 無視 */ }
     showMicMsg(micErrorMessage(e));
   }
   setButtons();
-}
+  updateUI();
+});
 
-async function onMotionBtn() {
+on("gain", "input", (e) => {
+  S.gainDb = Number(e.target.value);
+  updateUI();
+});
+
+on("ref-btn", "click", () => startRefMeasure());
+
+on("motion-btn", "click", async () => {
+  if (motionOn) return;
   try {
     if (typeof DeviceMotionEvent !== "undefined" && typeof DeviceMotionEvent.requestPermission === "function") {
       const r = await DeviceMotionEvent.requestPermission();
-      if (r !== "granted") { showError("モーションセンサーが許可されませんでした。"); return; }
+      if (r !== "granted") throw new Error("モーションセンサーの許可が得られませんでした");
     }
     window.addEventListener("devicemotion", onMotion);
-    $("motion-btn").disabled = true;
+    motionOn = true;
     $("motion-btn").textContent = "モーションセンサー許可済み";
+    $("motion-btn").disabled = true;
   } catch (e) {
-    showError("モーションセンサーを開始できませんでした: " + e.message);
+    showError("モーションセンサーを使えませんでした: " + e.message);
   }
-}
+});
+let motionOn = false;
 
-function goStart() {
-  showScanMsg("");
+on("start-btn", "click", () => startRec());
+on("stop-btn", "click", () => stopRec());
+on("btn-enter-black", "click", () => enterBlack());
+on("black-screen", "click", () => exitBlack());
+
+on("history-btn", "click", async () => {
+  const now = new Date();
+  cal.year = now.getFullYear();
+  cal.month = now.getMonth() + 1;
+  cal.selected = null;
+  cal.index = 0;
+  showPage("calendar");
+  await refreshCalendar();
+});
+
+/* --- 記録カレンダー --- */
+on("cal-back", "click", () => showPage("record"));
+on("cal-prev", "click", () => shiftMonth(-1));
+on("cal-next", "click", () => shiftMonth(1));
+
+/* --- 詳細（タイムライン） --- */
+on("detail-back", "click", async () => {
+  revokeUrls();
+  PLAY.list = [];
+  $("tl-audio").innerHTML = "";
+  setDeleteEnabled(false);
+  tl.data = null;
+  S.detailSid = null;
+  showPage("calendar");
+  await refreshCalendar();
+});
+
+on("tl-zoom", "change", (e) => {
+  if (!tl.data) return;
+  const z = Number(e.target.value);
+  tl.zoomSec = z;
+  const len = z > 0 ? Math.min(z, tl.total) : tl.total;
+  tl.winStart = tl.cursor - len / 2;
+  renderTimeline();
+});
+on("tl-pos", "input", (e) => {
+  tl.winStart = Number(e.target.value);
+  renderTimeline();
+});
+on("tl-cur", "input", (e) => {
+  tl.cursor = Number(e.target.value);
+  renderTimeline();
+});
+on("tl-listen", "click", () => listenAtCursor());
+on("tl-delete", "click", () => deleteFromTimeline());
+on("tl-go-share", "click", () => {
+  $("tl-audio").innerHTML = "";
+  PLAY.list = [];
+  setDeleteEnabled(false);
+  openShare();
+});
+
+const chart = $("d-chart");
+chart.addEventListener("pointerdown", tlPointerDown);
+chart.addEventListener("pointermove", tlPointerMove);
+chart.addEventListener("pointerup", tlPointerEnd);
+chart.addEventListener("pointercancel", tlPointerEnd);
+
+/* --- 睡眠記録の共有 --- */
+on("sh-all", "click", () => startShare());
+on("sh-copy", "click", () => copyAddr());
+on("sh-pick", "click", () => $("sh-file").click());
+on("sh-file", "change", async (e) => {
+  const f = e.target.files && e.target.files[0];
+  e.target.value = "";
+  await sendPicked(f);
+});
+on("sh-back", "click", () => {
+  showPage("record");
   updateBackButtons();
-  showPage("start");
-}
+});
 
-function wire() {
-  $("errbox").onclick = clearError;
-  $("cam-btn").onclick = startCamera;
-  $("cam-stop").onclick = stopCamera;
-  $("qr-file-btn").onclick = () => $("qr-file").click();
-  $("qr-file").onchange = (e) => { readQrFile(e.target.files[0]); e.target.value = ""; };
-  $("usage-btn").onclick = () => { $("usage-box").hidden = !$("usage-box").hidden; };
-  $("back-rec-start").onclick = goRecord;
-  $("back-rec-confirm").onclick = goRecord;
-  $("cf-ok").onclick = async () => {
-    try {
-      await savePatient(S_PATIENT_PENDING.value);
-      clearError();
-      setButtons();
-      showPage("record");
-    } catch (e) { showError("患者情報を保存できませんでした: " + e.message); }
-  };
-  $("cf-ng").onclick = () => { S_PATIENT_PENDING.value = null; goStart(); };
+/* --- 人声確認の案内ダイアログ --- */
+on("rv-open", "click", () => openSpeechInTimeline());
+on("rv-save-direct", "click", () => {
+  $("rv-dialog").hidden = true;
+  return makeZip();
+});
+on("rv-close", "click", () => { $("rv-dialog").hidden = true; });
 
-  $("rec-back").onclick = () => {
-    if (isBusy()) return;
-    clearError();
-    goStart();
-  };
-  $("mic-btn").onclick = onMicBtn;
-  $("ref-btn").onclick = startRefMeasure;
-  $("gain").oninput = (e) => {
-    S.gainDb = Number(e.target.value);
-    if (S.ref) { S.ref = null; showRefMsg("音圧調整を変えたので、基準音圧を測り直してください。", true); }
-    setButtons();
-    updateUI();
-  };
-  $("motion-btn").onclick = onMotionBtn;
-  $("start-btn").onclick = async () => {
-    if (isBusy()) return;
-    recActionPending = true;
-    setButtons();
-    try { await startRec(); }
-    catch (e) { showError(e.message); }
-    finally { recActionPending = false; setButtons(); }
-  };
-  $("stop-btn").onclick = async () => {
-    if (recActionPending || !S.running) return;
-    recActionPending = true;
-    setButtons();
-    try { await stopRec(); }
-    catch (e) { showError(e.message); }
-    finally { recActionPending = false; setButtons(); }
-  };
-  $("btn-enter-black").onclick = enterBlack;
-  $("black-screen").onclick = exitBlack;
-  $("history-btn").onclick = async () => { await refreshCalendar(); showPage("calendar"); };
-  $("upd-reload").onclick = () => {
-    updateByUser = true;
-    applyLatest();
-  };
-  $("rec-usage-btn").onclick = () => { $("rec-usage-box").hidden = !$("rec-usage-box").hidden; };
+/* ===== 画面の状態に応じた処理 ===== */
+// 画面を閉じる・切り替えるときは、記録中の分を先に保存する
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) {
+    if (S.running) flushSecs().catch(() => {});
+    return;
+  }
+  if (S.running && !S.wake) acquireWake();
+});
+window.addEventListener("pagehide", () => {
+  if (S.running) flushSecs().catch(() => {});
+});
 
-  $("cal-back").onclick = () => showPage("record");
-  $("cal-usage-btn").onclick = () => { $("cal-usage-box").hidden = !$("cal-usage-box").hidden; };
-  $("cal-prev").onclick = () => shiftMonth(-1);
-  $("cal-next").onclick = () => shiftMonth(1);
-
-  $("detail-back").onclick = async () => { revokeUrls(); await refreshCalendar(); showPage("calendar"); };
-  $("det-usage-btn").onclick = () => { $("det-usage-box").hidden = !$("det-usage-box").hidden; };
-  $("tl-zoom").onchange = (e) => { if (!tl.data) return; tl.zoomSec = Number(e.target.value); renderTimeline(); };
-  $("tl-pos").oninput = (e) => { tl.winStart = Number(e.target.value); renderTimeline(); };
-  $("tl-cur").oninput = (e) => { tl.cursor = Number(e.target.value); renderTimeline(); };
-  const ch = $("d-chart");
-  ch.addEventListener("pointerdown", tlPointerDown);
-  ch.addEventListener("pointermove", tlPointerMove);
-  ch.addEventListener("pointerup", tlPointerEnd);
-  ch.addEventListener("pointercancel", tlPointerEnd);
-  $("tl-listen").onclick = listenAtCursor;
-  $("tl-save").onclick = () => saveMark().catch((e) => showSaveMsg("保存できませんでした: " + e.message, true));
-  $("saved-share").onclick = openShare;
-  $("detail-delete").onclick = async () => {
-    if (!S.detailSid) return;
-    if (!confirm("この記録を削除します。元に戻せません。よろしいですか？")) return;
-    try {
-      await deleteSession(S.detailSid);
-      S.detailSid = null;
-      tl.data = null;
-      revokeUrls();
-      await refreshCalendar();
-      showPage("calendar");
-    } catch (e) { showError("削除できませんでした: " + e.message); }
-  };
-
-  $("sh-all").onclick = () => startShare("all");
-  $("sh-sel").onclick = () => startShare("sel");
-  $("sh-copy").onclick = copyAddr;
-  $("sh-pick").onclick = () => $("sh-file").click();
-  $("sh-file").onchange = (e) => { sendPicked(e.target.files[0]); e.target.value = ""; };
-  $("sh-usage").onclick = () => { $("sh-usage-box").hidden = !$("sh-usage-box").hidden; };
-  $("sh-back").onclick = () => showPage("detail");
-
-  $("rv-open").onclick = () => openReview().catch((e) => showError(e.message));
-  $("rv-save-direct").onclick = async () => {
-    const button = $("rv-save-direct");
-    const openButton = $("rv-open");
-    const errorBox = $("rv-dialog-error");
-
-    if (button.disabled) return;
-    button.disabled = true;
-    openButton.disabled = true;
-    errorBox.hidden = true;
-    errorBox.textContent = "";
-
-    try {
-      const scope = await shareScope(SH.kind);
-      const undecided = scope.speeches.filter((e) => e.review == null).length;
-
-      if (undecided > 0) {
-        const ok = confirm(
-          "未判断の人声が " + undecided + "件あります。\n" +
-          "未判断の人声はZIPに入りません。\n\n" +
-          "このまま保存しますか？"
-        );
-        if (!ok) return;
-      }
-
-      $("rv-dialog").hidden = true;
-      await makeZip();
-    } catch (e) {
-      console.error(e);
-      errorBox.textContent = "保存を開始できませんでした: " + e.message;
-      errorBox.hidden = false;
-    } finally {
-      button.disabled = false;
-      openButton.disabled = false;
-    }
-  };
-  $("rv-back").onclick = () => showPage("share");
-  $("rv-chart").addEventListener("click", pickReviewFromChart);
-  $("rv-done").onclick = async () => {
-    const left = reviewLeft();
-    if (left && !confirm("未判断が " + left + "件 あります。未判断の音はZIPに入れません。よろしいですか？")) return;
-    await makeZip();
-  };
-
-  window.addEventListener("beforeunload", (e) => { if (isBusy()) { e.preventDefault(); e.returnValue = ""; } });
-  setInterval(() => { if (!isBusy()) checkUpdate(); }, UPDATE_EVERY_MS);
-}
-
-async function init() {
-  const d = new Date();
-  cal.year = d.getFullYear();
-  cal.month = d.getMonth() + 1;
+/* ===== 起動 ===== */
+async function boot() {
   $("ver-text").textContent = "SomnoLog V" + APP_VERSION;
-  document.querySelectorAll(".app-name").forEach((el) => { el.textContent = "SomnoLog V" + APP_VERSION; });
-  document.title = "SomnoLog V" + APP_VERSION + " 基準音圧版";
-  wire();
+  loadVad();
   await loadPatient();
+  if (!checkHashOnLoad()) showPage("start");
+  updateBackButtons();
   setButtons();
-  loadVad().catch(console.warn);
-  if (!checkHashOnLoad()) {
-    if (S.patient) showPage("record");
-    else goStart();
-  }
-  checkUpdate().then((ok) => {
-    if (ok && upd.latest > APP_VERSION && !isBusy() && getUpdTarget() !== String(upd.latest)) {
-      setTimeout(() => applyLatest(), 1500);
-    }
-  });
+  updateUI();
+
+  // 更新は静かに確認する（表示は「アプリの更新」を押したときだけ）
+  checkUpdate().then(() => renderUpdate()).catch(() => {});
+  setInterval(() => {
+    if (!isBusy()) checkUpdate().catch(() => {});
+  }, UPDATE_EVERY_MS);
 }
 
-init().catch((e) => showError(e.message));
+boot().catch(handleErr);
 </script>
-
-<script>
-"use strict";
-
-/* ===== タイムラインの体動表示 ===== */
-(() => {
-  if (!TAG_ORDER.includes("motion")) TAG_ORDER.push("motion");
-  TAG_COLOR.motion = "#e04848";
-  TAG_NAME.motion = "体動";
-
-  const motionView = {
-    threshold: MOVE_TH,
-    max: MOTION_BAR_MAX,
-    lastTag: null
-  };
-
-  const controls = document.createElement("div");
-  controls.id = "tl-motion-controls";
-  controls.hidden = true;
-  controls.innerHTML =
-    '<label class="muted" for="tl-motion-th">' +
-      '体動のしきい値：<b id="tl-motion-th-value"></b>' +
-    '</label>' +
-    '<input id="tl-motion-th" type="range" ' +
-      'min="0.01" max="2" step="0.01" value="0.30">' +
-    '<label class="muted" for="tl-motion-max">' +
-      'グラフ上端：<b id="tl-motion-max-value"></b>' +
-    '</label>' +
-    '<input id="tl-motion-max" type="range" ' +
-      'min="0.1" max="5" step="0.1" value="2">' +
-    '<p class="muted">' +
-      'しきい値以上の体動を表示します。' +
-      'グラフ上端を下げると棒が高く見えます。' +
-      '上端を超えた値は天井で切って表示します。' +
-      '設定は表示だけに使い、保存済みデータや' +
-      'カレンダーの評価は変えません。' +
-    '</p>';
-
-  $("tl-tags").insertAdjacentElement("afterend", controls);
-
-  const help = document.createElement("p");
-  help.className = "muted";
-  help.textContent =
-    "「体動」では、センサーで記録した1秒ごとの平均値を表示します。" +
-    "しきい値以上の秒が連続した場合は1回として数えます。" +
-    "体動そのものに音声はありません。";
-  $("det-usage-box").appendChild(help);
-
-  function validMotion(s) {
-    return Number.isFinite(s.sec) &&
-      Number.isFinite(s.motion) &&
-      s.motion >= 0;
-  }
-
-  function motionCount(secs) {
-    let count = 0;
-    let previousSec = null;
-
-    for (const s of secs) {
-      if (!validMotion(s) || s.motion < motionView.threshold) {
-        previousSec = null;
-        continue;
-      }
-
-      if (previousSec === null || s.sec !== previousSec + 1) {
-        count++;
-      }
-      previousSec = s.sec;
-    }
-    return count;
-  }
-
-  renderTagBar = function () {
-    const box = $("tl-tags");
-    box.innerHTML = "";
-    if (!tl.data) return;
-
-    const cnt = {};
-    const aud = {};
-
-    for (const t of TAG_ORDER) {
-      cnt[t] = 0;
-      aud[t] = 0;
-    }
-
-    for (const e of tl.data.evs) {
-      if (e.type === "motion" || cnt[e.type] == null) continue;
-      cnt[e.type]++;
-      if (e.clipId) aud[e.type]++;
-    }
-
-    const hasMotion = tl.data.secs.some(validMotion);
-    cnt.motion = motionCount(tl.data.secs);
-
-    for (const t of TAG_ORDER) {
-      const on = !!tl.tags[t];
-      const b = document.createElement("button");
-      b.type = "button";
-      b.className = "tagbtn" + (on ? "" : " off");
-      b.setAttribute("aria-pressed", String(on));
-
-      let detail;
-      if (t === "motion") {
-        detail = hasMotion ? cnt.motion + "回" : "データなし";
-      } else {
-        detail = String(cnt[t]);
-        if (aud[t] !== cnt[t]) {
-          detail += "（音声" + aud[t] + "）";
-        }
-      }
-
-      b.innerHTML =
-        '<i style="background:' + TAG_COLOR[t] + '"></i>' +
-        esc(TAG_NAME[t]) + " <small>" + esc(detail) + "</small>";
-
-      b.onclick = () => {
-        if (tl.tags[t]) return;
-        for (const k of TAG_ORDER) tl.tags[k] = false;
-        tl.tags[t] = true;
-        renderTimeline();
-      };
-      box.appendChild(b);
-    }
-  };
-
-  const originalGraph = tagGraphSvg;
-
-  tagGraphSvg = function (tag, t0, t1) {
-    if (tag !== "motion") return originalGraph(tag, t0, t1);
-
-    const NB = 60;
-    const binSec = (t1 - t0) / NB;
-    const plotW = TL_W - TL_PL - TL_PR;
-    const plotH = TL_H - TL_PT - TL_PB;
-    const bw = plotW / NB;
-    const bins = new Array(NB).fill(null);
-    let hasDataInWindow = false;
-
-    for (const s of tl.data.secs) {
-      if (!validMotion(s)) continue;
-      if (s.sec + 1 <= t0 || s.sec >= t1) continue;
-
-      hasDataInWindow = true;
-      if (s.motion < motionView.threshold) continue;
-
-      const first = Math.max(0, Math.floor((s.sec - t0) / binSec));
-      const last = Math.min(NB - 1, Math.ceil((s.sec + 1 - t0) / binSec) - 1);
-
-      for (let i = first; i <= last; i++) {
-        if (bins[i] == null || s.motion > bins[i]) {
-          bins[i] = s.motion;
-        }
-      }
-    }
-
-    let g =
-      '<rect x="' + TL_PL + '" y="' + TL_PT +
-      '" width="' + plotW + '" height="' + plotH +
-      '" fill="none" stroke="#2a3643"/>';
-
-    let any = false;
-    let clipped = false;
-
-    for (let i = 0; i < NB; i++) {
-      const value = bins[i];
-      if (value == null) continue;
-
-      any = true;
-      if (value > motionView.max) clipped = true;
-
-      const h = Math.max(2, Math.min(1, value / motionView.max) * plotH);
-
-      g +=
-        '<rect x="' + (TL_PL + i * bw + 0.5).toFixed(1) +
-        '" y="' + (TL_PT + plotH - h).toFixed(1) +
-        '" width="' + Math.max(1, bw - 1).toFixed(1) +
-        '" height="' + h.toFixed(1) +
-        '" fill="' + TAG_COLOR.motion + '"/>';
-    }
-
-    const thresholdY = TL_PT + plotH *
-      (1 - Math.min(1, motionView.threshold / motionView.max));
-
-    g +=
-      '<line x1="' + TL_PL +
-      '" x2="' + (TL_PL + plotW) +
-      '" y1="' + thresholdY.toFixed(1) +
-      '" y2="' + thresholdY.toFixed(1) +
-      '" stroke="#ffb4a9" stroke-width="1" ' +
-      'stroke-dasharray="4 3"/>';
-
-    g +=
-      '<text x="4" y="' + (TL_PT + 10) +
-      '" font-size="10" fill="#aebbc9">' +
-      motionView.max.toFixed(1) + '</text>' +
-      '<text x="4" y="' + (TL_PT + plotH) +
-      '" font-size="10" fill="#aebbc9">0</text>' +
-      '<text x="' + (TL_PL + 4) +
-      '" y="' + (TL_PT + 12) +
-      '" font-size="11" fill="' + TAG_COLOR.motion + '">' +
-      '体動 m/s²（棒内の最大値）</text>';
-
-    if (!any) {
-      const message = hasDataInWindow
-        ? "この範囲にしきい値以上の体動はありません"
-        : "この範囲に体動データはありません";
-
-      g +=
-        '<text x="' + (TL_PL + 8) +
-        '" y="' + (TL_PT + plotH / 2 + 20) +
-        '" font-size="11" fill="#aebbc9">' +
-        esc(message) + '</text>';
-    }
-
-    if (clipped) {
-      g +=
-        '<text x="' + (TL_PL + 4) +
-        '" y="' + (TL_PT + 27) +
-        '" font-size="10" fill="#ffb4a9">' +
-        '上端を超えた値あり</text>';
-    }
-
-    return g;
-  };
-
-  const originalRender = renderTimeline;
-
-  renderTimeline = function () {
-    originalRender();
-    if (!tl.data) return;
-
-    const tag = selectedTag();
-    const isMotion = tag === "motion";
-    controls.hidden = !isMotion;
-
-    $("tl-motion-th-value").textContent = motionView.threshold.toFixed(2) + " m/s²";
-    $("tl-motion-max-value").textContent = motionView.max.toFixed(1) + " m/s²";
-
-    $("tl-listen").disabled = isMotion;
-
-    if (motionView.lastTag !== tag) {
-      $("tl-audio").innerHTML = "";
-      $("tl-msg").textContent = isMotion
-        ? "体動そのものに音声はありません。音を聴くには音声タグを選んでください。"
-        : "";
-      motionView.lastTag = tag;
-    }
-
-    if (isMotion && tl.data.secs.length) {
-      const t0 = tl.winStart;
-      const t1 = tl.winStart + tl.winLen;
-      const note = motionView.threshold > motionView.max
-        ? "（しきい値がグラフ上端を超えています）"
-        : "";
-
-      $("tl-info").textContent =
-        "表示：" + fmtTime(t0 * 1000) +
-        " 〜 " + fmtTime(t1 * 1000) +
-        "（記録の終了 " + fmtTime(tl.total * 1000) + "）" +
-        "　体動：各棒に含まれる1秒平均の最大値" + note;
-    }
-  };
-
-  $("tl-motion-th").addEventListener("input", (e) => {
-    motionView.threshold = Number(e.target.value);
-    renderTimeline();
-  });
-
-  $("tl-motion-max").addEventListener("input", (e) => {
-    motionView.max = Number(e.target.value);
-    renderTimeline();
-  });
-
-  if (tl.data) renderTimeline();
-})();
-</script>
-
 </body>
 </html>
-
 
