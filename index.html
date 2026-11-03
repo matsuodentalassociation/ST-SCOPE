@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
 <meta name="theme-color" content="#000000">
 <meta http-equiv="Cache-Control" content="no-cache">
-<title>SomnoLog V55 基準音圧版</title>
+<title>SomnoLog V57 基準音圧版</title>
 <script src="./ort.min.js?v=55"></script>
 <style>
 :root{color-scheme:dark}
@@ -95,7 +95,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 1-1 起動・QR読み取り -->
 <main id="page-start" class="page" hidden>
   <header class="head">
-    <h1 class="app-name">SomnoLog V55</h1>
+    <h1 class="app-name">SomnoLog V57</h1>
     <span class="tag">患者情報確認</span>
   </header>
 
@@ -129,7 +129,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
   <div class="update-area">
     <h2 class="update-title">アプリの更新</h2>
     <section class="card">
-      <div class="kv"><span>現在のバージョン</span><b id="ver-text">SomnoLog V55</b></div>
+      <div class="kv"><span>現在のバージョン</span><b id="ver-text">SomnoLog V57</b></div>
       <button id="upd-reload" class="sub">最新版に変更（キャッシュを避けて再読み込み）</button>
       <p id="upd-msg" class="muted" hidden aria-live="polite"></p>
     </section>
@@ -158,7 +158,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 記録画面 -->
 <main id="page-record" class="page" hidden>
   <header class="head">
-    <h1 class="app-name">SomnoLog V55</h1>
+    <h1 class="app-name">SomnoLog V57</h1>
     <div style="display:flex;align-items:center;gap:10px">
       <button id="rec-back" class="sub mini" type="button">戻る</button>
       <span id="rec-badge" class="tag">待機中</span>
@@ -357,8 +357,11 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <div id="rv-dialog" class="modal" hidden>
   <div class="modal-box">
     <h2>人声の確認</h2>
-    <p>いびきが人声と判定され、記録に残らない場合があります。お手数ですが、人声と判定された音を聴いて、保存か破棄かをご判断ください。</p>
-    <button id="rv-open" class="primary">人声を確認する</button>
+    <p>いびきが人声と判定され、記録に残らない場合があります。必要に応じて、人声と判定された音を聴き、保存か破棄かをご判断ください。</p>
+    <button id="rv-open" class="primary" type="button">人声を確認する</button>
+    <button id="rv-save-direct" class="sub" type="button">確認した、保存</button>
+    <p class="muted">未判断の人声はZIPに入りません。「保存」と判断した人声はZIPに入ります。</p>
+    <p id="rv-dialog-error" class="err" hidden role="alert"></p>
   </div>
 </div>
 
@@ -372,7 +375,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 "use strict";
 
 /* ===== バージョン ===== */
-const APP_VERSION = 55;
+const APP_VERSION = 57;
 const APP = "SomnoLogV" + APP_VERSION + "_ref";
 
 /* ===== 更新の取得元（GitHub） =====
@@ -2922,6 +2925,43 @@ function wire() {
   $("sh-back").onclick = () => showPage("detail");
 
   $("rv-open").onclick = () => openReview().catch((e) => showError(e.message));
+  $("rv-save-direct").onclick = async () => {
+    const button = $("rv-save-direct");
+    const openButton = $("rv-open");
+    const errorBox = $("rv-dialog-error");
+
+    if (button.disabled) return;
+    button.disabled = true;
+    openButton.disabled = true;
+    errorBox.hidden = true;
+    errorBox.textContent = "";
+
+    try {
+      const scope = await shareScope(SH.kind);
+      const undecided = scope.speeches.filter(
+        (e) => e.review == null
+      ).length;
+
+      if (undecided > 0) {
+        const ok = confirm(
+          "未判断の人声が " + undecided + "件あります。\n" +
+          "未判断の人声はZIPに入りません。\n\n" +
+          "このまま保存しますか？"
+        );
+        if (!ok) return;
+      }
+
+      $("rv-dialog").hidden = true;
+      await makeZip();
+    } catch (e) {
+      console.error(e);
+      errorBox.textContent = "保存を開始できませんでした: " + e.message;
+      errorBox.hidden = false;
+    } finally {
+      button.disabled = false;
+      openButton.disabled = false;
+    }
+  };
   $("rv-back").onclick = () => showPage("share");
   $("rv-chart").addEventListener("click", pickReviewFromChart);
   $("rv-done").onclick = async () => {
