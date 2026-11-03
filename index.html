@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
 <meta name="theme-color" content="#000000">
 <meta http-equiv="Cache-Control" content="no-cache">
-<title>SomnoLog V58 基準音圧版</title>
-<script src="./ort.min.js?v=58"></script>
+<title>SomnoLog V59 基準音圧版</title>
+<script src="./ort.min.js?v=59"></script>
 <style>
 :root{color-scheme:dark}
 *{box-sizing:border-box}
@@ -86,6 +86,12 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 .tagbtn small{font-size:11px;color:#aebbc9;font-weight:400}
 #level-bar{background:#ff9f43}
 #motion-bar{background:#e04848}
+/* ZIP作成中の進捗表示 */
+.zip-progress{position:fixed;left:16px;right:16px;bottom:16px;z-index:100000;max-width:448px;margin:0 auto;padding:14px;border-radius:12px;border:1px solid #84b9cf;background:#161d26;color:#f0eee6;box-shadow:0 4px 20px rgba(0,0,0,.6);display:flex;flex-direction:column;gap:10px}
+.zip-progress-title{font-size:15px;font-weight:600;margin:0}
+.zip-progress-text{font-size:13px;line-height:1.7;margin:0;white-space:pre-line;color:#d3dde7}
+.zip-bar{position:relative;height:12px;background:#111820;border-radius:6px;overflow:hidden;border:1px solid #2a3643}
+.zip-bar i{display:block;height:100%;width:0%;background:#84b9cf;transition:width .2s}
 </style>
 </head>
 <body>
@@ -95,7 +101,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 1-1 起動・QR読み取り -->
 <main id="page-start" class="page" hidden>
   <header class="head">
-    <h1 class="app-name">SomnoLog V58</h1>
+    <h1 class="app-name">SomnoLog V59</h1>
     <span class="tag">患者情報確認</span>
   </header>
 
@@ -129,7 +135,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
   <div class="update-area">
     <h2 class="update-title">アプリの更新</h2>
     <section class="card">
-      <div class="kv"><span>現在のバージョン</span><b id="ver-text">SomnoLog V58</b></div>
+      <div class="kv"><span>現在のバージョン</span><b id="ver-text">SomnoLog V59</b></div>
       <button id="upd-reload" class="sub">最新版に変更（キャッシュを避けて再読み込み）</button>
       <p id="upd-msg" class="muted" hidden aria-live="polite"></p>
     </section>
@@ -158,7 +164,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 記録画面 -->
 <main id="page-record" class="page" hidden>
   <header class="head">
-    <h1 class="app-name">SomnoLog V58</h1>
+    <h1 class="app-name">SomnoLog V59</h1>
     <div style="display:flex;align-items:center;gap:10px">
       <button id="rec-back" class="sub mini" type="button">戻る</button>
       <span id="rec-badge" class="tag">待機中</span>
@@ -373,7 +379,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 
 <script>
 "use strict";/* ===== バージョン ===== */
-const APP_VERSION = 58;
+const APP_VERSION = 59;
 const APP = "SomnoLogV" + APP_VERSION + "_ref";
 
 /* ===== 更新の取得元（GitHub） =====
@@ -1112,7 +1118,8 @@ function finishRefMeasure() {
   showRefMsg("基準音圧を設定しました。下端が環境音、白い線が「あ〜」、上端が記録中の最大音です。");
   setButtons();
   updateUI();
-}/* ===== Silero VAD ===== */
+}
+/* ===== Silero VAD ===== */
 async function loadVad() {
   if (typeof ort === "undefined") {
     S.vad = null; S.vadOk = false;
@@ -2649,36 +2656,120 @@ async function startShare(kind) {
   }
 }
 
+/* ===== ZIP作成の進捗表示 ===== */
+function createZipProgress() {
+  const box = document.createElement("div");
+  box.className = "zip-progress";
+  box.setAttribute("role", "status");
+  box.setAttribute("aria-live", "polite");
+  box.innerHTML =
+    '<p class="zip-progress-title">ZIPを作成中</p>' +
+    '<div class="zip-bar"><i></i></div>' +
+    '<p class="zip-progress-text"></p>';
+  document.body.appendChild(box);
+
+  const text = box.querySelector(".zip-progress-text");
+  const bar = box.querySelector(".zip-bar i");
+
+  return {
+    set(message, percent) {
+      text.textContent = message;
+      if (percent != null) bar.style.width = clamp(percent, 0, 100).toFixed(1) + "%";
+    },
+    remove() {
+      box.remove();
+    }
+  };
+}
+
+// 表示を更新する時間をブラウザに渡す
+function yieldToScreen() {
+  return new Promise((resolve) => setTimeout(resolve, 0));
+}
+
 async function makeZip() {
+  // ZIP作成ボタンの連続押しを防ぐ
+  if (S.saving) return;
   S.saving = true;
   setButtons();
-  shMsg("ZIPを作っています…（音声を1件ずつ処理します）", false);
+
+  // ZIP作成中は、関連するボタンを押せないようにする
+  const buttonIds = ["sh-all", "sh-sel", "sh-back", "rv-done", "rv-back", "rv-open", "rv-save-direct"];
+  const buttonStates = buttonIds.map((id) => {
+    const button = $(id);
+    const wasDisabled = button ? button.disabled : false;
+    if (button) button.disabled = true;
+    return { button, wasDisabled };
+  });
+
+  const progress = createZipProgress();
+  shMsg("ZIPを作っています…", false);
+
   try {
+    progress.set("記録を読み込んでいます…", 0);
+    await yieldToScreen();
+
     const sess = await DB.get("sessions", SH.sid);
+    if (!sess) throw new Error("記録が見つかりませんでした。");
+
     const sc = await shareScope(SH.kind);
     const keep = sc.speeches.filter((e) => e.review === "keep");
     const items = sc.snores.concat(keep).sort((a, b) => a.startMs - b.startMs);
+    const total = items.length;
 
     const zw = new ZipWriter();
     let audioCount = 0;
     let missing = 0;
 
-    for (let i = 0; i < items.length; i++) {
+    progress.set(
+      total
+        ? "音声を処理しています：0 / " + total + "件（0%）"
+        : "対象の音声はありません。記録情報をまとめています…",
+      0
+    );
+    await yieldToScreen();
+
+    for (let i = 0; i < total; i++) {
       const e = items[i];
       const clip = await DB.get("clips", e.clipId);
-      if (!clip) { missing++; continue; }
-      const pcm = clipPcm(clip);
-      const nm = (e.type === "snore" ? "snore_" : "voice_") +
-        fmtTime(e.startMs).replace(/:/g, "-") + "_" + e.id.slice(0, 4) + ".wav";
-      zw.add(nm, wavBytes(pcm, clip.sr));
-      audioCount++;
-      // 1件ごとに画面へ戻して、固まりにくくする
-      await new Promise((r) => setTimeout(r, 0));
+
+      if (!clip) {
+        missing++;
+      } else {
+        const pcm = clipPcm(clip);
+        const nm =
+          (e.type === "snore" ? "snore_" : "voice_") +
+          fmtTime(e.startMs).replace(/:/g, "-") +
+          "_" + e.id.slice(0, 4) + ".wav";
+        zw.add(nm, wavBytes(pcm, clip.sr));
+        audioCount++;
+      }
+
+      const done = i + 1;
+      const percent = done / total * 100;
+      progress.set(
+        "音声を処理しています：" + done + " / " + total + "件（" + Math.floor(percent) + "%）" +
+        (missing ? "\n見つからない音声：" + missing + "件" : "") +
+        "\n画面を閉じずにお待ちください。",
+        percent
+      );
+      await yieldToScreen();
     }
 
-    const csv = ["type,startSec,durSec,peakDb,meanDb,review,file"].concat(sc.evs.map((e) => [
-      e.type, round1(e.startMs / 1000), round1(e.durMs / 1000), e.peakSourceDb, e.meanSourceDb, e.review || "", ""
-    ].join(","))).join("\n");
+    progress.set("音声の処理が終わりました。\n記録情報をまとめています…", 100);
+    await yieldToScreen();
+
+    const csv = ["type,startSec,durSec,peakDb,meanDb,review,file"].concat(
+      sc.evs.map((e) => [
+        e.type,
+        round1(e.startMs / 1000),
+        round1(e.durMs / 1000),
+        e.peakSourceDb,
+        e.meanSourceDb,
+        e.review || "",
+        ""
+      ].join(","))
+    ).join("\n");
     zw.add("events.csv", new TextEncoder().encode("\uFEFF" + csv));
 
     const info = {
@@ -2695,9 +2786,15 @@ async function makeZip() {
     };
     zw.add("info.json", new TextEncoder().encode(JSON.stringify(info, null, 2)));
 
+    progress.set("ZIPを取りまとめています…\n画面を閉じずにお待ちください。", 100);
+    await yieldToScreen();
+
     const blob = zw.finish();
     SH.zip = blob;
     SH.name = zipName(sess);
+
+    progress.set("ダウンロードを開始しています…", 100);
+    await yieldToScreen();
 
     const a = document.createElement("a");
     const url = URL.createObjectURL(blob);
@@ -2708,14 +2805,25 @@ async function makeZip() {
     a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 60000);
 
-    shMsg("保存しました：" + SH.name + "（音声 " + audioCount + "件" +
+    shMsg(
+      "ダウンロードを開始しました：" + SH.name +
+      "（音声 " + audioCount + "件" +
       (missing ? "／見つからない音声 " + missing + "件" : "") +
-      "）。次に「②ファイルを選んで送信」を押してください。", false);
+      "）。ダウンロード先を確認してから、「②ファイルを選んで送信」を押してください。",
+      false
+    );
     showPage("share");
   } catch (e) {
     console.error(e);
-    shMsg("ZIPを作れませんでした: " + e.message, true);
+    const message = "ZIPを作れませんでした: " + e.message;
+    shMsg(message, true);
+    // 人声確認画面では共有画面のメッセージが見えないため、ダイアログでも知らせる
+    if (!$("page-review").hidden) alert(message);
   } finally {
+    progress.remove();
+    for (const state of buttonStates) {
+      if (state.button) state.button.disabled = state.wasDisabled;
+    }
     S.saving = false;
     setButtons();
   }
@@ -2901,7 +3009,12 @@ function wire() {
   };
   $("mic-btn").onclick = onMicBtn;
   $("ref-btn").onclick = startRefMeasure;
-  $("gain").oninput = (e) => { S.gainDb = Number(e.target.value); if (S.ref) { S.ref = null; showRefMsg("音圧調整を変えたので、基準音圧を測り直してください。", true); } setButtons(); updateUI(); };
+  $("gain").oninput = (e) => {
+    S.gainDb = Number(e.target.value);
+    if (S.ref) { S.ref = null; showRefMsg("音圧調整を変えたので、基準音圧を測り直してください。", true); }
+    setButtons();
+    updateUI();
+  };
   $("motion-btn").onclick = onMotionBtn;
   $("start-btn").onclick = async () => {
     if (isBusy()) return;
@@ -2981,9 +3094,7 @@ function wire() {
 
     try {
       const scope = await shareScope(SH.kind);
-      const undecided = scope.speeches.filter(
-        (e) => e.review == null
-      ).length;
+      const undecided = scope.speeches.filter((e) => e.review == null).length;
 
       if (undecided > 0) {
         const ok = confirm(
@@ -3041,7 +3152,6 @@ async function init() {
 
 init().catch((e) => showError(e.message));
 </script>
-
 
 <script>
 "use strict";
@@ -3187,12 +3297,8 @@ init().catch((e) => showError(e.message));
       hasDataInWindow = true;
       if (s.motion < motionView.threshold) continue;
 
-      const first = Math.max(
-        0, Math.floor((s.sec - t0) / binSec)
-      );
-      const last = Math.min(
-        NB - 1, Math.ceil((s.sec + 1 - t0) / binSec) - 1
-      );
+      const first = Math.max(0, Math.floor((s.sec - t0) / binSec));
+      const last = Math.min(NB - 1, Math.ceil((s.sec + 1 - t0) / binSec) - 1);
 
       for (let i = first; i <= last; i++) {
         if (bins[i] == null || s.motion > bins[i]) {
@@ -3216,9 +3322,7 @@ init().catch((e) => showError(e.message));
       any = true;
       if (value > motionView.max) clipped = true;
 
-      const h = Math.max(
-        2, Math.min(1, value / motionView.max) * plotH
-      );
+      const h = Math.max(2, Math.min(1, value / motionView.max) * plotH);
 
       g +=
         '<rect x="' + (TL_PL + i * bw + 0.5).toFixed(1) +
@@ -3283,10 +3387,8 @@ init().catch((e) => showError(e.message));
     const isMotion = tag === "motion";
     controls.hidden = !isMotion;
 
-    $("tl-motion-th-value").textContent =
-      motionView.threshold.toFixed(2) + " m/s²";
-    $("tl-motion-max-value").textContent =
-      motionView.max.toFixed(1) + " m/s²";
+    $("tl-motion-th-value").textContent = motionView.threshold.toFixed(2) + " m/s²";
+    $("tl-motion-max-value").textContent = motionView.max.toFixed(1) + " m/s²";
 
     $("tl-listen").disabled = isMotion;
 
