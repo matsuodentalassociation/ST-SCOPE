@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
 <meta name="theme-color" content="#000000">
 <meta http-equiv="Cache-Control" content="no-cache">
-<title>SomnoLog V61 基準音圧版</title>
+<title>SomnoLog V62 基準音圧版</title>
 <script src="./ort.min.js?v=61"></script>
 <style>
 :root{color-scheme:dark}
@@ -94,7 +94,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 1-1 起動・QR読み取り -->
 <main id="page-start" class="page" hidden>
   <header class="head">
-    <h1 class="app-name">SomnoLog V61</h1>
+    <h1 class="app-name">SomnoLog V62</h1>
     <span class="tag">患者情報確認</span>
   </header>
 
@@ -128,7 +128,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
   <div class="update-area">
     <h2 class="update-title">アプリの更新</h2>
     <section class="card">
-      <div class="kv"><span>現在のバージョン</span><b id="ver-text">SomnoLog V61</b></div>
+      <div class="kv"><span>現在のバージョン</span><b id="ver-text">SomnoLog V62</b></div>
       <button id="upd-reload" class="sub">最新版に変更（キャッシュを避けて再読み込み）</button>
       <p id="upd-msg" class="muted" hidden aria-live="polite"></p>
     </section>
@@ -156,7 +156,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 記録画面 -->
 <main id="page-record" class="page" hidden>
   <header class="head">
-    <h1 class="app-name">SomnoLog V61</h1>
+    <h1 class="app-name">SomnoLog V62</h1>
     <div style="display:flex;align-items:center;gap:10px">
       <button id="rec-back" class="sub mini" type="button">戻る</button>
       <span id="rec-badge" class="tag">待機中</span>
@@ -311,7 +311,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
       <li>「全てのいびき記録を保存」をもう一度押し、「確認した、保存」を押すと、ZIPファイルがダウンロードに保存されます。</li>
       <li>「①アドレスをコピー」を押してから、「②ファイルを選んで送信」で、保存したZIPファイルを選びます。</li>
       <li>共有の画面が開いたら、メールを選び、宛先の欄にコピーしたアドレスを貼り付けて送信します。</li>
-      <li>ZIPを保存できたことを確認したら、「この日の音声データをアプリから削除」を押せます。簡易ログとグラフは残ります。保存した音声は残ります。</li>
+      <li>ZIPを保存できたことを確認したら、「このタイムラインから音声を削除」を押せます。簡易ログとグラフは残ります。保存した音声は残ります。</li>
     </ol>
   </section>
   <section class="card">
@@ -324,13 +324,12 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
     <button id="sh-pick">②ファイルを選んで送信</button>
     <input id="sh-file" type="file" accept=".zip,application/zip" hidden>
   </section>
-  <section class="card">
-    <h2>音声データの削除</h2>
-    <p class="muted">ZIPをダウンロードしたことを確認してから押してください。押すと、この記録がある日のすべての音声データが消えます（保存した音声は残ります）。簡易ログとグラフは残ります。元に戻せません。</p>
-    <button id="sh-del-audio" class="danger" disabled>この日の音声データをアプリから削除</button>
+  <section id="sh-del-tl-card" class="card" hidden>
+    <h2>保存済の音声データの削除</h2>
+    <p class="muted">ZIPをダウンロードしたことを確認してから【このタイムラインから音声を削除】を押してください。押すと、このタイムラインからの音声を消します。簡易ログとグラフは残ります。元に戻せません。</p>
+    <button id="sh-del-tl" class="danger" disabled>このタイムラインから音声を削除</button>
   </section>
   <button id="sh-back" class="sub">記録画面に戻る</button>
-  <p class="muted">本アプリは診断を行うものではありません。医師の判断の参考資料です。</p>
 </main>
 
 <!-- 人声確認の案内ダイアログ -->
@@ -355,7 +354,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <script>
 "use strict";
 /* ===== バージョン ===== */
-const APP_VERSION = 61;
+const APP_VERSION = 62;
 const APP = "SomnoLogV" + APP_VERSION + "_ref";
 
 /* ===== 更新の取得元（GitHub） ===== */
@@ -1941,6 +1940,66 @@ async function deleteAudioForDay(key) {
   }
 }
 
+// 1つの記録（タイムライン）の音声を集計する。保存した音声は残す
+async function planSessionDelete(sid) {
+  const sess = await DB.get("sessions", sid);
+  if (!sess) return null;
+  const clips = await DB.byIndex("clips", "sid", sid);
+  const evs = await DB.byIndex("events", "sid", sid);
+  const protectedIds = new Set(evs.filter((e) => e.saved && e.clipId).map((e) => e.clipId));
+  const plan = { sess, evs, del: [], savedCount: 0, delBytes: 0 };
+  for (const c of clips) {
+    if (c.saved || protectedIds.has(c.id)) {
+      plan.savedCount++;
+    } else {
+      plan.del.push(c);
+      plan.delBytes += c.data ? c.data.byteLength : 0;
+    }
+  }
+  plan.delCount = plan.del.length;
+  return plan;
+}
+
+// 1つの記録（タイムライン）から、保存していない音声だけを削除する（簡易ログとグラフは残す）
+async function deleteAudioForSession(sid) {
+  const plan = await planSessionDelete(sid);
+  if (!plan) {
+    alert("この記録が見つかりません。");
+    return false;
+  }
+  if (!plan.delCount) {
+    alert(plan.savedCount
+      ? "削除できる音声はありません。保存して残した音声 " + plan.savedCount + "件は残っています。"
+      : "このタイムラインの音声データはありません。");
+    return false;
+  }
+  const ok = confirm(
+    "【最終確認】このタイムラインの音声データを削除します。\n\n" +
+    "・削除する音声：" + plan.delCount + "件（約 " + mb(plan.delBytes) + "）\n" +
+    "・残す音声（保存したもの）：" + plan.savedCount + "件\n" +
+    "・簡易ログとグラフは残ります。\n\n" +
+    "削除した音声は元に戻せません。\n" +
+    "よろしいですか？"
+  );
+  if (!ok) return false;
+  try {
+    const ids = new Set(plan.del.map((c) => c.id));
+    // 先に音声への参照を外してから音声を消す（イベント情報は残す）
+    for (const e of plan.evs) {
+      if (e.clipId && ids.has(e.clipId)) {
+        e.clipId = null;
+        await DB.put("events", e);
+      }
+    }
+    await DB.delMany("clips", [...ids]);
+    return true;
+  } catch (e) {
+    console.error(e);
+    showError("音声を削除できませんでした: " + e.message);
+    return false;
+  }
+}
+
 async function renderDaySummary() {
   const token = ++daySumToken;
   const box = $("cal-summary");
@@ -1987,6 +2046,7 @@ async function renderDaySummary() {
   try {
     const plan = await planDayDelete(cal.selected);
     if (token !== daySumToken) return;
+    const total = plan.sessions.reduce((n, x) => n + x.s && 0, 0);
     $("cs-audio").textContent =
       "全体 " + plan.total + "件（約 " + mb(plan.totalBytes) + "）／保存して残す音声 " + plan.savedCount +
       "件／削除できる音声 " + plan.delCount + "件（約 " + mb(plan.delBytes) + "）";
@@ -2523,8 +2583,11 @@ function shMsg(text, isErr) {
   b.className = isErr ? "err" : "warn";
 }
 
+// ZIPのダウンロードを開始した後だけ、タイムラインの音声削除カードを表示する
 function updateShareButtons() {
-  $("sh-del-audio").disabled = S.saving || !SH.zipDone || !SH.sid;
+  const show = !!SH.zipDone && !!SH.sid;
+  $("sh-del-tl-card").hidden = !show;
+  $("sh-del-tl").disabled = S.saving || !show;
 }
 
 function openShare() {
@@ -2601,7 +2664,7 @@ async function makeZip() {
   S.saving = true;
   setButtons();
 
-  const buttonIds = ["sh-all", "sh-back", "sh-copy", "sh-pick", "sh-del-audio", "rv-open", "rv-save-direct", "rv-close", "tl-go-share"];
+  const buttonIds = ["sh-all", "sh-back", "sh-copy", "sh-pick", "sh-del-tl", "rv-open", "rv-save-direct", "rv-close", "tl-go-share"];
   const buttonStates = buttonIds.map((id) => {
     const button = $(id);
     const wasDisabled = button ? button.disabled : false;
@@ -2714,7 +2777,7 @@ async function makeZip() {
       "（音声 " + audioCount + "件" +
       (missing ? "／見つからない音声 " + missing + "件" : "") +
       "）。ダウンロード先を確認してから、「②ファイルを選んで送信」を押してください。" +
-      "\n確認が済んだら、下の「この日の音声データをアプリから削除」を押せます。",
+      "\n確認が済んだら、下の「このタイムラインから音声を削除」を押せます。",
       false
     );
   } catch (e) {
@@ -2733,16 +2796,14 @@ async function makeZip() {
   }
 }
 
-// 共有画面から、この記録の日の音声を削除（ZIPを作った後だけ押せる）
-async function deleteAudioFromShare() {
-  if (!SH.zipDone || !SH.sid) return;
-  const sess = await DB.get("sessions", SH.sid);
-  if (!sess) return;
-  const done = await deleteAudioForDay(dayKey(sess.startedAt));
+// 共有画面から、このタイムラインの音声を削除（ZIPを作った後だけ押せる）
+async function deleteTimelineAudioFromShare() {
+  if (!SH.zipDone || !SH.sid || S.saving) return;
+  const done = await deleteAudioForSession(SH.sid);
   if (done) {
     SH.zipDone = false;
     updateShareButtons();
-    shMsg("この日の音声データを削除しました。簡易ログとグラフは残っています。保存した音声は残っています。", false);
+    shMsg("このタイムラインの音声データを削除しました。簡易ログとグラフは残っています。保存した音声は残っています。", false);
   }
 }
 
@@ -2970,8 +3031,8 @@ on("sh-file", "change", async (e) => {
   e.target.value = "";
   await sendPicked(f);
 });
-on("sh-del-audio", "click", async () => {
-  await deleteAudioFromShare();
+on("sh-del-tl", "click", async () => {
+  await deleteTimelineAudioFromShare();
 });
 on("sh-back", "click", () => {
   showPage("record");
@@ -3019,6 +3080,3 @@ boot().catch(handleErr);
 </script>
 </body>
 </html>
-
-
-
