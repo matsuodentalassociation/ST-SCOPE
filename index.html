@@ -5,8 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
 <meta name="theme-color" content="#000000">
 <meta http-equiv="Cache-Control" content="no-cache">
-<title>SomnoLog V64 基準音圧版</title>
-<script src="./ort.min.js?v=61"></script>
+<title>SomnoLog V67 基準音圧版</title>
 <style>
 :root{color-scheme:dark}
 *{box-sizing:border-box}
@@ -94,7 +93,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 1-1 起動・QR読み取り -->
 <main id="page-start" class="page" hidden>
   <header class="head">
-    <h1 class="app-name">SomnoLog V64</h1>
+    <h1 class="app-name">SomnoLog V67</h1>
     <span class="tag">患者情報確認</span>
   </header>
 
@@ -128,7 +127,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
   <div class="update-area">
     <h2 class="update-title">アプリの更新</h2>
     <section class="card">
-      <div class="kv"><span>現在のバージョン</span><b id="ver-text">SomnoLog V64</b></div>
+      <div class="kv"><span>現在のバージョン</span><b id="ver-text">SomnoLog V67</b></div>
       <button id="upd-reload" class="sub">最新版に変更（キャッシュを避けて再読み込み）</button>
       <p id="upd-msg" class="muted" hidden aria-live="polite"></p>
     </section>
@@ -156,7 +155,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 記録画面 -->
 <main id="page-record" class="page" hidden>
   <header class="head">
-    <h1 class="app-name">SomnoLog V64</h1>
+    <h1 class="app-name">SomnoLog V67</h1>
     <div style="display:flex;align-items:center;gap:10px">
       <button id="rec-back" class="sub mini" type="button">戻る</button>
       <span id="rec-badge" class="tag">待機中</span>
@@ -358,7 +357,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
    公開名は SleepEngine のみ。内部の名前はすべて閉じた範囲に隠す。 */
 const SleepEngine = (() => {
   "use strict";
-  const ENGINE_VERSION = 63;
+  const ENGINE_VERSION = 64;
   const SCHEMA_VERSION = 35;
   const C = {
     DB_NAME: "somnolog-v63",   // V62の somnolog-v3 とは別の保存領域
@@ -380,7 +379,13 @@ const SleepEngine = (() => {
     ROLL_G: 0.12,              // V35の体動判定
     APNEA_GAP_MIN: 30000,      // V35: いびき後の空白30〜120秒
     APNEA_GAP_MAX: 120000,
-    APNEA_DB: 40
+    APNEA_DB: 40,
+    VAD_TH: 0.3,               // V62と同じ声らしさの閾値
+    VAD_URL: "./silero_vad.onnx?v=67",
+    ORT_URL: "./ort.min.js?v=67",
+    VAD_RATE: 16000,
+    VAD_FRAME: 512,            // 16kHzで32ms
+    VAD_CTX: 64
   };
   const DETECTION_RULE = "V35準拠: 基準=開始30秒の平均（以後、現在値が基準+4dB未満のとき0.02で更新）。判定=基準+5dB以上。";
 
@@ -473,6 +478,7 @@ const SleepEngine = (() => {
     a.sq += sq;
     pushRing(d);
     if (st.event && st.mode === "opus") { st.event.chunks.push(d); st.event.len += d.length; }
+    feedVad(d);
   }
 
   function tick() {
@@ -614,20 +620,53 @@ const SleepEngine = (() => {
       peakDb: r1(ev.peakDb), meanDb: r1(ev.sumDb / Math.max(1, ev.n)),
       motionMaxG: r3(ev.motionMaxG), votes: ev.votes, endReason: reason
     };
-    st.counts[category] = (st.counts[category] || 0) + 1;
-    st.markers.push(marker);
+    let payload;
     if (st.mode === "opus") {
       const pcm = new Float32Array(ev.len);
       let o = 0;
       for (const c of ev.chunks) { pcm.set(c, o); o += c.length; }
       marker.durationSec = r1(pcm.length / st.rate);
-      const rate = st.rate;
-      chainP = chainP.then(() => encodeAndStore(pcm, rate, marker)).catch(fail);
+      payload = { kind: "opus", pcm, rate: st.rate };
     } else {
-      // 録音機モード：範囲がそろったらチャンクを連結して保存する
       marker.durationSec = r1(Math.max(0, endMs - ev.startMs) / 1000);
-      st.pendingRec.push({ marker, fromMs: ev.startMs, toMs: endMs });
-      chainP = chainP.then(() => assembleRecClips()).catch(fail);
+      payload = { kind: "rec", fromMs: ev.startMs, toMs: endMs };
+    }
+    chainP = chainP.then(() => decideAndStore(marker, payload)).catch(fail);
+  }
+
+  /* 声判定で振り分けてから保存する。人声と判定されたイベントは音声を残さない。 */
+  async function decideAndStore(marker, payload) {
+    let excluded = false;
+    if (st && st.vadOk) {
+      const endMs = marker.startMs + marker.durationSec * 1000;
+      await vadDrain(endMs + 1000);
+      const inside = vadMaxIn(marker.startMs, endMs);
+      const near = vadMaxIn(marker.startMs - 1000, endMs + 1000);
+      marker.vadInside = inside == null ? null : r3(inside);
+      marker.vadNear = near == null ? null : r3(near);
+      if ((inside != null && inside > C.VAD_TH) || (near != null && near > C.VAD_TH)) excluded = true;
+      if (inside == null && near == null) marker.vadUnknown = true;
+    } else {
+      marker.vadUnknown = true;
+    }
+    if (excluded) {
+      marker.category = "talk";
+      marker.label = LABEL.talk;
+      marker.displayCategory = DISPLAY.talk;
+      marker.voiceExcluded = true;
+    }
+    if (!st) return;
+    st.counts[marker.category] = (st.counts[marker.category] || 0) + 1;
+    st.markers.push(marker);
+    if (excluded) {
+      await put("events", marker);
+      return;
+    }
+    if (payload.kind === "opus") {
+      await encodeAndStore(payload.pcm, payload.rate, marker);
+    } else {
+      st.pendingRec.push({ marker, fromMs: payload.fromMs, toMs: payload.toMs });
+      await assembleRecClips();
     }
   }
 
@@ -724,6 +763,141 @@ const SleepEngine = (() => {
     if (sc("talk") >= 3) return "talk";
     if (sc("snore") >= 1) return "snore";
     return "env";
+  }
+
+  /* ---------- 声判定（Silero VAD、V62の方式をエンジン内へ移植） ----------
+     入力PCMを16kHzへ落として32ms枠で推論し、声らしさ p の時系列を作る。
+     イベント確定時に「中」と「前後1秒」の最大値を見て人声を振り分ける。 */
+  function loadScriptOnce(src) {
+    return new Promise((res, rej) => {
+      const s = document.createElement("script");
+      s.src = src;
+      s.onload = () => res();
+      s.onerror = () => rej(new Error("ライブラリを読み込めませんでした"));
+      document.head.appendChild(s);
+    });
+  }
+
+  async function initVad() {
+    try {
+      if (typeof ort === "undefined") await loadScriptOnce(C.ORT_URL);
+      if (typeof ort === "undefined") throw new Error("ort unavailable");
+      const r = await fetch(C.VAD_URL, { cache: "no-store" });
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      const buf = await r.arrayBuffer();
+      ort.env.wasm.numThreads = 1;
+      ort.env.wasm.wasmPaths = "./";
+      const sess = await ort.InferenceSession.create(buf, { executionProviders: ["wasm"] });
+      if (!st) return;
+      st.vadState = new ort.Tensor("float32", new Float32Array(2 * 128), [2, 1, 128]);
+      st.vadStartSample16k = st.vadPos16k;
+      st.vadSession = sess;
+      st.vadOk = true;
+      vadPump();
+    } catch (e) {
+      console.warn("[SleepEngine] VAD初期化に失敗", e);
+      if (st) { st.vadFailed = true; st.vadOk = false; }
+    }
+  }
+
+  function feedVad(d) {
+    if (!st || st.vadFailed) return;
+    st.vadInQ.push(d);
+    st.vadInLen += d.length;
+    const blockIn = Math.round(st.rate / 10); // 100ms分
+    while (st.vadInLen >= blockIn) {
+      const block = new Float32Array(blockIn);
+      let o = 0;
+      while (o < blockIn) {
+        const c = st.vadInQ[0];
+        const avail = c.length - st.vadInOff;
+        const take = Math.min(avail, blockIn - o);
+        block.set(c.subarray(st.vadInOff, st.vadInOff + take), o);
+        o += take;
+        st.vadInOff += take;
+        st.vadInLen -= take;
+        if (st.vadInOff >= c.length) { st.vadInQ.shift(); st.vadInOff = 0; }
+      }
+      const b16 = resample(block, st.rate, C.VAD_RATE);
+      if (st.vadSession) { st.vadQ.push(b16); st.vadQLen += b16.length; }
+      else { st.vadPos16k += b16.length; }
+    }
+    vadPump();
+  }
+
+  function vadTakeFrame() {
+    if (st.vadQLen < C.VAD_FRAME) return null;
+    const out = new Float32Array(C.VAD_FRAME);
+    let o = 0;
+    while (o < C.VAD_FRAME) {
+      const c = st.vadQ[0];
+      const avail = c.length - st.vadQOff;
+      const take = Math.min(avail, C.VAD_FRAME - o);
+      out.set(c.subarray(st.vadQOff, st.vadQOff + take), o);
+      o += take;
+      st.vadQOff += take;
+      st.vadQLen -= take;
+      if (st.vadQOff >= c.length) { st.vadQ.shift(); st.vadQOff = 0; }
+    }
+    return out;
+  }
+
+  function vadPump() {
+    if (!st || !st.vadSession || st.vadBusy) return;
+    st.vadBusy = true;
+    st.vadChain = (async () => {
+      try {
+        let f;
+        while (st && st.vadSession && (f = vadTakeFrame())) {
+          const p = await vadRun(f);
+          const idx = st.vadFrameSeq++;
+          if (idx >= st.vadFrames.length) {
+            const nf = new Float32Array(st.vadFrames.length * 2);
+            nf.set(st.vadFrames);
+            st.vadFrames = nf;
+          }
+          st.vadFrames[idx] = p;
+        }
+      } catch (e) { fail(e); }
+      finally { if (st) st.vadBusy = false; }
+    })();
+  }
+
+  async function vadRun(frame) {
+    const inp = new Float32Array(C.VAD_CTX + C.VAD_FRAME);
+    inp.set(st.vadCtx, 0);
+    inp.set(frame, C.VAD_CTX);
+    st.vadCtx = inp.slice(inp.length - C.VAD_CTX);
+    const out = await st.vadSession.run({
+      input: new ort.Tensor("float32", inp, [1, C.VAD_CTX + C.VAD_FRAME]),
+      state: st.vadState,
+      sr: new ort.Tensor("int64", BigInt64Array.from([BigInt(C.VAD_RATE)]), [])
+    });
+    st.vadState = out.stateN;
+    return out.output.data[0];
+  }
+
+  function vadMaxIn(aMs, bMs) {
+    if (!st || !st.vadFrameSeq) return null;
+    const S0 = st.vadStartSample16k;
+    let k0 = Math.floor((aMs * 16 - S0) / C.VAD_FRAME);
+    let k1 = Math.floor((bMs * 16 - S0) / C.VAD_FRAME);
+    if (k1 < 0 || k0 > st.vadFrameSeq - 1) return null;
+    k0 = Math.max(0, k0);
+    k1 = Math.min(st.vadFrameSeq - 1, k1);
+    let m = 0;
+    for (let k = k0; k <= k1; k++) if (st.vadFrames[k] > m) m = st.vadFrames[k];
+    return m;
+  }
+
+  async function vadDrain(targetMs) {
+    if (!st || !st.vadOk) return;
+    const need = targetMs * 16;
+    const t0 = Date.now();
+    while (st && st.vadOk && (st.vadStartSample16k + st.vadFrameSeq * C.VAD_FRAME) < need && Date.now() - t0 < 4000) {
+      vadPump();
+      await new Promise((r) => setTimeout(r, 100));
+    }
   }
 
   /* ---------- 体動（V35のデルタ方式） ---------- */
@@ -983,7 +1157,12 @@ registerProcessor("pcm-tap", PcmTap);`;
       rows: [], tlIdx: 0, clipSeq: 0, counts: {}, markers: [],
       pendingRec: [], recChunks: [], recClock: 0, recMime: "", recorder: null,
       live: { db: null, baseline: null, inEvent: false, motionG: null },
-      an: null, node: null, src: null, timer: null, startedAt: Date.now()
+      an: null, node: null, src: null, timer: null, startedAt: Date.now(),
+      vadSession: null, vadOk: false, vadFailed: false, vadState: null,
+      vadCtx: new Float32Array(C.VAD_CTX), vadPos16k: 0, vadStartSample16k: 0,
+      vadInQ: [], vadInOff: 0, vadInLen: 0, vadQ: [], vadQOff: 0, vadQLen: 0,
+      vadFrames: new Float32Array(1 << 15), vadFrameSeq: 0, vadBusy: false,
+      vadChain: Promise.resolve(), vadReady: null
     };
 
     await put("sessions", {
@@ -992,6 +1171,8 @@ registerProcessor("pcm-tap", PcmTap);`;
       mode, counts: {}, baselineDb: null,
       ...((opts && opts.sessionExtra) || {})
     });
+
+    st.vadReady = initVad();
 
     const src = ctx.createMediaStreamSource(stream);
     st.src = src;
@@ -1069,7 +1250,8 @@ registerProcessor("pcm-tap", PcmTap);`;
       durationSec: r1((endedAt - st.startedAt) / 1000),
       patient: st.patient, engine: ENGINE_VERSION, schema: SCHEMA_VERSION,
       mode: st.mode, counts: st.counts,
-      baselineDb: st.baseline == null ? null : r1(st.baseline)
+      baselineDb: st.baseline == null ? null : r1(st.baseline),
+      vadOk: !!st.vadOk, vadFailed: !!st.vadFailed
     };
     await put("sessions", sess);
 
@@ -1090,14 +1272,17 @@ registerProcessor("pcm-tap", PcmTap);`;
     return list.sort((a, b) => (b.startedAt || 0) - (a.startedAt || 0));
   }
 
-  async function getSessionData(sid) {
+  async function getSessionData(sid, opts) {
     const session = await get("sessions", sid);
     if (!session) return null;
     const chunks = (await byIndex("timeline", sid)).sort((a, b) => (a.key < b.key ? -1 : 1));
     const rows = [];
     for (const c of chunks) if (Array.isArray(c.rows)) rows.push(...c.rows);
     const events = (await byIndex("events", sid)).sort((a, b) => (a.startMs || 0) - (b.startMs || 0));
-    const clips = await byIndex("clips", sid);
+    const rawClips = await byIndex("clips", sid);
+    const clips = (opts && opts.light)
+      ? rawClips.map((c) => ({ id: c.id, sid: c.sid, fileName: c.fileName, bytes: c.bytes || (c.blob ? c.blob.size : 0) }))
+      : rawClips;
     return { session, rows, events, clips };
   }
 
@@ -1208,7 +1393,7 @@ registerProcessor("pcm-tap", PcmTap);`;
 <script>
 "use strict";
 /* ===== バージョン ===== */
-const APP_VERSION = 64;
+const APP_VERSION = 67;
 const APP = "SomnoLogV" + APP_VERSION + "_ref";
 
 /* ===== 更新の取得元（GitHub） ===== */
@@ -1223,7 +1408,7 @@ const UPD_TARGET_KEY = "somnolog-update-target";
 /* ===== 設定 ===== */
 const SR = 16000, FRAME = 512;
 const RING_SEC = 130;
-const VAD_CTX = 64, VAD_URL = "./silero_vad.onnx?v=" + APP_VERSION, VAD_TH = 0.3;
+const VAD_CTX = 64, VAD_TH = 0.3;
 const LOUD_DB = 6, SEG_MIN = 0.5, SEG_MAX = 4, QUIET_FRAMES = 5;
 const PRE_MS = 3000, POST_MS = 1000;
 const CALIB_SEC = 300, BASE_EVERY = 600, POOL_MAX = 600, POOL_MIN = 60;
@@ -1533,17 +1718,26 @@ function engineSessForUi(s) {
   };
 }
 
-async function engineDetailData(sid) {
-  const d = await SleepEngine.getSessionData(sid);
+async function engineDetailData(sid, needClips) {
+  const d = await SleepEngine.getSessionData(sid, { light: !needClips });
   if (!d) return null;
   const sess = engineSessForUi(d.session);
-  const secs = d.rows.map((r) => ({
-    sec: r.sec,
-    dbApplied: r.db == null ? null : r.db - 72,
-    dbSource: r.db == null ? null : r.db - 72,
-    peakApplied: r.db == null ? null : r.db - 72,
+  // 100ミリ秒の行を1秒に間引く（平均と最大）。表示と評価は旧記録と同じ物差しになる
+  const bySec = new Map();
+  for (const r of d.rows) {
+    const s = Math.floor(r.sec);
+    let b = bySec.get(s);
+    if (!b) { b = { sec: s, peak: null, sum: 0, n: 0, motion: null }; bySec.set(s, b); }
+    if (r.db != null) { b.peak = b.peak == null ? r.db : Math.max(b.peak, r.db); b.sum += r.db; b.n++; }
+    if (r.motionG != null) b.motion = b.motion == null ? r.motionG : Math.max(b.motion, r.motionG);
+  }
+  const secs = [...bySec.values()].sort((a, b) => a.sec - b.sec).map((b) => ({
+    sec: b.sec,
+    dbApplied: b.n ? (b.sum / b.n) - 72 : null,
+    dbSource: b.n ? (b.sum / b.n) - 72 : null,
+    peakApplied: b.peak == null ? null : b.peak - 72,
     vadMean: null,
-    motion: r.motionG
+    motion: b.motion
   }));
   const clipById = new Map(d.clips.map((c) => [c.id, c]));
   const evs = d.events.map((e) => ({
@@ -1573,7 +1767,7 @@ function renderEngineClips(d) {
     label.textContent = fmtClock(d.sess.startedAt + e.startMs) + " " + (e.displayCategory || e.label || "") + "（" + (e.durationSec || 0) + "秒）";
     const audio = document.createElement("audio");
     audio.controls = true;
-    audio.preload = "metadata";
+    audio.preload = "none";
     audio.src = url;
     audio.dataset.evId = e.id;
     wrap.appendChild(label);
@@ -2013,46 +2207,6 @@ function finishRefMeasure() {
 }
 
 /* ===== Silero VAD ===== */
-async function loadVad() {
-  if (typeof ort === "undefined") {
-    S.vad = null; S.vadOk = false;
-    return;
-  }
-  let buf;
-  try {
-    const r = await fetch(VAD_URL, { cache: "no-store" });
-    if (!r.ok) throw new Error("HTTP " + r.status);
-    buf = await r.arrayBuffer();
-  } catch (e) {
-    console.warn(e);
-    S.vad = null; S.vadOk = false;
-    return;
-  }
-  try {
-    ort.env.wasm.numThreads = 1;
-    ort.env.wasm.wasmPaths = "./";
-    S.vad = await ort.InferenceSession.create(buf, { executionProviders: ["wasm"] });
-  } catch (e) {
-    console.warn(e);
-    S.vad = null;
-  }
-  S.vadOk = !!S.vad;
-}
-
-async function vadProb(frame) {
-  const inp = new Float32Array(VAD_CTX + FRAME);
-  inp.set(S.vadCtx, 0);
-  inp.set(frame, VAD_CTX);
-  S.vadCtx = inp.slice(inp.length - VAD_CTX);
-  const out = await S.vad.run({
-    input: new ort.Tensor("float32", inp, [1, VAD_CTX + FRAME]),
-    state: S.vadState,
-    sr: new ort.Tensor("int64", BigInt64Array.from([BigInt(SR)]), [])
-  });
-  S.vadState = out.stateN;
-  return out.output.data[0];
-}
-
 async function pump() {
   if (S.busy) return;
   S.busy = true;
@@ -2060,14 +2214,7 @@ async function pump() {
     while (S.running && S.queue.length) {
       const f = S.queue.shift();
       if (f.ep !== S.epoch) continue;
-      let p = 0;
-      if (S.vadOk) {
-        try { p = await vadProb(f.data); }
-        catch (e) {
-          console.error(e);
-          S.vadOk = false;
-        }
-      }
+      const p = 0; // 旧方式の判定は使わない。声判定はV67からエンジン内蔵（VAD）
       if (!S.running || f.ep !== S.epoch) break;
       processFrame(f, p);
     }
@@ -2337,7 +2484,7 @@ async function startRec() {
   S.counts = newCounts();
   S.vadOk = !!S.vad;
   S.vadCtx = new Float32Array(VAD_CTX);
-  S.vadState = S.vad ? new ort.Tensor("float32", new Float32Array(2 * 128), [2, 1, 128]) : null;
+  S.vadState = null;
   S.sess = {
     id: S.sid, startedAt: Date.now(), endedAt: null, gainDb: S.gainDb, vadOk: S.vadOk,
     base: null,
@@ -2880,7 +3027,7 @@ async function planDayDelete(key) {
     const engSessions = await SleepEngine.listSessions();
     for (const s of engSessions) {
       if (dayKey(s.startedAt) !== key) continue;
-      const d = await SleepEngine.getSessionData(s.id);
+      const d = await SleepEngine.getSessionData(s.id, { light: true });
       const clips = d ? d.clips : [];
       const del = [];
       for (const c of clips) {
@@ -2948,7 +3095,7 @@ async function deleteAudioForDay(key) {
 async function planSessionDelete(sid) {
   const sess = await DB.get("sessions", sid);
   if (!sess) {
-    const d = await SleepEngine.getSessionData(sid).catch(() => null);
+    const d = await SleepEngine.getSessionData(sid, { light: true }).catch(() => null);
     if (!d) return null;
     const plan = { sess: d.session, evs: [], del: d.clips.slice(), savedCount: 0, delBytes: 0, delCount: 0, engine: true };
     for (const c of plan.del) plan.delBytes += c.bytes || (c.blob ? c.blob.size : 0);
@@ -3096,7 +3243,7 @@ async function openDetail(sid) {
       $("tl-legend").innerHTML = "";
       setSaveEnabled(false);
       showPage("detail");
-      const d = await engineDetailData(sid);
+      const d = await engineDetailData(sid, true);
       if (S.detailSid !== sid || !d) return;
       initTimeline(d.sess, d.secs, d.evs);
       tl.data.engine = true;
@@ -3675,7 +3822,7 @@ async function startShareEngine() {
     a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 60000);
     SH.zipDone = true;
-    const d = await SleepEngine.getSessionData(SH.sid);
+    const d = await SleepEngine.getSessionData(SH.sid, { light: true });
     const nClips = d ? d.clips.length : 0;
     const nTalk = d ? d.events.filter((e) => e.category === "talk").length : 0;
     shMsg(
@@ -4159,7 +4306,6 @@ window.addEventListener("pagehide", () => {
 async function boot() {
   $("ver-text").textContent = "SomnoLog V" + APP_VERSION;
   document.querySelectorAll(".app-name").forEach((el) => { el.textContent = "SomnoLog V" + APP_VERSION; });
-  loadVad();
   await loadPatient();
   if (!checkHashOnLoad()) showPage("start");
   updateBackButtons();
