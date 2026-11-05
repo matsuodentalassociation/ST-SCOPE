@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
 <meta name="theme-color" content="#000000">
 <meta http-equiv="Cache-Control" content="no-cache">
-<title>SomnoLog V84 基準音圧版</title>
+<title>SomnoLog V85 基準音圧版</title>
 <style>
 :root{color-scheme:dark}
 *{box-sizing:border-box}
@@ -93,7 +93,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 1-1 起動・QR読み取り -->
 <main id="page-start" class="page" hidden>
   <header class="head">
-    <h1 class="app-name">SomnoLog V84</h1>
+    <h1 class="app-name">SomnoLog V85</h1>
     <span class="tag">患者情報確認</span>
   </header>
 
@@ -127,7 +127,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
   <div class="update-area">
     <h2 class="update-title">アプリの更新</h2>
     <section class="card">
-      <div class="kv"><span>現在のバージョン</span><b id="ver-text">SomnoLog V84</b></div>
+      <div class="kv"><span>現在のバージョン</span><b id="ver-text">SomnoLog V85</b></div>
       <button id="upd-reload" class="sub">最新版に変更（キャッシュを避けて再読み込み）</button>
       <p id="upd-msg" class="muted" hidden aria-live="polite"></p>
     </section>
@@ -155,7 +155,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 記録画面 -->
 <main id="page-record" class="page" hidden>
   <header class="head">
-    <h1 class="app-name">SomnoLog V84</h1>
+    <h1 class="app-name">SomnoLog V85</h1>
     <div style="display:flex;align-items:center;gap:10px">
       <button id="rec-back" class="sub mini" type="button">戻る</button>
       <span id="rec-badge" class="tag">待機中</span>
@@ -287,6 +287,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
     <label class="muted">黄色い線（時刻の位置）</label>
     <input id="tl-cur" type="range" min="0" max="0" step="1" value="0">
     <button id="tl-listen" class="primary">タイムラインの音を聴く（棒1本分）</button>
+    <button id="tl-ref-play" class="sub">基準の「あ〜」を聴く</button>
     <div id="tl-audio"></div>
     <p id="tl-msg" class="muted"></p>
     <button id="tl-save" class="primary" disabled>この音声を保存する（残す）</button>
@@ -1462,7 +1463,7 @@ registerProcessor("pcm-tap", PcmTap);`;
 <script>
 "use strict";
 /* ===== バージョン ===== */
-const APP_VERSION = 84;
+const APP_VERSION = 85;
 const APP = "SomnoLogV" + APP_VERSION + "_ref";
 
 /* ===== 更新の取得元（GitHub） ===== */
@@ -2070,14 +2071,15 @@ async function playRefAudio() {
   try {
     const row = await DB.get("settings", "refAudio");
     const b64 = row && row.value ? row.value : null;
-    if (!b64) { showRefMsg("基準の音はまだ保存されていません。測り直すと保存されます。", true); return; }
+    if (!b64) return false;
     const bin = atob(b64);
     const bytes = new Uint8Array(bin.length);
     for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
     if (refAudioUrl) URL.revokeObjectURL(refAudioUrl);
     refAudioUrl = URL.createObjectURL(new Blob([bytes], { type: "audio/wav" }));
     await new Audio(refAudioUrl).play();
-  } catch (e) { console.warn("基準音の再生:", e); }
+    return true;
+  } catch (e) { console.warn("基準音の再生:", e); return false; }
 }
 
 async function loadRef() {
@@ -4428,7 +4430,14 @@ on("gain", "input", (e) => {
 });
 
 on("ref-btn", "click", () => startRefMeasure());
-on("ref-play-btn", "click", () => playRefAudio());
+on("ref-play-btn", "click", async () => {
+  const ok = await playRefAudio();
+  if (!ok) showRefMsg("基準の音はまだ保存されていません。測り直すと保存されます。", true);
+});
+on("tl-ref-play", "click", async () => {
+  const ok = await playRefAudio();
+  if (!ok) $("tl-msg").textContent = "基準の音はまだ保存されていません。最初の画面で測り直すと保存されます。";
+});
 
 let motionOn = false;
 on("motion-btn", "click", async () => {
