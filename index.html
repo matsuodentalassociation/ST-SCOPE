@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
 <meta name="theme-color" content="#000000">
 <meta http-equiv="Cache-Control" content="no-cache">
-<title>SomnoLog V72 基準音圧版</title>
+<title>SomnoLog V73 基準音圧版</title>
 <style>
 :root{color-scheme:dark}
 *{box-sizing:border-box}
@@ -93,7 +93,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 1-1 起動・QR読み取り -->
 <main id="page-start" class="page" hidden>
   <header class="head">
-    <h1 class="app-name">SomnoLog V72</h1>
+    <h1 class="app-name">SomnoLog V73</h1>
     <span class="tag">患者情報確認</span>
   </header>
 
@@ -127,7 +127,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
   <div class="update-area">
     <h2 class="update-title">アプリの更新</h2>
     <section class="card">
-      <div class="kv"><span>現在のバージョン</span><b id="ver-text">SomnoLog V72</b></div>
+      <div class="kv"><span>現在のバージョン</span><b id="ver-text">SomnoLog V73</b></div>
       <button id="upd-reload" class="sub">最新版に変更（キャッシュを避けて再読み込み）</button>
       <p id="upd-msg" class="muted" hidden aria-live="polite"></p>
     </section>
@@ -155,7 +155,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 記録画面 -->
 <main id="page-record" class="page" hidden>
   <header class="head">
-    <h1 class="app-name">SomnoLog V72</h1>
+    <h1 class="app-name">SomnoLog V73</h1>
     <div style="display:flex;align-items:center;gap:10px">
       <button id="rec-back" class="sub mini" type="button">戻る</button>
       <span id="rec-badge" class="tag">待機中</span>
@@ -1416,7 +1416,7 @@ registerProcessor("pcm-tap", PcmTap);`;
 <script>
 "use strict";
 /* ===== バージョン ===== */
-const APP_VERSION = 72;
+const APP_VERSION = 73;
 const APP = "SomnoLogV" + APP_VERSION + "_ref";
 
 /* ===== 更新の取得元（GitHub） ===== */
@@ -3220,8 +3220,8 @@ async function renderDaySummary() {
     '<div id="cs-detail"><p class="muted">評価を計算中…</p></div>' +
     '<button id="cs-open" class="primary">詳細を見る</button>' +
     '<div class="card"><h2>この日の音声データ</h2><p id="cs-audio" class="muted">確認中…</p>' +
-    '<button id="cs-del-audio" class="danger" disabled>この日の音声データを削除</button>' +
-    '<p class="muted">押すと、この日のすべての記録の音声を消します（保存した音声は残ります）。簡易ログとグラフは残ります。元に戻せません。</p></div>';
+    '<div id="cs-del-wrap" hidden><button id="cs-del-audio" class="danger" disabled>この日の音声データを削除</button>' +
+    '<p class="muted">押すと、この日のすべての記録の音声を消します（保存した音声は残ります）。簡易ログとグラフは残ります。元に戻せません。</p></div></div>';
 
   $("cs-prev").onclick = () => { cal.index = Math.max(0, cal.index - 1); renderDaySummary(); };
   $("cs-next").onclick = () => { cal.index = Math.min(list.length - 1, cal.index + 1); renderDaySummary(); };
@@ -3240,10 +3240,10 @@ async function renderDaySummary() {
     const total = plan.sessions.reduce((n, x) => n + x.s && 0, 0);
     $("cs-audio").textContent =
       "全体 " + plan.total + "件（約 " + mb(plan.totalBytes) + "）／保存して残す音声 " + plan.savedCount +
-      "件／削除できる音声 " + plan.delCount + "件（約 " + mb(plan.delBytes) + "）" +
-      (plan.unsharedWithAudio ? "／音声の削除は、ZIPを保存した後にできます（未保存の記録 " + plan.unsharedWithAudio + "件）" : "");
-    // 音声の削除は、ZIPを書き出した記録だけに許す（元の作法）
-    $("cs-del-audio").disabled = plan.delCount === 0 || plan.unsharedWithAudio > 0;
+      "件／削除できる音声 " + plan.delCount + "件（約 " + mb(plan.delBytes) + "）";
+    // 音声の削除は、ZIPを書き出した記録だけに許す（元の作法）。それまではボタン自体を出さない
+    $("cs-del-audio").disabled = plan.delCount === 0;
+    $("cs-del-wrap").hidden = !(plan.delCount > 0 && plan.unsharedWithAudio === 0);
   } catch (e) {
     console.error(e);
     if (token === daySumToken) $("cs-audio").textContent = "音声の数を確認できませんでした。";
