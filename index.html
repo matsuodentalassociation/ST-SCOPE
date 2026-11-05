@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
 <meta name="theme-color" content="#000000">
 <meta http-equiv="Cache-Control" content="no-cache">
-<title>SomnoLog V77 基準音圧版</title>
+<title>SomnoLog V78 基準音圧版</title>
 <style>
 :root{color-scheme:dark}
 *{box-sizing:border-box}
@@ -93,7 +93,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 1-1 起動・QR読み取り -->
 <main id="page-start" class="page" hidden>
   <header class="head">
-    <h1 class="app-name">SomnoLog V77</h1>
+    <h1 class="app-name">SomnoLog V78</h1>
     <span class="tag">患者情報確認</span>
   </header>
 
@@ -127,7 +127,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
   <div class="update-area">
     <h2 class="update-title">アプリの更新</h2>
     <section class="card">
-      <div class="kv"><span>現在のバージョン</span><b id="ver-text">SomnoLog V77</b></div>
+      <div class="kv"><span>現在のバージョン</span><b id="ver-text">SomnoLog V78</b></div>
       <button id="upd-reload" class="sub">最新版に変更（キャッシュを避けて再読み込み）</button>
       <p id="upd-msg" class="muted" hidden aria-live="polite"></p>
     </section>
@@ -155,7 +155,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 記録画面 -->
 <main id="page-record" class="page" hidden>
   <header class="head">
-    <h1 class="app-name">SomnoLog V77</h1>
+    <h1 class="app-name">SomnoLog V78</h1>
     <div style="display:flex;align-items:center;gap:10px">
       <button id="rec-back" class="sub mini" type="button">戻る</button>
       <span id="rec-badge" class="tag">待機中</span>
@@ -290,6 +290,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
     <p id="tl-msg" class="muted"></p>
     <button id="tl-save" class="primary" disabled>この音声を保存する（残す）</button>
     <button id="tl-go-share" class="sub">共有画面に移行する</button>
+    <button id="tl-refit" class="sub" hidden>現在のあ〜でグラフを描き直す</button>
   </section>
   <p class="muted">本アプリは診断を行うものではありません。医師の判断の参考資料です。</p>
 </main>
@@ -1376,6 +1377,15 @@ registerProcessor("pcm-tap", PcmTap);`;
     await put("sessions", s);
   }
 
+  // 記録の後から あ〜基準を合わせ直す（秀司の指示 2026-11-05：記録画面に戻って測り直した基準を、過去の記録のグラフにも効かせる）
+  async function setSessionRef(sid, refDb, refEnvDb) {
+    const s = await get("sessions", sid);
+    if (!s) return;
+    s.refDb = refDb;
+    s.refEnvDb = refEnvDb;
+    await put("sessions", s);
+  }
+
   function patientForExport(p) {
     const o = (p && typeof p === "object") ? p : {};
     return { clinic: "", chartNo: "", name: "", ...o };
@@ -1440,7 +1450,7 @@ registerProcessor("pcm-tap", PcmTap);`;
   return {
     ENGINE_VERSION, SCHEMA_VERSION,
     start, stop, exportSession, listSessions, getSessionData, deleteSession, deleteClipsForSession,
-    getClipBlob, markShared,
+    getClipBlob, markShared, setSessionRef,
     isRunning: () => !!(st && st.running),
     live: () => (st ? st.live : null),
     errors: () => errors.slice()
@@ -1451,7 +1461,7 @@ registerProcessor("pcm-tap", PcmTap);`;
 <script>
 "use strict";
 /* ===== バージョン ===== */
-const APP_VERSION = 77;
+const APP_VERSION = 78;
 const APP = "SomnoLogV" + APP_VERSION + "_ref";
 
 /* ===== 更新の取得元（GitHub） ===== */
@@ -3347,6 +3357,8 @@ function initTimeline(sess, secs, evs) {
   tl.winStart = 0;
   tl.cursor = 0;
   tl.tags = { snore: true, unknown: false, env: false, speech: false };
+  const rb = $("tl-refit");
+  if (rb) rb.hidden = !(S.ref && S.ref.db != null);
   $("tl-zoom").value = String(ZOOM_DEFAULT);
   $("tl-msg").textContent = "";
   $("tl-audio").innerHTML = "";
@@ -3497,7 +3509,7 @@ function renderTimeline() {
     '<span><i style="background:' + TAG_COLOR[tag] + '"></i>' + esc(TAG_NAME[tag]) + "</span>" +
     '<span><i style="background:' + SAVED_BAR_COLOR + '"></i>保存した音声</span>';
   $("tl-info").textContent = "表示：" + fmtTime(t0 * 1000) + " 〜 " + fmtTime(t1 * 1000) +
-    "（記録の終了 " + fmtTime(tl.total * 1000) + "）　下端＝室内の環境音、高さ＝「あ〜」の何倍か、上端＝その晩の最大音";
+    "（記録の終了 " + fmtTime(tl.total * 1000) + "）　下端＝室内の環境音、高さ＝「あ〜」の何倍か";
   $("tl-cur-text").textContent = "黄色い線：記録から " + fmtTime(tl.cursor * 1000) +
     "（" + fmtClock(tl.data.sess.startedAt + tl.cursor * 1000) + "）";
 }
@@ -4395,6 +4407,19 @@ on("tl-cur", "input", (e) => {
   renderTimeline();
 });
 on("tl-listen", "click", () => listenAtCursor());
+on("tl-refit", "click", async () => {
+  if (!S.ref || S.ref.db == null || !S.detailSid) return;
+  const sid = S.detailSid;
+  try {
+    if (tl.data && tl.data.engine) {
+      await SleepEngine.setSessionRef(sid, S.ref.db, S.ref.envDb);
+    } else {
+      const row = await DB.get("sessions", sid);
+      if (row) { row.refDb = S.ref.db; row.refEnvDb = S.ref.envDb; await DB.put("sessions", row); }
+    }
+    await openDetail(sid);
+  } catch (e) { console.error(e); }
+});
 on("tl-save", "click", () => savePlayedAudio());
 on("tl-go-share", "click", () => {
   $("tl-audio").innerHTML = "";
