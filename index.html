@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
 <meta name="theme-color" content="#000000">
 <meta http-equiv="Cache-Control" content="no-cache">
-<title>SomnoLog V67 基準音圧版</title>
+<title>SomnoLog V69 基準音圧版</title>
 <style>
 :root{color-scheme:dark}
 *{box-sizing:border-box}
@@ -93,7 +93,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 1-1 起動・QR読み取り -->
 <main id="page-start" class="page" hidden>
   <header class="head">
-    <h1 class="app-name">SomnoLog V67</h1>
+    <h1 class="app-name">SomnoLog V69</h1>
     <span class="tag">患者情報確認</span>
   </header>
 
@@ -127,7 +127,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
   <div class="update-area">
     <h2 class="update-title">アプリの更新</h2>
     <section class="card">
-      <div class="kv"><span>現在のバージョン</span><b id="ver-text">SomnoLog V67</b></div>
+      <div class="kv"><span>現在のバージョン</span><b id="ver-text">SomnoLog V69</b></div>
       <button id="upd-reload" class="sub">最新版に変更（キャッシュを避けて再読み込み）</button>
       <p id="upd-msg" class="muted" hidden aria-live="polite"></p>
     </section>
@@ -155,7 +155,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 記録画面 -->
 <main id="page-record" class="page" hidden>
   <header class="head">
-    <h1 class="app-name">SomnoLog V67</h1>
+    <h1 class="app-name">SomnoLog V69</h1>
     <div style="display:flex;align-items:center;gap:10px">
       <button id="rec-back" class="sub mini" type="button">戻る</button>
       <span id="rec-badge" class="tag">待機中</span>
@@ -357,7 +357,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
    公開名は SleepEngine のみ。内部の名前はすべて閉じた範囲に隠す。 */
 const SleepEngine = (() => {
   "use strict";
-  const ENGINE_VERSION = 64;
+  const ENGINE_VERSION = 65;
   const SCHEMA_VERSION = 35;
   const C = {
     DB_NAME: "somnolog-v63",   // V62の somnolog-v3 とは別の保存領域
@@ -381,8 +381,8 @@ const SleepEngine = (() => {
     APNEA_GAP_MAX: 120000,
     APNEA_DB: 40,
     VAD_TH: 0.3,               // V62と同じ声らしさの閾値
-    VAD_URL: "./silero_vad.onnx?v=67",
-    ORT_URL: "./ort.min.js?v=67",
+    VAD_URL: "./silero_vad.onnx?v=68",
+    ORT_URL: "./ort.min.js?v=68",
     VAD_RATE: 16000,
     VAD_FRAME: 512,            // 16kHzで32ms
     VAD_CTX: 64
@@ -648,6 +648,14 @@ const SleepEngine = (() => {
       if (inside == null && near == null) marker.vadUnknown = true;
     } else {
       marker.vadUnknown = true;
+    }
+    // あ〜基準より大きい音は声にしない（秀司の決定 2026-11-05）。
+    // 寝ている本人のそばで、あ〜より大きな人の声がすれば目が覚めるはずで、
+    // 大きいいびきを声と誤判定して捨てないための上限。
+    // peakDbはエンジン尺度（殻の尺度+72）、refDbは殻尺度なので refDb+72 と比べる。
+    if (excluded && st && st.refDb != null && marker.peakDb != null && marker.peakDb >= st.refDb + 72) {
+      excluded = false;
+      marker.vadLoudOverride = true;
     }
     if (excluded) {
       marker.category = "talk";
@@ -1148,6 +1156,7 @@ registerProcessor("pcm-tap", PcmTap);`;
     st = {
       sid, running: true, mode, rate, t0: performance.now(),
       patient: patient || {}, onState: (opts && opts.onState) || null,
+      refDb: (opts && opts.sessionExtra && typeof opts.sessionExtra.refDb === "number") ? opts.sessionExtra.refDb : null,
       ring: new Float32Array(Math.round(C.RING_SEC * rate)),
       ringLen: Math.round(C.RING_SEC * rate), ringTotal: 0,
       accs: new Map(), slotSample: new Map(), nextClose: 0,
@@ -1393,7 +1402,7 @@ registerProcessor("pcm-tap", PcmTap);`;
 <script>
 "use strict";
 /* ===== バージョン ===== */
-const APP_VERSION = 67;
+const APP_VERSION = 69;
 const APP = "SomnoLogV" + APP_VERSION + "_ref";
 
 /* ===== 更新の取得元（GitHub） ===== */
@@ -1969,7 +1978,35 @@ async function loadPatient() {
 
 async function savePatient(p) {
   S.patient = p;
+  // 患者が変わったら、前の人の「あ〜」基準は使わない（別人の声のため）
+  if (S.ref && refPatientKey(p) !== (S.refKey || "")) S.ref = null;
   await DB.put("settings", { key: "patient", value: p, savedAt: Date.now() });
+}
+
+/* ===== 基準音圧（あ〜）の保存・読み込み =====
+   初回に測った基準を患者とセットで保存し、次回からは測り直さなくてよい。
+   保存が消えた時と患者が変わった時だけ、測り直しになる。 */
+function refPatientKey(p) {
+  if (!p) return "";
+  return [p.clinic || "", p.chartNo || "", p.serialNumber || ""].join("|");
+}
+
+async function saveRef() {
+  if (!S.ref) return;
+  try {
+    await DB.put("settings", { key: "ref", value: { db: S.ref.db, envDb: S.ref.envDb, at: S.ref.at, patientKey: S.refKey || "" }, savedAt: Date.now() });
+  } catch (e) { console.warn("基準音圧の保存:", e); }
+}
+
+async function loadRef() {
+  try {
+    const row = await withTimeout(DB.get("settings", "ref"), DB_WAIT_MS, "基準音圧の読み込み");
+    const v = row && row.value ? row.value : null;
+    if (v && typeof v.db === "number" && v.patientKey === refPatientKey(S.patient)) {
+      S.ref = { db: v.db, envDb: v.envDb, at: v.at || null };
+      S.refKey = v.patientKey;
+    }
+  } catch (e) { console.warn("基準音圧の読み込み:", e); }
 }
 
 /* ===== 音声取得（16kHzへ変換して512サンプルずつ onAudio に渡す） ===== */
@@ -2199,6 +2236,8 @@ function finishRefMeasure() {
     return;
   }
   S.ref = { db: round2(db), envDb: round2(env), at: Date.now() };
+  S.refKey = refPatientKey(S.patient);
+  saveRef();
   S.refColl = null;
   S.refEnv = null;
   showRefMsg("基準音圧を設定しました。下端が環境音、白い線が「あ〜」、上端が記録中の最大音です。");
@@ -4308,9 +4347,11 @@ async function boot() {
   document.querySelectorAll(".app-name").forEach((el) => { el.textContent = "SomnoLog V" + APP_VERSION; });
   await loadPatient();
   if (!checkHashOnLoad()) showPage("start");
+  await loadRef();
   updateBackButtons();
   setButtons();
   updateUI();
+  if (S.ref) showRefMsg("基準音圧は保存済みのものを使います。測り直すときは「基準音圧を測定する」を押してください。");
 
   // 更新は静かに確認する（表示は「アプリの更新」を押したときだけ）
   checkUpdate().then(() => renderUpdate()).catch(() => {});
