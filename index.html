@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
 <meta name="theme-color" content="#000000">
 <meta http-equiv="Cache-Control" content="no-cache">
-<title>SomnoLog V81 基準音圧版</title>
+<title>SomnoLog V83 基準音圧版</title>
 <style>
 :root{color-scheme:dark}
 *{box-sizing:border-box}
@@ -93,7 +93,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 1-1 起動・QR読み取り -->
 <main id="page-start" class="page" hidden>
   <header class="head">
-    <h1 class="app-name">SomnoLog V81</h1>
+    <h1 class="app-name">SomnoLog V83</h1>
     <span class="tag">患者情報確認</span>
   </header>
 
@@ -127,7 +127,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
   <div class="update-area">
     <h2 class="update-title">アプリの更新</h2>
     <section class="card">
-      <div class="kv"><span>現在のバージョン</span><b id="ver-text">SomnoLog V81</b></div>
+      <div class="kv"><span>現在のバージョン</span><b id="ver-text">SomnoLog V83</b></div>
       <button id="upd-reload" class="sub">最新版に変更（キャッシュを避けて再読み込み）</button>
       <p id="upd-msg" class="muted" hidden aria-live="polite"></p>
     </section>
@@ -155,7 +155,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 記録画面 -->
 <main id="page-record" class="page" hidden>
   <header class="head">
-    <h1 class="app-name">SomnoLog V81</h1>
+    <h1 class="app-name">SomnoLog V83</h1>
     <div style="display:flex;align-items:center;gap:10px">
       <button id="rec-back" class="sub mini" type="button">戻る</button>
       <span id="rec-badge" class="tag">待機中</span>
@@ -1461,7 +1461,7 @@ registerProcessor("pcm-tap", PcmTap);`;
 <script>
 "use strict";
 /* ===== バージョン ===== */
-const APP_VERSION = 81;
+const APP_VERSION = 83;
 const APP = "SomnoLogV" + APP_VERSION + "_ref";
 
 /* ===== 更新の取得元（GitHub） ===== */
@@ -2265,13 +2265,9 @@ function finishRefMeasure() {
     const from = onset + Math.round(0.3 * SR / FRAME);
     if (arr.length - from >= Math.round(0.8 * SR / FRAME)) seg = arr.slice(from);
   }
-  // あ〜の値は「持続している声の大きさ」を取る（V81で変更）。
-  // 一番大きい瞬間だと、息がマイクに当たった瞬間などで跳ね上がり、測るたびに物差しが暴れる。
-  // 区間のうち声が出ている部分のエネルギー平均にする（単位の取り方は記録側と統一済み）。
-  const thr = env + 3;
-  let pSum = 0, pCnt = 0;
-  for (const v of seg) { if (v > thr) { pSum += Math.pow(10, v / 10); pCnt++; } }
-  const db = pCnt ? 10 * Math.log10(pSum / pCnt) : Math.max(...seg);
+  // あ〜もいびきと全く同じ取り方にする（秀司の指示：何度も統一と言われている）。
+  // 区間内の一番大きい瞬間の値を使う。平均など別の畳み方はしない。
+  const db = Math.max(...seg);
   if (db < REF_QUIET_DB) {
     refFail("声が小さすぎます。iPhoneの音圧調整を上げてから、もう一度押してください。");
     return;
@@ -3464,7 +3460,10 @@ function tagGraphSvg(tag, t0, t1) {
   const LADDER = [1.5, 2, 2.5, 3, 4, 5, 6, 8, 10, 12, 16, 20, 24, 32, 40, 48, 64, 80, 96, 128];
   let ceilR = 2;
   for (const L of LADDER) { if (L >= rTop * 1.08) { ceilR = L; break; } ceilR = L; }
-  const posOfR = (r) => r <= 1 ? 0.125 * r : 0.125 + (r - 1) / Math.max(ceilR - 1, 0.5) * 0.875;
+  // あ〜の線の位置も固定しない（V82、秀司の指示）：あ〜より上がスカスカな晩は、あ〜の線を上へ上げる。
+  // 大きな晩（天井が高い）は従来どおり下の方（1/8）、静かな晩は最大で3/4まで上がる。
+  const ahPos = Math.min(0.75, Math.max(0.125, 1.2 / ceilR));
+  const posOfR = (r) => r <= 1 ? ahPos * r : ahPos + (r - 1) / Math.max(ceilR - 1, 0.5) * (1 - ahPos);
   const posOf = (db) => {
     const p = posOfR(Math.pow(2, (db - sc.refDb) / 10));
     return Math.min(1, Math.max(0, p));
