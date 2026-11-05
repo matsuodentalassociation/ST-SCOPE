@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
 <meta name="theme-color" content="#000000">
 <meta http-equiv="Cache-Control" content="no-cache">
-<title>SomnoLog V73 基準音圧版</title>
+<title>SomnoLog V74 基準音圧版</title>
 <style>
 :root{color-scheme:dark}
 *{box-sizing:border-box}
@@ -93,7 +93,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 1-1 起動・QR読み取り -->
 <main id="page-start" class="page" hidden>
   <header class="head">
-    <h1 class="app-name">SomnoLog V73</h1>
+    <h1 class="app-name">SomnoLog V74</h1>
     <span class="tag">患者情報確認</span>
   </header>
 
@@ -127,7 +127,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
   <div class="update-area">
     <h2 class="update-title">アプリの更新</h2>
     <section class="card">
-      <div class="kv"><span>現在のバージョン</span><b id="ver-text">SomnoLog V73</b></div>
+      <div class="kv"><span>現在のバージョン</span><b id="ver-text">SomnoLog V74</b></div>
       <button id="upd-reload" class="sub">最新版に変更（キャッシュを避けて再読み込み）</button>
       <p id="upd-msg" class="muted" hidden aria-live="polite"></p>
     </section>
@@ -155,7 +155,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 記録画面 -->
 <main id="page-record" class="page" hidden>
   <header class="head">
-    <h1 class="app-name">SomnoLog V73</h1>
+    <h1 class="app-name">SomnoLog V74</h1>
     <div style="display:flex;align-items:center;gap:10px">
       <button id="rec-back" class="sub mini" type="button">戻る</button>
       <span id="rec-badge" class="tag">待機中</span>
@@ -1416,7 +1416,7 @@ registerProcessor("pcm-tap", PcmTap);`;
 <script>
 "use strict";
 /* ===== バージョン ===== */
-const APP_VERSION = 73;
+const APP_VERSION = 74;
 const APP = "SomnoLogV" + APP_VERSION + "_ref";
 
 /* ===== 更新の取得元（GitHub） ===== */
@@ -3402,9 +3402,19 @@ function tagGraphSvg(tag, t0, t1) {
     g += '<text x="' + (TL_PL + 8) + '" y="' + (TL_PT + plotH / 2 + 30) + '" font-size="12" fill="#aebbc9">この種類の音はありません</text>';
   }
 
-  g += '<text x="4" y="' + (TL_PT + 10) + '" font-size="9" fill="#aebbc9">最大 ' + sc.topDb.toFixed(1) + '</text>';
-  g += '<text x="4" y="' + (yMid + 4) + '" font-size="9" fill="#f3e7c9">あ〜 ' + sc.refDb.toFixed(1) + '</text>';
-  g += '<text x="4" y="' + (TL_PT + plotH) + '" font-size="9" fill="#aebbc9">環境 ' + sc.envDb.toFixed(1) + '</text>';
+  // 音量の数字は出さない。「あ〜」を物差しに、耳に聞こえる大きさの倍率で線を引く（秀司の決定 2026-11-05）。
+  // 2倍＝あ〜より10dB大きい、3倍＝約15.9dB大きい（聞こえる大きさの倍率）。
+  const yOfDb = (db) => TL_PT + plotH - scalePos(db, sc.envDb, sc.refDb, sc.topDb) * (plotH - 4);
+  for (const [mult, addDb] of [[2, 10], [3, 15.85]]) {
+    const target = sc.refDb + addDb;
+    if (target < sc.topDb) {
+      const y = yOfDb(target);
+      g += '<line x1="' + TL_PL + '" x2="' + (TL_PL + plotW) + '" y1="' + y.toFixed(1) + '" y2="' + y.toFixed(1) + '" stroke="#8a94a6" stroke-width="1" stroke-dasharray="4 3"/>';
+      g += '<text x="4" y="' + (y + 3).toFixed(1) + '" font-size="9" fill="#aebbc9">あ〜の' + mult + '倍</text>';
+    }
+  }
+  g += '<text x="4" y="' + (yMid + 4) + '" font-size="9" fill="#f3e7c9">あ〜の音量</text>';
+  g += '<text x="4" y="' + (TL_PT + plotH) + '" font-size="9" fill="#aebbc9">室内の環境音</text>';
 
   g += '<text x="' + (TL_PL + 4) + '" y="' + (TL_PT + 12) + '" font-size="11" fill="' + TAG_COLOR[tag] + '">' +
     esc(TAG_NAME[tag]) + "（棒1本＝" + round1(binSec) + "秒）</text>";
