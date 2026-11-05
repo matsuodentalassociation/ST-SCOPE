@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
 <meta name="theme-color" content="#000000">
 <meta http-equiv="Cache-Control" content="no-cache">
-<title>SomnoLog V71 基準音圧版</title>
+<title>SomnoLog V72 基準音圧版</title>
 <style>
 :root{color-scheme:dark}
 *{box-sizing:border-box}
@@ -93,7 +93,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 1-1 起動・QR読み取り -->
 <main id="page-start" class="page" hidden>
   <header class="head">
-    <h1 class="app-name">SomnoLog V71</h1>
+    <h1 class="app-name">SomnoLog V72</h1>
     <span class="tag">患者情報確認</span>
   </header>
 
@@ -127,7 +127,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
   <div class="update-area">
     <h2 class="update-title">アプリの更新</h2>
     <section class="card">
-      <div class="kv"><span>現在のバージョン</span><b id="ver-text">SomnoLog V71</b></div>
+      <div class="kv"><span>現在のバージョン</span><b id="ver-text">SomnoLog V72</b></div>
       <button id="upd-reload" class="sub">最新版に変更（キャッシュを避けて再読み込み）</button>
       <p id="upd-msg" class="muted" hidden aria-live="polite"></p>
     </section>
@@ -155,7 +155,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 記録画面 -->
 <main id="page-record" class="page" hidden>
   <header class="head">
-    <h1 class="app-name">SomnoLog V71</h1>
+    <h1 class="app-name">SomnoLog V72</h1>
     <div style="display:flex;align-items:center;gap:10px">
       <button id="rec-back" class="sub mini" type="button">戻る</button>
       <span id="rec-badge" class="tag">待機中</span>
@@ -357,7 +357,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
    公開名は SleepEngine のみ。内部の名前はすべて閉じた範囲に隠す。 */
 const SleepEngine = (() => {
   "use strict";
-  const ENGINE_VERSION = 66;
+  const ENGINE_VERSION = 67;
   const SCHEMA_VERSION = 35;
   const C = {
     DB_NAME: "somnolog-v63",   // V62の somnolog-v3 とは別の保存領域
@@ -1330,6 +1330,20 @@ registerProcessor("pcm-tap", PcmTap);`;
     });
   }
 
+  // 1件だけ音声を取り出す（詳細画面で、選んだ棒の音だけをその場で読むため）
+  async function getClipBlob(id) {
+    const c = await get("clips", id);
+    return c && c.blob ? c.blob : null;
+  }
+
+  // ZIPを書き出した記録に印を付ける（音声の削除は、この印がある記録だけに許す）
+  async function markShared(sid) {
+    const s = await get("sessions", sid);
+    if (!s) return;
+    s.sharedAt = Date.now();
+    await put("sessions", s);
+  }
+
   function patientForExport(p) {
     const o = (p && typeof p === "object") ? p : {};
     return { clinic: "", chartNo: "", name: "", ...o };
@@ -1391,6 +1405,7 @@ registerProcessor("pcm-tap", PcmTap);`;
   return {
     ENGINE_VERSION, SCHEMA_VERSION,
     start, stop, exportSession, listSessions, getSessionData, deleteSession, deleteClipsForSession,
+    getClipBlob, markShared,
     isRunning: () => !!(st && st.running),
     live: () => (st ? st.live : null),
     errors: () => errors.slice()
@@ -1401,7 +1416,7 @@ registerProcessor("pcm-tap", PcmTap);`;
 <script>
 "use strict";
 /* ===== バージョン ===== */
-const APP_VERSION = 71;
+const APP_VERSION = 72;
 const APP = "SomnoLogV" + APP_VERSION + "_ref";
 
 /* ===== 更新の取得元（GitHub） ===== */
@@ -1712,7 +1727,7 @@ const CAT_FROM_DISPLAY = { "いびき": "snore", "人声": "speech", "環境音"
 async function engineHas(sid) {
   if (!sid) return false;
   if (ENGINE_IDS.has(sid)) return true;
-  try { return !!(await SleepEngine.getSessionData(sid)); } catch (e) { return false; }
+  try { return !!(await SleepEngine.getSessionData(sid, { light: true })); } catch (e) { return false; }
 }
 
 function engineSessForUi(s) {
@@ -1761,31 +1776,7 @@ async function engineDetailData(sid, needClips) {
   return { sess, secs, evs, clips: d.clips };
 }
 
-function renderEngineClips(d) {
-  const box = $("tl-audio");
-  box.innerHTML = "";
-  let n = 0;
-  for (const e of d.evs) {
-    if (!e.engineClip || !e.engineClip.blob) continue;
-    n++;
-    const url = URL.createObjectURL(e.engineClip.blob);
-    blobUrls.push(url);
-    const wrap = document.createElement("div");
-    const label = document.createElement("div");
-    label.textContent = fmtClock(d.sess.startedAt + e.startMs) + " " + (e.displayCategory || e.label || "") + "（" + (e.durationSec || 0) + "秒）";
-    const audio = document.createElement("audio");
-    audio.controls = true;
-    audio.preload = "none";
-    audio.src = url;
-    audio.dataset.evId = e.id;
-    wrap.appendChild(label);
-    wrap.appendChild(audio);
-    box.appendChild(wrap);
-  }
-  $("tl-msg").textContent = n
-    ? "この記録はV63エンジンで録音されました。音声はイベントごとに下で再生できます。送るときは「共有する」からZIP（圧縮のまま）を書き出してください。"
-    : "この記録はV63エンジンで録音されました。再生できる音声はありません。";
-}
+
 
 function isBusy() { return S.running || S.saving || recActionPending || !!S.refColl; }
 
@@ -3038,7 +3029,7 @@ async function loadDayDetail(s, token) {
    ・sessions・secs・events（簡易ログとグラフのもと） */
 async function planDayDelete(key) {
   const sessions = (await DB.all("sessions")).filter((s) => dayKey(s.startedAt) === key);
-  const plan = { sessions: [], total: 0, savedCount: 0, delCount: 0, delBytes: 0, totalBytes: 0 };
+  const plan = { sessions: [], total: 0, savedCount: 0, delCount: 0, delBytes: 0, totalBytes: 0, unsharedWithAudio: 0 };
   for (const s of sessions) {
     const clips = await DB.byIndex("clips", "sid", s.id);
     const evs = await DB.byIndex("events", "sid", s.id);
@@ -3053,6 +3044,7 @@ async function planDayDelete(key) {
     plan.total += clips.length;
     plan.savedCount += keep.length;
     plan.delCount += del.length;
+    if (clips.length && !s.sharedAt) plan.unsharedWithAudio++;
     plan.sessions.push({ s, del, evs });
   }
   try {
@@ -3070,6 +3062,7 @@ async function planDayDelete(key) {
       }
       plan.total += clips.length;
       plan.delCount += del.length;
+      if (clips.length && !(d && d.session && d.session.sharedAt)) plan.unsharedWithAudio++;
       plan.sessions.push({ s, del, evs: [], engine: true });
     }
   } catch (e) { console.error(e); }
@@ -3080,6 +3073,10 @@ async function deleteAudioForDay(key) {
   const plan = await planDayDelete(key);
   if (!plan.sessions.length) {
     alert("この日の記録はありません。");
+    return false;
+  }
+  if (plan.unsharedWithAudio) {
+    alert("音声の削除は、ZIPを保存した後にできます。先に記録を開いて、共有からZIPを書き出してください。");
     return false;
   }
   if (!plan.delCount) {
@@ -3243,8 +3240,10 @@ async function renderDaySummary() {
     const total = plan.sessions.reduce((n, x) => n + x.s && 0, 0);
     $("cs-audio").textContent =
       "全体 " + plan.total + "件（約 " + mb(plan.totalBytes) + "）／保存して残す音声 " + plan.savedCount +
-      "件／削除できる音声 " + plan.delCount + "件（約 " + mb(plan.delBytes) + "）";
-    $("cs-del-audio").disabled = plan.delCount === 0;
+      "件／削除できる音声 " + plan.delCount + "件（約 " + mb(plan.delBytes) + "）" +
+      (plan.unsharedWithAudio ? "／音声の削除は、ZIPを保存した後にできます（未保存の記録 " + plan.unsharedWithAudio + "件）" : "");
+    // 音声の削除は、ZIPを書き出した記録だけに許す（元の作法）
+    $("cs-del-audio").disabled = plan.delCount === 0 || plan.unsharedWithAudio > 0;
   } catch (e) {
     console.error(e);
     if (token === daySumToken) $("cs-audio").textContent = "音声の数を確認できませんでした。";
@@ -3275,11 +3274,12 @@ async function openDetail(sid) {
       $("tl-legend").innerHTML = "";
       setSaveEnabled(false);
       showPage("detail");
-      const d = await engineDetailData(sid, true);
+      const d = await engineDetailData(sid, false);
       if (S.detailSid !== sid || !d) return;
       initTimeline(d.sess, d.secs, d.evs);
       tl.data.engine = true;
-      renderEngineClips(d);
+      // 音声は最初から全部は読み込まない。棒を選んで「音を聴く」を押した時に、その棒の分だけ読む
+      $("tl-msg").textContent = "棒を選んで「タイムラインの音を聴く」を押すと、その棒の音声を再生します。送るときは「共有画面に移行する」からZIPを書き出してください。";
     }
     return;
   }
@@ -3502,16 +3502,56 @@ async function buildRangePcm(fromMs, toMs, list) {
 // 黄色い線の位置の棒1本分（表示幅÷60）の時間の音を再生する
 async function listenAtCursor() {
   if (tl.data && tl.data.engine) {
-    const msg = $("tl-msg");
-    const curMs = tl.cursor * 1000;
-    const ev = tl.data.evs.find((e) => curMs >= e.startMs && curMs <= (e.endMs || e.startMs));
-    const audio = ev ? $("tl-audio").querySelector('audio[data-ev-id="' + ev.id + '"]') : null;
-    if (audio) {
-      audio.scrollIntoView({ block: "center" });
-      audio.play().catch(() => {});
-      msg.textContent = "カーソル位置の音声を再生しています。";
-    } else {
-      msg.textContent = "カーソル位置に音声はありません。下のイベント一覧から再生できます。";
+    // エンジン記録も旧記録と同じ物差し：黄色い線の棒（区間）の中にあるイベントの音を、その場で読み込んで再生する
+    const msg = $("tl-msg"), box = $("tl-audio");
+    box.innerHTML = "";
+    PLAY.list = [];
+    setSaveEnabled(false);
+    revokeUrls();
+    const tag = selectedTag();
+    const binSec = tl.winLen / TL_BINS;
+    const idx = clamp(Math.floor((tl.cursor - tl.winStart) / binSec), 0, TL_BINS - 1);
+    const binStart = tl.winStart + idx * binSec;
+    const binEnd = Math.min(tl.winStart + tl.winLen, binStart + binSec);
+    const inBin = tl.data.evs
+      .filter((e) => e.type === tag && e.startMs / 1000 >= binStart && e.startMs / 1000 < binEnd)
+      .sort((a, b) => a.startMs - b.startMs);
+    if (!inBin.length) {
+      msg.textContent = "音なし（この棒には" + TAG_NAME[tag] + "がありません）";
+      return;
+    }
+    const list = inBin.filter((e) => e.clipId);
+    if (!list.length) {
+      msg.textContent = "この棒の音声データはありません（削除済み、または音声が保存されていません）。";
+      return;
+    }
+    msg.textContent = "読み込み中…";
+    try {
+      const blobs = [];
+      for (const e of list) {
+        const b = await SleepEngine.getClipBlob(e.clipId);
+        if (b) blobs.push(b);
+      }
+      if (!blobs.length) { msg.textContent = "再生できる音声がありません。"; return; }
+      const au = document.createElement("audio");
+      au.controls = true;
+      au.preload = "auto";
+      box.appendChild(au);
+      let i = 0;
+      const playNext = () => {
+        if (i >= blobs.length) return;
+        const url = URL.createObjectURL(blobs[i]);
+        blobUrls.push(url);
+        au.src = url;
+        au.play().catch(() => {});
+        i++;
+      };
+      au.onended = playNext;
+      playNext();
+      msg.textContent = TAG_NAME[tag] + "の棒1本分を再生します。音声 " + blobs.length + "件。";
+    } catch (err) {
+      console.error(err);
+      msg.textContent = "読み込めませんでした。もう一度押してください。";
     }
     return;
   }
@@ -3812,10 +3852,19 @@ function updateShareButtons() {
   $("sh-del-tl").disabled = S.saving || !show;
 }
 
-function openShare() {
+async function openShare() {
   if (!S.detailSid) return;
   SH.sid = S.detailSid;
   SH.zipDone = false;
+  // 以前にZIPを書き出した記録は、音声の削除カードを最初から出す（元の作法：削除はZIP保存の後）
+  try {
+    const legacy = await DB.get("sessions", SH.sid);
+    if (legacy && legacy.sharedAt) SH.zipDone = true;
+    if (!legacy) {
+      const d = await SleepEngine.getSessionData(SH.sid, { light: true });
+      if (d && d.session && d.session.sharedAt) SH.zipDone = true;
+    }
+  } catch (e) { console.warn(e); }
   $("sh-addr").textContent = (S.patient && S.patient.logShareEmail) || "（未記入）";
   shMsg("", false);
   updateShareButtons();
@@ -3854,6 +3903,7 @@ async function startShareEngine() {
     a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 60000);
     SH.zipDone = true;
+    await SleepEngine.markShared(SH.sid).catch(() => {});
     const d = await SleepEngine.getSessionData(SH.sid, { light: true });
     const nClips = d ? d.clips.length : 0;
     const nTalk = d ? d.events.filter((e) => e.category === "talk").length : 0;
@@ -4047,6 +4097,10 @@ async function makeZip() {
     setTimeout(() => URL.revokeObjectURL(url), 60000);
 
     SH.zipDone = true;
+    try {
+      const sessRow = await DB.get("sessions", SH.sid);
+      if (sessRow) { sessRow.sharedAt = Date.now(); await DB.put("sessions", sessRow); }
+    } catch (e) { console.warn(e); }
     shMsg(
       "ダウンロードを開始しました：" + SH.zipName +
       "（音声 " + audioCount + "件" +
