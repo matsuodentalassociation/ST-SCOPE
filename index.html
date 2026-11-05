@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
 <meta name="theme-color" content="#000000">
 <meta http-equiv="Cache-Control" content="no-cache">
-<title>SomnoLog V83 基準音圧版</title>
+<title>SomnoLog V84 基準音圧版</title>
 <style>
 :root{color-scheme:dark}
 *{box-sizing:border-box}
@@ -93,7 +93,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 1-1 起動・QR読み取り -->
 <main id="page-start" class="page" hidden>
   <header class="head">
-    <h1 class="app-name">SomnoLog V83</h1>
+    <h1 class="app-name">SomnoLog V84</h1>
     <span class="tag">患者情報確認</span>
   </header>
 
@@ -127,7 +127,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
   <div class="update-area">
     <h2 class="update-title">アプリの更新</h2>
     <section class="card">
-      <div class="kv"><span>現在のバージョン</span><b id="ver-text">SomnoLog V83</b></div>
+      <div class="kv"><span>現在のバージョン</span><b id="ver-text">SomnoLog V84</b></div>
       <button id="upd-reload" class="sub">最新版に変更（キャッシュを避けて再読み込み）</button>
       <p id="upd-msg" class="muted" hidden aria-live="polite"></p>
     </section>
@@ -155,7 +155,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 記録画面 -->
 <main id="page-record" class="page" hidden>
   <header class="head">
-    <h1 class="app-name">SomnoLog V83</h1>
+    <h1 class="app-name">SomnoLog V84</h1>
     <div style="display:flex;align-items:center;gap:10px">
       <button id="rec-back" class="sub mini" type="button">戻る</button>
       <span id="rec-badge" class="tag">待機中</span>
@@ -196,6 +196,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
   <section class="card">
     <button id="ref-btn" class="primary" disabled>基準音圧を測定する（静か2秒→「あ〜」2秒）</button>
     <p id="ref-msg" class="muted">基準音圧が未設定です。測定すると、バーの見方が決まります。</p>
+    <button id="ref-play-btn" class="sub" hidden>基準の「あ〜」を聴く</button>
   </section>
 
   <section class="card">
@@ -1461,7 +1462,7 @@ registerProcessor("pcm-tap", PcmTap);`;
 <script>
 "use strict";
 /* ===== バージョン ===== */
-const APP_VERSION = 83;
+const APP_VERSION = 84;
 const APP = "SomnoLogV" + APP_VERSION + "_ref";
 
 /* ===== 更新の取得元（GitHub） ===== */
@@ -1753,6 +1754,7 @@ const S = {
   gainDb: 0,
   ref: null,
   refColl: null,
+  refPcm: null,
   refEnv: null,
   peakDb: -Infinity,
   patient: null,
@@ -2038,6 +2040,46 @@ async function saveRef() {
   } catch (e) { console.warn("基準音圧の保存:", e); }
 }
 
+/* 基準の「あ〜」の音声（WAV）を保存・再生する。値は settings ストアの refAudio キー。 */
+function pcmChunksToWavBase64(chunks, sampleRate) {
+  let total = 0;
+  for (const c of chunks) total += c.length;
+  const buf = new ArrayBuffer(44 + total * 2);
+  const v = new DataView(buf);
+  const ws = (off, s) => { for (let i = 0; i < s.length; i++) v.setUint8(off + i, s.charCodeAt(i)); };
+  ws(0, "RIFF"); v.setUint32(4, 36 + total * 2, true); ws(8, "WAVE"); ws(12, "fmt ");
+  v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+  v.setUint32(24, sampleRate, true); v.setUint32(28, sampleRate * 2, true);
+  v.setUint16(32, 2, true); v.setUint16(34, 16, true); ws(36, "data"); v.setUint32(40, total * 2, true);
+  let off = 44;
+  for (const c of chunks) {
+    for (let i = 0; i < c.length; i++) {
+      const s = Math.max(-1, Math.min(1, c[i]));
+      v.setInt16(off, s < 0 ? s * 0x8000 : s * 0x7fff, true);
+      off += 2;
+    }
+  }
+  const bytes = new Uint8Array(buf);
+  let bin = "";
+  for (let i = 0; i < bytes.length; i += 8192) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 8192));
+  return btoa(bin);
+}
+
+let refAudioUrl = null;
+async function playRefAudio() {
+  try {
+    const row = await DB.get("settings", "refAudio");
+    const b64 = row && row.value ? row.value : null;
+    if (!b64) { showRefMsg("基準の音はまだ保存されていません。測り直すと保存されます。", true); return; }
+    const bin = atob(b64);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    if (refAudioUrl) URL.revokeObjectURL(refAudioUrl);
+    refAudioUrl = URL.createObjectURL(new Blob([bytes], { type: "audio/wav" }));
+    await new Audio(refAudioUrl).play();
+  } catch (e) { console.warn("基準音の再生:", e); }
+}
+
 async function loadRef() {
   try {
     const row = await withTimeout(DB.get("settings", "ref"), DB_WAIT_MS, "基準音圧の読み込み");
@@ -2198,7 +2240,10 @@ function onAudio(raw) {
     const lv = toDb(Math.sqrt(ss / data.length));
     S.lastLv = lv;
     pushDisp(lv);
-    if (S.refColl) S.refColl.push(lv);
+    if (S.refColl) {
+      S.refColl.push(lv);
+      if (S.refPcm) S.refPcm.push(data.slice(0));
+    }
     return;
   }
   if (S.engineMode) {
@@ -2218,6 +2263,7 @@ function onAudio(raw) {
 /* ===== 基準音圧を測る（①環境音 → ②「あ〜」） ===== */
 function refFail(msg) {
   S.refColl = null;
+  S.refPcm = null;
   S.refEnv = null;
   showRefMsg(msg, true);
   setButtons();
@@ -2227,6 +2273,7 @@ function startRefMeasure() {
   if (!S.ctx || S.running || S.refColl) return;
   S.refEnv = null;
   S.refColl = [];
+  S.refPcm = [];
   S.dispWin = []; S.dispLv = -100;
   setButtons();
   showRefMsg("静かにしてください…（環境音を" + REF_SEC + "秒測ります）");
@@ -2248,6 +2295,7 @@ function finishRefEnv() {
   }
   S.refEnv = round2(halfMean(arr, false));
   S.refColl = [];
+  S.refPcm = [];
   showRefMsg("「あ〜」と声を出し続けてください…（" + REF_SEC + "秒）");
   setTimeout(finishRefMeasure, REF_SEC * 1000);
 }
@@ -2278,7 +2326,16 @@ function finishRefMeasure() {
   }
   S.ref = { db: round2(db), envDb: round2(env), at: Date.now() };
   saveRef();
+  // 測った「あ〜」の音そのものも保存する（後から聴いて確かめられるように、秀司の指示 V84）。
+  if (S.refPcm && S.refPcm.length) {
+    try {
+      const b64 = pcmChunksToWavBase64(S.refPcm, 16000);
+      S.refAudioAt = S.ref.at;
+      DB.put("settings", { key: "refAudio", value: b64, savedAt: Date.now() }).catch(() => {});
+    } catch (e) { /* 音が保存できなくても測定は成立 */ }
+  }
   S.refColl = null;
+  S.refPcm = null;
   S.refEnv = null;
   showRefMsg("基準音圧を設定しました（「あ〜」" + S.ref.db.toFixed(1) + "dB）。この設定は保存されるので、次回からは測らなくて大丈夫です。そのまま「記録開始」を押してください。");
   setButtons();
@@ -2676,6 +2733,7 @@ function setButtons() {
     : (S.ref ? "基準音圧を測り直す（通常は不要です）" : "基準音圧を測定する（静か2秒→「あ〜」2秒）");
   // 設定済みなら測定ボタンを目立たなくし、「もう押さなくていい」状態を見た目でも示す
   $("ref-btn").className = S.ref && !measuring ? "sub" : "primary";
+  $("ref-play-btn").hidden = !S.ref;
 
   $("start-btn").disabled = S.running || !S.ctx || !S.patient || !S.ref;
   $("stop-btn").disabled = !S.running;
@@ -4370,6 +4428,7 @@ on("gain", "input", (e) => {
 });
 
 on("ref-btn", "click", () => startRefMeasure());
+on("ref-play-btn", "click", () => playRefAudio());
 
 let motionOn = false;
 on("motion-btn", "click", async () => {
