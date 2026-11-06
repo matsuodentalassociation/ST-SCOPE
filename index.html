@@ -1463,7 +1463,7 @@ registerProcessor("pcm-tap", PcmTap);`;
 <script>
 "use strict";
 /* ===== バージョン ===== */
-const APP_VERSION = 86;
+const APP_VERSION = 87;
 const APP = "SomnoLogV" + APP_VERSION + "_ref";
 
 /* ===== 更新の取得元（GitHub） ===== */
@@ -3439,6 +3439,7 @@ function initTimeline(sess, secs, evs) {
   tl.winStart = 0;
   tl.cursor = 0;
   tl.tags = { snore: true, unknown: false, env: false, speech: false, motion: false };
+  tl.motion = null; // V87: 体動の表示モデルは記録ごとに作り直す
   $("tl-zoom").value = String(ZOOM_DEFAULT);
   $("tl-msg").textContent = "";
   $("tl-audio").innerHTML = "";
@@ -3580,37 +3581,105 @@ function tagGraphSvg(tag, t0, t1) {
 }
 
 // 体動のグラフ。1秒ごとの動きの大きさを棒の高さで出す。天井はその晩の最大に合わせる（V86）。
+// 体動の表示モデル。V35候補版（真実子／Claude）の方式を移植（V87）：
+// その晩の中央区間の分布から「動き始め」の境目（しきい値）を自動で決め、境目を超えた分だけを、
+// 対数で圧縮して中心線の上下に波形として描く。微細な動きは広げ、大きな動きは潰す。
+// 境目と天井はその晩のデータから出すので、端末や晩ごとのクセに引っ張られない。
+// 記録の最初と最後（3分以内）の大きな突出は、体動ではなく端末操作の可能性として分ける。
+function percentileOf(values, q, fallback) {
+  if (!values.length) return fallback;
+  const s = [...values].sort((a, b) => a - b);
+  return s[Math.min(s.length - 1, Math.max(0, Math.floor(q * s.length)))];
+}
+
+function buildMotionModel() {
+  const secs = tl.data ? tl.data.secs : [];
+  const total = tl.total || 0;
+  const source = secs.map(r => ({ sec: r.sec, value: Math.max(0, Number(r.motion || 0)) }))
+    .filter(v => Number.isFinite(v.sec) && Number.isFinite(v.value) && v.sec >= 0 && v.sec <= total)
+    .sort((a, b) => a.sec - b.sec);
+  const empty = { events: [], threshold: .012, strongThreshold: .04, scaleMax: .05, dispScale: .05 };
+  if (!source.length) return empty;
+  const interior = source.filter(v => v.sec >= 300 && v.sec <= total - 300);
+  const ref = interior.length >= 30 ? interior : source;
+  const values = ref.map(v => v.value);
+  const median = percentileOf(values, .50, 0);
+  const p90 = percentileOf(values, .90, median);
+  const p98 = percentileOf(values, .98, p90);
+  const spread = Math.max(.002, p90 - median);
+  const threshold = Math.max(.012, median + spread * 2.8, p90 * 1.35);
+  const strongThreshold = Math.max(.040, threshold * 2.15, p98 * 1.05);
+  const candidates = [];
+  source.forEach((v, index) => {
+    if (v.value < threshold) return;
+    const prev = source[index - 1], next = source[index + 1];
+    const nearPrev = prev && v.sec - prev.sec <= 3 && prev.value >= threshold * .78;
+    const nearNext = next && next.sec - v.sec <= 3 && next.value >= threshold * .78;
+    if (v.value >= strongThreshold || nearPrev || nearNext) candidates.push(v);
+  });
+  const groups = [];
+  candidates.forEach(v => {
+    const last = groups[groups.length - 1];
+    if (!last || v.sec - last.endSec > 5) groups.push({ startSec: v.sec, endSec: v.sec, samples: [v] });
+    else { last.endSec = v.sec; last.samples.push(v); }
+  });
+  const peaks = groups.map(group => ({
+    peak: group.samples.reduce((best, v) => v.value > best.value ? v : best, group.samples[0])
+  }));
+  const nonEdge = peaks.filter(x => x.peak.sec >= 180 && x.peak.sec <= total - 180).map(x => x.peak.value);
+  const scaleRef = nonEdge.length ? nonEdge : peaks.map(x => x.peak.value);
+  const scaleMax = Math.max(threshold + .015, percentileOf(scaleRef, .95, strongThreshold));
+  const operationLimit = Math.max(.10, strongThreshold * 1.8, scaleMax * 1.45);
+  const events = peaks.map(({ peak }) => {
+    const edge = peak.sec < 180 || peak.sec > total - 180;
+    return {
+      sec: peak.sec, value: peak.value,
+      excess: Math.max(0, peak.value - threshold),
+      strong: peak.value >= strongThreshold,
+      operation: edge && peak.value >= operationLimit
+    };
+  });
+  return { events, threshold, strongThreshold, scaleMax, dispScale: Math.max(.008, scaleMax - threshold) };
+}
+
+function motionInfoText() {
+  if (!tl.motion) return "体動";
+  const body = tl.motion.events.filter(e => !e.operation).length;
+  const ops = tl.motion.events.filter(e => e.operation).length;
+  return "体動 " + body + "回" + (ops ? "（端末操作と思われる動き " + ops + "件）" : "");
+}
+
 function motionGraphSvg(t0, t1) {
-  const NB = TL_BINS;
-  const binSec = tl.winLen / NB;
   const plotW = TL_W - TL_PL - TL_PR;
   const plotH = TL_H - TL_PT - TL_PB;
-  const bw = plotW / NB;
-  let maxM = 0;
-  for (const r of tl.data.secs) if (r.motion != null && r.motion > maxM) maxM = r.motion;
-  const bins = new Array(NB).fill(null);
-  for (const r of tl.data.secs) {
-    if (r.motion == null) continue;
-    const s = r.sec;
-    if (s < t0 || s > t1) continue;
-    const i = Math.min(NB - 1, Math.floor((s - t0) / binSec));
-    if (bins[i] == null || r.motion > bins[i]) bins[i] = r.motion;
-  }
+  if (!tl.motion) tl.motion = buildMotionModel();
+  const model = tl.motion;
+  const midY = TL_PT + plotH / 2;
+  const ampMax = plotH / 2 - 6;
   let g = '<rect x="' + TL_PL + '" y="' + TL_PT + '" width="' + plotW + '" height="' + plotH + '" fill="none" stroke="#2a3643"/>';
+  g += '<line x1="' + TL_PL + '" y1="' + midY.toFixed(1) + '" x2="' + (TL_PL + plotW) + '" y2="' + midY.toFixed(1) + '" stroke="#29445a"/>';
   let any = false;
-  for (let i = 0; i < NB; i++) {
-    const v = bins[i];
-    if (v == null || v <= 0 || maxM <= 0) continue;
+  for (const ev of model.events) {
+    if (ev.sec < t0 || ev.sec > t1) continue;
     any = true;
-    const h = Math.max(3, v / maxM * (plotH - 4));
-    g += '<rect x="' + (TL_PL + i * bw + 0.5).toFixed(1) + '" y="' + (TL_PT + plotH - h).toFixed(1) +
-      '" width="' + Math.max(1, bw - 1).toFixed(1) + '" height="' + h.toFixed(1) + '" fill="' + TAG_COLOR.motion + '"/>';
+    const x = TL_PL + (ev.sec - t0) / tl.winLen * plotW;
+    if (ev.operation) {
+      g += '<circle cx="' + x.toFixed(1) + '" cy="' + midY.toFixed(1) + '" r="4" fill="#f59e0b" opacity=".9"/>';
+      continue;
+    }
+    const n = Math.min(1, Math.log1p(ev.excess / Math.max(.0005, model.dispScale) * 9) / Math.log(10));
+    const amp = Math.max(1.5, n * ampMax);
+    const color = ev.strong ? "#38bdf8" : "#94a3b8";
+    g += '<line x1="' + x.toFixed(1) + '" y1="' + (midY - amp).toFixed(1) + '" x2="' + x.toFixed(1) + '" y2="' + (midY + amp).toFixed(1) +
+      '" stroke="' + color + '" stroke-width="2" stroke-linecap="round" opacity=".9"/>';
   }
-  if (!any) {
-    g += '<text x="' + (TL_PL + 8) + '" y="' + (TL_PT + plotH / 2 + 30) + '" font-size="12" fill="#aebbc9">体動データがありません</text>';
+  if (!model.events.length) {
+    g += '<text x="' + (TL_PL + 8) + '" y="' + (midY + 4).toFixed(1) + '" font-size="12" fill="#aebbc9">体動データがありません</text>';
+  } else if (!any) {
+    g += '<text x="' + (TL_PL + 8) + '" y="' + (midY + 4).toFixed(1) + '" font-size="12" fill="#aebbc9">この範囲に体動はありません</text>';
   }
   g += '<text x="' + (TL_PL + 4) + '" y="' + (TL_PT + 12) + '" font-size="11" fill="' + TAG_COLOR.motion + '">' +
-    esc(TAG_NAME.motion) + "（棒1本＝" + round1(binSec) + "秒）</text>";
+    esc(TAG_NAME.motion) + "</text>";
   return g;
 }
 
@@ -3647,11 +3716,13 @@ function renderTimeline() {
     (isMotion ? motionGraphSvg(t0, t1) : tagGraphSvg(tag, t0, t1)) + cursorLine + axisText + "</svg>";
 
   $("tl-legend").innerHTML = isMotion
-    ? '<span><i style="background:' + TAG_COLOR.motion + '"></i>' + esc(TAG_NAME.motion) + "</span>"
+    ? '<span><i style="background:#94a3b8"></i>体動</span>' +
+      '<span><i style="background:#38bdf8"></i>強い体動</span>' +
+      '<span><i style="background:#f59e0b"></i>端末操作の可能性</span>'
     : '<span><i style="background:' + TAG_COLOR[tag] + '"></i>' + esc(TAG_NAME[tag]) + "</span>" +
       '<span><i style="background:' + SAVED_BAR_COLOR + '"></i>保存した音声</span>';
   $("tl-info").textContent = "表示：" + fmtTime(t0 * 1000) + " 〜 " + fmtTime(t1 * 1000) +
-    "（記録の終了 " + fmtTime(tl.total * 1000) + "）　" + (isMotion ? "体動の大きさ" : "下端＝室内の環境音、高さ＝「あ〜」の何倍か");
+    "（記録の終了 " + fmtTime(tl.total * 1000) + "）　" + (isMotion ? motionInfoText() : "下端＝室内の環境音、高さ＝「あ〜」の何倍か");
   $("tl-cur-text").textContent = "黄色い線：記録から " + fmtTime(tl.cursor * 1000) +
     "（" + fmtClock(tl.data.sess.startedAt + tl.cursor * 1000) + "）";
 }
