@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
 <meta name="theme-color" content="#000000">
 <meta http-equiv="Cache-Control" content="no-cache">
-<title>SomnoLog V90 基準音圧版</title>
+<title>SomnoLog V91 基準音圧版</title>
 <style>
 :root{color-scheme:dark}
 *{box-sizing:border-box}
@@ -93,7 +93,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 1-1 起動・QR読み取り -->
 <main id="page-start" class="page" hidden>
   <header class="head">
-    <h1 class="app-name">SomnoLog V90</h1>
+    <h1 class="app-name">SomnoLog V91</h1>
     <span class="tag">患者情報確認</span>
   </header>
 
@@ -127,7 +127,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
   <div class="update-area">
     <h2 class="update-title">アプリの更新</h2>
     <section class="card">
-      <div class="kv"><span>現在のバージョン</span><b id="ver-text">SomnoLog V90</b></div>
+      <div class="kv"><span>現在のバージョン</span><b id="ver-text">SomnoLog V91</b></div>
       <button id="upd-reload" class="sub">最新版に変更（キャッシュを避けて再読み込み）</button>
       <p id="upd-msg" class="muted" hidden aria-live="polite"></p>
     </section>
@@ -155,7 +155,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 記録画面 -->
 <main id="page-record" class="page" hidden>
   <header class="head">
-    <h1 class="app-name">SomnoLog V90</h1>
+    <h1 class="app-name">SomnoLog V91</h1>
     <div style="display:flex;align-items:center;gap:10px">
       <button id="rec-back" class="sub mini" type="button">戻る</button>
       <span id="rec-badge" class="tag">待機中</span>
@@ -412,26 +412,50 @@ const SleepEngine = (() => {
 
   /* ---------- IndexedDB ---------- */
   let dbp = null;
+  // 必要な保存場所と索引の一覧。古い版で作られた保存領域に足りない物があれば、開く時に直す（V91）。
+  const ENGINE_SCHEMA = [
+    ["sessions", "id", false],
+    ["timeline", "key", true],
+    ["events", "id", true],
+    ["clips", "id", true]
+  ];
+  function applyEngineSchema(d, tx) {
+    for (const [n, kp, needIdx] of ENGINE_SCHEMA) {
+      let s;
+      if (!d.objectStoreNames.contains(n)) s = d.createObjectStore(n, { keyPath: kp });
+      else s = tx.objectStore(n);
+      if (needIdx && !s.indexNames.contains("sid")) s.createIndex("sid", "sid");
+    }
+  }
+  function engineSchemaOk(d) {
+    try {
+      return ENGINE_SCHEMA.every(([n, , needIdx]) =>
+        d.objectStoreNames.contains(n) &&
+        (!needIdx || d.transaction(n).objectStore(n).indexNames.contains("sid")));
+    } catch (e) { return false; }
+  }
+  function openEngineRaw(version) {
+    return new Promise((res, rej) => {
+      const req = version ? indexedDB.open(C.DB_NAME, version) : indexedDB.open(C.DB_NAME);
+      req.onupgradeneeded = () => applyEngineSchema(req.result, req.transaction);
+      req.onsuccess = () => res(req.result);
+      req.onerror = () => rej(req.error);
+      req.onblocked = () => rej(new Error("保存領域が他の画面で使用中です"));
+    });
+  }
   function openDb() {
     if (dbp) return dbp;
-    dbp = new Promise((res, rej) => {
-      if (!window.indexedDB) { rej(new Error("IndexedDBを使えません")); return; }
-      const req = indexedDB.open(C.DB_NAME, C.DB_VERSION);
-      req.onupgradeneeded = () => {
-        const d = req.result;
-        if (!d.objectStoreNames.contains("sessions")) d.createObjectStore("sessions", { keyPath: "id" });
-        if (!d.objectStoreNames.contains("timeline")) d.createObjectStore("timeline", { keyPath: "key" }).createIndex("sid", "sid");
-        if (!d.objectStoreNames.contains("events")) d.createObjectStore("events", { keyPath: "id" }).createIndex("sid", "sid");
-        if (!d.objectStoreNames.contains("clips")) d.createObjectStore("clips", { keyPath: "id" }).createIndex("sid", "sid");
-      };
-      req.onsuccess = () => {
-        const d = req.result;
-        d.onversionchange = () => { d.close(); dbp = null; };
-        res(d);
-      };
-      req.onerror = () => { dbp = null; rej(req.error); };
-      req.onblocked = () => { dbp = null; rej(new Error("保存領域が他の画面で使用中です")); };
-    });
+    dbp = (async () => {
+      if (!window.indexedDB) throw new Error("IndexedDBを使えません");
+      let d = await openEngineRaw();
+      if (!engineSchemaOk(d)) {
+        const v = d.version + 1;
+        d.close();
+        d = await openEngineRaw(v);
+      }
+      d.onversionchange = () => { d.close(); dbp = null; };
+      return d;
+    })().catch((e) => { dbp = null; throw e; });
     return dbp;
   }
   async function tx(store, mode, fn) {
@@ -1470,7 +1494,7 @@ registerProcessor("pcm-tap", PcmTap);`;
 <script>
 "use strict";
 /* ===== バージョン ===== */
-const APP_VERSION = 90;
+const APP_VERSION = 91;
 const APP = "SomnoLogV" + APP_VERSION + "_ref";
 
 /* ===== 更新の取得元（GitHub） ===== */
@@ -1715,26 +1739,47 @@ class Ring {
 /* ===== IndexedDB（構成はV60と同じ。既存の記録をそのまま読みます） ===== */
 const DB = (() => {
   let p = null;
-  const open = () => p || (p = new Promise((res, rej) => {
-    if (!window.indexedDB) { rej(new Error("この端末では保存機能（IndexedDB）を使えません")); return; }
-    const r = indexedDB.open(DB_NAME, DB_VERSION);
-    r.onupgradeneeded = () => {
-      const d = r.result;
-      const names = d.objectStoreNames;
-      if (!names.contains("sessions")) d.createObjectStore("sessions", { keyPath: "id" });
-      if (!names.contains("secs")) d.createObjectStore("secs", { keyPath: "key" }).createIndex("sid", "sid");
-      if (!names.contains("events")) d.createObjectStore("events", { keyPath: "id" }).createIndex("sid", "sid");
-      if (!names.contains("clips")) d.createObjectStore("clips", { keyPath: "id" }).createIndex("sid", "sid");
-      if (!names.contains("settings")) d.createObjectStore("settings", { keyPath: "key" });
-    };
-    r.onsuccess = () => {
-      const d = r.result;
-      d.onversionchange = () => { d.close(); p = null; };
-      res(d);
-    };
-    r.onerror = () => { p = null; rej(r.error || new Error("保存領域を開けませんでした")); };
-    r.onblocked = () => { p = null; rej(new Error("保存領域が他のタブで使用中です。他のSomnoLogの画面を閉じてから開き直してください")); };
-  }));
+  // 必要な保存場所と索引の一覧。古い版で作られた保存領域に足りない物があれば、開く時に直す（V91）。
+  const SCHEMA = [
+    ["sessions", "id", false],
+    ["secs", "key", true],
+    ["events", "id", true],
+    ["clips", "id", true],
+    ["settings", "key", false]
+  ];
+  const applySchema = (d, tx) => {
+    for (const [n, kp, needIdx] of SCHEMA) {
+      let s;
+      if (!d.objectStoreNames.contains(n)) s = d.createObjectStore(n, { keyPath: kp });
+      else s = tx.objectStore(n);
+      if (needIdx && !s.indexNames.contains("sid")) s.createIndex("sid", "sid");
+    }
+  };
+  const schemaOk = (d) => {
+    try {
+      return SCHEMA.every(([n, , needIdx]) =>
+        d.objectStoreNames.contains(n) &&
+        (!needIdx || d.transaction(n).objectStore(n).indexNames.contains("sid")));
+    } catch (e) { return false; }
+  };
+  const openRaw = (version) => new Promise((res, rej) => {
+    const r = version ? indexedDB.open(DB_NAME, version) : indexedDB.open(DB_NAME);
+    r.onupgradeneeded = () => applySchema(r.result, r.transaction);
+    r.onsuccess = () => res(r.result);
+    r.onerror = () => rej(r.error || new Error("保存領域を開けませんでした"));
+    r.onblocked = () => rej(new Error("保存領域が他のタブで使用中です。他のSomnoLogの画面を閉じてから開き直してください"));
+  });
+  const open = () => p || (p = (async () => {
+    if (!window.indexedDB) throw new Error("この端末では保存機能（IndexedDB）を使えません");
+    let d = await openRaw();
+    if (!schemaOk(d)) {
+      const v = d.version + 1;
+      d.close();
+      d = await openRaw(v);
+    }
+    d.onversionchange = () => { d.close(); p = null; };
+    return d;
+  })().catch((e) => { p = null; throw e; }));
   const run = async (store, mode, fn) => {
     const d = await open();
     return new Promise((res, rej) => {
