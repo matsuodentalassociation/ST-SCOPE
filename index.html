@@ -5,7 +5,8 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
 <meta name="theme-color" content="#000000">
 <meta http-equiv="Cache-Control" content="no-cache">
-<title>SomnoLog V87 基準音圧版</title>
+<title>SomnoLog V55 基準音圧版</title>
+<script src="./ort.min.js?v=55"></script>
 <style>
 :root{color-scheme:dark}
 *{box-sizing:border-box}
@@ -50,7 +51,9 @@ input[type=range]{width:100%;accent-color:#84b9cf}
 .chart{background:#101923;border:1px solid #2a3643;border-radius:10px;padding:6px}
 .chart svg{width:100%;height:auto;display:block}
 .tl-area{touch-action:none;user-select:none;-webkit-user-select:none;cursor:ew-resize}
+.event{border-top:1px solid #2a3643;padding-top:10px;display:flex;flex-direction:column;gap:8px}
 audio{width:100%}
+.list{display:flex;flex-direction:column;gap:10px}
 .cal-nav{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center}
 .cal-nav h2{text-align:center}
 .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
@@ -69,21 +72,20 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 .modal{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.75);z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px}
 .modal-box{background:#161d26;border:1px solid #2a3643;border-radius:12px;padding:18px;max-width:420px;width:100%;display:flex;flex-direction:column;gap:12px}
 .modal-box p{margin:0;font-size:14px;line-height:1.8}
+.rv-row{border:1px solid #2a3643;border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:8px;background:#111820}
+.rv-row.sel{border-color:#ffd54a}
+.rv-row.keep{background:#17283a}
+.rv-row.drop{background:#1b1f24}
+.rv-row.drop .rv-time{opacity:.6}
+.rv-chart svg{cursor:pointer}
 .tagbar{display:flex;flex-wrap:wrap;gap:8px}
 .tagbtn{width:auto;min-height:40px;padding:8px 12px;font-size:13px;display:flex;align-items:center;gap:6px;background:#171f29;border-color:#34424f;color:#d3dde7}
 .tagbtn i{display:inline-block;width:12px;height:12px;border-radius:3px}
 .tagbtn.off{opacity:.45;border-style:dashed}
 .tagbtn.off i{background:transparent!important;border:1px solid #8fa0b3}
 .tagbtn small{font-size:11px;color:#aebbc9;font-weight:400}
-.legend{display:flex;flex-wrap:wrap;gap:12px;font-size:12px;color:#d3dde7}
-.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:4px;vertical-align:middle}
 #level-bar{background:#ff9f43}
 #motion-bar{background:#e04848}
-.zip-progress{position:fixed;left:16px;right:16px;bottom:16px;z-index:100000;max-width:448px;margin:0 auto;padding:14px;border-radius:12px;border:1px solid #84b9cf;background:#161d26;color:#f0eee6;box-shadow:0 4px 20px rgba(0,0,0,.6);display:flex;flex-direction:column;gap:10px}
-.zip-progress-title{font-size:15px;font-weight:600;margin:0}
-.zip-progress-text{font-size:13px;line-height:1.7;margin:0;white-space:pre-line;color:#d3dde7}
-.zip-bar{position:relative;height:12px;background:#111820;border-radius:6px;overflow:hidden;border:1px solid #2a3643}
-.zip-bar i{display:block;height:100%;width:0%;background:#84b9cf;transition:width .2s}
 </style>
 </head>
 <body>
@@ -93,14 +95,14 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 1-1 起動・QR読み取り -->
 <main id="page-start" class="page" hidden>
   <header class="head">
-    <h1 class="app-name">SomnoLog V87</h1>
+    <h1 class="app-name">SomnoLog V55</h1>
     <span class="tag">患者情報確認</span>
   </header>
 
   <div id="scan-msg" class="err" hidden></div>
 
   <section class="card">
-    <button id="cam-btn">QRコードを読む</button>
+    <button id="cam-btn">カメラを起動</button>
     <button id="qr-file-btn">QR画像を選択</button>
     <input id="qr-file" type="file" accept="image/*" hidden>
     <button id="usage-btn" class="warnbtn">使い方を見る</button>
@@ -127,7 +129,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
   <div class="update-area">
     <h2 class="update-title">アプリの更新</h2>
     <section class="card">
-      <div class="kv"><span>現在のバージョン</span><b id="ver-text">SomnoLog V87</b></div>
+      <div class="kv"><span>現在のバージョン</span><b id="ver-text">SomnoLog V55</b></div>
       <button id="upd-reload" class="sub">最新版に変更（キャッシュを避けて再読み込み）</button>
       <p id="upd-msg" class="muted" hidden aria-live="polite"></p>
     </section>
@@ -150,12 +152,13 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
     <button id="cf-ng" class="warnbtn">情報が間違っています</button>
     <button id="back-rec-confirm" class="sub" hidden>記録画面に戻る</button>
   </section>
+
 </main>
 
 <!-- 記録画面 -->
 <main id="page-record" class="page" hidden>
   <header class="head">
-    <h1 class="app-name">SomnoLog V87</h1>
+    <h1 class="app-name">SomnoLog V55</h1>
     <div style="display:flex;align-items:center;gap:10px">
       <button id="rec-back" class="sub mini" type="button">戻る</button>
       <span id="rec-badge" class="tag">待機中</span>
@@ -170,7 +173,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
       <li>「iPhoneの音圧調整」のスライダーで、録音の音量を調整します。このスライダーは、iPhoneの音圧を合わせるためだけに使います。</li>
       <li>「基準音圧を測定する」を押すと、まず2秒間静かにして環境音を測り、続けて2秒間「あ〜」と声を出します。</li>
       <li>測定が終わると、バーの下端が環境音、白い線が「あ〜」の大きさ、上端が記録中に一番大きかった音になります。</li>
-      <li>基準音圧は端末に保存されるので、次回からは測らなくて大丈夫です。測り直すときだけ「基準音圧を測り直す」を押してください。</li>
+      <li>基準音圧は、もう一度「基準音圧を測り直す」を押すまで使い続けます。</li>
       <li>音量を変えたら、基準音圧を測り直してください。</li>
       <li>基準音圧を決めたら「記録開始」を押します。「停止」を押すと記録が終わります。</li>
       <li>「黒画面に切り替え」を押すと、画面を暗くして記録を続けられます。</li>
@@ -196,7 +199,6 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
   <section class="card">
     <button id="ref-btn" class="primary" disabled>基準音圧を測定する（静か2秒→「あ〜」2秒）</button>
     <p id="ref-msg" class="muted">基準音圧が未設定です。測定すると、バーの見方が決まります。</p>
-    <button id="ref-play-btn" class="sub" hidden>基準の「あ〜」を聴く</button>
   </section>
 
   <section class="card">
@@ -229,9 +231,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
       <li>同じ日付をもう一度押すと、いびき音声詳細画面が開きます。</li>
       <li>‹ › で前後の月に移動できます。</li>
       <li>昼寝や仮眠を記録したときは、▲ ▼ で、同じ日の記録を1件ずつ切り替えられます。</li>
-      <li>「この日の音声データを削除」は、その日の記録すべての音声を消します。消去の前に、対象の日・件数・取り消せないことを確認します。</li>
-      <li>タイムラインで「保存」した音声は消えません。</li>
-      <li>音声データを削除しても、簡易ログとグラフは残ります。</li>
+      <li>「詳細を見る」を押しても、その日の記録の詳細を確認できます。</li>
     </ol>
   </section>
   <section class="card">
@@ -247,7 +247,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
   <section id="cal-summary" class="card"></section>
 </main>
 
-<!-- 詳細画面（タイムライン） -->
+<!-- 詳細画面 -->
 <main id="page-detail" class="page" hidden>
   <div class="sticky-bar">
     <button id="detail-back" class="sub">カレンダーに戻る</button>
@@ -259,10 +259,9 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
       <li>上のボタンで「いびき」「判定不能」「環境音」「人声」を切り替えます。最初は「いびき」が選ばれています。</li>
       <li>棒の高さは、下端が環境音、真ん中の線が「あ〜」、上端がその晩の最大音です。真ん中より上は「あ〜」より大きい音、下は小さい音です。</li>
       <li>黄色い線を動かして、聴きたい位置に合わせます。</li>
-      <li>「タイムラインの音を聴く」を押すと、黄色い線の棒1本分の時間の音を再生します。</li>
-      <li>残したい音は「この音声を保存する」を押します。保存した棒は白色になり、日付の音声削除の対象から外れます。</li>
-      <li>保存していない音声は、カレンダーの「この日の音声データを削除」で消えます。簡易ログとグラフは残ります。</li>
-      <li>「共有画面に移行する」を押すと、睡眠記録の共有画面に戻ります。</li>
+      <li>「タイムラインの音を聴く」を押すと、黄色い線の棒の中で最初に出た音から、最大1分間を再生します。</li>
+      <li>白い棒は、保存済みの前後1分の範囲です。</li>
+      <li>人声の音はスマホで再生して確認できます。人声と判定されたが特殊ないびきだと思われる場合は、「保存する」を押して保存し、医師に確認できます。</li>
     </ol>
   </section>
   <section class="card">
@@ -279,20 +278,28 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
     </div>
     <p id="tl-info" class="tl-info"></p>
     <div id="d-chart" class="chart tl-area"></div>
-    <div id="tl-legend" class="legend"></div>
     <div id="tl-tags" class="tagbar"></div>
     <p id="tl-cur-text" class="tl-info"></p>
     <label class="muted">表示位置（右へ動かすと終了時刻の方へ進みます）</label>
     <input id="tl-pos" type="range" min="0" max="0" step="1" value="0">
     <label class="muted">黄色い線（時刻の位置）</label>
     <input id="tl-cur" type="range" min="0" max="0" step="1" value="0">
-    <button id="tl-listen" class="primary">タイムラインの音を聴く（棒1本分）</button>
-    <button id="tl-ref-play" class="sub">基準の「あ〜」を聴く</button>
+    <button id="tl-listen" class="primary">タイムラインの音を聴く</button>
     <div id="tl-audio"></div>
     <p id="tl-msg" class="muted"></p>
-    <button id="tl-save" class="primary" disabled>この音声を保存する（残す）</button>
-    <button id="tl-go-share" class="sub">共有画面に移行する</button>
-    <button id="tl-delete" class="danger">この記録を削除する</button>
+    <button id="tl-save" class="sub">保存する（黄色い線の前後1分）</button>
+    <p id="save-msg" class="warn" hidden></p>
+  </section>
+  <section class="card">
+    <h2>保存した記録</h2>
+    <p class="muted">黄色い線で選んだ時刻の前後1分を保存します。いびきと人声の音が対象です。音声はコピーせず、記録への参照だけを持ちます。共有を押したときに音声をWAVにまとめます。</p>
+    <div id="saved-list" class="list"></div>
+    <button id="saved-share" class="primary">保存した記録を共有する</button>
+  </section>
+  <section class="card">
+    <h2>この記録の削除</h2>
+    <p class="muted">この記録のグラフ・イベント・音声（いびき・判定不能・環境音・人声）をすべて削除します。元に戻せません。</p>
+    <button id="detail-delete" class="danger">この記録を削除</button>
   </section>
   <p class="muted">本アプリは診断を行うものではありません。医師の判断の参考資料です。</p>
 </main>
@@ -302,22 +309,9 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
   <header class="head">
     <h1>睡眠記録の共有</h1>
   </header>
-  <p id="sh-msg" class="warn" hidden></p>
-  <button id="sh-usage" class="warnbtn">使い方を見る</button>
-  <section id="sh-usage-box" class="card" hidden>
-    <h2>送り方</h2>
-    <ol class="steps">
-      <li>「全てのいびき記録を保存」を押します。人声が含まれる場合は、確認の案内が出ます。</li>
-      <li>案内で「人声を確認する」を押すと、タイムラインで人声を聴けます。残したい音は「この音声を保存する」を押します。</li>
-      <li>確認が終わったら「共有画面に移行する」を押して、この画面に戻ります。</li>
-      <li>「全てのいびき記録を保存」をもう一度押し、「確認した、保存」を押すと、ZIPファイルがダウンロードに保存されます。</li>
-      <li>「①アドレスをコピー」を押してから、「②ファイルを選んで送信」で、保存したZIPファイルを選びます。</li>
-      <li>共有の画面が開いたら、メールを選び、宛先の欄にコピーしたアドレスを貼り付けて送信します。</li>
-      <li>ZIPを保存できたことを確認したら、「このタイムラインから音声を削除」を押せます。簡易ログとグラフは残ります。保存した音声は残ります。</li>
-    </ol>
-  </section>
   <section class="card">
     <button id="sh-all" class="primary">全てのいびき記録を保存</button>
+    <button id="sh-sel">選択したいびき記録を保存</button>
   </section>
   <section class="card">
     <h2>共有先確認（宛先）</h2>
@@ -326,24 +320,45 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
     <button id="sh-pick">②ファイルを選んで送信</button>
     <input id="sh-file" type="file" accept=".zip,application/zip" hidden>
   </section>
-  <section id="sh-del-tl-card" class="card" hidden>
-    <h2>保存済の音声データの削除</h2>
-    <p class="muted">ZIPをダウンロードしたことを確認してから【このタイムラインから音声を削除】を押してください。押すと、このタイムラインからの音声を消します。簡易ログとグラフは残ります。元に戻せません。</p>
-    <button id="sh-del-tl" class="danger" disabled>このタイムラインから音声を削除</button>
+  <button id="sh-usage" class="warnbtn">使い方を見る</button>
+  <section id="sh-usage-box" class="card" hidden>
+    <h2>送り方</h2>
+    <ol class="steps">
+      <li>「全てのいびき記録を保存」または「選択したいびき記録を保存」を押します。ZIPファイルがダウンロードに保存されます。</li>
+      <li>「①アドレスをコピー」を押して、宛先のアドレスをコピーします。</li>
+      <li>「②ファイルを選んで送信」を押し、ダウンロードに保存したZIPファイルを選びます。</li>
+      <li>共有の画面が開いたら、メールを選びます。</li>
+      <li>宛先の欄にコピーしたアドレスを貼り付けて、送信します。</li>
+    </ol>
   </section>
   <button id="sh-back" class="sub">記録画面に戻る</button>
+  <p class="muted">本アプリは診断を行うものではありません。医師の判断の参考資料です。</p>
+</main>
+
+<!-- 人声の確認画面 -->
+<main id="page-review" class="page" hidden>
+  <div class="sticky-bar">
+    <button id="rv-back" class="sub">保存せずに戻る</button>
+  </div>
+  <section class="card">
+    <h2>人声と判定された音の確認</h2>
+    <p class="muted">各行の音を聴いて、「保存」か「破棄」を選んでください。保存した音だけがZIPに入ります。</p>
+    <div class="kv"><span>未判断</span><b id="rv-left">-</b></div>
+    <div id="rv-chart" class="chart rv-chart"></div>
+    <p class="muted">灰：未判断／青：保存／暗い灰：破棄／黄：選択中（グラフを押しても選べます）</p>
+  </section>
+  <section class="card">
+    <div id="rv-list" class="list"></div>
+    <button id="rv-done" class="primary">判断を終えてZIPを作る</button>
+  </section>
 </main>
 
 <!-- 人声確認の案内ダイアログ -->
 <div id="rv-dialog" class="modal" hidden>
   <div class="modal-box">
     <h2>人声の確認</h2>
-    <p>この記録には、人声と判定された音声が含まれています。「人声を確認する」を押すと、タイムラインで人声を聴けます。残したい音は保存できます。</p>
-    <button id="rv-open" class="primary" type="button">人声を確認する</button>
-    <button id="rv-save-direct" class="sub" type="button">確認した、保存</button>
-    <button id="rv-close" class="sub" type="button">閉じる</button>
-    <p class="muted">残っている人声は、ZIPに入ります。</p>
-    <p id="rv-dialog-error" class="err" hidden role="alert"></p>
+    <p>いびきが人声と判定され、記録に残らない場合があります。お手数ですが、人声と判定された音を聴いて、保存か破棄かをご判断ください。</p>
+    <button id="rv-open" class="primary">人声を確認する</button>
   </div>
 </div>
 
@@ -354,1119 +369,15 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 </div>
 
 <script>
-/* ===== V63 録音エンジン ===== */
-/* SomnoLog V63 録音エンジン
-   V62のHTMLの<script>内に置く。V62の録音・保存・ZIP書き出しの部分と差し替える。
-   公開名は SleepEngine のみ。内部の名前はすべて閉じた範囲に隠す。 */
-const SleepEngine = (() => {
-  "use strict";
-  const ENGINE_VERSION = 68;
-  const SCHEMA_VERSION = 35;
-  const C = {
-    DB_NAME: "somnolog-v63",   // V62の somnolog-v3 とは別の保存領域
-    DB_VERSION: 1,
-    SLOT_MS: 100,              // 時系列・判定の周期
-    BASELINE_SLOTS: 300,       // V35: 開始30秒の平均と同じ長さ
-    TRIGGER_DB: 5,             // V35: 基準+5dB以上で判定
-    BASE_MARGIN_DB: 4,         // V35: 現在値が基準+4dB未満のときだけ更新
-    BASE_EMA: 0.02,            // V35の更新率
-    BASE_EVERY: 5,             // 100ms×5 = V35の500ms
-    MIN_OVER: 2,               // 100ms単発は無視、2スロット以上でイベント化
-    PRE_MS: 3000,              // 直前3秒を結合
-    TAIL_MS: 5000,             // 閾値を下回ってから5秒追尾
-    MAX_EVENT_MS: 180000,      // 追加の安全上限
-    RING_SEC: 10,
-    OPUS_RATE: 48000,
-    OPUS_BPS: 24000,
-    TL_FLUSH: 100,             // 10秒分ずつ保存
-    ROLL_G: 0.12,              // V35の体動判定
-    APNEA_GAP_MIN: 30000,      // V35: いびき後の空白30〜120秒
-    APNEA_GAP_MAX: 120000,
-    APNEA_DB: -32,             // 旧尺度40から換算（物差し統一に伴う移行）
-    VAD_TH: 0.3,               // V62と同じ声らしさの閾値
-    VAD_URL: "./silero_vad.onnx?v=68",
-    ORT_URL: "./ort.min.js?v=68",
-    VAD_RATE: 16000,
-    VAD_FRAME: 512,            // 16kHzで32ms
-    VAD_CTX: 64
-  };
-  const DETECTION_RULE = "V35準拠: 基準=開始30秒の平均（以後、現在値が基準+4dB未満のとき0.02で更新）。判定=基準+5dB以上。";
-
-  const pad = (n, w = 4) => String(n).padStart(w, "0");
-  const r1 = (v) => Math.round(v * 10) / 10;
-  const r3 = (v) => Math.round(v * 1000) / 1000;
-  const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
-  const uid = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now() + "-" + Math.random().toString(16).slice(2));
-  const enc = new TextEncoder();
-
-  // V35のラベル（データはこちらを保持）と、画面表示の名前
-  const LABEL = { snore: "いびき", roll: "寝返り・体動", bruxism: "歯ぎしり・硬音", talk: "寝言", apnea: "無呼吸疑い", env: "環境音" };
-  const DISPLAY = { snore: "いびき", talk: "人声", env: "環境音", roll: "判定不能", bruxism: "判定不能", apnea: "判定不能" };
-
-  /* ---------- IndexedDB ---------- */
-  let dbp = null;
-  function openDb() {
-    if (dbp) return dbp;
-    dbp = new Promise((res, rej) => {
-      if (!window.indexedDB) { rej(new Error("IndexedDBを使えません")); return; }
-      const req = indexedDB.open(C.DB_NAME, C.DB_VERSION);
-      req.onupgradeneeded = () => {
-        const d = req.result;
-        if (!d.objectStoreNames.contains("sessions")) d.createObjectStore("sessions", { keyPath: "id" });
-        if (!d.objectStoreNames.contains("timeline")) d.createObjectStore("timeline", { keyPath: "key" }).createIndex("sid", "sid");
-        if (!d.objectStoreNames.contains("events")) d.createObjectStore("events", { keyPath: "id" }).createIndex("sid", "sid");
-        if (!d.objectStoreNames.contains("clips")) d.createObjectStore("clips", { keyPath: "id" }).createIndex("sid", "sid");
-      };
-      req.onsuccess = () => {
-        const d = req.result;
-        d.onversionchange = () => { d.close(); dbp = null; };
-        res(d);
-      };
-      req.onerror = () => { dbp = null; rej(req.error); };
-      req.onblocked = () => { dbp = null; rej(new Error("保存領域が他の画面で使用中です")); };
-    });
-    return dbp;
-  }
-  async function tx(store, mode, fn) {
-    const d = await openDb();
-    return new Promise((res, rej) => {
-      const t = d.transaction(store, mode);
-      const r = fn(t.objectStore(store));
-      t.oncomplete = () => res(r ? r.result : undefined);
-      t.onerror = () => rej(t.error);
-      t.onabort = () => rej(t.error);
-    });
-  }
-  const put = (s, o) => tx(s, "readwrite", (x) => x.put(o));
-  const get = (s, k) => tx(s, "readonly", (x) => x.get(k));
-  const byIndex = (s, sid) => tx(s, "readonly", (x) => x.index("sid").getAll(IDBKeyRange.only(sid)));
-
-  /* ---------- 状態 ---------- */
-  let st = null;             // 現在の記録
-  let errors = [];
-  let chainP = Promise.resolve(); // 保存・符号化の直列処理
-
-  function fail(e) {
-    console.error("[SleepEngine]", e);
-    errors.push(String((e && e.message) || e));
-    if (st && st.onState) st.onState({ error: String((e && e.message) || e) });
-  }
-
-  /* ---------- リングバッファ（入力PCM、原値） ---------- */
-  function pushRing(d) {
-    for (let i = 0; i < d.length; i++) st.ring[(st.ringTotal + i) % st.ringLen] = d[i];
-    st.ringTotal += d.length;
-  }
-  function ringSlice(a, b) {
-    a = Math.max(a, st.ringTotal - st.ringLen, 0);
-    b = Math.min(b, st.ringTotal);
-    const out = new Float32Array(Math.max(0, b - a));
-    for (let i = 0; i < out.length; i++) out[i] = st.ring[(a + i) % st.ringLen];
-    return out;
-  }
-
-  /* ---------- スロット（100ms）の確定 ---------- */
-  function slotNow() { return Math.floor((performance.now() - st.t0) / C.SLOT_MS); }
-
-  function onChunk(d) {
-    if (!st || !st.running) return;
-    const slot = slotNow();
-    closeUpTo(slot);
-    if (!st.slotSample.has(slot)) st.slotSample.set(slot, st.ringTotal);
-    let a = st.accs.get(slot);
-    if (!a) { a = { n: 0, sq: 0 }; st.accs.set(slot, a); }
-    let sq = 0;
-    for (let i = 0; i < d.length; i++) sq += d[i] * d[i];
-    a.n += d.length;
-    a.sq += sq;
-    pushRing(d);
-    if (st.event && st.mode === "opus") { st.event.chunks.push(d); st.event.len += d.length; }
-    feedVad(d);
-  }
-
-  function tick() {
-    if (st && st.running) closeUpTo(slotNow());
-  }
-
-  function closeUpTo(slot) {
-    while (st.nextClose < slot) {
-      const s = st.nextClose;
-      st.nextClose++;
-      closeSlot(s);
-    }
-  }
-
-  function closeSlot(s) {
-    const a = st.accs.get(s);
-    st.accs.delete(s);
-    st.slotSample.delete(s - 100);
-
-    const motionSeen = st.mSeen, motionMax = st.mMax, motionNow = st.motionG;
-    st.mSeen = false;
-    st.mMax = 0;
-    const motionG = motionSeen ? r3(motionNow) : null;
-    const motionMaxG = motionSeen ? r3(motionMax) : null;
-    const sec = r1(s * C.SLOT_MS / 1000);
-
-    // 欠測（音声が届かなかったスロット）は null の行として残す
-    if (!a || a.n === 0) {
-      pushRow({ sec, db: null, motionG, motionMaxG });
-      st.live = { db: null, baseline: st.baseline == null ? null : r1(st.baseline), inEvent: !!st.event, motionG };
-      return;
-    }
-
-    const rms = Math.sqrt(a.sq / a.n);
-    const db = rms > 1e-5 ? Math.max(-100, 20 * Math.log10(rms)) : -100; // あ〜と同じ物差し（換算なし、V77で統一）
-    pushRow({ sec, db: r1(db), motionG, motionMaxG });
-    updateBaseline(s, db);
-    st.live = { db: r1(db), baseline: st.baseline == null ? null : r1(st.baseline), inEvent: !!st.event, motionG };
-    if (st.baseline == null) return; // 基準が決まるまでは判定しない
-
-    const delta = db - st.baseline;
-    const res = classifyFrame(delta, spectrum(), motionG ?? 0);
-    const over = delta >= C.TRIGGER_DB;
-
-    // V35のいびき後の空白による無呼吸疑い
-    let apnea = false;
-    if (res && res.category === "snore") {
-      if (st.lastSnoreMs != null) {
-        const gap = s * C.SLOT_MS - st.lastSnoreMs;
-        if (gap >= C.APNEA_GAP_MIN && gap <= C.APNEA_GAP_MAX && db >= C.APNEA_DB) apnea = true;
-      }
-      st.lastSnoreMs = s * C.SLOT_MS;
-    }
-
-    if (over) {
-      st.overRun++;
-      st.lastOver = s;
-      if (!st.event && st.overRun >= C.MIN_OVER) startEvent(s - st.overRun + 1);
-    } else {
-      st.overRun = 0;
-    }
-
-    const ev = st.event;
-    if (ev) {
-      ev.peakDb = Math.max(ev.peakDb, db);
-      ev.sumDb += db;
-      ev.n++;
-      ev.motionMaxG = Math.max(ev.motionMaxG, motionMaxG ?? 0);
-      if (res) ev.votes[res.category] = (ev.votes[res.category] || 0) + 1;
-      if (apnea) ev.apnea = true;
-      const quietMs = (s - st.lastOver) * C.SLOT_MS;
-      const lenMs = (s - ev.startSlot + 1) * C.SLOT_MS;
-      if (quietMs >= C.TAIL_MS) finishEvent("tail");
-      else if (lenMs >= C.MAX_EVENT_MS) finishEvent("cap");
-    }
-  }
-
-  function pushRow(row) {
-    st.rows.push(row);
-    if (st.rows.length >= C.TL_FLUSH) flushRows();
-  }
-
-  function flushRows() {
-    if (!st || !st.rows.length) return;
-    const rows = st.rows.splice(0);
-    const sid = st.sid;
-    const key = sid + ":" + pad(st.tlIdx++, 6);
-    chainP = chainP.then(() => put("timeline", { key, sid, rows })).catch(fail);
-  }
-
-  /* ---------- 基準（V35方式） ---------- */
-  function updateBaseline(s, db) {
-    if (st.baseline == null) {
-      st.baseSum += db;
-      st.baseN++;
-      if (st.baseN >= C.BASELINE_SLOTS) st.baseline = st.baseSum / st.baseN;
-      return;
-    }
-    if (s % C.BASE_EVERY === 0 && db < st.baseline + C.BASE_MARGIN_DB) {
-      st.baseline = st.baseline * (1 - C.BASE_EMA) + db * C.BASE_EMA;
-    }
-  }
-
-  /* ---------- イベント（閾値超過からクリップ） ---------- */
-  function startEvent(firstSlot) {
-    const startMs = Math.max(0, firstSlot * C.SLOT_MS - C.PRE_MS);
-    if (st.mode !== "opus") {
-      st.event = {
-        startSlot: firstSlot, startMs,
-        chunks: [], len: 0,
-        votes: {}, peakDb: -Infinity, sumDb: 0, n: 0, motionMaxG: 0, apnea: false
-      };
-      return;
-    }
-    const anchor = st.slotSample.has(firstSlot) ? st.slotSample.get(firstSlot) : st.ringTotal;
-    const from = Math.max(anchor - Math.round(C.PRE_MS * st.rate / 1000), st.ringTotal - st.ringLen, 0);
-    const pre = ringSlice(from, st.ringTotal);
-    st.event = {
-      startSlot: firstSlot,
-      startMs,
-      chunks: [pre], len: pre.length,
-      votes: {}, peakDb: -Infinity, sumDb: 0, n: 0, motionMaxG: 0, apnea: false
-    };
-  }
-
-  function finishEvent(reason) {
-    const ev = st.event;
-    st.event = null;
-    if (!ev) return;
-    const category = finalCategory(ev.votes, ev.apnea);
-    st.clipSeq++;
-    const idx = st.clipSeq;
-    const endMs = Math.round((performance.now() - st.t0));
-    const marker = {
-      id: uid(), sid: st.sid, index: idx, fileName: null, audioFile: null,
-      startSec: r1(ev.startMs / 1000), startMs: ev.startMs,
-      durationSec: 0,
-      category, label: LABEL[category], displayCategory: DISPLAY[category],
-      peakDb: r1(ev.peakDb), meanDb: r1(ev.sumDb / Math.max(1, ev.n)),
-      motionMaxG: r3(ev.motionMaxG), votes: ev.votes, endReason: reason
-    };
-    let payload;
-    if (st.mode === "opus") {
-      const pcm = new Float32Array(ev.len);
-      let o = 0;
-      for (const c of ev.chunks) { pcm.set(c, o); o += c.length; }
-      marker.durationSec = r1(pcm.length / st.rate);
-      payload = { kind: "opus", pcm, rate: st.rate };
-    } else {
-      marker.durationSec = r1(Math.max(0, endMs - ev.startMs) / 1000);
-      payload = { kind: "rec", fromMs: ev.startMs, toMs: endMs };
-    }
-    chainP = chainP.then(() => decideAndStore(marker, payload)).catch(fail);
-  }
-
-  /* 声判定で振り分けてから保存する。人声と判定されたイベントは音声を残さない。 */
-  async function decideAndStore(marker, payload) {
-    let excluded = false;
-    if (st && st.vadOk) {
-      const endMs = marker.startMs + marker.durationSec * 1000;
-      await vadDrain(endMs + 1000);
-      const inside = vadMaxIn(marker.startMs, endMs);
-      const near = vadMaxIn(marker.startMs - 1000, endMs + 1000);
-      marker.vadInside = inside == null ? null : r3(inside);
-      marker.vadNear = near == null ? null : r3(near);
-      if ((inside != null && inside > C.VAD_TH) || (near != null && near > C.VAD_TH)) excluded = true;
-      if (inside == null && near == null) marker.vadUnknown = true;
-    } else {
-      marker.vadUnknown = true;
-    }
-    // あ〜基準より大きい音は声にしない（秀司の決定 2026-11-05）。
-    // 寝ている本人のそばで、あ〜より大きな人の声がすれば目が覚めるはずで、
-    // 大きいいびきを声と誤判定して捨てないための上限。
-    // peakDbもrefDbも同じ物差し（V77で統一）。そのまま比べる。
-    if (excluded && st && st.refDb != null && marker.peakDb != null && marker.peakDb >= st.refDb) {
-      excluded = false;
-      marker.vadLoudOverride = true;
-    }
-    if (excluded) {
-      // 人声と判定しても音声は保存する（2026-11-05 秀司の決定で V67 の削除方式を撤回）。
-      // 本人がタイムラインで聴いて確認でき、共有時は確認ダイアログを通す。
-      // プライバシーの判断は、聴いて確認したユーザーに預ける。
-      marker.category = "talk";
-      marker.label = LABEL.talk;
-      marker.displayCategory = DISPLAY.talk;
-      marker.voiceJudged = true;
-    }
-    if (!st) return;
-    st.counts[marker.category] = (st.counts[marker.category] || 0) + 1;
-    st.markers.push(marker);
-    if (payload.kind === "opus") {
-      await encodeAndStore(payload.pcm, payload.rate, marker);
-    } else {
-      st.pendingRec.push({ marker, fromMs: payload.fromMs, toMs: payload.toMs });
-      await assembleRecClips();
-    }
-  }
-
-  async function encodeAndStore(pcm, rate, marker) {
-    const { frames, head } = await encodeOpus(pcm, rate);
-    const webm = buildWebm(frames, C.OPUS_RATE, head);
-    marker.fileName = "audio/clip_" + pad(marker.index, 4) + ".webm";
-    marker.audioFile = marker.fileName;
-    await put("clips", {
-      id: marker.id, sid: marker.sid, fileName: marker.fileName,
-      blob: new Blob([webm], { type: "audio/webm" }), bytes: webm.length
-    });
-    await put("events", marker);
-  }
-
-  /* ---------- 録音機モード（WebCodecsが無い端末向け）のクリップ組み立て ----------
-     MediaRecorderのタイムスライスは1本の録音の続きなので、範囲にかかるチャンクを
-     そのまま連結すると再生できるファイルになる。 */
-  async function assembleRecClips() {
-    if (!st || st.mode === "opus") return;
-    const done = [];
-    for (const p of st.pendingRec) {
-      const covered = st.recChunks.length && st.recChunks[st.recChunks.length - 1].endMs >= p.toMs;
-      if (!covered && st.running) continue;
-      const parts = st.recChunks.filter((c) => c.endMs > p.fromMs && c.startMs < p.toMs);
-      if (!parts.length) continue;
-      const blob = new Blob(parts.map((c) => c.blob), { type: st.recMime });
-      const ext = st.recMime.includes("mp4") ? "mp4" : (st.recMime.includes("webm") ? "webm" : "m4a");
-      p.marker.fileName = "audio/clip_" + pad(p.marker.index, 4) + "." + ext;
-      p.marker.audioFile = p.marker.fileName;
-      await put("clips", { id: p.marker.id, sid: p.marker.sid, fileName: p.marker.fileName, blob, bytes: blob.size });
-      await put("events", p.marker);
-      done.push(p);
-    }
-    if (done.length) st.pendingRec = st.pendingRec.filter((p) => !done.includes(p));
-    // 使われ終わった古いチャンクを捨てる（開いている範囲より前は残す）
-    const keepFrom = Math.min(
-      st.event ? st.event.startMs : Infinity,
-      ...st.pendingRec.map((p) => p.fromMs),
-      performance.now() - st.t0 - 60000
-    );
-    st.recChunks = st.recChunks.filter((c) => c.endMs > keepFrom);
-  }
-
-  /* ---------- 分類（V35の判定を移植。ラベルは内部のまま） ---------- */
-  function spectrumOf(an, rate) {
-    const bins = an.frequencyBinCount;
-    const f = new Uint8Array(bins);
-    an.getByteFrequencyData(f);
-    const binHz = (rate / 2) / bins;
-    let total = 0, w = 0, sub = 0, low = 0, mid = 0, high = 0, pk = -1, pkI = 0;
-    for (let i = 0; i < bins; i++) {
-      const fr = i * binHz, p = f[i] * f[i];
-      total += p;
-      w += fr * p;
-      if (p > pk) { pk = p; pkI = i; }
-      if (fr >= 40 && fr < 200) sub += p;
-      else if (fr < 600) low += p;
-      else if (fr < 2500) mid += p;
-      else if (fr <= 8000) high += p;
-    }
-    if (!total) return { centroid: 0, peakHz: 0, subLowRatio: 0, lowRatio: 0, midRatio: 0, highRatio: 0 };
-    return {
-      centroid: Math.round(w / total), peakHz: Math.round(pkI * binHz),
-      subLowRatio: sub / total, lowRatio: low / total, midRatio: mid / total, highRatio: high / total
-    };
-  }
-  function spectrum() {
-    return st.an ? spectrumOf(st.an, st.rate) : { centroid: 0, peakHz: 0, subLowRatio: 0, lowRatio: 0, midRatio: 0, highRatio: 0 };
-  }
-
-  function classifyFrame(delta, sp, motionG) {
-    const breath = sp.subLowRatio + sp.lowRatio;
-    if (motionG >= C.ROLL_G) return { category: "roll", reason: "体動 " + motionG.toFixed(2) + "G" };
-    if (delta < C.TRIGGER_DB) return null;
-    if (breath >= 0.38 || sp.subLowRatio >= 0.20 || (sp.centroid >= 120 && sp.centroid <= 950 && breath >= 0.27)) {
-      return { category: "snore", reason: "呼吸低域 " + Math.round(breath * 100) + "% / 重心 " + sp.centroid + "Hz" };
-    }
-    if (delta >= 14 && sp.highRatio >= 0.42 && sp.centroid >= 2200 && breath < 0.24 && sp.subLowRatio < 0.10) {
-      return { category: "bruxism", reason: "高域 " + Math.round(sp.highRatio * 100) + "% / 重心 " + sp.centroid + "Hz" };
-    }
-    if (sp.midRatio > 0.46 && sp.centroid >= 650 && sp.centroid <= 2100 && breath < 0.34) {
-      return { category: "talk", reason: "音声中域 " + Math.round(sp.midRatio * 100) + "% / 重心 " + sp.centroid + "Hz" };
-    }
-    return { category: "env", reason: "既知分類の特徴不足 / 重心 " + sp.centroid + "Hz" };
-  }
-
-  function finalCategory(votes, apnea) {
-    const sc = (k) => Number(votes[k] || 0);
-    if (apnea || sc("apnea") >= 1) return "apnea";
-    if (sc("roll") >= 2) return "roll";
-    if (sc("snore") >= 2 && sc("snore") >= sc("bruxism")) return "snore";
-    if (sc("bruxism") >= 3 && sc("bruxism") > sc("snore") * 1.5) return "bruxism";
-    if (sc("talk") >= 3) return "talk";
-    if (sc("snore") >= 1) return "snore";
-    return "env";
-  }
-
-  /* ---------- 声判定（Silero VAD、V62の方式をエンジン内へ移植） ----------
-     入力PCMを16kHzへ落として32ms枠で推論し、声らしさ p の時系列を作る。
-     イベント確定時に「中」と「前後1秒」の最大値を見て人声を振り分ける。 */
-  function loadScriptOnce(src) {
-    return new Promise((res, rej) => {
-      const s = document.createElement("script");
-      s.src = src;
-      s.onload = () => res();
-      s.onerror = () => rej(new Error("ライブラリを読み込めませんでした"));
-      document.head.appendChild(s);
-    });
-  }
-
-  async function initVad() {
-    try {
-      if (typeof ort === "undefined") await loadScriptOnce(C.ORT_URL);
-      if (typeof ort === "undefined") throw new Error("ort unavailable");
-      const r = await fetch(C.VAD_URL, { cache: "no-store" });
-      if (!r.ok) throw new Error("HTTP " + r.status);
-      const buf = await r.arrayBuffer();
-      ort.env.wasm.numThreads = 1;
-      ort.env.wasm.wasmPaths = "./";
-      const sess = await ort.InferenceSession.create(buf, { executionProviders: ["wasm"] });
-      if (!st) return;
-      st.vadState = new ort.Tensor("float32", new Float32Array(2 * 128), [2, 1, 128]);
-      st.vadStartSample16k = st.vadPos16k;
-      st.vadSession = sess;
-      st.vadOk = true;
-      vadPump();
-    } catch (e) {
-      console.warn("[SleepEngine] VAD初期化に失敗", e);
-      if (st) { st.vadFailed = true; st.vadOk = false; }
-    }
-  }
-
-  function feedVad(d) {
-    if (!st || st.vadFailed) return;
-    st.vadInQ.push(d);
-    st.vadInLen += d.length;
-    const blockIn = Math.round(st.rate / 10); // 100ms分
-    while (st.vadInLen >= blockIn) {
-      const block = new Float32Array(blockIn);
-      let o = 0;
-      while (o < blockIn) {
-        const c = st.vadInQ[0];
-        const avail = c.length - st.vadInOff;
-        const take = Math.min(avail, blockIn - o);
-        block.set(c.subarray(st.vadInOff, st.vadInOff + take), o);
-        o += take;
-        st.vadInOff += take;
-        st.vadInLen -= take;
-        if (st.vadInOff >= c.length) { st.vadInQ.shift(); st.vadInOff = 0; }
-      }
-      const b16 = resample(block, st.rate, C.VAD_RATE);
-      if (st.vadSession) { st.vadQ.push(b16); st.vadQLen += b16.length; }
-      else { st.vadPos16k += b16.length; }
-    }
-    vadPump();
-  }
-
-  function vadTakeFrame() {
-    if (st.vadQLen < C.VAD_FRAME) return null;
-    const out = new Float32Array(C.VAD_FRAME);
-    let o = 0;
-    while (o < C.VAD_FRAME) {
-      const c = st.vadQ[0];
-      const avail = c.length - st.vadQOff;
-      const take = Math.min(avail, C.VAD_FRAME - o);
-      out.set(c.subarray(st.vadQOff, st.vadQOff + take), o);
-      o += take;
-      st.vadQOff += take;
-      st.vadQLen -= take;
-      if (st.vadQOff >= c.length) { st.vadQ.shift(); st.vadQOff = 0; }
-    }
-    return out;
-  }
-
-  function vadPump() {
-    if (!st || !st.vadSession || st.vadBusy) return;
-    st.vadBusy = true;
-    st.vadChain = (async () => {
-      try {
-        let f;
-        while (st && st.vadSession && (f = vadTakeFrame())) {
-          const p = await vadRun(f);
-          const idx = st.vadFrameSeq++;
-          if (idx >= st.vadFrames.length) {
-            const nf = new Float32Array(st.vadFrames.length * 2);
-            nf.set(st.vadFrames);
-            st.vadFrames = nf;
-          }
-          st.vadFrames[idx] = p;
-        }
-      } catch (e) { fail(e); }
-      finally { if (st) st.vadBusy = false; }
-    })();
-  }
-
-  async function vadRun(frame) {
-    const inp = new Float32Array(C.VAD_CTX + C.VAD_FRAME);
-    inp.set(st.vadCtx, 0);
-    inp.set(frame, C.VAD_CTX);
-    st.vadCtx = inp.slice(inp.length - C.VAD_CTX);
-    const out = await st.vadSession.run({
-      input: new ort.Tensor("float32", inp, [1, C.VAD_CTX + C.VAD_FRAME]),
-      state: st.vadState,
-      sr: new ort.Tensor("int64", BigInt64Array.from([BigInt(C.VAD_RATE)]), [])
-    });
-    st.vadState = out.stateN;
-    return out.output.data[0];
-  }
-
-  function vadMaxIn(aMs, bMs) {
-    if (!st || !st.vadFrameSeq) return null;
-    const S0 = st.vadStartSample16k;
-    let k0 = Math.floor((aMs * 16 - S0) / C.VAD_FRAME);
-    let k1 = Math.floor((bMs * 16 - S0) / C.VAD_FRAME);
-    if (k1 < 0 || k0 > st.vadFrameSeq - 1) return null;
-    k0 = Math.max(0, k0);
-    k1 = Math.min(st.vadFrameSeq - 1, k1);
-    let m = 0;
-    for (let k = k0; k <= k1; k++) if (st.vadFrames[k] > m) m = st.vadFrames[k];
-    return m;
-  }
-
-  async function vadDrain(targetMs) {
-    if (!st || !st.vadOk) return;
-    const need = targetMs * 16;
-    const t0 = Date.now();
-    while (st && st.vadOk && (st.vadStartSample16k + st.vadFrameSeq * C.VAD_FRAME) < need && Date.now() - t0 < 4000) {
-      vadPump();
-      await new Promise((r) => setTimeout(r, 100));
-    }
-  }
-
-  /* ---------- 体動（V35のデルタ方式） ---------- */
-  function onMotion(e) {
-    if (!st || !st.running) return;
-    const a = e.acceleration || e.accelerationIncludingGravity;
-    if (!a || a.x == null) return;
-    const cur = { x: Number(a.x) || 0, y: Number(a.y) || 0, z: Number(a.z) || 0 };
-    if (!st.lastAcc) { st.lastAcc = cur; return; }
-    const d = Math.hypot(cur.x - st.lastAcc.x, cur.y - st.lastAcc.y, cur.z - st.lastAcc.z) / 9.80665;
-    st.lastAcc = cur;
-    if (!Number.isFinite(d) || d > 4) return;
-    st.motionG = (st.motionG || 0) * 0.72 + d * 0.28;
-    st.mSeen = true;
-    st.mMax = Math.max(st.mMax, st.motionG);
-  }
-
-  /* ---------- Opus符号化（AudioEncoder）とPCMの変換 ---------- */
-  function resample(x, from, to) {
-    if (from === to) return x;
-    const n = Math.floor(x.length * to / from);
-    const y = new Float32Array(n);
-    const step = from / to;
-    for (let i = 0; i < n; i++) {
-      const p = i * step, k = Math.floor(p), f = p - k;
-      const a = x[k] || 0;
-      const b = k + 1 < x.length ? x[k + 1] : a;
-      y[i] = a + (b - a) * f;
-    }
-    return y;
-  }
-
-  function isOpusHead(h) {
-    return h && h.length >= 8 && String.fromCharCode(...h.slice(0, 8)) === "OpusHead";
-  }
-  function opusHead(rate, ch) {
-    const b = new Uint8Array(19);
-    const dv = new DataView(b.buffer);
-    b.set(enc.encode("OpusHead"), 0);
-    b[8] = 1; b[9] = ch;
-    dv.setUint16(10, 312, true);
-    dv.setUint32(12, rate, true);
-    dv.setInt16(16, 0, true);
-    b[18] = 0;
-    return b;
-  }
-
-  async function encodeOpus(pcm, rate) {
-    const x = resample(pcm, rate, C.OPUS_RATE);
-    const frames = [];
-    let head = null;
-    let err = null;
-    const encoder = new AudioEncoder({
-      output: (chunk, meta) => {
-        const d = meta && meta.decoderConfig && meta.decoderConfig.description;
-        if (d && !head) head = new Uint8Array(d);
-        const buf = new Uint8Array(chunk.byteLength);
-        chunk.copyTo(buf);
-        frames.push({ ts: chunk.timestamp, data: buf });
-      },
-      error: (e) => { err = e; }
-    });
-    encoder.configure({ codec: "opus", sampleRate: C.OPUS_RATE, numberOfChannels: 1, bitrate: C.OPUS_BPS });
-    const N = 960; // 20ms
-    for (let i = 0; i < x.length; i += N) {
-      const block = new Float32Array(N);
-      block.set(x.subarray(i, Math.min(i + N, x.length)));
-      const ad = new AudioData({
-        format: "f32", sampleRate: C.OPUS_RATE, numberOfFrames: N, numberOfChannels: 1,
-        timestamp: Math.round(i / C.OPUS_RATE * 1e6), data: block
-      });
-      encoder.encode(ad);
-      ad.close();
-    }
-    await encoder.flush();
-    encoder.close();
-    if (err) throw err;
-    if (!frames.length) throw new Error("音声データが空でした");
-    return { frames, head: isOpusHead(head) ? head : opusHead(C.OPUS_RATE, 1) };
-  }
-
-  /* ---------- WebM（EBML）の最小構成 ---------- */
-  function idBytes(id) {
-    const a = [];
-    let x = id;
-    do { a.unshift(x % 256); x = Math.floor(x / 256); } while (x > 0);
-    return Uint8Array.from(a);
-  }
-  function sizeBytes(n) {
-    const b = new Uint8Array(8);
-    b[0] = 1;
-    let x = n;
-    for (let i = 7; i >= 1; i--) { b[i] = x % 256; x = Math.floor(x / 256); }
-    return b;
-  }
-  function uintBytes(n) {
-    const a = [];
-    let x = n;
-    do { a.unshift(x % 256); x = Math.floor(x / 256); } while (x > 0);
-    return Uint8Array.from(a);
-  }
-  function cat(list) {
-    let len = 0;
-    for (const p of list) len += p.length;
-    const out = new Uint8Array(len);
-    let o = 0;
-    for (const p of list) { out.set(p, o); o += p.length; }
-    return out;
-  }
-  function el(id, ...parts) {
-    const body = cat(parts);
-    return cat([idBytes(id), sizeBytes(body.length), body]);
-  }
-  const uel = (id, n) => el(id, uintBytes(n));
-  const sel = (id, s) => el(id, enc.encode(s));
-  function f64el(id, v) {
-    const b = new Uint8Array(8);
-    new DataView(b.buffer).setFloat64(0, v, false);
-    return el(id, b);
-  }
-
-  function buildWebm(frames, rate, head) {
-    const ebml = el(0x1A45DFA3,
-      uel(0x4286, 1), uel(0x42F7, 1), uel(0x42F2, 4), uel(0x42F3, 8),
-      sel(0x4282, "webm"), uel(0x4287, 2), uel(0x4285, 2));
-    const info = el(0x1549A966, uel(0x2AD7B1, 1000000), sel(0x4D80, "SomnoLog"), sel(0x5741, "SomnoLog"));
-    const track = el(0xAE,
-      uel(0xD7, 1), uel(0x73C5, 1), uel(0x83, 2), sel(0x86, "A_OPUS"),
-      el(0x63A2, head),
-      el(0xE1, f64el(0xB5, rate), uel(0x9F, 1)));
-    const tracks = el(0x1654AE6B, track);
-
-    const clusters = [];
-    let started = false, base = 0, cb = [];
-    const flush = () => {
-      if (started) clusters.push(el(0x1F43B675, uel(0xE7, base), ...cb));
-      cb = [];
-    };
-    for (const f of frames) {
-      const ms = Math.round(f.ts / 1000);
-      if (!started || ms - base >= 1000) {
-        flush();
-        started = true;
-        base = ms;
-      }
-      const rel = ms - base;
-      cb.push(el(0xA3, Uint8Array.of(0x81, (rel >> 8) & 0xff, rel & 0xff, 0x80), f.data));
-    }
-    flush();
-    const seg = el(0x18538067, info, tracks, ...clusters);
-    return cat([ebml, seg]);
-  }
-
-  /* ---------- ZIP（無圧縮・WAVなし） ---------- */
-  const CRC = (() => {
-    const t = new Uint32Array(256);
-    for (let n = 0; n < 256; n++) {
-      let c = n;
-      for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1;
-      t[n] = c >>> 0;
-    }
-    return t;
-  })();
-  function crc32(u8) {
-    let c = 0xFFFFFFFF;
-    for (let i = 0; i < u8.length; i++) c = CRC[(c ^ u8[i]) & 255] ^ (c >>> 8);
-    return (c ^ 0xFFFFFFFF) >>> 0;
-  }
-  class ZipWriter {
-    constructor() {
-      const d = new Date();
-      this.time = (d.getHours() << 11) | (d.getMinutes() << 5) | (d.getSeconds() >> 1);
-      this.date = ((d.getFullYear() - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate();
-      this.parts = []; this.central = []; this.offset = 0; this.count = 0;
-    }
-    add(name, bytes) {
-      const nb = enc.encode(name);
-      const crc = crc32(bytes);
-      const lh = new DataView(new ArrayBuffer(30));
-      lh.setUint32(0, 0x04034b50, true);
-      lh.setUint16(4, 20, true);
-      lh.setUint16(6, 0x0800, true);
-      lh.setUint16(10, this.time, true);
-      lh.setUint16(12, this.date, true);
-      lh.setUint32(14, crc, true);
-      lh.setUint32(18, bytes.length, true);
-      lh.setUint32(22, bytes.length, true);
-      lh.setUint16(26, nb.length, true);
-      const cd = new DataView(new ArrayBuffer(46));
-      cd.setUint32(0, 0x02014b50, true);
-      cd.setUint16(4, 20, true);
-      cd.setUint16(6, 20, true);
-      cd.setUint16(8, 0x0800, true);
-      cd.setUint16(12, this.time, true);
-      cd.setUint16(14, this.date, true);
-      cd.setUint32(16, crc, true);
-      cd.setUint32(20, bytes.length, true);
-      cd.setUint32(24, bytes.length, true);
-      cd.setUint16(28, nb.length, true);
-      cd.setUint32(42, this.offset, true);
-      this.parts.push(new Uint8Array(lh.buffer), nb, bytes);
-      this.central.push(new Uint8Array(cd.buffer), nb);
-      this.offset += 30 + nb.length + bytes.length;
-      this.count++;
-    }
-    finish() {
-      let cdSize = 0;
-      for (const c of this.central) cdSize += c.length;
-      const e = new DataView(new ArrayBuffer(22));
-      e.setUint32(0, 0x06054b50, true);
-      e.setUint16(8, this.count, true);
-      e.setUint16(10, this.count, true);
-      e.setUint32(12, cdSize, true);
-      e.setUint32(16, this.offset, true);
-      return new Blob([...this.parts, ...this.central, e], { type: "application/zip" });
-    }
-  }
-
-  /* ---------- 記録の開始・停止 ---------- */
-  const WORKLET_SRC = `class PcmTap extends AudioWorkletProcessor {
-process(inputs) { const c = inputs[0] && inputs[0][0]; if (c && c.length) this.port.postMessage(c.slice(0)); return true; }
-}
-registerProcessor("pcm-tap", PcmTap);`;
-
-  /* ---------- 記録の開始・停止（まみこが補完） ---------- */
-  async function start(opts) {
-    await ensureUnifiedScale();
-    if (st && st.running) return st.sid;
-    const { ctx, stream, patient } = opts || {};
-    if (!ctx || !stream) throw new Error("録音の準備（マイク）ができていません。");
-    if (!ctx.audioWorklet) throw new Error("この端末はAudioWorkletに対応していないため録音できません。");
-
-    // 方式の決定：WebCodecs(Opus→WebM)が使えればそれ、無ければ録音機モードへ逃がす
-    let mode = "recorder";
-    if (typeof AudioEncoder !== "undefined" && typeof AudioData !== "undefined") {
-      try {
-        const sup = await AudioEncoder.isConfigSupported({
-          codec: "opus", sampleRate: C.OPUS_RATE, numberOfChannels: 1, bitrate: C.OPUS_BPS
-        });
-        if (sup && sup.supported) mode = "opus";
-      } catch (e) { /* 録音機モードで続行 */ }
-    }
-    if (mode === "recorder" && typeof MediaRecorder === "undefined") {
-      throw new Error("この端末では音声の保存方式（WebCodecs／MediaRecorder）が使えません。");
-    }
-
-    const sid = uid();
-    const rate = ctx.sampleRate;
-    st = {
-      sid, running: true, mode, rate, t0: performance.now(),
-      patient: patient || {}, onState: (opts && opts.onState) || null,
-      refDb: (opts && opts.sessionExtra && typeof opts.sessionExtra.refDb === "number") ? opts.sessionExtra.refDb : null,
-      ring: new Float32Array(Math.round(C.RING_SEC * rate)),
-      ringLen: Math.round(C.RING_SEC * rate), ringTotal: 0,
-      accs: new Map(), slotSample: new Map(), nextClose: 0,
-      mSeen: false, mMax: 0, motionG: 0,
-      baseline: null, baseSum: 0, baseN: 0,
-      overRun: 0, lastOver: -1000000000, event: null, lastSnoreMs: null,
-      rows: [], tlIdx: 0, clipSeq: 0, counts: {}, markers: [],
-      pendingRec: [], recChunks: [], recClock: 0, recMime: "", recorder: null,
-      live: { db: null, baseline: null, inEvent: false, motionG: null },
-      an: null, node: null, src: null, timer: null, startedAt: Date.now(),
-      vadSession: null, vadOk: false, vadFailed: false, vadState: null,
-      vadCtx: new Float32Array(C.VAD_CTX), vadPos16k: 0, vadStartSample16k: 0,
-      vadInQ: [], vadInOff: 0, vadInLen: 0, vadQ: [], vadQOff: 0, vadQLen: 0,
-      vadFrames: new Float32Array(1 << 15), vadFrameSeq: 0, vadBusy: false,
-      vadChain: Promise.resolve(), vadReady: null
-    };
-
-    await put("sessions", {
-      id: sid, startedAt: st.startedAt, endedAt: null, durationSec: 0,
-      patient: st.patient, engine: ENGINE_VERSION, schema: SCHEMA_VERSION,
-      mode, counts: {}, baselineDb: null,
-      ...((opts && opts.sessionExtra) || {})
-    });
-
-    st.vadReady = initVad();
-
-    const src = ctx.createMediaStreamSource(stream);
-    st.src = src;
-    const an = ctx.createAnalyser();
-    an.fftSize = 2048;
-    src.connect(an);
-    st.an = an;
-
-    const url = URL.createObjectURL(new Blob([WORKLET_SRC], { type: "application/javascript" }));
-    try {
-      await ctx.audioWorklet.addModule(url);
-    } finally {
-      URL.revokeObjectURL(url);
-    }
-    const node = new AudioWorkletNode(ctx, "pcm-tap");
-    node.port.onmessage = (e) => { try { onChunk(e.data); } catch (err) { fail(err); } };
-    src.connect(node);
-    st.node = node;
-
-    if (mode === "recorder") {
-      let mime = "";
-      for (const cand of ["audio/mp4", "audio/webm;codecs=opus", "audio/webm", "audio/aac", ""]) {
-        if (!cand || MediaRecorder.isTypeSupported(cand)) { mime = cand; break; }
-      }
-      const rec = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream);
-      st.recMime = rec.mimeType || mime || "audio/mp4";
-      rec.ondataavailable = (e) => {
-        if (!e.data || !e.data.size || !st) return;
-        const nowMs = Math.round(performance.now() - st.t0);
-        st.recChunks.push({ startMs: st.recClock, endMs: nowMs, blob: e.data });
-        st.recClock = nowMs;
-        chainP = chainP.then(() => assembleRecClips()).catch(fail);
-      };
-      rec.onerror = (e) => fail(e.error || new Error("録音機でエラーが起きました"));
-      rec.start(1000);
-      st.recorder = rec;
-    }
-
-    window.addEventListener("devicemotion", onMotion);
-    st.timer = setInterval(() => {
-      try {
-        tick();
-        if (st && st.onState) st.onState(st.live);
-      } catch (e) { fail(e); }
-    }, 250);
-    if (st.onState) st.onState(st.live);
-    return sid;
-  }
-
-  async function stop() {
-    if (!st || !st.running) return null;
-    st.running = false;
-    if (st.timer) { clearInterval(st.timer); st.timer = null; }
-    window.removeEventListener("devicemotion", onMotion);
-
-    if (st.mode === "recorder" && st.recorder && st.recorder.state !== "inactive") {
-      const rec = st.recorder;
-      await new Promise((res) => {
-        rec.onstop = () => res();
-        try { rec.stop(); } catch (e) { res(); }
-      });
-    }
-
-    closeUpTo(slotNow());
-    if (st.event) finishEvent("stop");
-    flushRows();
-    await chainP;
-    if (st.mode === "recorder") await assembleRecClips();
-
-    const endedAt = Date.now();
-    const prev = await get("sessions", st.sid).catch(() => null);
-    const sess = {
-      ...(prev || {}),
-      id: st.sid, startedAt: st.startedAt, endedAt,
-      durationSec: r1((endedAt - st.startedAt) / 1000),
-      patient: st.patient, engine: ENGINE_VERSION, schema: SCHEMA_VERSION,
-      mode: st.mode, counts: st.counts,
-      baselineDb: st.baseline == null ? null : r1(st.baseline),
-      vadOk: !!st.vadOk, vadFailed: !!st.vadFailed
-    };
-    await put("sessions", sess);
-
-    try { if (st.node) st.node.disconnect(); } catch (e) {}
-    try { if (st.src) st.src.disconnect(); } catch (e) {}
-    const onState = st.onState;
-    const summary = { sid: st.sid, counts: st.counts, durationSec: sess.durationSec, mode: st.mode };
-    st = null;
-    if (onState) onState({ stopped: true, ...summary });
-    return summary;
-  }
-
-  /* ---------- 読み取り・書き出し（まみこが補完） ---------- */
-  const allRows = (s) => tx(s, "readonly", (x) => x.getAll());
-
-  /* 物差しの統一（V77/ENGINE 68）：旧エンジン記録は別の尺度（+72）で保存されている。
-     初回だけ、保存済みの値を あ〜と同じ尺度へ移し替える。以後の計測・保存は最初から同じ尺度で、換算はしない。 */
-  let scaleGate = null;
-  function ensureUnifiedScale() {
-    if (scaleGate) return scaleGate;
-    scaleGate = (async () => {
-      try {
-        if (localStorage.getItem("somnolog-scale-unified-v68")) return;
-        for (const s of await allRows("sessions")) {
-          if (s.baselineDb != null) { s.baselineDb = r1(s.baselineDb - 72); await put("sessions", s); }
-        }
-        for (const e of await allRows("events")) {
-          let changed = false;
-          if (e.peakDb != null) { e.peakDb = r1(e.peakDb - 72); changed = true; }
-          if (e.meanDb != null) { e.meanDb = r1(e.meanDb - 72); changed = true; }
-          if (changed) await put("events", e);
-        }
-        for (const c of await allRows("timeline")) {
-          if (Array.isArray(c.rows)) {
-            for (const r of c.rows) if (r.db != null) r.db = r1(r.db - 72);
-            await put("timeline", c);
-          }
-        }
-        localStorage.setItem("somnolog-scale-unified-v68", "1");
-      } catch (e) { console.error("[SleepEngine] scale migration:", e); }
-    })();
-    return scaleGate;
-  }
-
-  async function listSessions() {
-    await ensureUnifiedScale();
-    const list = await allRows("sessions");
-    return list.sort((a, b) => (b.startedAt || 0) - (a.startedAt || 0));
-  }
-
-  async function getSessionData(sid, opts) {
-    await ensureUnifiedScale();
-    const session = await get("sessions", sid);
-    if (!session) return null;
-    const chunks = (await byIndex("timeline", sid)).sort((a, b) => (a.key < b.key ? -1 : 1));
-    const rows = [];
-    for (const c of chunks) if (Array.isArray(c.rows)) rows.push(...c.rows);
-    const events = (await byIndex("events", sid)).sort((a, b) => (a.startMs || 0) - (b.startMs || 0));
-    const rawClips = await byIndex("clips", sid);
-    const clips = (opts && opts.light)
-      ? rawClips.map((c) => ({ id: c.id, sid: c.sid, fileName: c.fileName, bytes: c.bytes || (c.blob ? c.blob.size : 0) }))
-      : rawClips;
-    return { session, rows, events, clips };
-  }
-
-  async function deleteSession(sid) {
-    const d = await openDb();
-    const wipe = (store) => new Promise((res, rej) => {
-      const t = d.transaction(store, "readwrite");
-      const idx = t.objectStore(store).index("sid");
-      const req = idx.getAllKeys(IDBKeyRange.only(sid));
-      req.onsuccess = () => {
-        const s = t.objectStore(store);
-        for (const k of req.result) s.delete(k);
-      };
-      t.oncomplete = () => res();
-      t.onerror = () => rej(t.error);
-      t.onabort = () => rej(t.error);
-    });
-    await wipe("timeline");
-    await wipe("events");
-    await wipe("clips");
-    await tx("sessions", "readwrite", (x) => x.delete(sid));
-  }
-
-  async function deleteClipsForSession(sid) {
-    const d = await openDb();
-    return new Promise((res, rej) => {
-      const t = d.transaction("clips", "readwrite");
-      const idx = t.objectStore("clips").index("sid");
-      const req = idx.getAllKeys(IDBKeyRange.only(sid));
-      req.onsuccess = () => {
-        const s = t.objectStore("clips");
-        for (const k of req.result) s.delete(k);
-      };
-      t.oncomplete = () => res(req.result ? req.result.length : 0);
-      t.onerror = () => rej(t.error);
-      t.onabort = () => rej(t.error);
-    });
-  }
-
-  // 1件だけ音声を取り出す（詳細画面で、選んだ棒の音だけをその場で読むため）
-  async function getClipBlob(id) {
-    const c = await get("clips", id);
-    return c && c.blob ? c.blob : null;
-  }
-
-  // ZIPを書き出した記録に印を付ける（音声の削除は、この印がある記録だけに許す）
-  async function markShared(sid) {
-    const s = await get("sessions", sid);
-    if (!s) return;
-    s.sharedAt = Date.now();
-    await put("sessions", s);
-  }
-
-  // 記録の後から あ〜基準を合わせ直す（秀司の指示 2026-11-05：記録画面に戻って測り直した基準を、過去の記録のグラフにも効かせる）
-  async function setSessionRef(sid, refDb, refEnvDb) {
-    const s = await get("sessions", sid);
-    if (!s) return;
-    s.refDb = refDb;
-    s.refEnvDb = refEnvDb;
-    await put("sessions", s);
-  }
-
-  function patientForExport(p) {
-    const o = (p && typeof p === "object") ? p : {};
-    return { clinic: "", chartNo: "", name: "", ...o };
-  }
-
-  async function exportSession(sid) {
-    await ensureUnifiedScale();
-    const data = await getSessionData(sid);
-    if (!data) throw new Error("記録が見つかりません。");
-    const { session, rows, events, clips } = data;
-    const startedISO = new Date(session.startedAt).toISOString();
-    const patient = patientForExport(session.patient);
-    const clipById = new Map(clips.map((c) => [c.id, c]));
-
-    const manifest = {
-      app: "SomnoLog", engine: ENGINE_VERSION, schema: SCHEMA_VERSION,
-      sessionId: sid, startedAt: startedISO, exportedAt: new Date().toISOString(),
-      mode: session.mode || "opus"
-    };
-    const metadata = {
-      sessionId: sid, startedAt: startedISO,
-      endedAt: session.endedAt ? new Date(session.endedAt).toISOString() : null,
-      durationSec: session.durationSec || 0, patient,
-      baselineDb: session.baselineDb == null ? null : session.baselineDb + 72, counts: session.counts || {}
-    };
-    // 書き出しの時だけ、解析アプリ側の読み取り形式（従来の尺度）に合わせる。アプリ内の計測・保存は統一した尺度のまま。
-    const timeline = {
-      session: { startedAt: startedISO, patient },
-      timeSeriesLogs: rows.map((r) => ({
-        sec: r.sec, elapsedMs: Math.round(r.sec * 1000),
-        timestamp: new Date(session.startedAt + Math.round(r.sec * 1000)).toISOString(),
-        db: r.db == null ? null : r.db + 72, motionG: r.motionG, motionMaxG: r.motionMaxG
-      }))
-    };
-    const markers = {
-      clips: events.map((e) => ({
-        fileName: e.fileName, audioFile: e.fileName,
-        startMs: e.startMs, elapsedMs: e.startMs, startSec: e.startSec,
-        durationSec: e.durationSec, category: e.category, label: e.label,
-        displayCategory: e.displayCategory,
-        peakDb: e.peakDb == null ? null : e.peakDb + 72, meanDb: e.meanDb == null ? null : e.meanDb + 72,
-        motionMaxG: e.motionMaxG
-      }))
-    };
-
-    const zip = new ZipWriter();
-    zip.add("manifest.json", enc.encode(JSON.stringify(manifest, null, 1)));
-    zip.add("session_metadata.json", enc.encode(JSON.stringify(metadata, null, 1)));
-    zip.add("sensing_timeline.json", enc.encode(JSON.stringify(timeline)));
-    zip.add("event_markers.json", enc.encode(JSON.stringify(markers, null, 1)));
-    for (const e of events) {
-      const clip = clipById.get(e.id);
-      if (!clip || !clip.blob || !e.fileName) continue;
-      zip.add(e.fileName, new Uint8Array(await clip.blob.arrayBuffer()));
-    }
-    const d = new Date(session.startedAt);
-    const fileName = "SomnoLog_" + d.getFullYear() + pad(d.getMonth() + 1, 2) + pad(d.getDate(), 2) +
-      "_" + pad(d.getHours(), 2) + pad(d.getMinutes(), 2) + ".zip";
-    return { blob: zip.finish(), fileName };
-  }
-
-  return {
-    ENGINE_VERSION, SCHEMA_VERSION,
-    start, stop, exportSession, listSessions, getSessionData, deleteSession, deleteClipsForSession,
-    getClipBlob, markShared, setSessionRef,
-    isRunning: () => !!(st && st.running),
-    live: () => (st ? st.live : null),
-    errors: () => errors.slice()
-  };
-})();
-
-</script>
-<script>
 "use strict";
+
 /* ===== バージョン ===== */
-const APP_VERSION = 87;
+const APP_VERSION = 55;
 const APP = "SomnoLogV" + APP_VERSION + "_ref";
 
-/* ===== 更新の取得元（GitHub） ===== */
+/* ===== 更新の取得元（GitHub） =====
+   main ブランチで index.html を最後に変更したコミットIDを取得し、そのコミットの index.html を読んで版番号を比べる。
+   失敗した場合は main の index.html、最後に公開ページの順に試す。 */
 const UPD_REPO = "matsuodentalassociation/ST-SCOPE";
 const UPD_BRANCH = "main";
 const UPD_FILE = "index.html";
@@ -1478,34 +389,36 @@ const UPD_TARGET_KEY = "somnolog-update-target";
 /* ===== 設定 ===== */
 const SR = 16000, FRAME = 512;
 const RING_SEC = 130;
-const VAD_CTX = 64, VAD_TH = 0.3;
+const VAD_CTX = 64, VAD_URL = "./silero_vad.onnx?v=" + APP_VERSION, VAD_TH = 0.3;
 const LOUD_DB = 6, SEG_MIN = 0.5, SEG_MAX = 4, QUIET_FRAMES = 5;
 const PRE_MS = 3000, POST_MS = 1000;
 const CALIB_SEC = 300, BASE_EVERY = 600, POOL_MAX = 600, POOL_MIN = 60;
 const ENV_RUN_SEC = 10, ENV_DB = 6, ENV_COOLDOWN = 300, ENV_CLIP_SEC = 60;
 const FLUSH_SEC = 60, MAX_QUEUE = 40;
 const UI_MS = 250;
-const MOTION_BAR_MAX = 2;
+const MOTION_BAR_MAX = 2; // m/s²。この値で赤いバーが満タンになります
 const DB_NAME = "somnolog-v3";
 const DB_VERSION = 2;
 const DB_WAIT_MS = 8000;
+const MARK_HALF_MS = 60 * 1000;
 const PLOG_LEN = Math.ceil(SR * RING_SEC / FRAME) + 8;
 const VOICE_PAD = 3;
 const TAG_ORDER = ["snore", "unknown", "env", "speech"];
-const TAG_COLOR = { snore: "#4a90d9", unknown: "#ff9f43", env: "#4caf7a", speech: "#9aa5b1", motion: "#e0567a" };
-const TAG_NAME = { snore: "いびき", unknown: "判定不能", env: "環境音", speech: "人声", motion: "体動" };
-const TL_BINS = 60; // タイムラインの棒の数（1本分の時間＝表示幅÷60）
+const TAG_COLOR = { snore: "#4a90d9", unknown: "#ff9f43", env: "#4caf7a", speech: "#9aa5b1" };
+const TAG_NAME = { snore: "いびき", unknown: "判定不能", env: "環境音", speech: "人声" };
 
 /* ===== 基準音圧の設定 ===== */
-const REF_SEC = 2;
-const REF_MIN_FRAMES = Math.floor(SR * REF_SEC / FRAME * 0.8);
-const REF_QUIET_DB = -60;
-const DISP_FRAMES = Math.round(SR / FRAME * REF_SEC);
-const REF_WORD_DB = 3;
+const REF_SEC = 2;                                             // 環境音・「あ〜」それぞれを測る時間（秒）
+const REF_MIN_FRAMES = Math.floor(SR * REF_SEC / FRAME * 0.8); // これより少ないと測り直す
+const REF_QUIET_DB = -60;                                      // これより小さい音は、声が届いていないとみなす
+const DISP_FRAMES = Math.round(SR / FRAME * REF_SEC);          // 表示バーの平均の長さ（基準の測り方とそろえる）
+const REF_WORD_DB = 3;                                         // 基準から±3dB以内は「基準くらい」
 
 /* ===== タイムラインの設定 ===== */
 const TL_W = 480, TL_H = 220, TL_PL = 62, TL_PR = 8, TL_PT = 8, TL_PB = 22;
-const SAVED_BAR_COLOR = "#ffffff"; // 保存した音声の棒の色
+const SAVED_BAR_COLOR = "#ffffff"; // 保存済みの範囲の棒の色
+const PLAY_MAX_MS = 60 * 1000;     // 再生は最初の音から最大1分
+const SAVE_TYPES = ["snore", "speech"]; // 「保存する」で対象になる音（いびき・人声）
 
 /* ===== 夜の評価 ===== */
 const ENV_QUIET_MAX = 0;
@@ -1543,10 +456,10 @@ const fmtHM = (ms) => {
   return Math.floor(s / 3600) + "時間" + Math.floor((s % 3600) / 60) + "分";
 };
 const fmtClock = (ms) => new Date(ms).toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+const fmtDate = (ms) => new Date(ms).toLocaleString("ja-JP", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" });
 const isoOf = (ms) => new Date(ms).toISOString();
 const esc = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const newCounts = () => ({ snore: 0, speech: 0, env: 0, unknown: 0, short: 0 });
-const mb = (bytes) => (bytes / 1048576).toFixed(1) + " MB";
 const dayKey = (ms) => {
   const d = new Date(ms);
   return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
@@ -1557,7 +470,8 @@ const dayLabel = (key) => {
   return y + "年" + m + "月" + d + "日（" + w + "）";
 };
 
-// 音圧の高さ（0〜1）。下端＝環境音、中央（0.5）＝「あ〜」、上端＝その晩の最大音
+// 音圧の高さ（0〜1）。下端＝環境音、中央（0.5）＝「あ〜」、上端＝その晩の最大音。
+// 下半分は環境音→「あ〜」、上半分は「あ〜」→最大音。目盛りは均等割りにしない。
 function scalePos(db, envDb, refDb, topDb) {
   if (db == null) return 0;
   if (db <= refDb) {
@@ -1568,20 +482,10 @@ function scalePos(db, envDb, refDb, topDb) {
   return clamp(0.5 + 0.5 * (db - refDb) / span, 0.5, 1);
 }
 
-// グラフと比較の物差しは、端末に保存されている「現在のあ〜」を優先する（秀司の指示 2026-11-05）。
-// 測り直せば、過去の記録のグラフもその基準で描き直される。記録に保存された当時の基準は、現在の基準が無い時だけ使う。
-function activeRef(sess) {
-  if (S.ref && S.ref.db != null) return { refDb: S.ref.db, refEnvDb: S.ref.envDb != null ? S.ref.envDb : null };
-  return {
-    refDb: sess && sess.refDb != null ? sess.refDb : null,
-    refEnvDb: sess && sess.refEnvDb != null ? sess.refEnvDb : null
-  };
-}
-
+// 記録ごとの目盛り（下端・中央・上端）を決める。上端はその晩の最大音に合わせて上に伸びる
 function nightScale(sess, evs) {
-  const ar = activeRef(sess);
-  const refDb = ar.refDb != null ? ar.refDb : fallbackRefDb(evs);
-  const envDb = ar.refEnvDb != null ? ar.refEnvDb : refDb - 12;
+  const refDb = sess.refDb != null ? sess.refDb : fallbackRefDb(evs);
+  const envDb = sess.refEnvDb != null ? sess.refEnvDb : refDb - 12;
   let topDb = refDb;
   for (const e of evs) {
     const db = dbOf(e);
@@ -1590,6 +494,7 @@ function nightScale(sess, evs) {
   return { refDb, envDb, topDb };
 }
 
+// 基準との大きさを言葉で表す（数字は出さない）
 function wordOf(db, refDb) {
   if (db == null || refDb == null) return "-";
   const d = db - refDb;
@@ -1597,7 +502,7 @@ function wordOf(db, refDb) {
   if (d <= -REF_WORD_DB) return "小さい音";
   return "基準くらい";
 }
-
+// 記録に基準が無い場合の代わり（古い記録の対策）。いびきの平均を基準の代わりにする
 function fallbackRefDb(evs) {
   const v = evs.filter((e) => e.type === "snore").map((e) => e.meanAppliedDb).filter((x) => x != null);
   return v.length ? mean(v) : -40;
@@ -1688,7 +593,7 @@ function zipName(sess) {
   return [day, time, sanitize(p.clinic, 30), sanitize(p.chartNo, 20), sanitize(p.name, 20)].join("_") + ".zip";
 }
 
-/* ===== リングバッファ（直近130秒） ===== */
+/* ===== リングバッファ（直近130秒・16kHz・感度適用後の音） ===== */
 class Ring {
   constructor(sec) { this.len = SR * sec; this.buf = new Float32Array(this.len); this.total = 0; }
   push(arr) {
@@ -1705,7 +610,7 @@ class Ring {
   }
 }
 
-/* ===== IndexedDB（構成はV60と同じ。既存の記録をそのまま読みます） ===== */
+/* ===== IndexedDB ===== */
 const DB = (() => {
   let p = null;
   const open = () => p || (p = new Promise((res, rej) => {
@@ -1722,6 +627,7 @@ const DB = (() => {
     };
     r.onsuccess = () => {
       const d = r.result;
+      // 別のタブで新しい版が開かれたときに、古い接続を閉じて詰まりを防ぐ
       d.onversionchange = () => { d.close(); p = null; };
       res(d);
     };
@@ -1744,6 +650,8 @@ const DB = (() => {
     get: (store, key) => run(store, "readonly", (s) => s.get(key)),
     all: (store) => run(store, "readonly", (s) => s.getAll()),
     byIndex: (store, idx, key) => run(store, "readonly", (s) => s.index(idx).getAll(IDBKeyRange.only(key))),
+    keysByIndex: (store, idx, key) => run(store, "readonly", (s) => s.index(idx).getAllKeys(IDBKeyRange.only(key))),
+    del: (store, key) => run(store, "readwrite", (s) => s.delete(key)),
     delMany: (store, keys) => run(store, "readwrite", (s) => { keys.forEach((k) => s.delete(k)); return null; }),
   };
 })();
@@ -1752,12 +660,11 @@ const DB = (() => {
 const S = {
   ctx: null, pendingCtx: null, stream: null, tap: null, micMode: "",
   vad: null, vadOk: false, vadState: null, vadCtx: new Float32Array(VAD_CTX),
-  gainDb: 0,
-  ref: null,
-  refColl: null,
-  refPcm: null,
-  refEnv: null,
-  peakDb: -Infinity,
+  gainDb: 0,        // iPhoneの音圧調整（スライダー）の値
+  ref: null,        // 基準音圧。{ db: 「あ〜」の平均, envDb: 直前の環境音, at: 測った時刻 }。測り直すまで使い続ける
+  refColl: null,    // 測定中だけ、音の大きさを集める配列（環境音→「あ〜」の順に使う）
+  refEnv: null,     // 環境音の測定結果（「あ〜」を測っている間だけ保持）
+  peakDb: -Infinity, // 記録中に出た一番大きい音（ゲージの上端）
   patient: null,
   running: false, saving: false, epoch: 0, sid: null, sess: null, counts: newCounts(),
   wake: null, timers: [], uiTimer: null, blackOn: false, savedStyle: null, detailSid: null,
@@ -1772,79 +679,21 @@ const S = {
 
 const cal = { year: 0, month: 0, selected: null, index: 0, byDay: new Map() };
 
+// タイムラインの表示状態。tags は選んだタグ（1つだけ選べる。初期はいびき）
+// scale は記録ごとの目盛り（下端＝環境音、中央＝「あ〜」、上端＝その晩の最大音）
 const ZOOM_DEFAULT = 0;
-const tl = { data: null, total: 0, winStart: 0, winLen: 0, cursor: 0, zoomSec: ZOOM_DEFAULT, scale: { refDb: -40, envDb: -52, topDb: -40 }, tags: { snore: true, unknown: false, env: false, speech: false } };
-
-// 共有画面の状態。zipDone は「ZIPのダウンロードを開始した」ことを表す（保存先の確認はできないため、確認は利用者が行う）
-const SH = { sid: null, zipDone: false, zipName: "" };
+const tl = { data: null, total: 0, winStart: 0, winLen: 0, cursor: 0, zoomSec: ZOOM_DEFAULT, marks: [], scale: { refDb: -40, envDb: -52, topDb: -40 }, tags: { snore: true, unknown: false, env: false, speech: false } };
 
 let recActionPending = false;
-/* ===== V63エンジンとの接続 ===== */
-const ENGINE_IDS = new Set();
-const CAT_FROM_DISPLAY = { "いびき": "snore", "人声": "speech", "環境音": "env", "判定不能": "unknown" };
-
-async function engineHas(sid) {
-  if (!sid) return false;
-  if (ENGINE_IDS.has(sid)) return true;
-  try { return !!(await SleepEngine.getSessionData(sid, { light: true })); } catch (e) { return false; }
-}
-
-function engineSessForUi(s) {
-  const c = s.counts || {};
-  return {
-    ...s, engine: true,
-    counts: { snore: c.snore || 0, speech: c.talk || 0, env: c.env || 0, engineCounts: c },
-    base: s.baselineDb == null ? null : s.baselineDb,
-    refDb: s.refDb != null ? s.refDb : null,
-    refEnvDb: s.refEnvDb != null ? s.refEnvDb : null
-  };
-}
-
-async function engineDetailData(sid, needClips) {
-  const d = await SleepEngine.getSessionData(sid, { light: !needClips });
-  if (!d) return null;
-  const sess = engineSessForUi(d.session);
-  // 100ミリ秒の行を1秒に間引く（平均と最大）。表示と評価は旧記録と同じ物差しになる
-  const bySec = new Map();
-  for (const r of d.rows) {
-    const s = Math.floor(r.sec);
-    let b = bySec.get(s);
-    if (!b) { b = { sec: s, peak: null, sum: 0, n: 0, motion: null }; bySec.set(s, b); }
-    if (r.db != null) { b.peak = b.peak == null ? r.db : Math.max(b.peak, r.db); b.sum += r.db; b.n++; }
-    if (r.motionG != null) b.motion = b.motion == null ? r.motionG : Math.max(b.motion, r.motionG);
-  }
-  const secs = [...bySec.values()].sort((a, b) => a.sec - b.sec).map((b) => ({
-    sec: b.sec,
-    dbApplied: b.n ? (b.sum / b.n) : null,
-    dbSource: b.n ? (b.sum / b.n) : null,
-    peakApplied: b.peak == null ? null : b.peak,
-    vadMean: null,
-    motion: b.motion
-  }));
-  const clipById = new Map(d.clips.map((c) => [c.id, c]));
-  const evs = d.events.map((e) => ({
-    ...e,
-    type: CAT_FROM_DISPLAY[e.displayCategory] || "unknown",
-    endMs: e.startMs + Math.round((e.durationSec || 0) * 1000),
-    durMs: Math.round((e.durationSec || 0) * 1000),
-    peakAppliedDb: e.peakDb == null ? null : e.peakDb,
-    meanAppliedDb: e.meanDb == null ? null : e.meanDb,
-    clipId: clipById.has(e.id) ? e.id : null,
-    engineClip: clipById.get(e.id) || null
-  }));
-  return { sess, secs, evs, clips: d.clips };
-}
-
-
-
 function isBusy() { return S.running || S.saving || recActionPending || !!S.refColl; }
 
 /* ===== 画面切り替え ===== */
 function showPage(name) {
-  ["start", "confirm", "record", "calendar", "detail", "share"].forEach((n) => { $("page-" + n).hidden = n !== name; });
+  ["start", "confirm", "record", "calendar", "detail", "share", "review"].forEach((n) => { $("page-" + n).hidden = n !== name; });
   window.scrollTo(0, 0);
 }
 
+// 患者情報が登録済みのときだけ、「記録画面に戻る」を出す
 function updateBackButtons() {
   const has = !!S.patient;
   $("back-rec-start").hidden = !has;
@@ -2011,6 +860,7 @@ function withTimeout(promise, ms, label) {
   return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
 }
 
+// 起動時の読み込み。失敗しても赤い表示は出さない（QRで読み直せるため）。2回まで再試行する
 async function loadPatient() {
   for (let i = 0; i < 2; i++) {
     try {
@@ -2028,68 +878,6 @@ async function loadPatient() {
 async function savePatient(p) {
   S.patient = p;
   await DB.put("settings", { key: "patient", value: p, savedAt: Date.now() });
-}
-
-/* ===== 基準音圧（あ〜）の保存・読み込み =====
-   初回に測った基準を端末に保存し、次回からは測り直さなくてよい。
-   測るのは患者本人のスマホなので、保存した基準はそのまま使い続ける。
-   保存が消えた時だけ、測り直しになる。 */
-async function saveRef() {
-  if (!S.ref) return;
-  try {
-    await DB.put("settings", { key: "ref", value: { db: S.ref.db, envDb: S.ref.envDb, at: S.ref.at }, savedAt: Date.now() });
-  } catch (e) { console.warn("基準音圧の保存:", e); }
-}
-
-/* 基準の「あ〜」の音声（WAV）を保存・再生する。値は settings ストアの refAudio キー。 */
-function pcmChunksToWavBase64(chunks, sampleRate) {
-  let total = 0;
-  for (const c of chunks) total += c.length;
-  const buf = new ArrayBuffer(44 + total * 2);
-  const v = new DataView(buf);
-  const ws = (off, s) => { for (let i = 0; i < s.length; i++) v.setUint8(off + i, s.charCodeAt(i)); };
-  ws(0, "RIFF"); v.setUint32(4, 36 + total * 2, true); ws(8, "WAVE"); ws(12, "fmt ");
-  v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
-  v.setUint32(24, sampleRate, true); v.setUint32(28, sampleRate * 2, true);
-  v.setUint16(32, 2, true); v.setUint16(34, 16, true); ws(36, "data"); v.setUint32(40, total * 2, true);
-  let off = 44;
-  for (const c of chunks) {
-    for (let i = 0; i < c.length; i++) {
-      const s = Math.max(-1, Math.min(1, c[i]));
-      v.setInt16(off, s < 0 ? s * 0x8000 : s * 0x7fff, true);
-      off += 2;
-    }
-  }
-  const bytes = new Uint8Array(buf);
-  let bin = "";
-  for (let i = 0; i < bytes.length; i += 8192) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 8192));
-  return btoa(bin);
-}
-
-let refAudioUrl = null;
-async function playRefAudio() {
-  try {
-    const row = await DB.get("settings", "refAudio");
-    const b64 = row && row.value ? row.value : null;
-    if (!b64) return false;
-    const bin = atob(b64);
-    const bytes = new Uint8Array(bin.length);
-    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-    if (refAudioUrl) URL.revokeObjectURL(refAudioUrl);
-    refAudioUrl = URL.createObjectURL(new Blob([bytes], { type: "audio/wav" }));
-    await new Audio(refAudioUrl).play();
-    return true;
-  } catch (e) { console.warn("基準音の再生:", e); return false; }
-}
-
-async function loadRef() {
-  try {
-    const row = await withTimeout(DB.get("settings", "ref"), DB_WAIT_MS, "基準音圧の読み込み");
-    const v = row && row.value ? row.value : null;
-    if (v && typeof v.db === "number") {
-      S.ref = { db: v.db, envDb: v.envDb, at: v.at || null };
-    }
-  } catch (e) { console.warn("基準音圧の読み込み:", e); }
 }
 
 /* ===== 音声取得（16kHzへ変換して512サンプルずつ onAudio に渡す） ===== */
@@ -2226,6 +1014,7 @@ function micErrorMessage(e) {
   return "マイクを開始できませんでした。" + detail;
 }
 
+// iPhoneの音圧調整（スライダー）を音に掛ける。録音データも表示バーも、この音を使う
 function gainScale(data) {
   const k = Math.pow(10, S.gainDb / 20);
   if (k === 1) return data;
@@ -2242,16 +1031,7 @@ function onAudio(raw) {
     const lv = toDb(Math.sqrt(ss / data.length));
     S.lastLv = lv;
     pushDisp(lv);
-    if (S.refColl) {
-      S.refColl.push(lv);
-      if (S.refPcm) S.refPcm.push(data.slice(0));
-    }
-    return;
-  }
-  if (S.engineMode) {
-    let ss2 = 0;
-    for (let i = 0; i < data.length; i++) ss2 += data[i] * data[i];
-    pushDisp(toDb(Math.sqrt(ss2 / data.length)));
+    if (S.refColl) S.refColl.push(lv); // 測定中は、音の大きさを集める（環境音・「あ〜」のどちらも）
     return;
   }
   const t = S.recv / SR * 1000;
@@ -2265,7 +1045,6 @@ function onAudio(raw) {
 /* ===== 基準音圧を測る（①環境音 → ②「あ〜」） ===== */
 function refFail(msg) {
   S.refColl = null;
-  S.refPcm = null;
   S.refEnv = null;
   showRefMsg(msg, true);
   setButtons();
@@ -2275,13 +1054,14 @@ function startRefMeasure() {
   if (!S.ctx || S.running || S.refColl) return;
   S.refEnv = null;
   S.refColl = [];
-  S.refPcm = [];
   S.dispWin = []; S.dispLv = -100;
   setButtons();
   showRefMsg("静かにしてください…（環境音を" + REF_SEC + "秒測ります）");
   setTimeout(finishRefEnv, REF_SEC * 1000);
 }
 
+// 測定窓の代表値。環境音は静かな方半分、「あ〜」は大きい方1/3の平均にする。
+// 窓の最初は合図に気づくまでの遅れや物音が混ざり、そのまま平均すると基準が実際より小さくなるため
 function halfMean(arr, upper, frac) {
   const a = [...arr].sort((x, y) => x - y);
   const n = Math.max(1, Math.round(a.length * (frac || 0.5)));
@@ -2297,7 +1077,6 @@ function finishRefEnv() {
   }
   S.refEnv = round2(halfMean(arr, false));
   S.refColl = [];
-  S.refPcm = [];
   showRefMsg("「あ〜」と声を出し続けてください…（" + REF_SEC + "秒）");
   setTimeout(finishRefMeasure, REF_SEC * 1000);
 }
@@ -2309,15 +1088,15 @@ function finishRefMeasure() {
     refFail("音を十分に取れませんでした。もう一度「基準音圧を測定する」を押してください。");
     return;
   }
+  // 「あ〜」の代表値：声が出始めた位置を見つけ、立ち上がり（約0.3秒）を除いた区間の、大きい方1/3の平均にする。
+  // 合図待ちの静かな部分や声の立ち上がりを混ぜると、実際の持続音より小さく登録されてしまうため
   const onset = arr.findIndex((v) => v > S.refEnv + LOUD_DB);
   let seg = arr;
   if (onset >= 0) {
     const from = onset + Math.round(0.3 * SR / FRAME);
     if (arr.length - from >= Math.round(0.8 * SR / FRAME)) seg = arr.slice(from);
   }
-  // あ〜もいびきと全く同じ取り方にする（秀司の指示：何度も統一と言われている）。
-  // 区間内の一番大きい瞬間の値を使う。平均など別の畳み方はしない。
-  const db = Math.max(...seg);
+  const db = halfMean(seg, true, 1 / 3);
   if (db < REF_QUIET_DB) {
     refFail("声が小さすぎます。iPhoneの音圧調整を上げてから、もう一度押してください。");
     return;
@@ -2327,24 +1106,54 @@ function finishRefMeasure() {
     return;
   }
   S.ref = { db: round2(db), envDb: round2(env), at: Date.now() };
-  saveRef();
-  // 測った「あ〜」の音そのものも保存する（後から聴いて確かめられるように、秀司の指示 V84）。
-  if (S.refPcm && S.refPcm.length) {
-    try {
-      const b64 = pcmChunksToWavBase64(S.refPcm, 16000);
-      S.refAudioAt = S.ref.at;
-      DB.put("settings", { key: "refAudio", value: b64, savedAt: Date.now() }).catch(() => {});
-    } catch (e) { /* 音が保存できなくても測定は成立 */ }
-  }
   S.refColl = null;
-  S.refPcm = null;
   S.refEnv = null;
-  showRefMsg("基準音圧を設定しました（「あ〜」" + S.ref.db.toFixed(1) + "dB）。この設定は保存されるので、次回からは測らなくて大丈夫です。そのまま「記録開始」を押してください。");
+  showRefMsg("基準音圧を設定しました。下端が環境音、白い線が「あ〜」、上端が記録中の最大音です。");
   setButtons();
   updateUI();
 }
 
 /* ===== Silero VAD ===== */
+async function loadVad() {
+  if (typeof ort === "undefined") {
+    S.vad = null; S.vadOk = false;
+    return;
+  }
+  let buf;
+  try {
+    const r = await fetch(VAD_URL, { cache: "no-store" });
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    buf = await r.arrayBuffer();
+  } catch (e) {
+    console.warn(e);
+    S.vad = null; S.vadOk = false;
+    return;
+  }
+  try {
+    ort.env.wasm.numThreads = 1;
+    ort.env.wasm.wasmPaths = "./";
+    S.vad = await ort.InferenceSession.create(buf, { executionProviders: ["wasm"] });
+  } catch (e) {
+    console.warn(e);
+    S.vad = null;
+  }
+  S.vadOk = !!S.vad;
+}
+
+async function vadProb(frame) {
+  const inp = new Float32Array(VAD_CTX + FRAME);
+  inp.set(S.vadCtx, 0);
+  inp.set(frame, VAD_CTX);
+  S.vadCtx = inp.slice(inp.length - VAD_CTX);
+  const out = await S.vad.run({
+    input: new ort.Tensor("float32", inp, [1, VAD_CTX + FRAME]),
+    state: S.vadState,
+    sr: new ort.Tensor("int64", BigInt64Array.from([BigInt(SR)]), [])
+  });
+  S.vadState = out.stateN;
+  return out.output.data[0];
+}
+
 async function pump() {
   if (S.busy) return;
   S.busy = true;
@@ -2352,13 +1161,21 @@ async function pump() {
     while (S.running && S.queue.length) {
       const f = S.queue.shift();
       if (f.ep !== S.epoch) continue;
-      const p = 0; // 旧方式の判定は使わない。声判定はV67からエンジン内蔵（VAD）
+      let p = 0;
+      if (S.vadOk) {
+        try { p = await vadProb(f.data); }
+        catch (e) {
+          console.error(e);
+          S.vadOk = false;
+        }
+      }
       if (!S.running || f.ep !== S.epoch) break;
       processFrame(f, p);
     }
   } finally { S.busy = false; }
 }
 
+/* ===== フレームごとのVAD値の記録（環境音の人声部分を無音にするために使う） ===== */
 function isVoiceFrame(k) {
   for (let d = -VOICE_PAD; d <= VOICE_PAD; d++) {
     const kk = k + d;
@@ -2376,10 +1193,10 @@ function processFrame(f, p) {
   let ss = 0;
   const d = f.data;
   for (let i = 0; i < d.length; i++) ss += d[i] * d[i];
-  const lv = toDb(Math.sqrt(ss / d.length));
+  const lv = toDb(Math.sqrt(ss / d.length)); // すでに感度を掛けた音の大きさ
   S.lastLv = lv;
   pushDisp(lv);
-  if (lv > S.peakDb) S.peakDb = lv;
+  if (lv > S.peakDb) S.peakDb = lv;          // 記録中の最大音（ゲージの上端）
   S.nowMs = t + FRAME / SR * 1000;
 
   const fk = Math.round(t / 1000 * SR / FRAME);
@@ -2427,6 +1244,7 @@ function processFrame(f, p) {
   tickPending(S.nowMs);
 }
 
+/* ===== 候補区間の確定と判定 ===== */
 function closeCand(c) {
   const endMs = c.lastMs + FRAME / SR * 1000;
   const durMs = endMs - c.startMs;
@@ -2456,7 +1274,7 @@ function decideCand(it) {
     peakSourceDb: round1(c.peakDb - S.gainDb), peakAppliedDb: round1(c.peakDb),
     meanSourceDb: round1(c.sumDb / c.n - S.gainDb), meanAppliedDb: round1(c.sumDb / c.n),
     vadMax: vadOn ? round2(inside) : null, vadNear: vadOn ? round2(near) : null,
-    gainDb: S.gainDb, label: null, clipId: null, review: null, saved: false
+    gainDb: S.gainDb, label: null, clipId: null, review: null
   };
   if (type === "snore" || type === "unknown" || type === "speech") {
     ev.clipId = saveClip(c.startMs - PRE_MS, endMs + POST_MS, ev.id, type, false);
@@ -2465,6 +1283,7 @@ function decideCand(it) {
   DB.put("events", ev).catch(console.error);
 }
 
+/* ===== 環境音の変化 ===== */
 function tickPending(now) {
   while (S.pendingCands.length && S.pendingCands[0].due <= now) decideCand(S.pendingCands.shift());
   while (S.pendingEnv.length && S.pendingEnv[0].due <= now) {
@@ -2474,6 +1293,7 @@ function tickPending(now) {
   }
 }
 
+// silenceVoice が true の時（環境音）は、人声と判定されたフレームの前後を無音にしてから保存する
 function saveClip(fromMs, toMs, eventId, kind, silenceVoice) {
   const a = Math.round(fromMs / 1000 * SR), b = Math.round(toMs / 1000 * SR);
   const actualA = Math.max(a, 0, S.ring.total - S.ring.len);
@@ -2497,8 +1317,7 @@ function saveClip(fromMs, toMs, eventId, kind, silenceVoice) {
     id, sid: S.sid, eventId, kind, sr: SR,
     codec: "ima-adpcm", samples: i16.length,
     startMs: round1(actualA / SR * 1000),
-    dataIsSource: true, gainDb: S.gainDb, data: encodeImaWav(i16, SR),
-    saved: false
+    dataIsSource: true, gainDb: S.gainDb, data: encodeImaWav(i16, SR)
   }).catch(console.error);
   return id;
 }
@@ -2526,7 +1345,7 @@ function finishSecond(b) {
       id: uid(), sid: S.sid, type: "env", startMs, endMs: startMs + ENV_RUN_SEC * 1000,
       durMs: ENV_RUN_SEC * 1000, peakSourceDb: null, peakAppliedDb: null,
       meanSourceDb: round1(qLv - S.gainDb), meanAppliedDb: round1(qLv),
-      vadMax: round2(mP), vadNear: null, gainDb: S.gainDb, label: null, clipId: null, review: null, saved: false
+      vadMax: round2(mP), vadNear: null, gainDb: S.gainDb, label: null, clipId: null, review: null
     };
     S.counts.env++;
     DB.put("events", ev).catch(console.error);
@@ -2589,27 +1408,6 @@ async function startRec() {
   if (!S.patient) { showError("患者情報がありません。最初からQRを読み取ってください。"); showPage("start"); return; }
   if (!S.ref) { showRefMsg("先に「基準音圧を測定する」を押してください。", true); return; }
   if (S.ctx.state !== "running") await S.ctx.resume().catch(() => {});
-
-  // V63：新しい録音は新エンジンで行う
-  try {
-    S.engineSid = await SleepEngine.start({
-      ctx: S.ctx, stream: S.stream, patient: { ...S.patient },
-      sessionExtra: { refDb: S.ref.db, refEnvDb: S.ref.envDb, gainDb: S.gainDb },
-      onState: (live) => { if (live && live.db != null) pushDisp(live.db); }
-    });
-    S.engineMode = true;
-  } catch (e) {
-    console.error(e);
-    S.engineMode = false;
-    showError("記録を開始できませんでした: " + e.message);
-    return;
-  }
-  S.running = true;
-  await acquireWake();
-  setButtons();
-  updateUI();
-  return;
-
   S.epoch++;
   S.sid = uid();
   S.recv = 0; S.nowMs = 0; S.ring = new Ring(RING_SEC); S.queue = []; S.dropped = 0;
@@ -2622,12 +1420,12 @@ async function startRec() {
   S.counts = newCounts();
   S.vadOk = !!S.vad;
   S.vadCtx = new Float32Array(VAD_CTX);
-  S.vadState = null;
+  S.vadState = S.vad ? new ort.Tensor("float32", new Float32Array(2 * 128), [2, 1, 128]) : null;
   S.sess = {
     id: S.sid, startedAt: Date.now(), endedAt: null, gainDb: S.gainDb, vadOk: S.vadOk,
     base: null,
-    refDb: S.ref.db,
-    refEnvDb: S.ref.envDb,
+    refDb: S.ref.db,        // この記録で使う「あ〜」の音圧（タイムラインの真ん中の線になる）
+    refEnvDb: S.ref.envDb,  // この記録で使う環境音（下端になる）
     counts: newCounts(), app: APP, ua: navigator.userAgent, micMode: S.micMode,
     patient: { ...S.patient }
   };
@@ -2641,18 +1439,6 @@ async function startRec() {
 
 async function stopRec() {
   if (!S.running) return;
-  if (S.engineMode) {
-    S.running = false;
-    try { await SleepEngine.stop(); } catch (e) { console.error(e); }
-    S.engineMode = false;
-    S.engineSid = null;
-    releaseWake();
-    exitBlack();
-    setButtons();
-    updateUI();
-    refreshCalendar().catch(() => {});
-    return;
-  }
   S.running = false;
   S.epoch++;
   S.timers.forEach(clearInterval);
@@ -2677,17 +1463,24 @@ function startUiLoop() {
   S.uiTimer = setInterval(updateUI, UI_MS);
 }
 
+// 表示バー用の音量。基準の「あ〜」と同じ長さ（REF_SEC秒）の平均にそろえる。
+// 瞬間値のままだと、平均で決めた基準を上回るフレームが出るたびにバーが中央を超えて跳ねるため、バーはこの値で動かす
 function pushDisp(lv) {
   S.dispWin.push(lv);
   if (S.dispWin.length > DISP_FRAMES) S.dispWin.shift();
   S.dispLv = mean(S.dispWin);
 }
 
+// リアルタイムの音圧バーの計算。下端＝環境音、中央＝「あ〜」、上端＝記録中の最大音（「あ〜」より小さくはならない）
+// 目盛りは均等割りにせず、下端・中央・上端の実数値だけを表示する
 function gaugeOf(lv) {
   const env = S.ref.envDb;
   const ref = S.ref.db;
-  const top = Math.max(S.peakDb, ref + 10);
-  return { env, ref, top, pos: scalePos(lv, env, ref, top) };
+  const top = Math.max(S.peakDb, ref + 10); // 上端は基準より最低10dB上に取る（幅が無いと少しの音で天井に張り付く）
+  return {
+    env, ref, top,
+    pos: scalePos(lv, env, ref, top),
+  };
 }
 
 function updateUI() {
@@ -2713,8 +1506,6 @@ function updateUI() {
   }
   if (!S.running) {
     $("base-text").textContent = "待機中";
-  } else if (S.engineMode) {
-    $("base-text").textContent = "記録中";
   } else if (S.calibrated) {
     $("base-text").textContent = "記録中";
   } else {
@@ -2732,10 +1523,7 @@ function setButtons() {
   const measuring = !!S.refColl;
   $("ref-btn").disabled = !S.ctx || S.running || measuring;
   $("ref-btn").textContent = measuring ? "測定中…"
-    : (S.ref ? "基準音圧を測り直す（通常は不要です）" : "基準音圧を測定する（静か2秒→「あ〜」2秒）");
-  // 設定済みなら測定ボタンを目立たなくし、「もう押さなくていい」状態を見た目でも示す
-  $("ref-btn").className = S.ref && !measuring ? "sub" : "primary";
-  $("ref-play-btn").hidden = !S.ref;
+    : (S.ref ? "基準音圧を測り直す（静か2秒→「あ〜」2秒）" : "基準音圧を測定する（静か2秒→「あ〜」2秒）");
 
   $("start-btn").disabled = S.running || !S.ctx || !S.patient || !S.ref;
   $("stop-btn").disabled = !S.running;
@@ -2750,10 +1538,14 @@ function setButtons() {
 /* ===== 更新の確認（GitHubの最新コミットから取得） ===== */
 const upd = { latest: null, sha: null, source: "", checkedAt: null, error: null, checking: false };
 
+function getUpdTarget() {
+  try { return sessionStorage.getItem(UPD_TARGET_KEY); } catch (e) { return null; }
+}
 function setUpdTarget(v) {
   try { if (v == null) sessionStorage.removeItem(UPD_TARGET_KEY); else sessionStorage.setItem(UPD_TARGET_KEY, v); } catch (e) { /* 無視 */ }
 }
 
+// タイムアウト付きの取得（応答が返らない場合に確認中のまま止まらないようにする）
 function fetchNoCache(url) {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), UPD_TIMEOUT_MS);
@@ -2772,6 +1564,7 @@ function parseVersion(txt) {
   return Number(m[1]);
 }
 
+// main ブランチで index.html を最後に変更したコミットIDを取得（失敗したら null）
 async function fetchLatestSha() {
   try {
     const url = "https://api.github.com/repos/" + UPD_REPO + "/commits?sha=" + UPD_BRANCH +
@@ -2790,8 +1583,11 @@ async function fetchLatest() {
   const t = Date.now();
   const sha = await fetchLatestSha();
   const tries = [];
+  // 1) そのコミットのindex.html（コミットIDを指定するので、キャッシュの影響を受けない）
   if (sha) tries.push({ url: "https://raw.githubusercontent.com/" + UPD_REPO + "/" + sha + "/" + UPD_FILE + "?_=" + t, src: "GitHub（最新コミット）" });
+  // 2) main ブランチのindex.html（時刻付きURLで取得）
   tries.push({ url: "https://raw.githubusercontent.com/" + UPD_REPO + "/" + UPD_BRANCH + "/" + UPD_FILE + "?_=" + t, src: "GitHub（main）" });
+  // 3) 公開ページ（最後の手段）
   tries.push({ url: UPD_PAGES + "?_=" + t, src: "公開ページ" });
 
   let lastErr = null;
@@ -2804,6 +1600,7 @@ async function fetchLatest() {
   throw lastErr || new Error("取得できませんでした");
 }
 
+// 「更新を確認」。成功したら true を返す
 async function checkUpdate() {
   if (upd.checking) return false;
   upd.checking = true;
@@ -2845,6 +1642,7 @@ function renderUpdate() {
   $("upd-reload").disabled = busy || upd.checking;
 }
 
+// キャッシュ（とService Worker）を消す
 async function clearAppCache() {
   try {
     if (window.caches && caches.keys) {
@@ -2860,6 +1658,7 @@ async function clearAppCache() {
   } catch (e) { console.warn(e); }
 }
 
+// 「最新版に変更」：最新版を確認し、新しければキャッシュを消して、版番号とコミットIDを付けたURLで読み直す
 async function applyLatest() {
   if (isBusy() || upd.checking) return;
   const ok = await checkUpdate();
@@ -2953,16 +1752,10 @@ function exitBlack() {
   setRootBlack(false);
   exitFs();
 }
+
 /* ===== 記録カレンダー ===== */
 async function loadCalendarData() {
-  const oldSessions = await DB.all("sessions");
-  let engSessions = [];
-  try {
-    engSessions = await SleepEngine.listSessions();
-  } catch (e) { console.error(e); }
-  ENGINE_IDS.clear();
-  for (const s of engSessions) ENGINE_IDS.add(s.id);
-  const sessions = oldSessions.concat(engSessions.map(engineSessForUi)).sort((a, b) => a.startedAt - b.startedAt);
+  const sessions = (await DB.all("sessions")).sort((a, b) => a.startedAt - b.startedAt);
   cal.byDay = new Map();
   for (const s of sessions) {
     const k = dayKey(s.startedAt);
@@ -3101,7 +1894,7 @@ function nightHtml(sess, secs, evs) {
   const c = sess.counts || {};
   const sn = snoreStats(evs);
   const mo = analyzeMotion(sess, secs);
-  const ref = activeRef(sess).refDb != null ? activeRef(sess).refDb : fallbackRefDb(evs);
+  const ref = sess.refDb != null ? sess.refDb : fallbackRefDb(evs);
 
   let h = row("いびきの平均の大きさ", sn.mean == null ? "-" : wordOf(sn.mean, ref)) +
     row("いびきの最大の大きさ", sn.peak == null ? "-" : wordOf(sn.peak, ref)) +
@@ -3123,12 +1916,6 @@ let daySumToken = 0;
 
 async function loadDayDetail(s, token) {
   try {
-    if (s.engine || (await engineHas(s.id))) {
-      const d = await engineDetailData(s.id);
-      const box0 = $("cs-detail");
-      if (token !== daySumToken || !box0) return;
-      if (d) { box0.innerHTML = nightHtml(d.sess, d.secs, d.evs); return; }
-    }
     const secs = (await DB.byIndex("secs", "sid", s.id)).sort((a, b) => a.sec - b.sec);
     const evs = await DB.byIndex("events", "sid", s.id);
     const box = $("cs-detail");
@@ -3141,175 +1928,7 @@ async function loadDayDetail(s, token) {
   }
 }
 
-/* ===== 音声データの集計と削除（日付単位） =====
-   削除するのは音声データ（clips）だけ。次は必ず残す：
-   ・保存した音声（clip.saved か、保存したイベントが参照する音声）
-   ・sessions・secs・events（簡易ログとグラフのもと） */
-async function planDayDelete(key) {
-  const sessions = (await DB.all("sessions")).filter((s) => dayKey(s.startedAt) === key);
-  const plan = { sessions: [], total: 0, savedCount: 0, delCount: 0, delBytes: 0, totalBytes: 0, unsharedWithAudio: 0 };
-  for (const s of sessions) {
-    const clips = await DB.byIndex("clips", "sid", s.id);
-    const evs = await DB.byIndex("events", "sid", s.id);
-    const protectedIds = new Set(evs.filter((e) => e.saved && e.clipId).map((e) => e.clipId));
-    const del = [], keep = [];
-    for (const c of clips) {
-      const bytes = c.data ? c.data.byteLength : 0;
-      plan.totalBytes += bytes;
-      if (c.saved || protectedIds.has(c.id)) keep.push(c);
-      else { del.push(c); plan.delBytes += bytes; }
-    }
-    plan.total += clips.length;
-    plan.savedCount += keep.length;
-    plan.delCount += del.length;
-    if (clips.length && !s.sharedAt) plan.unsharedWithAudio++;
-    plan.sessions.push({ s, del, evs });
-  }
-  try {
-    const engSessions = await SleepEngine.listSessions();
-    for (const s of engSessions) {
-      if (dayKey(s.startedAt) !== key) continue;
-      const d = await SleepEngine.getSessionData(s.id, { light: true });
-      const clips = d ? d.clips : [];
-      const del = [];
-      for (const c of clips) {
-        const bytes = c.bytes || (c.blob ? c.blob.size : 0);
-        plan.totalBytes += bytes;
-        plan.delBytes += bytes;
-        del.push(c);
-      }
-      plan.total += clips.length;
-      plan.delCount += del.length;
-      if (clips.length && !(d && d.session && d.session.sharedAt)) plan.unsharedWithAudio++;
-      plan.sessions.push({ s, del, evs: [], engine: true });
-    }
-  } catch (e) { console.error(e); }
-  return plan;
-}
-
-async function deleteAudioForDay(key) {
-  const plan = await planDayDelete(key);
-  if (!plan.sessions.length) {
-    alert("この日の記録はありません。");
-    return false;
-  }
-  if (plan.unsharedWithAudio) {
-    alert("音声の削除は、ZIPを保存した後にできます。先に記録を開いて、共有からZIPを書き出してください。");
-    return false;
-  }
-  if (!plan.delCount) {
-    alert(plan.savedCount
-      ? "この日に削除できる音声はありません。保存して残した音声 " + plan.savedCount + "件は残っています。"
-      : "この日の音声データはありません。");
-    return false;
-  }
-  const ok = confirm(
-    "【最終確認】" + dayLabel(key) + " の音声データを削除します。\n\n" +
-    "・削除する音声：" + plan.delCount + "件（約 " + mb(plan.delBytes) + "）\n" +
-    "・残す音声（保存したもの）：" + plan.savedCount + "件\n" +
-    "・簡易ログとグラフは残ります。\n\n" +
-    "削除した音声は元に戻せません。その日の音声は、削除後に再生できなくなります。\n" +
-    "よろしいですか？"
-  );
-  if (!ok) return false;
-  try {
-    for (const item of plan.sessions) {
-      if (item.engine) {
-        if (item.del.length) await SleepEngine.deleteClipsForSession(item.s.id);
-        continue;
-      }
-      const { del, evs } = item;
-      if (!del.length) continue;
-      const ids = new Set(del.map((c) => c.id));
-      // 先に音声への参照を外してから音声を消す（イベント情報は残す）
-      for (const e of evs) {
-        if (e.clipId && ids.has(e.clipId)) {
-          e.clipId = null;
-          await DB.put("events", e);
-        }
-      }
-      await DB.delMany("clips", [...ids]);
-    }
-    return true;
-  } catch (e) {
-    console.error(e);
-    showError("音声を削除できませんでした: " + e.message);
-    return false;
-  }
-}
-
-// 1つの記録（タイムライン）の音声を集計する。保存した音声は残す
-async function planSessionDelete(sid) {
-  const sess = await DB.get("sessions", sid);
-  if (!sess) {
-    const d = await SleepEngine.getSessionData(sid, { light: true }).catch(() => null);
-    if (!d) return null;
-    const plan = { sess: d.session, evs: [], del: d.clips.slice(), savedCount: 0, delBytes: 0, delCount: 0, engine: true };
-    for (const c of plan.del) plan.delBytes += c.bytes || (c.blob ? c.blob.size : 0);
-    plan.delCount = plan.del.length;
-    return plan;
-  }
-  const clips = await DB.byIndex("clips", "sid", sid);
-  const evs = await DB.byIndex("events", "sid", sid);
-  const protectedIds = new Set(evs.filter((e) => e.saved && e.clipId).map((e) => e.clipId));
-  const plan = { sess, evs, del: [], savedCount: 0, delBytes: 0 };
-  for (const c of clips) {
-    if (c.saved || protectedIds.has(c.id)) {
-      plan.savedCount++;
-    } else {
-      plan.del.push(c);
-      plan.delBytes += c.data ? c.data.byteLength : 0;
-    }
-  }
-  plan.delCount = plan.del.length;
-  return plan;
-}
-
-// 1つの記録（タイムライン）から、保存していない音声だけを削除する（簡易ログとグラフは残す）
-async function deleteAudioForSession(sid) {
-  const plan = await planSessionDelete(sid);
-  if (!plan) {
-    alert("この記録が見つかりません。");
-    return false;
-  }
-  if (!plan.delCount) {
-    alert(plan.savedCount
-      ? "削除できる音声はありません。保存して残した音声 " + plan.savedCount + "件は残っています。"
-      : "このタイムラインの音声データはありません。");
-    return false;
-  }
-  const ok = confirm(
-    "【最終確認】このタイムラインの音声データを削除します。\n\n" +
-    "・削除する音声：" + plan.delCount + "件（約 " + mb(plan.delBytes) + "）\n" +
-    "・残す音声（保存したもの）：" + plan.savedCount + "件\n" +
-    "・簡易ログとグラフは残ります。\n\n" +
-    "削除した音声は元に戻せません。\n" +
-    "よろしいですか？"
-  );
-  if (!ok) return false;
-  try {
-    if (plan.engine) {
-      await SleepEngine.deleteClipsForSession(sid);
-      return true;
-    }
-    const ids = new Set(plan.del.map((c) => c.id));
-    // 先に音声への参照を外してから音声を消す（イベント情報は残す）
-    for (const e of plan.evs) {
-      if (e.clipId && ids.has(e.clipId)) {
-        e.clipId = null;
-        await DB.put("events", e);
-      }
-    }
-    await DB.delMany("clips", [...ids]);
-    return true;
-  } catch (e) {
-    console.error(e);
-    showError("音声を削除できませんでした: " + e.message);
-    return false;
-  }
-}
-
-async function renderDaySummary() {
+function renderDaySummary() {
   const token = ++daySumToken;
   const box = $("cal-summary");
   if (!cal.selected) {
@@ -3336,94 +1955,55 @@ async function renderDaySummary() {
     '<div class="kv"><span>寝言・話し声として除外</span><b>' + (c.speech || 0) + "</b></div>" +
     '<div class="kv"><span>環境音の変化</span><b>' + (c.env || 0) + "</b></div>" +
     '<div id="cs-detail"><p class="muted">評価を計算中…</p></div>' +
-    '<button id="cs-open" class="primary">詳細を見る</button>' +
-    '<div class="card"><h2>この日の音声データ</h2><p id="cs-audio" class="muted">確認中…</p>' +
-    '<div id="cs-del-wrap" hidden><button id="cs-del-audio" class="danger" disabled>この日の音声データを削除</button>' +
-    '<p class="muted">押すと、この日のすべての記録の音声を消します（保存した音声は残ります）。簡易ログとグラフは残ります。元に戻せません。</p></div></div>';
+    '<button id="cs-open" class="primary">詳細を見る</button>';
 
   $("cs-prev").onclick = () => { cal.index = Math.max(0, cal.index - 1); renderDaySummary(); };
   $("cs-next").onclick = () => { cal.index = Math.min(list.length - 1, cal.index + 1); renderDaySummary(); };
   $("cs-open").onclick = () => openDetail(s.id).catch((err) => showError("詳細を開けませんでした: " + err.message));
-  $("cs-del-audio").onclick = async () => {
-    $("cs-del-audio").disabled = true;
-    const done = await deleteAudioForDay(cal.selected);
-    await refreshCalendar();
-    if (done) alert("この日の音声データを削除しました。簡易ログとグラフは残っています。");
-  };
   loadDayDetail(s, token);
-
-  try {
-    const plan = await planDayDelete(cal.selected);
-    if (token !== daySumToken) return;
-    const total = plan.sessions.reduce((n, x) => n + x.s && 0, 0);
-    $("cs-audio").textContent =
-      "全体 " + plan.total + "件（約 " + mb(plan.totalBytes) + "）／保存して残す音声 " + plan.savedCount +
-      "件／削除できる音声 " + plan.delCount + "件（約 " + mb(plan.delBytes) + "）";
-    // 音声の削除は、ZIPを書き出した記録だけに許す（元の作法）。それまではボタン自体を出さない
-    $("cs-del-audio").disabled = plan.delCount === 0;
-    $("cs-del-wrap").hidden = !(plan.delCount > 0 && plan.unsharedWithAudio === 0);
-  } catch (e) {
-    console.error(e);
-    if (token === daySumToken) $("cs-audio").textContent = "音声の数を確認できませんでした。";
-  }
 }
 
-/* ===== 詳細・タイムライン ===== */
+/* ===== 詳細 ===== */
 let blobUrls = [];
 function revokeUrls() { blobUrls.forEach((u) => URL.revokeObjectURL(u)); blobUrls = []; }
-
-// いま再生している音（保存の対象）
-const PLAY = { list: [] };
-
-function setSaveEnabled(on) {
-  $("tl-save").disabled = !on;
-}
-
-// 記録そのものを消す（旧方式の記録用）。間違って始めた短い記録などを、1件ずつ消せるようにする。
-async function deleteLegacySession(sid) {
-  for (const store of ["secs", "events", "clips"]) {
-    const rows = await DB.byIndex(store, "sid", sid);
-    const keys = rows.map((r) => (r.key != null ? r.key : r.id)).filter((k) => k != null);
-    if (keys.length) await DB.delMany(store, keys);
-  }
-  await DB.delMany("sessions", [sid]);
-}
 
 async function openDetail(sid) {
   S.detailSid = sid;
   tl.data = null;
-  PLAY.list = [];
+  tl.marks = [];
   revokeUrls();
   const sess = await DB.get("sessions", sid);
-  if (!sess) {
-    if (await engineHas(sid)) {
-      $("d-chart").innerHTML = '<p class="muted">読み込み中…</p>';
-      $("tl-tags").innerHTML = "";
-      $("tl-legend").innerHTML = "";
-      setSaveEnabled(false);
-      showPage("detail");
-      const d = await engineDetailData(sid, false);
-      if (S.detailSid !== sid || !d) return;
-      initTimeline(d.sess, d.secs, d.evs);
-      tl.data.engine = true;
-      // 音声は最初から全部は読み込まない。棒を選んで「音を聴く」を押した時に、その棒の分だけ読む
-      $("tl-msg").textContent = "棒を選んで「タイムラインの音を聴く」を押すと、その棒の音声を再生します。送るときは「共有画面に移行する」からZIPを書き出してください。";
-    }
-    return;
-  }
+  if (!sess) return;
   $("d-chart").innerHTML = '<p class="muted">読み込み中…</p>';
   $("tl-tags").innerHTML = "";
-  $("tl-legend").innerHTML = "";
-  setSaveEnabled(false);
+  $("saved-list").innerHTML = '<p class="muted">読み込み中…</p>';
+  showSaveMsg("", false);
   showPage("detail");
 
   const secs = (await DB.byIndex("secs", "sid", sid)).sort((a, b) => a.sec - b.sec);
   const evs = (await DB.byIndex("events", "sid", sid)).sort((a, b) => a.startMs - b.startMs);
+  const marks = await loadMarks(sid);
   if (S.detailSid !== sid) return;
+  tl.marks = marks;
   initTimeline(sess, secs, evs);
+  renderMarks();
 }
 
-// 音圧（内部の値）。いびき・判定不能・人声はピーク、環境音は平均
+/* ===== 記録の削除 ===== */
+async function deleteSession(sid) {
+  for (const store of ["clips", "events", "secs"]) {
+    const keys = await DB.keysByIndex(store, "sid", sid);
+    if (keys.length) await DB.delMany(store, keys);
+  }
+  await DB.del("settings", marksKey(sid));
+  await DB.del("sessions", sid);
+}
+
+/* ===== タイムライン =====
+   選んだ種類の音を、棒の高さで表示する。
+   下端＝環境音、真ん中の線＝「あ〜」、上端＝その晩の最大音。棒の中は、その時間に出た音のうち一番大きい音。 */
+
+// 音圧（内部の値）。いびき・判定不能・人声はピーク、環境音は平均を使う
 function dbOf(e) {
   if (e.peakAppliedDb != null) return e.peakAppliedDb;
   if (e.meanAppliedDb != null) return e.meanAppliedDb;
@@ -3438,13 +2018,10 @@ function initTimeline(sess, secs, evs) {
   tl.zoomSec = ZOOM_DEFAULT;
   tl.winStart = 0;
   tl.cursor = 0;
-  tl.tags = { snore: true, unknown: false, env: false, speech: false, motion: false };
-  tl.motion = null; // V87: 体動の表示モデルは記録ごとに作り直す
+  tl.tags = { snore: true, unknown: false, env: false, speech: false };
   $("tl-zoom").value = String(ZOOM_DEFAULT);
   $("tl-msg").textContent = "";
   $("tl-audio").innerHTML = "";
-  PLAY.list = [];
-  setSaveEnabled(false);
   renderTimeline();
 }
 
@@ -3454,6 +2031,7 @@ function clampTl() {
   tl.cursor = clamp(tl.cursor, tl.winStart, tl.winStart + tl.winLen);
 }
 
+// タグボタン。選んだものが1つだけ選ばれた状態になる（選択中を押しても消えない）
 function renderTagBar() {
   const box = $("tl-tags");
   box.innerHTML = "";
@@ -3474,38 +2052,21 @@ function renderTagBar() {
     b.onclick = () => {
       if (tl.tags[t]) return;
       for (const k of TAG_ORDER) tl.tags[k] = false;
-      tl.tags.motion = false;
       tl.tags[t] = true;
-      PLAY.list = [];
-      $("tl-audio").innerHTML = "";
-      setSaveEnabled(false);
       renderTimeline();
     };
     box.appendChild(b);
   }
-  // 体動タグ（音ではなく、記録中の体の動きを時間で見る）。秀司の指摘で追加（V86）。
-  const mb = document.createElement("button");
-  mb.className = "tagbtn" + (tl.tags.motion ? "" : " off");
-  mb.innerHTML = '<i style="background:' + TAG_COLOR.motion + '"></i>' + esc(TAG_NAME.motion);
-  mb.onclick = () => {
-    if (tl.tags.motion) return;
-    for (const k of TAG_ORDER) tl.tags[k] = false;
-    tl.tags.motion = true;
-    PLAY.list = [];
-    $("tl-audio").innerHTML = "";
-    setSaveEnabled(false);
-    renderTimeline();
-  };
-  box.appendChild(mb);
 }
 
+// 選んでいるタグ（いびきが基本。何も選ばれていなければいびき）
 function selectedTag() {
   return TAG_ORDER.find((t) => tl.tags[t]) || "snore";
 }
 
-// 棒グラフ。各棒の中で一番大きい音の高さで表示。保存した音声を含む棒は白で表示
+// 棒グラフ。高さは環境音・あ〜・その晩の最大音で決まる。保存済みの範囲は白
 function tagGraphSvg(tag, t0, t1) {
-  const NB = TL_BINS;
+  const NB = 60;
   const binSec = tl.winLen / NB;
   const plotW = TL_W - TL_PL - TL_PR;
   const plotH = TL_H - TL_PT - TL_PB;
@@ -3513,6 +2074,7 @@ function tagGraphSvg(tag, t0, t1) {
   const yMid = TL_PT + plotH / 2;
   const sc = tl.scale;
 
+  // 各棒の中で一番大きい音
   const bins = new Array(NB).fill(null);
   for (const e of tl.data.evs) {
     if (e.type !== tag) continue;
@@ -3521,46 +2083,23 @@ function tagGraphSvg(tag, t0, t1) {
     const db = dbOf(e);
     if (db == null) continue;
     const i = Math.min(NB - 1, Math.floor((s - t0) / binSec));
-    if (!bins[i]) bins[i] = { db, saved: !!e.saved };
-    else {
-      if (db > bins[i].db) bins[i].db = db;
-      if (e.saved) bins[i].saved = true;
-    }
+    if (bins[i] == null || db > bins[i]) bins[i] = db;
   }
-
-  // 高さそのものが「あ〜の何倍か」になる目盛り（秀司の図＋追加指示、2026-11-05）。
-  // 倍率は「耳に聞こえる大きさ」：あ〜より10dB大きいと2倍。
-  // 天井は固定しない（V81、秀司の「フレキシブルに」指示）：その晩の一番大きい音に合わせて目盛りの上限を決める。
-  // 静かな晩は上限が下がって棒が見やすくなり、大きな晩は上限が上がって天井に張り付かない。
-  const rTop = Math.pow(2, (sc.topDb - sc.refDb) / 10);
-  const LADDER = [1.5, 2, 2.5, 3, 4, 5, 6, 8, 10, 12, 16, 20, 24, 32, 40, 48, 64, 80, 96, 128];
-  let ceilR = 2;
-  for (const L of LADDER) { if (L >= rTop * 1.08) { ceilR = L; break; } ceilR = L; }
-  // あ〜の線の位置も固定しない（V82、秀司の指示）：あ〜より上がスカスカな晩は、あ〜の線を上へ上げる。
-  // 大きな晩（天井が高い）は従来どおり下の方（1/8）、静かな晩は最大で3/4まで上がる。
-  const ahPos = Math.min(0.75, Math.max(0.125, 1.2 / ceilR));
-  const posOfR = (r) => r <= 1 ? ahPos * r : ahPos + (r - 1) / Math.max(ceilR - 1, 0.5) * (1 - ahPos);
-  const posOf = (db) => {
-    const p = posOfR(Math.pow(2, (db - sc.refDb) / 10));
-    return Math.min(1, Math.max(0, p));
-  };
-  const yOfMult = (m) => TL_PT + plotH - posOfR(m) * (plotH - 4);
-  const lineMults = (ceilR <= 8 ? [1, 2, 3, 4, 6, 8] : [1, 2, 4, 8, 16, 32, 64]).filter((m) => m <= ceilR);
 
   let g = '<rect x="' + TL_PL + '" y="' + TL_PT + '" width="' + plotW + '" height="' + plotH + '" fill="none" stroke="#2a3643"/>';
-  for (const m of lineMults) {
-    const y = yOfMult(m);
-    g += '<line x1="' + TL_PL + '" x2="' + (TL_PL + plotW) + '" y1="' + y.toFixed(1) + '" y2="' + y.toFixed(1) + '" stroke="#ffd54a" stroke-opacity="0.55" stroke-width="1" stroke-dasharray="5 4"/>';
-  }
+  g += '<line x1="' + TL_PL + '" x2="' + (TL_PL + plotW) + '" y1="' + yMid.toFixed(1) + '" y2="' + yMid.toFixed(1) + '" stroke="#f3e7c9" stroke-width="1" stroke-dasharray="4 3"/>';
 
   let any = false;
   for (let i = 0; i < NB; i++) {
-    const item = bins[i];
-    if (!item) continue;
+    const db = bins[i];
+    if (db == null) continue;
     any = true;
-    const pos = posOf(item.db);
+    const pos = scalePos(db, sc.envDb, sc.refDb, sc.topDb);
     const h = Math.max(3, pos * (plotH - 4));
-    const color = item.saved ? SAVED_BAR_COLOR : TAG_COLOR[tag];
+    const bStartMs = (t0 + i * binSec) * 1000;
+    const bEndMs = bStartMs + binSec * 1000;
+    const saved = tl.marks.some((m) => bEndMs > m.fromMs && bStartMs < m.toMs);
+    const color = saved ? SAVED_BAR_COLOR : TAG_COLOR[tag];
     g += '<rect x="' + (TL_PL + i * bw + 0.5).toFixed(1) + '" y="' + (TL_PT + plotH - h).toFixed(1) +
       '" width="' + Math.max(1, bw - 1).toFixed(1) + '" height="' + h.toFixed(1) + '" fill="' + color + '"/>';
   }
@@ -3568,118 +2107,13 @@ function tagGraphSvg(tag, t0, t1) {
     g += '<text x="' + (TL_PL + 8) + '" y="' + (TL_PT + plotH / 2 + 30) + '" font-size="12" fill="#aebbc9">この種類の音はありません</text>';
   }
 
-  for (const m of lineMults) {
-    const label = m === 1 ? "あ〜の音量" : "あ〜の" + m + "倍";
-    g += '<text x="' + (TL_PL + 4) + '" y="' + (yOfMult(m) - 3).toFixed(1) + '" font-size="9" fill="' +
-      (m === 1 ? "#f3e7c9" : "#e8e4d8") + '">' + label + "</text>";
-  }
-  g += '<text x="' + (TL_PL + 4) + '" y="' + (TL_PT + plotH - 4) + '" font-size="9" fill="#aebbc9">室内の環境音</text>';
+  // 縦軸の実数値（上端＝最大、中央＝あ〜、下端＝環境音）。均等割りはしない
+  g += '<text x="4" y="' + (TL_PT + 10) + '" font-size="9" fill="#aebbc9">最大 ' + sc.topDb.toFixed(1) + '</text>';
+  g += '<text x="4" y="' + (yMid + 4) + '" font-size="9" fill="#f3e7c9">あ〜 ' + sc.refDb.toFixed(1) + '</text>';
+  g += '<text x="4" y="' + (TL_PT + plotH) + '" font-size="9" fill="#aebbc9">環境 ' + sc.envDb.toFixed(1) + '</text>';
 
   g += '<text x="' + (TL_PL + 4) + '" y="' + (TL_PT + 12) + '" font-size="11" fill="' + TAG_COLOR[tag] + '">' +
     esc(TAG_NAME[tag]) + "（棒1本＝" + round1(binSec) + "秒）</text>";
-  return g;
-}
-
-// 体動のグラフ。1秒ごとの動きの大きさを棒の高さで出す。天井はその晩の最大に合わせる（V86）。
-// 体動の表示モデル。V35候補版（真実子／Claude）の方式を移植（V87）：
-// その晩の中央区間の分布から「動き始め」の境目（しきい値）を自動で決め、境目を超えた分だけを、
-// 対数で圧縮して中心線の上下に波形として描く。微細な動きは広げ、大きな動きは潰す。
-// 境目と天井はその晩のデータから出すので、端末や晩ごとのクセに引っ張られない。
-// 記録の最初と最後（3分以内）の大きな突出は、体動ではなく端末操作の可能性として分ける。
-function percentileOf(values, q, fallback) {
-  if (!values.length) return fallback;
-  const s = [...values].sort((a, b) => a - b);
-  return s[Math.min(s.length - 1, Math.max(0, Math.floor(q * s.length)))];
-}
-
-function buildMotionModel() {
-  const secs = tl.data ? tl.data.secs : [];
-  const total = tl.total || 0;
-  const source = secs.map(r => ({ sec: r.sec, value: Math.max(0, Number(r.motion || 0)) }))
-    .filter(v => Number.isFinite(v.sec) && Number.isFinite(v.value) && v.sec >= 0 && v.sec <= total)
-    .sort((a, b) => a.sec - b.sec);
-  const empty = { events: [], threshold: .012, strongThreshold: .04, scaleMax: .05, dispScale: .05 };
-  if (!source.length) return empty;
-  const interior = source.filter(v => v.sec >= 300 && v.sec <= total - 300);
-  const ref = interior.length >= 30 ? interior : source;
-  const values = ref.map(v => v.value);
-  const median = percentileOf(values, .50, 0);
-  const p90 = percentileOf(values, .90, median);
-  const p98 = percentileOf(values, .98, p90);
-  const spread = Math.max(.002, p90 - median);
-  const threshold = Math.max(.012, median + spread * 2.8, p90 * 1.35);
-  const strongThreshold = Math.max(.040, threshold * 2.15, p98 * 1.05);
-  const candidates = [];
-  source.forEach((v, index) => {
-    if (v.value < threshold) return;
-    const prev = source[index - 1], next = source[index + 1];
-    const nearPrev = prev && v.sec - prev.sec <= 3 && prev.value >= threshold * .78;
-    const nearNext = next && next.sec - v.sec <= 3 && next.value >= threshold * .78;
-    if (v.value >= strongThreshold || nearPrev || nearNext) candidates.push(v);
-  });
-  const groups = [];
-  candidates.forEach(v => {
-    const last = groups[groups.length - 1];
-    if (!last || v.sec - last.endSec > 5) groups.push({ startSec: v.sec, endSec: v.sec, samples: [v] });
-    else { last.endSec = v.sec; last.samples.push(v); }
-  });
-  const peaks = groups.map(group => ({
-    peak: group.samples.reduce((best, v) => v.value > best.value ? v : best, group.samples[0])
-  }));
-  const nonEdge = peaks.filter(x => x.peak.sec >= 180 && x.peak.sec <= total - 180).map(x => x.peak.value);
-  const scaleRef = nonEdge.length ? nonEdge : peaks.map(x => x.peak.value);
-  const scaleMax = Math.max(threshold + .015, percentileOf(scaleRef, .95, strongThreshold));
-  const operationLimit = Math.max(.10, strongThreshold * 1.8, scaleMax * 1.45);
-  const events = peaks.map(({ peak }) => {
-    const edge = peak.sec < 180 || peak.sec > total - 180;
-    return {
-      sec: peak.sec, value: peak.value,
-      excess: Math.max(0, peak.value - threshold),
-      strong: peak.value >= strongThreshold,
-      operation: edge && peak.value >= operationLimit
-    };
-  });
-  return { events, threshold, strongThreshold, scaleMax, dispScale: Math.max(.008, scaleMax - threshold) };
-}
-
-function motionInfoText() {
-  if (!tl.motion) return "体動";
-  const body = tl.motion.events.filter(e => !e.operation).length;
-  const ops = tl.motion.events.filter(e => e.operation).length;
-  return "体動 " + body + "回" + (ops ? "（端末操作と思われる動き " + ops + "件）" : "");
-}
-
-function motionGraphSvg(t0, t1) {
-  const plotW = TL_W - TL_PL - TL_PR;
-  const plotH = TL_H - TL_PT - TL_PB;
-  if (!tl.motion) tl.motion = buildMotionModel();
-  const model = tl.motion;
-  const midY = TL_PT + plotH / 2;
-  const ampMax = plotH / 2 - 6;
-  let g = '<rect x="' + TL_PL + '" y="' + TL_PT + '" width="' + plotW + '" height="' + plotH + '" fill="none" stroke="#2a3643"/>';
-  g += '<line x1="' + TL_PL + '" y1="' + midY.toFixed(1) + '" x2="' + (TL_PL + plotW) + '" y2="' + midY.toFixed(1) + '" stroke="#29445a"/>';
-  let any = false;
-  for (const ev of model.events) {
-    if (ev.sec < t0 || ev.sec > t1) continue;
-    any = true;
-    const x = TL_PL + (ev.sec - t0) / tl.winLen * plotW;
-    if (ev.operation) {
-      g += '<circle cx="' + x.toFixed(1) + '" cy="' + midY.toFixed(1) + '" r="4" fill="#f59e0b" opacity=".9"/>';
-      continue;
-    }
-    const n = Math.min(1, Math.log1p(ev.excess / Math.max(.0005, model.dispScale) * 9) / Math.log(10));
-    const amp = Math.max(1.5, n * ampMax);
-    const color = ev.strong ? "#38bdf8" : "#94a3b8";
-    g += '<line x1="' + x.toFixed(1) + '" y1="' + (midY - amp).toFixed(1) + '" x2="' + x.toFixed(1) + '" y2="' + (midY + amp).toFixed(1) +
-      '" stroke="' + color + '" stroke-width="2" stroke-linecap="round" opacity=".9"/>';
-  }
-  if (!model.events.length) {
-    g += '<text x="' + (TL_PL + 8) + '" y="' + (midY + 4).toFixed(1) + '" font-size="12" fill="#aebbc9">体動データがありません</text>';
-  } else if (!any) {
-    g += '<text x="' + (TL_PL + 8) + '" y="' + (midY + 4).toFixed(1) + '" font-size="12" fill="#aebbc9">この範囲に体動はありません</text>';
-  }
-  g += '<text x="' + (TL_PL + 4) + '" y="' + (TL_PT + 12) + '" font-size="11" fill="' + TAG_COLOR.motion + '">' +
-    esc(TAG_NAME.motion) + "</text>";
   return g;
 }
 
@@ -3711,18 +2145,11 @@ function renderTimeline() {
     '<text x="' + (TL_W - TL_PR) + '" y="' + (TL_H - 6) + '" font-size="10" fill="#aebbc9" text-anchor="end">' + fmtTime(t1 * 1000) + "</text>";
 
   const tag = selectedTag();
-  const isMotion = !!tl.tags.motion;
   box.innerHTML = '<svg viewBox="0 0 ' + TL_W + " " + TL_H + '" xmlns="http://www.w3.org/2000/svg">' +
-    (isMotion ? motionGraphSvg(t0, t1) : tagGraphSvg(tag, t0, t1)) + cursorLine + axisText + "</svg>";
+    tagGraphSvg(tag, t0, t1) + cursorLine + axisText + "</svg>";
 
-  $("tl-legend").innerHTML = isMotion
-    ? '<span><i style="background:#94a3b8"></i>体動</span>' +
-      '<span><i style="background:#38bdf8"></i>強い体動</span>' +
-      '<span><i style="background:#f59e0b"></i>端末操作の可能性</span>'
-    : '<span><i style="background:' + TAG_COLOR[tag] + '"></i>' + esc(TAG_NAME[tag]) + "</span>" +
-      '<span><i style="background:' + SAVED_BAR_COLOR + '"></i>保存した音声</span>';
   $("tl-info").textContent = "表示：" + fmtTime(t0 * 1000) + " 〜 " + fmtTime(t1 * 1000) +
-    "（記録の終了 " + fmtTime(tl.total * 1000) + "）　" + (isMotion ? motionInfoText() : "下端＝室内の環境音、高さ＝「あ〜」の何倍か");
+    "（記録の終了 " + fmtTime(tl.total * 1000) + "）　下端＝環境音、真ん中＝「あ〜」、上端＝その晩の最大音";
   $("tl-cur-text").textContent = "黄色い線：記録から " + fmtTime(tl.cursor * 1000) +
     "（" + fmtClock(tl.data.sess.startedAt + tl.cursor * 1000) + "）";
 }
@@ -3755,10 +2182,10 @@ function tlPointerMove(e) {
 
 function tlPointerEnd() { tlDrag = null; }
 
-// 指定した時間の範囲の音を組み立てる。重なる音は足し合わせる（上書きしない）
+// 指定した範囲の音を1本にまとめる（渡されたイベントの音声だけを使う）
 async function buildRangePcm(fromMs, toMs, list) {
   const n = Math.max(0, Math.round((toMs - fromMs) / 1000 * SR));
-  const acc = new Int32Array(n);
+  const out = new Int16Array(n);
   for (const e of list) {
     if (!e.clipId) continue;
     const clip = await DB.get("clips", e.clipId);
@@ -3767,83 +2194,21 @@ async function buildRangePcm(fromMs, toMs, list) {
     const base = Math.round((clip.startMs - fromMs) / 1000 * SR);
     for (let i = 0; i < pcm.length; i++) {
       const j = base + i;
-      if (j >= 0 && j < n) acc[j] += pcm[i];
+      if (j >= 0 && j < n) out[j] = pcm[i];
     }
   }
-  const out = new Int16Array(n);
-  for (let i = 0; i < n; i++) out[i] = clamp(acc[i], -32768, 32767);
   return out;
 }
 
-// 黄色い線の位置の棒1本分（表示幅÷60）の時間の音を再生する
+// 黄色い線の位置の棒の中で、最初に出た音から最大1分間を再生する
 async function listenAtCursor() {
-  if (tl.tags && tl.tags.motion) { $("tl-msg").textContent = "体動に音声はありません。"; return; }
-  if (tl.data && tl.data.engine) {
-    // エンジン記録も旧記録と同じ物差し：黄色い線の棒（区間）の中にあるイベントの音を、その場で読み込んで再生する
-    const msg = $("tl-msg"), box = $("tl-audio");
-    box.innerHTML = "";
-    PLAY.list = [];
-    setSaveEnabled(false);
-    revokeUrls();
-    const tag = selectedTag();
-    const binSec = tl.winLen / TL_BINS;
-    const idx = clamp(Math.floor((tl.cursor - tl.winStart) / binSec), 0, TL_BINS - 1);
-    const binStart = tl.winStart + idx * binSec;
-    const binEnd = Math.min(tl.winStart + tl.winLen, binStart + binSec);
-    const inBin = tl.data.evs
-      .filter((e) => e.type === tag && e.startMs / 1000 >= binStart && e.startMs / 1000 < binEnd)
-      .sort((a, b) => a.startMs - b.startMs);
-    if (!inBin.length) {
-      msg.textContent = "音なし（この棒には" + TAG_NAME[tag] + "がありません）";
-      return;
-    }
-    const list = inBin.filter((e) => e.clipId);
-    if (!list.length) {
-      msg.textContent = "この棒の音声データはありません（削除済み、または音声が保存されていません）。";
-      return;
-    }
-    msg.textContent = "読み込み中…";
-    try {
-      const blobs = [];
-      for (const e of list) {
-        const b = await SleepEngine.getClipBlob(e.clipId);
-        if (b) blobs.push(b);
-      }
-      if (!blobs.length) { msg.textContent = "再生できる音声がありません。"; return; }
-      const au = document.createElement("audio");
-      au.controls = true;
-      au.preload = "auto";
-      box.appendChild(au);
-      let i = 0;
-      const playNext = () => {
-        if (i >= blobs.length) return;
-        const url = URL.createObjectURL(blobs[i]);
-        blobUrls.push(url);
-        au.src = url;
-        au.play().catch(() => {});
-        i++;
-      };
-      au.onended = playNext;
-      playNext();
-      msg.textContent = TAG_NAME[tag] + "の棒1本分を再生します。音声 " + blobs.length + "件。";
-    } catch (err) {
-      console.error(err);
-      msg.textContent = "読み込めませんでした。もう一度押してください。";
-    }
-    return;
-  }
   const msg = $("tl-msg"), box = $("tl-audio");
   box.innerHTML = "";
-  PLAY.list = [];
-  setSaveEnabled(false);
-  revokeUrls();
   if (!tl.data) return;
-
   const tag = selectedTag();
-  const binSec = tl.winLen / TL_BINS;
-  const idx = clamp(Math.floor((tl.cursor - tl.winStart) / binSec), 0, TL_BINS - 1);
-  const binStart = tl.winStart + idx * binSec;
-  const binEnd = Math.min(tl.winStart + tl.winLen, binStart + binSec);
+  const binSec = tl.winLen / 60;
+  const binStart = tl.winStart + Math.floor((tl.cursor - tl.winStart) / binSec) * binSec;
+  const binEnd = binStart + binSec;
 
   const inBin = tl.data.evs
     .filter((e) => e.type === tag && e.startMs / 1000 >= binStart && e.startMs / 1000 < binEnd)
@@ -3852,16 +2217,22 @@ async function listenAtCursor() {
     msg.textContent = "音なし（この棒には" + TAG_NAME[tag] + "がありません）";
     return;
   }
-  const list = inBin.filter((e) => e.clipId);
-  if (!list.length) {
-    msg.textContent = "この棒の音声データはありません（削除済み、または音声が保存されていません）。";
+  const first = inBin.find((e) => e.clipId);
+  if (!first) {
+    msg.textContent = "音なし（この棒の" + TAG_NAME[tag] + "は音声が保存されていません）";
     return;
   }
 
+  const fromMs = first.startMs;
+  const toMs = Math.min(fromMs + PLAY_MAX_MS, tl.total * 1000);
+  const list = tl.data.evs
+    .filter((e) => e.type === tag && e.clipId && e.startMs >= fromMs && e.startMs < toMs)
+    .sort((a, b) => a.startMs - b.startMs);
+
   msg.textContent = "読み込み中…";
   try {
-    const pcm = await buildRangePcm(binStart * 1000, binEnd * 1000, list);
-    if (!pcm.length) { msg.textContent = "再生できる音声がありません。"; return; }
+    const pcm = await buildRangePcm(fromMs, toMs, list);
+    if (!pcm.length) { msg.textContent = "音なし（音声が見つかりません）"; return; }
     const url = URL.createObjectURL(wavBlob(pcm, SR));
     blobUrls.push(url);
     const au = document.createElement("audio");
@@ -3870,41 +2241,147 @@ async function listenAtCursor() {
     au.src = url;
     box.appendChild(au);
     au.play().catch(() => {});
-
-    PLAY.list = list;
-    const unsaved = list.filter((e) => !e.saved).length;
-    setSaveEnabled(unsaved > 0);
-    msg.textContent = TAG_NAME[tag] + "の棒1本分（" + round1(binSec) + "秒）を再生します。音声 " + list.length + "件。" +
-      (unsaved ? "残したい場合は「この音声を保存する」を押してください。" : "この棒の音声はすべて保存済みです。");
+    msg.textContent = TAG_NAME[tag] + "の最初の音（" + fmtTime(fromMs) + "）から、最大1分間を再生します。鳴らないときは、プレーヤーの再生ボタンを押してください。";
   } catch (err) {
     console.error(err);
     msg.textContent = "読み込めませんでした。もう一度押してください。";
   }
 }
 
-// 再生した棒の音声を「保存」にする（日付の音声削除の対象から外す）。音声は書き換えない
-async function savePlayedAudio() {
-  const list = PLAY.list.filter((e) => !e.saved);
-  if (!list.length) return;
-  setSaveEnabled(false);
-  try {
-    for (const e of list) {
-      e.saved = true;
-      await DB.put("events", e);
-      if (e.clipId) {
-        const clip = await DB.get("clips", e.clipId);
-        if (clip) {
-          clip.saved = true;
-          await DB.put("clips", clip);
-        }
-      }
+/* ===== 保存した位置 ===== */
+function marksKey(sid) { return "marks:" + sid; }
+
+async function loadMarks(sid) {
+  const row = await DB.get("settings", marksKey(sid));
+  return row && Array.isArray(row.value) ? row.value : [];
+}
+
+async function saveMarks(sid, list) {
+  await DB.put("settings", { key: marksKey(sid), value: list, savedAt: Date.now() });
+}
+
+function showSaveMsg(text, isErr) {
+  const b = $("save-msg");
+  b.hidden = !text;
+  b.textContent = text || "";
+  b.className = isErr ? "err" : "warn";
+  if (text) b.scrollIntoView({ block: "center" });
+}
+
+async function saveMark() {
+  if (!tl.data || !tl.data.secs.length) return;
+  const sess = tl.data.sess;
+  const centerMs = Math.round(tl.cursor * 1000);
+
+  if (tl.marks.some((m) => m.centerMs === centerMs)) {
+    showSaveMsg("重複のため保存しません：記録から " + fmtTime(centerMs) + " は保存済みです。", true);
+    return;
+  }
+  const from = Math.max(0, centerMs - MARK_HALF_MS);
+  const to = Math.min(tl.total * 1000, centerMs + MARK_HALF_MS);
+  const items = tl.data.evs.filter((e) => SAVE_TYPES.includes(e.type) && e.clipId &&
+    e.startMs - PRE_MS < to && e.endMs + POST_MS > from);
+  if (!items.length) {
+    showSaveMsg("音声がないため保存しません：記録から " + fmtTime(centerMs) + " の前後1分に、いびき・人声の音声がありません。", true);
+    return;
+  }
+
+  const mark = {
+    id: uid(), centerMs, fromMs: from, toMs: to, savedAt: Date.now(),
+    items: items.map((e) => ({ type: e.type, startMs: e.startMs, durMs: e.durMs }))
+  };
+  const next = tl.marks.concat(mark).sort((a, b) => a.centerMs - b.centerMs);
+  await saveMarks(sess.id, next);
+  tl.marks = next;
+  renderTimeline();
+  renderMarks();
+  const sn = items.filter((e) => e.type === "snore").length;
+  const sp = items.length - sn;
+  showSaveMsg("保存しました：記録から " + fmtTime(centerMs) + "（前後1分・いびき " + sn + "件／人声 " + sp + "件）", false);
+}
+
+async function buildMarkPcm(mark, evs) {
+  const n = Math.max(0, Math.round((mark.toMs - mark.fromMs) / 1000 * SR));
+  const out = new Int16Array(n);
+  const list = evs.filter((e) => SAVE_TYPES.includes(e.type) && e.clipId &&
+    e.startMs - PRE_MS < mark.toMs && e.endMs + POST_MS > mark.fromMs);
+  let found = 0, missing = 0;
+  for (const e of list) {
+    const clip = await DB.get("clips", e.clipId);
+    if (!clip) { missing++; continue; }
+    const pcm = clipPcm(clip);
+    const base = Math.round((clip.startMs - mark.fromMs) / 1000 * SR);
+    for (let i = 0; i < pcm.length; i++) {
+      const j = base + i;
+      if (j >= 0 && j < n) out[j] = pcm[i];
     }
-    $("tl-msg").textContent = "この棒の音声を保存しました（" + list.length + "件）。白い棒で表示され、日付の音声削除の対象から外れます。";
-    renderTimeline();
-  } catch (e) {
-    console.error(e);
-    showError("音声を保存できませんでした: " + e.message);
-    setSaveEnabled(true);
+    found++;
+  }
+  let nonZero = 0;
+  for (let i = 0; i < out.length; i++) if (out[i] !== 0) nonZero++;
+  return { pcm: out, candidates: list.length, found, missing, nonZero };
+}
+
+function renderMarks() {
+  const box = $("saved-list");
+  box.innerHTML = "";
+  if (!tl.data) return;
+  const sess = tl.data.sess;
+  if (!tl.marks.length) {
+    box.innerHTML = '<p class="muted">保存した記録はありません。黄色い線で気になる位置を選び、「保存する」を押してください。</p>';
+    return;
+  }
+  for (const m of tl.marks) {
+    const row = document.createElement("div");
+    row.className = "event";
+    const list = m.items.map((it) => (TAG_NAME[it.type] || "音") + " " + fmtTime(it.startMs) + "（" + round1(it.durMs / 1000) + "秒）").join("、");
+    const sn = m.items.filter((it) => it.type === "snore").length;
+    const sp = m.items.length - sn;
+    row.innerHTML =
+      '<div class="kv"><span>記録から ' + esc(fmtTime(m.centerMs)) + "（" + esc(fmtClock(sess.startedAt + m.centerMs)) + '）</span><span class="tag">前後1分</span></div>' +
+      '<div class="kv"><span>範囲</span><b>' + esc(fmtTime(m.fromMs)) + " 〜 " + esc(fmtTime(m.toMs)) + "</b></div>" +
+      '<div class="kv"><span>いびき／人声</span><b>' + sn + "件／" + sp + "件</b></div>" +
+      '<p class="muted">' + esc(list) + "</p>" +
+      '<p class="muted">保存：' + esc(fmtDate(m.savedAt)) + "</p>";
+
+    const slot = document.createElement("div");
+    const play = document.createElement("button");
+    play.className = "sub";
+    play.textContent = "再生";
+    play.onclick = async () => {
+      play.disabled = true;
+      play.textContent = "読み込み中…";
+      try {
+        const built = await buildMarkPcm(m, tl.data.evs);
+        const url = URL.createObjectURL(wavBlob(built.pcm, SR));
+        blobUrls.push(url);
+        const au = document.createElement("audio");
+        au.controls = true;
+        au.preload = "auto";
+        au.src = url;
+        slot.appendChild(au);
+        play.hidden = true;
+      } catch (err) {
+        console.error(err);
+        play.disabled = false;
+        play.textContent = "読み込めませんでした。もう一度押してください";
+      }
+    };
+
+    const del = document.createElement("button");
+    del.className = "danger";
+    del.textContent = "削除";
+    del.onclick = async () => {
+      if (!confirm("この保存した記録を削除します。よろしいですか？")) return;
+      const next = tl.marks.filter((x) => x.id !== m.id);
+      await saveMarks(sess.id, next);
+      tl.marks = next;
+      renderTimeline();
+      renderMarks();
+    };
+
+    row.append(play, slot, del);
+    box.appendChild(row);
   }
 }
 
@@ -4048,180 +2525,93 @@ function crc32(u8) {
   return (c ^ 0xFFFFFFFF) >>> 0;
 }
 
-class ZipWriter {
-  constructor() {
-    const d = new Date();
-    this.enc = new TextEncoder();
-    this.dosTime = (d.getHours() << 11) | (d.getMinutes() << 5) | (d.getSeconds() >> 1);
-    this.dosDate = ((d.getFullYear() - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate();
-    this.parts = [];
-    this.central = [];
-    this.offset = 0;
-    this.count = 0;
-  }
-
-  add(name, data) {
-    const nameBytes = this.enc.encode(name);
-    const crc = crc32(data);
-    const lh = new Uint8Array(30 + nameBytes.length);
+function buildZip(files) {
+  const enc = new TextEncoder();
+  const d = new Date();
+  const dosTime = (d.getHours() << 11) | (d.getMinutes() << 5) | (d.getSeconds() >> 1);
+  const dosDate = ((d.getFullYear() - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate();
+  const parts = [], central = [];
+  let offset = 0;
+  for (const f of files) {
+    const name = enc.encode(f.name);
+    const crc = crc32(f.data);
+    const lh = new Uint8Array(30 + name.length);
     const lv = new DataView(lh.buffer);
-    lv.setUint32(0, 0x04034b50, true);
-    lv.setUint16(4, 20, true);
-    lv.setUint16(6, 0x0800, true);
-    lv.setUint16(8, 0, true);
-    lv.setUint16(10, this.dosTime, true);
-    lv.setUint16(12, this.dosDate, true);
-    lv.setUint32(14, crc, true);
-    lv.setUint32(18, data.length, true);
-    lv.setUint32(22, data.length, true);
-    lv.setUint16(26, nameBytes.length, true);
-    lv.setUint16(28, 0, true);
-    lh.set(nameBytes, 30);
-
-    const ch = new Uint8Array(46 + nameBytes.length);
+    lv.setUint32(0, 0x04034b50, true); lv.setUint16(4, 20, true); lv.setUint16(6, 0x0800, true);
+    lv.setUint16(8, 0, true); lv.setUint16(10, dosTime, true); lv.setUint16(12, dosDate, true);
+    lv.setUint32(14, crc, true); lv.setUint32(18, f.data.length, true); lv.setUint32(22, f.data.length, true);
+    lv.setUint16(26, name.length, true); lv.setUint16(28, 0, true);
+    lh.set(name, 30);
+    parts.push(lh, f.data);
+    const ch = new Uint8Array(46 + name.length);
     const cv = new DataView(ch.buffer);
-    cv.setUint32(0, 0x02014b50, true);
-    cv.setUint16(4, 20, true);
-    cv.setUint16(6, 20, true);
-    cv.setUint16(8, 0x0800, true);
-    cv.setUint16(10, 0, true);
-    cv.setUint16(12, this.dosTime, true);
-    cv.setUint16(14, this.dosDate, true);
-    cv.setUint32(16, crc, true);
-    cv.setUint32(20, data.length, true);
-    cv.setUint32(24, data.length, true);
-    cv.setUint16(28, nameBytes.length, true);
-    cv.setUint32(42, this.offset, true);
-    ch.set(nameBytes, 46);
-
-    this.parts.push(lh, new Blob([data]));
-    this.central.push(ch);
-    this.offset += lh.length + data.length;
-    this.count++;
+    cv.setUint32(0, 0x02014b50, true); cv.setUint16(4, 20, true); cv.setUint16(6, 20, true); cv.setUint16(8, 0x0800, true);
+    cv.setUint16(10, 0, true); cv.setUint16(12, dosTime, true); cv.setUint16(14, dosDate, true);
+    cv.setUint32(16, crc, true); cv.setUint32(20, f.data.length, true); cv.setUint32(24, f.data.length, true);
+    cv.setUint16(28, name.length, true); cv.setUint32(42, offset, true);
+    ch.set(name, 46);
+    central.push(ch);
+    offset += lh.length + f.data.length;
   }
-
-  finish() {
-    let cdSize = 0;
-    for (const c of this.central) cdSize += c.length;
-    const end = new Uint8Array(22);
-    const ev = new DataView(end.buffer);
-    ev.setUint32(0, 0x06054b50, true);
-    ev.setUint16(8, this.count, true);
-    ev.setUint16(10, this.count, true);
-    ev.setUint32(12, cdSize, true);
-    ev.setUint32(16, this.offset, true);
-    return new Blob([...this.parts, ...this.central, end], { type: "application/zip" });
-  }
+  let cdSize = 0;
+  for (const c of central) cdSize += c.length;
+  const end = new Uint8Array(22);
+  const ev = new DataView(end.buffer);
+  ev.setUint32(0, 0x06054b50, true);
+  ev.setUint16(8, files.length, true); ev.setUint16(10, files.length, true);
+  ev.setUint32(12, cdSize, true); ev.setUint32(16, offset, true);
+  return new Blob([...parts, ...central, end], { type: "application/zip" });
 }
 
 /* ===== 共有（ZIP作成） ===== */
+const SH = { sid: null, kind: "all", zip: null, name: "" };
+
 function shMsg(text, isErr) {
-  const b = $("sh-msg");
+  let b = $("sh-msg");
+  if (!b) {
+    b = document.createElement("p");
+    b.id = "sh-msg";
+    $("page-share").insertBefore(b, $("page-share").children[1]);
+  }
   b.hidden = !text;
   b.textContent = text || "";
   b.className = isErr ? "err" : "warn";
 }
 
-// ZIPのダウンロードを開始した後だけ、タイムラインの音声削除カードを表示する
-function updateShareButtons() {
-  const show = !!SH.zipDone && !!SH.sid;
-  $("sh-del-tl-card").hidden = !show;
-  $("sh-del-tl").disabled = S.saving || !show;
-}
-
-async function openShare() {
-  if (!S.detailSid) return;
+function openShare() {
   SH.sid = S.detailSid;
-  SH.zipDone = false;
-  // 以前にZIPを書き出した記録は、音声の削除カードを最初から出す（元の作法：削除はZIP保存の後）
-  try {
-    const legacy = await DB.get("sessions", SH.sid);
-    if (legacy && legacy.sharedAt) SH.zipDone = true;
-    if (!legacy) {
-      const d = await SleepEngine.getSessionData(SH.sid, { light: true });
-      if (d && d.session && d.session.sharedAt) SH.zipDone = true;
-    }
-  } catch (e) { console.warn(e); }
+  SH.zip = null;
   $("sh-addr").textContent = (S.patient && S.patient.logShareEmail) || "（未記入）";
   shMsg("", false);
-  updateShareButtons();
   showPage("share");
 }
 
-// 共有の対象：削除されていない、いびき・人声の音声
-async function shareScope() {
+function inMarks(e, marks) {
+  return marks.some((m) => e.startMs - PRE_MS < m.toMs && e.endMs + POST_MS > m.fromMs);
+}
+
+async function shareScope(kind) {
   const evs = (await DB.byIndex("events", "sid", SH.sid)).sort((a, b) => a.startMs - b.startMs);
+  const marks = kind === "sel" ? await loadMarks(SH.sid) : null;
+  const inScope = (e) => !marks || inMarks(e, marks);
   return {
     evs,
-    snores: evs.filter((e) => e.type === "snore" && e.clipId),
-    speeches: evs.filter((e) => e.type === "speech" && e.clipId)
+    snores: evs.filter((e) => e.type === "snore" && e.clipId && inScope(e)),
+    speeches: evs.filter((e) => e.type === "speech" && e.clipId && inScope(e))
   };
 }
 
-// V63エンジン記録の共有：圧縮のままZIPを書き出してダウンロードする
-async function startShareEngine() {
-  if (S.saving) return;
-  S.saving = true;
-  setButtons();
-  const progress = createZipProgress();
-  try {
-    progress.set("記録を読み込んでいます…", 0);
-    await yieldToScreen();
-    const out = await SleepEngine.exportSession(SH.sid);
-    SH.zipName = out.fileName;
-    progress.set("ダウンロードを開始しています…", 100);
-    await yieldToScreen();
-    const a = document.createElement("a");
-    const url = URL.createObjectURL(out.blob);
-    a.href = url;
-    a.download = out.fileName;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 60000);
-    SH.zipDone = true;
-    await SleepEngine.markShared(SH.sid).catch(() => {});
-    const d = await SleepEngine.getSessionData(SH.sid, { light: true });
-    const nClips = d ? d.clips.length : 0;
-    const nTalk = d ? d.events.filter((e) => e.category === "talk").length : 0;
-    shMsg(
-      "ダウンロードを開始しました：" + out.fileName + "（音声 " + nClips + "件・圧縮のまま）" +
-      (nTalk ? "。寝言・人声の音声が " + nTalk + " 件含まれています。" : "") +
-      "。ダウンロード先を確認してから、「②ファイルを選んで送信」を押してください。",
-      false
-    );
-  } catch (e) {
-    console.error(e);
-    shMsg("ZIPを作れませんでした: " + e.message, true);
-  } finally {
-    progress.remove();
-    S.saving = false;
-    setButtons();
-    updateShareButtons();
-  }
-}
-
-async function startShare() {
+async function startShare(kind) {
   if (!SH.sid) return;
+  SH.kind = kind;
   shMsg("", false);
-  if (await engineHas(SH.sid)) {
-    // 人声と判定された音声が残っている記録は、作る前の確認ダイアログを通す（旧方式と同じ作法）
-    const d = await SleepEngine.getSessionData(SH.sid, { light: true });
-    const talks = d ? d.events.filter((e) => e.category === "talk" && e.fileName) : [];
-    if (talks.length) {
-      $("rv-dialog").hidden = false;
-      return;
-    }
-    await startShareEngine();
-    return;
-  }
   try {
-    const sc = await shareScope();
-    if (!sc.snores.length && !sc.speeches.length) {
-      shMsg("保存する音声がありません。", true);
+    const sc = await shareScope(kind);
+    if (kind === "sel" && !sc.snores.length && !sc.speeches.length) {
+      shMsg("保存した記録がありません。詳細画面で黄色い線を合わせて「保存する」を押してください。", true);
       return;
     }
-    if (sc.speeches.length) {
+    if (sc.speeches.some((e) => e.review == null)) {
       $("rv-dialog").hidden = false;
       return;
     }
@@ -4232,191 +2622,56 @@ async function startShare() {
   }
 }
 
-function createZipProgress() {
-  const box = document.createElement("div");
-  box.className = "zip-progress";
-  box.setAttribute("role", "status");
-  box.setAttribute("aria-live", "polite");
-  box.innerHTML =
-    '<p class="zip-progress-title">ZIPを作成中</p>' +
-    '<div class="zip-bar"><i></i></div>' +
-    '<p class="zip-progress-text"></p>';
-  document.body.appendChild(box);
-
-  const text = box.querySelector(".zip-progress-text");
-  const bar = box.querySelector(".zip-bar i");
-
-  return {
-    set(message, percent) {
-      text.textContent = message;
-      if (percent != null) bar.style.width = clamp(percent, 0, 100).toFixed(1) + "%";
-    },
-    remove() {
-      box.remove();
-    }
-  };
-}
-
-function yieldToScreen() {
-  return new Promise((resolve) => setTimeout(resolve, 0));
-}
-
 async function makeZip() {
-  if (S.saving) return;
   S.saving = true;
   setButtons();
-
-  const buttonIds = ["sh-all", "sh-back", "sh-copy", "sh-pick", "sh-del-tl", "rv-open", "rv-save-direct", "rv-close", "tl-go-share"];
-  const buttonStates = buttonIds.map((id) => {
-    const button = $(id);
-    const wasDisabled = button ? button.disabled : false;
-    if (button) button.disabled = true;
-    return { button, wasDisabled };
-  });
-
-  const progress = createZipProgress();
   shMsg("ZIPを作っています…", false);
-
   try {
-    progress.set("記録を読み込んでいます…", 0);
-    await yieldToScreen();
-
     const sess = await DB.get("sessions", SH.sid);
-    if (!sess) throw new Error("記録が見つかりませんでした。");
-
-    const sc = await shareScope();
-    const items = sc.snores.concat(sc.speeches).sort((a, b) => a.startMs - b.startMs);
-    const total = items.length;
-
-    const zw = new ZipWriter();
-    let audioCount = 0;
+    const sc = await shareScope(SH.kind);
+    const keep = sc.speeches.filter((e) => e.review === "keep");
+    const items = sc.snores.concat(keep).sort((a, b) => a.startMs - b.startMs);
+    const files = [];
     let missing = 0;
-
-    progress.set(
-      total
-        ? "音声を処理しています：0 / " + total + "件（0%）"
-        : "対象の音声はありません。記録情報をまとめています…",
-      0
-    );
-    await yieldToScreen();
-
-    for (let i = 0; i < total; i++) {
-      const e = items[i];
+    for (const e of items) {
       const clip = await DB.get("clips", e.clipId);
-
-      if (!clip) {
-        missing++;
-      } else {
-        const pcm = clipPcm(clip);
-        const nm =
-          (e.type === "snore" ? "snore_" : "voice_") +
-          fmtTime(e.startMs).replace(/:/g, "-") +
-          "_" + e.id.slice(0, 4) + ".wav";
-        zw.add(nm, wavBytes(pcm, clip.sr));
-        audioCount++;
-      }
-
-      const done = i + 1;
-      const percent = done / total * 100;
-      progress.set(
-        "音声を処理しています：" + done + " / " + total + "件（" + Math.floor(percent) + "%）" +
-        (missing ? "\n見つからない音声：" + missing + "件" : "") +
-        "\n画面を閉じずにお待ちください。",
-        percent
-      );
-      await yieldToScreen();
+      if (!clip) { missing++; continue; }
+      const pcm = clipPcm(clip);
+      const nm = (e.type === "snore" ? "snore_" : "voice_") + fmtTime(e.startMs).replace(/:/g, "-") + "_" + e.id.slice(0, 4) + ".wav";
+      files.push({ name: nm, data: wavBytes(pcm, clip.sr) });
     }
-
-    progress.set("音声の処理が終わりました。\n記録情報をまとめています…", 100);
-    await yieldToScreen();
-
-    const csv = ["type,startSec,durSec,peakDb,meanDb"].concat(
-      sc.evs.map((e) => [
-        e.type,
-        round1(e.startMs / 1000),
-        round1(e.durMs / 1000),
-        e.peakSourceDb,
-        e.meanSourceDb
-      ].join(","))
-    ).join("\n");
-    zw.add("events.csv", new TextEncoder().encode("\uFEFF" + csv));
-
-    const info = {
-      app: sess.app,
-      startedAt: isoOf(sess.startedAt),
-      endedAt: sess.endedAt ? isoOf(sess.endedAt) : null,
-      base: sess.base,
-      refDb: sess.refDb,
-      refEnvDb: sess.refEnvDb,
-      counts: sess.counts,
-      patient: sess.patient,
-      audioFiles: audioCount,
-      missingAudio: missing
-    };
-    zw.add("info.json", new TextEncoder().encode(JSON.stringify(info, null, 2)));
-
-    progress.set("ZIPを取りまとめています…\n画面を閉じずにお待ちください。", 100);
-    await yieldToScreen();
-
-    const blob = zw.finish();
-    SH.zipName = zipName(sess);
-
-    progress.set("ダウンロードを開始しています…", 100);
-    await yieldToScreen();
-
+    const csv = ["type,startSec,durSec,peakDb,meanDb,review,file"].concat(sc.evs.map((e) => [
+      e.type, round1(e.startMs / 1000), round1(e.durMs / 1000), e.peakSourceDb, e.meanSourceDb, e.review || "", ""
+    ].join(","))).join("\n");
+    const enc = new TextEncoder();
+    files.push({ name: "events.csv", data: enc.encode("\uFEFF" + csv) });
+    files.push({
+      name: "info.json",
+      data: enc.encode(JSON.stringify({
+        app: sess.app, startedAt: isoOf(sess.startedAt), endedAt: sess.endedAt ? isoOf(sess.endedAt) : null,
+        base: sess.base, refDb: sess.refDb, refEnvDb: sess.refEnvDb, counts: sess.counts, patient: sess.patient,
+        audioFiles: files.length - 2, missingAudio: missing
+      }, null, 2))
+    });
+    const blob = buildZip(files);
+    SH.zip = blob;
+    SH.name = zipName(sess);
     const a = document.createElement("a");
     const url = URL.createObjectURL(blob);
     a.href = url;
-    a.download = SH.zipName;
+    a.download = SH.name;
     document.body.appendChild(a);
     a.click();
     a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 60000);
-
-    SH.zipDone = true;
-    try {
-      const sessRow = await DB.get("sessions", SH.sid);
-      if (sessRow) { sessRow.sharedAt = Date.now(); await DB.put("sessions", sessRow); }
-    } catch (e) { console.warn(e); }
-    shMsg(
-      "ダウンロードを開始しました：" + SH.zipName +
-      "（音声 " + audioCount + "件" +
-      (missing ? "／見つからない音声 " + missing + "件" : "") +
-      "）。ダウンロード先を確認してから、「②ファイルを選んで送信」を押してください。" +
-      "\n確認が済んだら、下の「このタイムラインから音声を削除」を押せます。",
-      false
-    );
+    shMsg("保存しました：" + SH.name + "（音声 " + (files.length - 2) + "件" + (missing ? "／見つからない音声 " + missing + "件" : "") + "）。次に「②ファイルを選んで送信」を押してください。", false);
+    showPage("share");
   } catch (e) {
     console.error(e);
-    const message = "ZIPを作れませんでした: " + e.message;
-    shMsg(message, true);
-    if (!$("rv-dialog").hidden) alert(message);
+    shMsg("ZIPを作れませんでした: " + e.message, true);
   } finally {
-    progress.remove();
-    for (const state of buttonStates) {
-      if (state.button) state.button.disabled = state.wasDisabled;
-    }
     S.saving = false;
     setButtons();
-    updateShareButtons();
-  }
-}
-
-// 共有画面から、このタイムラインの音声を削除（ZIPを作った後だけ押せる）
-async function deleteTimelineAudioFromShare() {
-  if (!SH.zipDone || !SH.sid || S.saving) return;
-  if (await engineHas(SH.sid)) {
-    await SleepEngine.deleteClipsForSession(SH.sid);
-    SH.zipDone = false;
-    updateShareButtons();
-    shMsg("このタイムラインの音声データを削除しました。簡易ログとグラフは残っています。保存した音声は残っています。", false);
-    return;
-  }
-  const done = await deleteAudioForSession(SH.sid);
-  if (done) {
-    SH.zipDone = false;
-    updateShareButtons();
-    shMsg("このタイムラインの音声データを削除しました。簡易ログとグラフは残っています。保存した音声は残っています。", false);
   }
 }
 
@@ -4444,280 +2699,550 @@ async function copyAddr() {
   }
 }
 
-async function openSpeechInTimeline() {
+/* ===== 人声の確認 ===== */
+const RV = { items: [], sel: 0, total: 1 };
+
+async function openReview() {
   $("rv-dialog").hidden = true;
-  if (!SH.sid) return;
-  try {
-    await openDetail(SH.sid);
-    if (S.detailSid !== SH.sid || !tl.data) return;
-    tl.tags = { snore: false, unknown: false, env: false, speech: true };
-    renderTimeline();
-    $("tl-msg").textContent = "人声を表示しています。聴くには「タイムラインの音を聴く」を押してください。残したい音は「この音声を保存する」を押せます。";
-  } catch (e) {
-    console.error(e);
-    showError("タイムラインを開けませんでした: " + e.message);
-  }
+  const sc = await shareScope(SH.kind);
+  RV.items = sc.speeches;
+  RV.sel = 0;
+  RV.total = Math.max(60000, ...RV.items.map((e) => e.endMs));
+  renderReview();
+  showPage("review");
 }
 
-/* ===== ボタンの接続 ===== */
-const handleErr = (err) => {
-  console.error(err);
-  showError(err && err.message ? err.message : String(err));
-};
-const run = (fn) => (e) => {
+function reviewLeft() { return RV.items.filter((e) => e.review == null).length; }
+
+function renderReview() {
+  $("rv-left").textContent = reviewLeft() + "件 / 全" + RV.items.length + "件";
+  const W = 480, H = 60;
+  let g = '<svg viewBox="0 0 ' + W + " " + H + '" xmlns="http://www.w3.org/2000/svg"><rect x="0" y="0" width="' + W + '" height="' + H + '" fill="none" stroke="#2a3643"/>';
+  RV.items.forEach((e, i) => {
+    const x = e.startMs / RV.total * (W - 4) + 2;
+    const col = i === RV.sel ? "#ffd54a" : e.review === "keep" ? "#4a90d9" : e.review === "drop" ? "#3a4048" : "#9aa5b1";
+    g += '<rect x="' + x.toFixed(1) + '" y="8" width="4" height="44" fill="' + col + '"/>';
+  });
+  $("rv-chart").innerHTML = g + "</svg>";
+  const box = $("rv-list");
+  box.innerHTML = "";
+  RV.items.forEach((e, i) => {
+    const row = document.createElement("div");
+    row.className = "rv-row" + (i === RV.sel ? " sel" : "") + (e.review ? " " + e.review : "");
+    row.id = "rv-row-" + i;
+    const state = e.review === "keep" ? "保存" : e.review === "drop" ? "破棄" : "未判断";
+    row.innerHTML = '<div class="kv rv-time"><span>記録から ' + esc(fmtTime(e.startMs)) + "（" + round1(e.durMs / 1000) + '秒）</span><span class="tag">' + state + "</span></div>";
+    const slot = document.createElement("div");
+    const play = document.createElement("button");
+    play.className = "sub";
+    play.textContent = "聴く";
+    play.onclick = async () => {
+      RV.sel = i;
+      play.disabled = true;
+      try {
+        const clip = await DB.get("clips", e.clipId);
+        if (!clip) { play.textContent = "音声がありません"; return; }
+        const url = URL.createObjectURL(wavBlob(clipPcm(clip), clip.sr));
+        blobUrls.push(url);
+        const au = document.createElement("audio");
+        au.controls = true;
+        au.src = url;
+        slot.innerHTML = "";
+        slot.appendChild(au);
+        au.play().catch(() => {});
+        play.hidden = true;
+      } catch (err) {
+        console.error(err);
+        play.disabled = false;
+        play.textContent = "読み込めません。もう一度押してください";
+      }
+    };
+    const r = document.createElement("div");
+    r.className = "row";
+    const keep = document.createElement("button");
+    keep.className = "primary";
+    keep.textContent = "保存";
+    keep.onclick = () => setReview(i, "keep");
+    const drop = document.createElement("button");
+    drop.className = "danger";
+    drop.textContent = "破棄";
+    drop.onclick = () => setReview(i, "drop");
+    r.append(keep, drop);
+    row.append(play, slot, r);
+    box.appendChild(row);
+  });
+}
+
+async function setReview(i, v) {
+  const e = RV.items[i];
+  e.review = v;
+  RV.sel = i;
+  try { await DB.put("events", e); } catch (err) { showError("判断を保存できませんでした: " + err.message); }
+  renderReview();
+}
+
+function pickReviewFromChart(ev) {
+  if (!RV.items.length) return;
+  const rect = $("rv-chart").getBoundingClientRect();
+  const ms = (ev.clientX - rect.left) / rect.width * RV.total;
+  let best = 0;
+  RV.items.forEach((e, i) => { if (Math.abs(e.startMs - ms) < Math.abs(RV.items[best].startMs - ms)) best = i; });
+  RV.sel = best;
+  renderReview();
+  const el = $("rv-row-" + best);
+  if (el) el.scrollIntoView({ block: "center" });
+}
+
+/* ===== 起動・ボタンの接続 ===== */
+async function onMicBtn() {
+  showMicMsg("");
   try {
-    const r = fn(e);
-    if (r && r.catch) r.catch(handleErr);
-  } catch (err) {
-    handleErr(err);
-  }
-};
-const on = (id, ev, fn) => $(id).addEventListener(ev, run(fn));
-const toggleBox = (btnId, boxId) => on(btnId, "click", () => { $(boxId).hidden = !$(boxId).hidden; });
-
-toggleBox("usage-btn", "usage-box");
-toggleBox("rec-usage-btn", "rec-usage-box");
-toggleBox("cal-usage-btn", "cal-usage-box");
-toggleBox("det-usage-btn", "det-usage-box");
-toggleBox("sh-usage", "sh-usage-box");
-
-on("errbox", "click", () => clearError());
-
-/* --- 起動画面（QR） --- */
-on("cam-btn", "click", () => startCamera());
-on("cam-stop", "click", () => stopCamera());
-on("qr-file-btn", "click", () => $("qr-file").click());
-on("qr-file", "change", (e) => {
-  const f = e.target.files && e.target.files[0];
-  e.target.value = "";
-  return readQrFile(f);
-});
-on("back-rec-start", "click", () => goRecord());
-on("back-rec-confirm", "click", () => goRecord());
-
-/* --- 患者情報の確認 --- */
-on("cf-ok", "click", async () => {
-  const p = S_PATIENT_PENDING.value;
-  if (!p) {
-    showScanMsg("QRを読み直してください。");
-    showPage("start");
-    return;
-  }
-  await savePatient(p);
-  S_PATIENT_PENDING.value = null;
-  goRecord();
-});
-on("cf-ng", "click", () => {
-  S_PATIENT_PENDING.value = null;
-  showScanMsg("患者情報が違う場合は、診療所にご連絡ください。QRを読み直す場合は、カメラかQR画像を選んでください。");
-  showPage("start");
-});
-
-/* --- アプリの更新 --- */
-on("upd-reload", "click", async () => {
-  updateByUser = true;
-  renderUpdate();
-  await applyLatest();
-  renderUpdate();
-});
-
-/* --- 記録画面 --- */
-on("rec-back", "click", () => {
-  if (isBusy()) return;
-  showPage("start");
-  updateBackButtons();
-});
-
-on("mic-btn", "click", async () => {
-  if (S.ctx) return;
-  const AC = window.AudioContext || window.webkitAudioContext;
-  if (!AC) {
-    showMicMsg("この端末では音声処理を使えません。");
-    return;
-  }
-  const ctx = new AC();
-  try {
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    const ctx = Ctx ? new Ctx() : null;
+    S.pendingCtx = ctx;
     await setupMic(ctx);
     $("mic-state").textContent = "許可済み";
-    showMicMsg("");
   } catch (e) {
-    try { ctx.close(); } catch (_) { /* 無視 */ }
+    console.error(e);
     showMicMsg(micErrorMessage(e));
   }
   setButtons();
-  updateUI();
-});
+}
 
-on("gain", "input", (e) => {
-  S.gainDb = Number(e.target.value);
-  updateUI();
-});
-
-on("ref-btn", "click", () => startRefMeasure());
-on("ref-play-btn", "click", async () => {
-  const ok = await playRefAudio();
-  if (!ok) showRefMsg("基準の音はまだ保存されていません。測り直すと保存されます。", true);
-});
-on("tl-ref-play", "click", async () => {
-  const ok = await playRefAudio();
-  if (!ok) $("tl-msg").textContent = "基準の音はまだ保存されていません。最初の画面で測り直すと保存されます。";
-});
-
-let motionOn = false;
-on("motion-btn", "click", async () => {
-  if (motionOn) return;
+async function onMotionBtn() {
   try {
     if (typeof DeviceMotionEvent !== "undefined" && typeof DeviceMotionEvent.requestPermission === "function") {
       const r = await DeviceMotionEvent.requestPermission();
-      if (r !== "granted") throw new Error("モーションセンサーの許可が得られませんでした");
+      if (r !== "granted") { showError("モーションセンサーが許可されませんでした。"); return; }
     }
     window.addEventListener("devicemotion", onMotion);
-    motionOn = true;
-    $("motion-btn").textContent = "モーションセンサー許可済み";
     $("motion-btn").disabled = true;
+    $("motion-btn").textContent = "モーションセンサー許可済み";
   } catch (e) {
-    showError("モーションセンサーを使えませんでした: " + e.message);
+    showError("モーションセンサーを開始できませんでした: " + e.message);
   }
-});
-
-on("start-btn", "click", () => startRec());
-on("stop-btn", "click", () => stopRec());
-on("btn-enter-black", "click", () => enterBlack());
-on("black-screen", "click", () => exitBlack());
-
-on("history-btn", "click", async () => {
-  const now = new Date();
-  cal.year = now.getFullYear();
-  cal.month = now.getMonth() + 1;
-  cal.selected = null;
-  cal.index = 0;
-  showPage("calendar");
-  await refreshCalendar();
-});
-
-/* --- 記録カレンダー --- */
-on("cal-back", "click", () => showPage("record"));
-on("cal-prev", "click", () => shiftMonth(-1));
-on("cal-next", "click", () => shiftMonth(1));
-
-/* --- 詳細（タイムライン） --- */
-on("detail-back", "click", async () => {
-  revokeUrls();
-  PLAY.list = [];
-  $("tl-audio").innerHTML = "";
-  setSaveEnabled(false);
-  tl.data = null;
-  S.detailSid = null;
-  showPage("calendar");
-  await refreshCalendar();
-});
-
-on("tl-zoom", "change", (e) => {
-  if (!tl.data) return;
-  const z = Number(e.target.value);
-  tl.zoomSec = z;
-  const len = z > 0 ? Math.min(z, tl.total) : tl.total;
-  tl.winStart = tl.cursor - len / 2;
-  renderTimeline();
-});
-on("tl-pos", "input", (e) => {
-  tl.winStart = Number(e.target.value);
-  renderTimeline();
-});
-on("tl-cur", "input", (e) => {
-  tl.cursor = Number(e.target.value);
-  renderTimeline();
-});
-on("tl-listen", "click", () => listenAtCursor());
-on("tl-delete", "click", async () => {
-  if (!S.detailSid) return;
-  if (!confirm("この記録を削除しますか？（音声も含めて全部消えます。元に戻せません）")) return;
-  const sid = S.detailSid;
-  try {
-    if (tl.data && tl.data.engine) await SleepEngine.deleteSession(sid);
-    else await deleteLegacySession(sid);
-  } catch (e) { console.error(e); }
-  ENGINE_IDS.delete(sid);
-  S.detailSid = null;
-  tl.data = null;
-  await refreshCalendar();
-  showPage("calendar");
-});
-on("tl-save", "click", () => savePlayedAudio());
-on("tl-go-share", "click", () => {
-  $("tl-audio").innerHTML = "";
-  PLAY.list = [];
-  setSaveEnabled(false);
-  openShare();
-});
-
-const chart = $("d-chart");
-chart.addEventListener("pointerdown", tlPointerDown);
-chart.addEventListener("pointermove", tlPointerMove);
-chart.addEventListener("pointerup", tlPointerEnd);
-chart.addEventListener("pointercancel", tlPointerEnd);
-
-/* --- 睡眠記録の共有 --- */
-on("sh-all", "click", () => startShare());
-on("sh-copy", "click", () => copyAddr());
-on("sh-pick", "click", () => $("sh-file").click());
-on("sh-file", "change", async (e) => {
-  const f = e.target.files && e.target.files[0];
-  e.target.value = "";
-  await sendPicked(f);
-});
-on("sh-del-tl", "click", async () => {
-  await deleteTimelineAudioFromShare();
-});
-on("sh-back", "click", () => {
-  showPage("record");
-  updateBackButtons();
-});
-
-/* --- 人声確認の案内ダイアログ --- */
-on("rv-open", "click", () => openSpeechInTimeline());
-on("rv-save-direct", "click", async () => {
-  $("rv-dialog").hidden = true;
-  if (SH.sid && await engineHas(SH.sid)) {
-    await startShareEngine();
-    return;
-  }
-  return makeZip();
-});
-on("rv-close", "click", () => { $("rv-dialog").hidden = true; });
-
-/* ===== 画面の状態に応じた処理 ===== */
-document.addEventListener("visibilitychange", () => {
-  if (document.hidden) {
-    if (S.running) flushSecs().catch(() => {});
-    return;
-  }
-  if (S.running && !S.wake) acquireWake();
-});
-window.addEventListener("pagehide", () => {
-  if (S.running) flushSecs().catch(() => {});
-});
-
-/* ===== 起動 ===== */
-async function boot() {
-  $("ver-text").textContent = "SomnoLog V" + APP_VERSION;
-  document.querySelectorAll(".app-name").forEach((el) => { el.textContent = "SomnoLog V" + APP_VERSION; });
-  await loadPatient();
-  if (!checkHashOnLoad()) showPage("start");
-  await loadRef();
-  updateBackButtons();
-  setButtons();
-  updateUI();
-  if (S.ref) showRefMsg("基準音圧は設定済みです（「あ〜」" + S.ref.db.toFixed(1) + "dB、保存済み）。測り直さずに、そのまま「記録開始」を押せます。");
-
-  // 更新は静かに確認する（表示は「アプリの更新」を押したときだけ）
-  checkUpdate().then(() => renderUpdate()).catch(() => {});
-  setInterval(() => {
-    if (!isBusy()) checkUpdate().catch(() => {});
-  }, UPDATE_EVERY_MS);
 }
 
-boot().catch(handleErr);
+function goStart() {
+  showScanMsg("");
+  updateBackButtons();
+  showPage("start");
+}
+
+function wire() {
+  $("errbox").onclick = clearError;
+  $("cam-btn").onclick = startCamera;
+  $("cam-stop").onclick = stopCamera;
+  $("qr-file-btn").onclick = () => $("qr-file").click();
+  $("qr-file").onchange = (e) => { readQrFile(e.target.files[0]); e.target.value = ""; };
+  $("usage-btn").onclick = () => { $("usage-box").hidden = !$("usage-box").hidden; };
+  $("back-rec-start").onclick = goRecord;
+  $("back-rec-confirm").onclick = goRecord;
+  $("cf-ok").onclick = async () => {
+    try {
+      await savePatient(S_PATIENT_PENDING.value);
+      clearError();
+      setButtons();
+      showPage("record");
+    } catch (e) { showError("患者情報を保存できませんでした: " + e.message); }
+  };
+  $("cf-ng").onclick = () => { S_PATIENT_PENDING.value = null; goStart(); };
+
+  $("rec-back").onclick = () => {
+    if (isBusy()) return;
+    clearError();
+    goStart();
+  };
+  $("mic-btn").onclick = onMicBtn;
+  $("ref-btn").onclick = startRefMeasure;
+  $("gain").oninput = (e) => { S.gainDb = Number(e.target.value); if (S.ref) { S.ref = null; showRefMsg("音圧調整を変えたので、基準音圧を測り直してください。", true); } setButtons(); updateUI(); };
+  $("motion-btn").onclick = onMotionBtn;
+  $("start-btn").onclick = async () => {
+    if (isBusy()) return;
+    recActionPending = true;
+    setButtons();
+    try { await startRec(); }
+    catch (e) { showError(e.message); }
+    finally { recActionPending = false; setButtons(); }
+  };
+  $("stop-btn").onclick = async () => {
+    if (recActionPending || !S.running) return;
+    recActionPending = true;
+    setButtons();
+    try { await stopRec(); }
+    catch (e) { showError(e.message); }
+    finally { recActionPending = false; setButtons(); }
+  };
+  $("btn-enter-black").onclick = enterBlack;
+  $("black-screen").onclick = exitBlack;
+  $("history-btn").onclick = async () => { await refreshCalendar(); showPage("calendar"); };
+  $("upd-reload").onclick = () => {
+    updateByUser = true;
+    applyLatest();
+  };
+  $("rec-usage-btn").onclick = () => { $("rec-usage-box").hidden = !$("rec-usage-box").hidden; };
+
+  $("cal-back").onclick = () => showPage("record");
+  $("cal-usage-btn").onclick = () => { $("cal-usage-box").hidden = !$("cal-usage-box").hidden; };
+  $("cal-prev").onclick = () => shiftMonth(-1);
+  $("cal-next").onclick = () => shiftMonth(1);
+
+  $("detail-back").onclick = async () => { revokeUrls(); await refreshCalendar(); showPage("calendar"); };
+  $("det-usage-btn").onclick = () => { $("det-usage-box").hidden = !$("det-usage-box").hidden; };
+  $("tl-zoom").onchange = (e) => { if (!tl.data) return; tl.zoomSec = Number(e.target.value); renderTimeline(); };
+  $("tl-pos").oninput = (e) => { tl.winStart = Number(e.target.value); renderTimeline(); };
+  $("tl-cur").oninput = (e) => { tl.cursor = Number(e.target.value); renderTimeline(); };
+  const ch = $("d-chart");
+  ch.addEventListener("pointerdown", tlPointerDown);
+  ch.addEventListener("pointermove", tlPointerMove);
+  ch.addEventListener("pointerup", tlPointerEnd);
+  ch.addEventListener("pointercancel", tlPointerEnd);
+  $("tl-listen").onclick = listenAtCursor;
+  $("tl-save").onclick = () => saveMark().catch((e) => showSaveMsg("保存できませんでした: " + e.message, true));
+  $("saved-share").onclick = openShare;
+  $("detail-delete").onclick = async () => {
+    if (!S.detailSid) return;
+    if (!confirm("この記録を削除します。元に戻せません。よろしいですか？")) return;
+    try {
+      await deleteSession(S.detailSid);
+      S.detailSid = null;
+      tl.data = null;
+      revokeUrls();
+      await refreshCalendar();
+      showPage("calendar");
+    } catch (e) { showError("削除できませんでした: " + e.message); }
+  };
+
+  $("sh-all").onclick = () => startShare("all");
+  $("sh-sel").onclick = () => startShare("sel");
+  $("sh-copy").onclick = copyAddr;
+  $("sh-pick").onclick = () => $("sh-file").click();
+  $("sh-file").onchange = (e) => { sendPicked(e.target.files[0]); e.target.value = ""; };
+  $("sh-usage").onclick = () => { $("sh-usage-box").hidden = !$("sh-usage-box").hidden; };
+  $("sh-back").onclick = () => showPage("detail");
+
+  $("rv-open").onclick = () => openReview().catch((e) => showError(e.message));
+  $("rv-back").onclick = () => showPage("share");
+  $("rv-chart").addEventListener("click", pickReviewFromChart);
+  $("rv-done").onclick = async () => {
+    const left = reviewLeft();
+    if (left && !confirm("未判断が " + left + "件 あります。未判断の音はZIPに入れません。よろしいですか？")) return;
+    await makeZip();
+  };
+
+  window.addEventListener("beforeunload", (e) => { if (isBusy()) { e.preventDefault(); e.returnValue = ""; } });
+  setInterval(() => { if (!isBusy()) checkUpdate(); }, UPDATE_EVERY_MS);
+}
+
+async function init() {
+  const d = new Date();
+  cal.year = d.getFullYear();
+  cal.month = d.getMonth() + 1;
+  $("ver-text").textContent = "SomnoLog V" + APP_VERSION;
+  document.querySelectorAll(".app-name").forEach((el) => { el.textContent = "SomnoLog V" + APP_VERSION; });
+  document.title = "SomnoLog V" + APP_VERSION + " 基準音圧版";
+  wire();
+  await loadPatient();
+  setButtons();
+  loadVad().catch(console.warn);
+  if (!checkHashOnLoad()) {
+    if (S.patient) showPage("record");
+    else goStart();
+  }
+  checkUpdate().then((ok) => {
+    if (ok && upd.latest > APP_VERSION && !isBusy() && getUpdTarget() !== String(upd.latest)) {
+      setTimeout(() => applyLatest(), 1500);
+    }
+  });
+}
+
+init().catch((e) => showError(e.message));
 </script>
+
+
+<script>
+"use strict";
+
+/* ===== タイムラインの体動表示 ===== */
+(() => {
+  if (!TAG_ORDER.includes("motion")) TAG_ORDER.push("motion");
+  TAG_COLOR.motion = "#e04848";
+  TAG_NAME.motion = "体動";
+
+  const motionView = {
+    threshold: MOVE_TH,
+    max: MOTION_BAR_MAX,
+    lastTag: null
+  };
+
+  const controls = document.createElement("div");
+  controls.id = "tl-motion-controls";
+  controls.hidden = true;
+  controls.innerHTML =
+    '<label class="muted" for="tl-motion-th">' +
+      '体動のしきい値：<b id="tl-motion-th-value"></b>' +
+    '</label>' +
+    '<input id="tl-motion-th" type="range" ' +
+      'min="0.01" max="2" step="0.01" value="0.30">' +
+    '<label class="muted" for="tl-motion-max">' +
+      'グラフ上端：<b id="tl-motion-max-value"></b>' +
+    '</label>' +
+    '<input id="tl-motion-max" type="range" ' +
+      'min="0.1" max="5" step="0.1" value="2">' +
+    '<p class="muted">' +
+      'しきい値以上の体動を表示します。' +
+      'グラフ上端を下げると棒が高く見えます。' +
+      '上端を超えた値は天井で切って表示します。' +
+      '設定は表示だけに使い、保存済みデータや' +
+      'カレンダーの評価は変えません。' +
+    '</p>';
+
+  $("tl-tags").insertAdjacentElement("afterend", controls);
+
+  const help = document.createElement("p");
+  help.className = "muted";
+  help.textContent =
+    "「体動」では、センサーで記録した1秒ごとの平均値を表示します。" +
+    "しきい値以上の秒が連続した場合は1回として数えます。" +
+    "体動そのものに音声はありません。";
+  $("det-usage-box").appendChild(help);
+
+  function validMotion(s) {
+    return Number.isFinite(s.sec) &&
+      Number.isFinite(s.motion) &&
+      s.motion >= 0;
+  }
+
+  function motionCount(secs) {
+    let count = 0;
+    let previousSec = null;
+
+    for (const s of secs) {
+      if (!validMotion(s) || s.motion < motionView.threshold) {
+        previousSec = null;
+        continue;
+      }
+
+      if (previousSec === null || s.sec !== previousSec + 1) {
+        count++;
+      }
+      previousSec = s.sec;
+    }
+    return count;
+  }
+
+  renderTagBar = function () {
+    const box = $("tl-tags");
+    box.innerHTML = "";
+    if (!tl.data) return;
+
+    const cnt = {};
+    const aud = {};
+
+    for (const t of TAG_ORDER) {
+      cnt[t] = 0;
+      aud[t] = 0;
+    }
+
+    for (const e of tl.data.evs) {
+      if (e.type === "motion" || cnt[e.type] == null) continue;
+      cnt[e.type]++;
+      if (e.clipId) aud[e.type]++;
+    }
+
+    const hasMotion = tl.data.secs.some(validMotion);
+    cnt.motion = motionCount(tl.data.secs);
+
+    for (const t of TAG_ORDER) {
+      const on = !!tl.tags[t];
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "tagbtn" + (on ? "" : " off");
+      b.setAttribute("aria-pressed", String(on));
+
+      let detail;
+      if (t === "motion") {
+        detail = hasMotion ? cnt.motion + "回" : "データなし";
+      } else {
+        detail = String(cnt[t]);
+        if (aud[t] !== cnt[t]) {
+          detail += "（音声" + aud[t] + "）";
+        }
+      }
+
+      b.innerHTML =
+        '<i style="background:' + TAG_COLOR[t] + '"></i>' +
+        esc(TAG_NAME[t]) + " <small>" + esc(detail) + "</small>";
+
+      b.onclick = () => {
+        if (tl.tags[t]) return;
+        for (const k of TAG_ORDER) tl.tags[k] = false;
+        tl.tags[t] = true;
+        renderTimeline();
+      };
+      box.appendChild(b);
+    }
+  };
+
+  const originalGraph = tagGraphSvg;
+
+  tagGraphSvg = function (tag, t0, t1) {
+    if (tag !== "motion") return originalGraph(tag, t0, t1);
+
+    const NB = 60;
+    const binSec = (t1 - t0) / NB;
+    const plotW = TL_W - TL_PL - TL_PR;
+    const plotH = TL_H - TL_PT - TL_PB;
+    const bw = plotW / NB;
+    const bins = new Array(NB).fill(null);
+    let hasDataInWindow = false;
+
+    for (const s of tl.data.secs) {
+      if (!validMotion(s)) continue;
+      if (s.sec + 1 <= t0 || s.sec >= t1) continue;
+
+      hasDataInWindow = true;
+      if (s.motion < motionView.threshold) continue;
+
+      const first = Math.max(
+        0, Math.floor((s.sec - t0) / binSec)
+      );
+      const last = Math.min(
+        NB - 1, Math.ceil((s.sec + 1 - t0) / binSec) - 1
+      );
+
+      for (let i = first; i <= last; i++) {
+        if (bins[i] == null || s.motion > bins[i]) {
+          bins[i] = s.motion;
+        }
+      }
+    }
+
+    let g =
+      '<rect x="' + TL_PL + '" y="' + TL_PT +
+      '" width="' + plotW + '" height="' + plotH +
+      '" fill="none" stroke="#2a3643"/>';
+
+    let any = false;
+    let clipped = false;
+
+    for (let i = 0; i < NB; i++) {
+      const value = bins[i];
+      if (value == null) continue;
+
+      any = true;
+      if (value > motionView.max) clipped = true;
+
+      const h = Math.max(
+        2, Math.min(1, value / motionView.max) * plotH
+      );
+
+      g +=
+        '<rect x="' + (TL_PL + i * bw + 0.5).toFixed(1) +
+        '" y="' + (TL_PT + plotH - h).toFixed(1) +
+        '" width="' + Math.max(1, bw - 1).toFixed(1) +
+        '" height="' + h.toFixed(1) +
+        '" fill="' + TAG_COLOR.motion + '"/>';
+    }
+
+    const thresholdY = TL_PT + plotH *
+      (1 - Math.min(1, motionView.threshold / motionView.max));
+
+    g +=
+      '<line x1="' + TL_PL +
+      '" x2="' + (TL_PL + plotW) +
+      '" y1="' + thresholdY.toFixed(1) +
+      '" y2="' + thresholdY.toFixed(1) +
+      '" stroke="#ffb4a9" stroke-width="1" ' +
+      'stroke-dasharray="4 3"/>';
+
+    g +=
+      '<text x="4" y="' + (TL_PT + 10) +
+      '" font-size="10" fill="#aebbc9">' +
+      motionView.max.toFixed(1) + '</text>' +
+      '<text x="4" y="' + (TL_PT + plotH) +
+      '" font-size="10" fill="#aebbc9">0</text>' +
+      '<text x="' + (TL_PL + 4) +
+      '" y="' + (TL_PT + 12) +
+      '" font-size="11" fill="' + TAG_COLOR.motion + '">' +
+      '体動 m/s²（棒内の最大値）</text>';
+
+    if (!any) {
+      const message = hasDataInWindow
+        ? "この範囲にしきい値以上の体動はありません"
+        : "この範囲に体動データはありません";
+
+      g +=
+        '<text x="' + (TL_PL + 8) +
+        '" y="' + (TL_PT + plotH / 2 + 20) +
+        '" font-size="11" fill="#aebbc9">' +
+        esc(message) + '</text>';
+    }
+
+    if (clipped) {
+      g +=
+        '<text x="' + (TL_PL + 4) +
+        '" y="' + (TL_PT + 27) +
+        '" font-size="10" fill="#ffb4a9">' +
+        '上端を超えた値あり</text>';
+    }
+
+    return g;
+  };
+
+  const originalRender = renderTimeline;
+
+  renderTimeline = function () {
+    originalRender();
+    if (!tl.data) return;
+
+    const tag = selectedTag();
+    const isMotion = tag === "motion";
+    controls.hidden = !isMotion;
+
+    $("tl-motion-th-value").textContent =
+      motionView.threshold.toFixed(2) + " m/s²";
+    $("tl-motion-max-value").textContent =
+      motionView.max.toFixed(1) + " m/s²";
+
+    $("tl-listen").disabled = isMotion;
+
+    if (motionView.lastTag !== tag) {
+      $("tl-audio").innerHTML = "";
+      $("tl-msg").textContent = isMotion
+        ? "体動そのものに音声はありません。音を聴くには音声タグを選んでください。"
+        : "";
+      motionView.lastTag = tag;
+    }
+
+    if (isMotion && tl.data.secs.length) {
+      const t0 = tl.winStart;
+      const t1 = tl.winStart + tl.winLen;
+      const note = motionView.threshold > motionView.max
+        ? "（しきい値がグラフ上端を超えています）"
+        : "";
+
+      $("tl-info").textContent =
+        "表示：" + fmtTime(t0 * 1000) +
+        " 〜 " + fmtTime(t1 * 1000) +
+        "（記録の終了 " + fmtTime(tl.total * 1000) + "）" +
+        "　体動：各棒に含まれる1秒平均の最大値" + note;
+    }
+  };
+
+  $("tl-motion-th").addEventListener("input", (e) => {
+    motionView.threshold = Number(e.target.value);
+    renderTimeline();
+  });
+
+  $("tl-motion-max").addEventListener("input", (e) => {
+    motionView.max = Number(e.target.value);
+    renderTimeline();
+  });
+
+  if (tl.data) renderTimeline();
+})();
+</script>
+
 </body>
 </html>
