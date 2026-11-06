@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
 <meta name="theme-color" content="#000000">
 <meta http-equiv="Cache-Control" content="no-cache">
-<title>SomnoLog V89 基準音圧版</title>
+<title>SomnoLog V90 基準音圧版</title>
 <style>
 :root{color-scheme:dark}
 *{box-sizing:border-box}
@@ -93,7 +93,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 1-1 起動・QR読み取り -->
 <main id="page-start" class="page" hidden>
   <header class="head">
-    <h1 class="app-name">SomnoLog V89</h1>
+    <h1 class="app-name">SomnoLog V90</h1>
     <span class="tag">患者情報確認</span>
   </header>
 
@@ -127,7 +127,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
   <div class="update-area">
     <h2 class="update-title">アプリの更新</h2>
     <section class="card">
-      <div class="kv"><span>現在のバージョン</span><b id="ver-text">SomnoLog V89</b></div>
+      <div class="kv"><span>現在のバージョン</span><b id="ver-text">SomnoLog V90</b></div>
       <button id="upd-reload" class="sub">最新版に変更（キャッシュを避けて再読み込み）</button>
       <p id="upd-msg" class="muted" hidden aria-live="polite"></p>
     </section>
@@ -155,7 +155,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 記録画面 -->
 <main id="page-record" class="page" hidden>
   <header class="head">
-    <h1 class="app-name">SomnoLog V89</h1>
+    <h1 class="app-name">SomnoLog V90</h1>
     <div style="display:flex;align-items:center;gap:10px">
       <button id="rec-back" class="sub mini" type="button">戻る</button>
       <span id="rec-badge" class="tag">待機中</span>
@@ -1470,7 +1470,7 @@ registerProcessor("pcm-tap", PcmTap);`;
 <script>
 "use strict";
 /* ===== バージョン ===== */
-const APP_VERSION = 89;
+const APP_VERSION = 90;
 const APP = "SomnoLogV" + APP_VERSION + "_ref";
 
 /* ===== 更新の取得元（GitHub） ===== */
@@ -3559,6 +3559,29 @@ function tagGraphSvg(tag, t0, t1) {
   const lineMults = (ceilR <= 8 ? [1, 2, 3, 4, 6, 8] : [1, 2, 4, 8, 16, 32, 64]).filter((m) => m <= ceilR);
 
   let g = '<rect x="' + TL_PL + '" y="' + TL_PT + '" width="' + plotW + '" height="' + plotH + '" fill="none" stroke="#2a3643"/>';
+  // 体動を上から重ねる（V90、秀司のスクショ＝元の形）: 音の棒は下から、体動の棒は上から。
+  // いびきと体動が重なった所＝眠りの浅い所が一目で分かる。設定は体動タグのスライダーと共用。
+  {
+    const mTh = tl.motionThresh != null ? tl.motionThresh : 0.05;
+    const mCeil = tl.motionCeil || 0.3;
+    const mBins = new Array(NB).fill(null);
+    for (const r of tl.data.secs) {
+      if (r.motion == null) continue;
+      const v = r.motion * 9.80665;
+      if (v < mTh) continue;
+      const s = r.sec;
+      if (s < t0 || s > t1) continue;
+      const i = Math.min(NB - 1, Math.floor((s - t0) / binSec));
+      if (mBins[i] == null || v > mBins[i]) mBins[i] = v;
+    }
+    for (let i = 0; i < NB; i++) {
+      const v = mBins[i];
+      if (v == null) continue;
+      const h = Math.max(2, Math.min(plotH, v / mCeil * plotH));
+      g += '<rect x="' + (TL_PL + i * bw + 0.5).toFixed(1) + '" y="' + TL_PT + '" width="' +
+        Math.max(1, bw - 1).toFixed(1) + '" height="' + h.toFixed(1) + '" fill="' + TAG_COLOR.motion + '" opacity="0.85"/>';
+    }
+  }
   for (const m of lineMults) {
     const y = yOfMult(m);
     g += '<line x1="' + TL_PL + '" x2="' + (TL_PL + plotW) + '" y1="' + y.toFixed(1) + '" y2="' + y.toFixed(1) + '" stroke="#ffd54a" stroke-opacity="0.55" stroke-width="1" stroke-dasharray="5 4"/>';
@@ -3689,7 +3712,8 @@ function renderTimeline() {
   $("tl-legend").innerHTML = isMotion
     ? ""
     : '<span><i style="background:' + TAG_COLOR[tag] + '"></i>' + esc(TAG_NAME[tag]) + "</span>" +
-      '<span><i style="background:' + SAVED_BAR_COLOR + '"></i>保存した音声</span>';
+      '<span><i style="background:' + SAVED_BAR_COLOR + '"></i>保存した音声</span>' +
+      '<span><i style="background:' + TAG_COLOR.motion + '"></i>体動（上から）</span>';
   const adj = $("tl-motion-adj");
   if (adj) {
     adj.hidden = !isMotion;
