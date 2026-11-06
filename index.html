@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
 <meta name="theme-color" content="#000000">
 <meta http-equiv="Cache-Control" content="no-cache">
-<title>SomnoLog V85 基準音圧版</title>
+<title>SomnoLog V86 基準音圧版</title>
 <style>
 :root{color-scheme:dark}
 *{box-sizing:border-box}
@@ -93,7 +93,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 1-1 起動・QR読み取り -->
 <main id="page-start" class="page" hidden>
   <header class="head">
-    <h1 class="app-name">SomnoLog V85</h1>
+    <h1 class="app-name">SomnoLog V86</h1>
     <span class="tag">患者情報確認</span>
   </header>
 
@@ -127,7 +127,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
   <div class="update-area">
     <h2 class="update-title">アプリの更新</h2>
     <section class="card">
-      <div class="kv"><span>現在のバージョン</span><b id="ver-text">SomnoLog V85</b></div>
+      <div class="kv"><span>現在のバージョン</span><b id="ver-text">SomnoLog V86</b></div>
       <button id="upd-reload" class="sub">最新版に変更（キャッシュを避けて再読み込み）</button>
       <p id="upd-msg" class="muted" hidden aria-live="polite"></p>
     </section>
@@ -155,7 +155,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 記録画面 -->
 <main id="page-record" class="page" hidden>
   <header class="head">
-    <h1 class="app-name">SomnoLog V85</h1>
+    <h1 class="app-name">SomnoLog V86</h1>
     <div style="display:flex;align-items:center;gap:10px">
       <button id="rec-back" class="sub mini" type="button">戻る</button>
       <span id="rec-badge" class="tag">待機中</span>
@@ -1463,7 +1463,7 @@ registerProcessor("pcm-tap", PcmTap);`;
 <script>
 "use strict";
 /* ===== バージョン ===== */
-const APP_VERSION = 85;
+const APP_VERSION = 86;
 const APP = "SomnoLogV" + APP_VERSION + "_ref";
 
 /* ===== 更新の取得元（GitHub） ===== */
@@ -1492,8 +1492,8 @@ const DB_WAIT_MS = 8000;
 const PLOG_LEN = Math.ceil(SR * RING_SEC / FRAME) + 8;
 const VOICE_PAD = 3;
 const TAG_ORDER = ["snore", "unknown", "env", "speech"];
-const TAG_COLOR = { snore: "#4a90d9", unknown: "#ff9f43", env: "#4caf7a", speech: "#9aa5b1" };
-const TAG_NAME = { snore: "いびき", unknown: "判定不能", env: "環境音", speech: "人声" };
+const TAG_COLOR = { snore: "#4a90d9", unknown: "#ff9f43", env: "#4caf7a", speech: "#9aa5b1", motion: "#e0567a" };
+const TAG_NAME = { snore: "いびき", unknown: "判定不能", env: "環境音", speech: "人声", motion: "体動" };
 const TL_BINS = 60; // タイムラインの棒の数（1本分の時間＝表示幅÷60）
 
 /* ===== 基準音圧の設定 ===== */
@@ -3438,7 +3438,7 @@ function initTimeline(sess, secs, evs) {
   tl.zoomSec = ZOOM_DEFAULT;
   tl.winStart = 0;
   tl.cursor = 0;
-  tl.tags = { snore: true, unknown: false, env: false, speech: false };
+  tl.tags = { snore: true, unknown: false, env: false, speech: false, motion: false };
   $("tl-zoom").value = String(ZOOM_DEFAULT);
   $("tl-msg").textContent = "";
   $("tl-audio").innerHTML = "";
@@ -3473,6 +3473,7 @@ function renderTagBar() {
     b.onclick = () => {
       if (tl.tags[t]) return;
       for (const k of TAG_ORDER) tl.tags[k] = false;
+      tl.tags.motion = false;
       tl.tags[t] = true;
       PLAY.list = [];
       $("tl-audio").innerHTML = "";
@@ -3481,6 +3482,20 @@ function renderTagBar() {
     };
     box.appendChild(b);
   }
+  // 体動タグ（音ではなく、記録中の体の動きを時間で見る）。秀司の指摘で追加（V86）。
+  const mb = document.createElement("button");
+  mb.className = "tagbtn" + (tl.tags.motion ? "" : " off");
+  mb.innerHTML = '<i style="background:' + TAG_COLOR.motion + '"></i>' + esc(TAG_NAME.motion);
+  mb.onclick = () => {
+    if (tl.tags.motion) return;
+    for (const k of TAG_ORDER) tl.tags[k] = false;
+    tl.tags.motion = true;
+    PLAY.list = [];
+    $("tl-audio").innerHTML = "";
+    setSaveEnabled(false);
+    renderTimeline();
+  };
+  box.appendChild(mb);
 }
 
 function selectedTag() {
@@ -3564,6 +3579,41 @@ function tagGraphSvg(tag, t0, t1) {
   return g;
 }
 
+// 体動のグラフ。1秒ごとの動きの大きさを棒の高さで出す。天井はその晩の最大に合わせる（V86）。
+function motionGraphSvg(t0, t1) {
+  const NB = TL_BINS;
+  const binSec = tl.winLen / NB;
+  const plotW = TL_W - TL_PL - TL_PR;
+  const plotH = TL_H - TL_PT - TL_PB;
+  const bw = plotW / NB;
+  let maxM = 0;
+  for (const r of tl.data.secs) if (r.motion != null && r.motion > maxM) maxM = r.motion;
+  const bins = new Array(NB).fill(null);
+  for (const r of tl.data.secs) {
+    if (r.motion == null) continue;
+    const s = r.sec;
+    if (s < t0 || s > t1) continue;
+    const i = Math.min(NB - 1, Math.floor((s - t0) / binSec));
+    if (bins[i] == null || r.motion > bins[i]) bins[i] = r.motion;
+  }
+  let g = '<rect x="' + TL_PL + '" y="' + TL_PT + '" width="' + plotW + '" height="' + plotH + '" fill="none" stroke="#2a3643"/>';
+  let any = false;
+  for (let i = 0; i < NB; i++) {
+    const v = bins[i];
+    if (v == null || v <= 0 || maxM <= 0) continue;
+    any = true;
+    const h = Math.max(3, v / maxM * (plotH - 4));
+    g += '<rect x="' + (TL_PL + i * bw + 0.5).toFixed(1) + '" y="' + (TL_PT + plotH - h).toFixed(1) +
+      '" width="' + Math.max(1, bw - 1).toFixed(1) + '" height="' + h.toFixed(1) + '" fill="' + TAG_COLOR.motion + '"/>';
+  }
+  if (!any) {
+    g += '<text x="' + (TL_PL + 8) + '" y="' + (TL_PT + plotH / 2 + 30) + '" font-size="12" fill="#aebbc9">体動データがありません</text>';
+  }
+  g += '<text x="' + (TL_PL + 4) + '" y="' + (TL_PT + 12) + '" font-size="11" fill="' + TAG_COLOR.motion + '">' +
+    esc(TAG_NAME.motion) + "（棒1本＝" + round1(binSec) + "秒）</text>";
+  return g;
+}
+
 function renderTimeline() {
   if (!tl.data) return;
   clampTl();
@@ -3592,14 +3642,16 @@ function renderTimeline() {
     '<text x="' + (TL_W - TL_PR) + '" y="' + (TL_H - 6) + '" font-size="10" fill="#aebbc9" text-anchor="end">' + fmtTime(t1 * 1000) + "</text>";
 
   const tag = selectedTag();
+  const isMotion = !!tl.tags.motion;
   box.innerHTML = '<svg viewBox="0 0 ' + TL_W + " " + TL_H + '" xmlns="http://www.w3.org/2000/svg">' +
-    tagGraphSvg(tag, t0, t1) + cursorLine + axisText + "</svg>";
+    (isMotion ? motionGraphSvg(t0, t1) : tagGraphSvg(tag, t0, t1)) + cursorLine + axisText + "</svg>";
 
-  $("tl-legend").innerHTML =
-    '<span><i style="background:' + TAG_COLOR[tag] + '"></i>' + esc(TAG_NAME[tag]) + "</span>" +
-    '<span><i style="background:' + SAVED_BAR_COLOR + '"></i>保存した音声</span>';
+  $("tl-legend").innerHTML = isMotion
+    ? '<span><i style="background:' + TAG_COLOR.motion + '"></i>' + esc(TAG_NAME.motion) + "</span>"
+    : '<span><i style="background:' + TAG_COLOR[tag] + '"></i>' + esc(TAG_NAME[tag]) + "</span>" +
+      '<span><i style="background:' + SAVED_BAR_COLOR + '"></i>保存した音声</span>';
   $("tl-info").textContent = "表示：" + fmtTime(t0 * 1000) + " 〜 " + fmtTime(t1 * 1000) +
-    "（記録の終了 " + fmtTime(tl.total * 1000) + "）　下端＝室内の環境音、高さ＝「あ〜」の何倍か";
+    "（記録の終了 " + fmtTime(tl.total * 1000) + "）　" + (isMotion ? "体動の大きさ" : "下端＝室内の環境音、高さ＝「あ〜」の何倍か");
   $("tl-cur-text").textContent = "黄色い線：記録から " + fmtTime(tl.cursor * 1000) +
     "（" + fmtClock(tl.data.sess.startedAt + tl.cursor * 1000) + "）";
 }
@@ -3654,6 +3706,7 @@ async function buildRangePcm(fromMs, toMs, list) {
 
 // 黄色い線の位置の棒1本分（表示幅÷60）の時間の音を再生する
 async function listenAtCursor() {
+  if (tl.tags && tl.tags.motion) { $("tl-msg").textContent = "体動に音声はありません。"; return; }
   if (tl.data && tl.data.engine) {
     // エンジン記録も旧記録と同じ物差し：黄色い線の棒（区間）の中にあるイベントの音を、その場で読み込んで再生する
     const msg = $("tl-msg"), box = $("tl-audio");
