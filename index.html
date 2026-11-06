@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
 <meta name="theme-color" content="#000000">
 <meta http-equiv="Cache-Control" content="no-cache">
-<title>SomnoLog V92 基準音圧版</title>
+<title>SomnoLog V93 基準音圧版</title>
 <style>
 :root{color-scheme:dark}
 *{box-sizing:border-box}
@@ -93,7 +93,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 1-1 起動・QR読み取り -->
 <main id="page-start" class="page" hidden>
   <header class="head">
-    <h1 class="app-name">SomnoLog V92</h1>
+    <h1 class="app-name">SomnoLog V93</h1>
     <span class="tag">患者情報確認</span>
   </header>
 
@@ -127,7 +127,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
   <div class="update-area">
     <h2 class="update-title">アプリの更新</h2>
     <section class="card">
-      <div class="kv"><span>現在のバージョン</span><b id="ver-text">SomnoLog V92</b></div>
+      <div class="kv"><span>現在のバージョン</span><b id="ver-text">SomnoLog V93</b></div>
       <button id="upd-reload" class="sub">最新版に変更（キャッシュを避けて再読み込み）</button>
       <p id="upd-msg" class="muted" hidden aria-live="polite"></p>
     </section>
@@ -155,7 +155,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 記録画面 -->
 <main id="page-record" class="page" hidden>
   <header class="head">
-    <h1 class="app-name">SomnoLog V92</h1>
+    <h1 class="app-name">SomnoLog V93</h1>
     <div style="display:flex;align-items:center;gap:10px">
       <button id="rec-back" class="sub mini" type="button">戻る</button>
       <span id="rec-badge" class="tag">待機中</span>
@@ -1505,7 +1505,7 @@ registerProcessor("pcm-tap", PcmTap);`;
 <script>
 "use strict";
 /* ===== バージョン ===== */
-const APP_VERSION = 92;
+const APP_VERSION = 93;
 const APP = "SomnoLogV" + APP_VERSION + "_ref";
 
 /* ===== 更新の取得元（GitHub） ===== */
@@ -4248,6 +4248,64 @@ function zipErrText(e) {
 }
 
 // V63エンジン記録の共有：圧縮のままZIPを書き出してダウンロードする
+// エンジン書き出しが「置き場所が無い」で落ちた端末向けの迂回路（V93）:
+// 軽い読み込み（実績のある経路）＋クリップを1件ずつキーで取り出して、同じ中身のZIPを組む。
+async function exportEngineFallback(sid) {
+  ZIP_STEP = "書き出し（迂回路）";
+  const d = await SleepEngine.getSessionData(sid, { light: true });
+  if (!d || !d.session) throw new Error("記録が見つかりません。");
+  const session = d.session, rows = d.rows || [], events = d.events || [];
+  const startedISO = new Date(session.startedAt).toISOString();
+  const p0 = (session.patient && typeof session.patient === "object") ? session.patient : {};
+  const patient = { clinic: "", chartNo: "", name: "", ...p0 };
+  const enc = new TextEncoder();
+  const manifest = {
+    app: "SomnoLog", engine: SleepEngine.ENGINE_VERSION, schema: SleepEngine.SCHEMA_VERSION,
+    sessionId: sid, startedAt: startedISO, exportedAt: new Date().toISOString(),
+    mode: session.mode || "opus"
+  };
+  const metadata = {
+    sessionId: sid, startedAt: startedISO,
+    endedAt: session.endedAt ? new Date(session.endedAt).toISOString() : null,
+    durationSec: session.durationSec || 0, patient,
+    baselineDb: session.baselineDb == null ? null : session.baselineDb + 72,
+    counts: session.counts || {}
+  };
+  const timeline = {
+    session: { startedAt: startedISO, patient },
+    timeSeriesLogs: rows.map((r) => ({
+      sec: r.sec, elapsedMs: Math.round(r.sec * 1000),
+      timestamp: new Date(session.startedAt + Math.round(r.sec * 1000)).toISOString(),
+      db: r.db == null ? null : r.db + 72, motionG: r.motionG, motionMaxG: r.motionMaxG
+    }))
+  };
+  const markers = {
+    clips: events.map((e) => ({
+      fileName: e.fileName, audioFile: e.fileName,
+      startMs: e.startMs, elapsedMs: e.startMs, startSec: e.startSec,
+      durationSec: e.durationSec, category: e.category, label: e.label,
+      displayCategory: e.displayCategory,
+      peakDb: e.peakDb == null ? null : e.peakDb + 72, meanDb: e.meanDb == null ? null : e.meanDb + 72,
+      motionMaxG: e.motionMaxG
+    }))
+  };
+  const zip = new ZipWriter();
+  zip.add("manifest.json", enc.encode(JSON.stringify(manifest, null, 1)));
+  zip.add("session_metadata.json", enc.encode(JSON.stringify(metadata, null, 1)));
+  zip.add("sensing_timeline.json", enc.encode(JSON.stringify(timeline)));
+  zip.add("event_markers.json", enc.encode(JSON.stringify(markers, null, 1)));
+  for (const e of events) {
+    if (!e.fileName) continue;
+    const blob = await SleepEngine.getClipBlob(e.id).catch(() => null);
+    if (!blob) continue;
+    zip.add(e.fileName, new Uint8Array(await blob.arrayBuffer()));
+  }
+  const dt = new Date(session.startedAt);
+  const fileName = "SomnoLog_" + dt.getFullYear() + pad(dt.getMonth() + 1, 2) + pad(dt.getDate(), 2) +
+    "_" + pad(dt.getHours(), 2) + pad(dt.getMinutes(), 2) + ".zip";
+  return { blob: zip.finish(), fileName };
+}
+
 async function startShareEngine() {
   ZIP_STEP = "エンジン記録の書き出し";
   if (S.saving) return;
@@ -4257,7 +4315,13 @@ async function startShareEngine() {
   try {
     progress.set("記録を読み込んでいます…", 0);
     await yieldToScreen();
-    const out = await SleepEngine.exportSession(SH.sid);
+    let out;
+    try {
+      out = await SleepEngine.exportSession(SH.sid);
+    } catch (e) {
+      if (!e || e.name !== "NotFoundError") throw e;
+      out = await exportEngineFallback(SH.sid);
+    }
     SH.zipName = out.fileName;
     progress.set("ダウンロードを開始しています…", 100);
     await yieldToScreen();
