@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
 <meta name="theme-color" content="#000000">
 <meta http-equiv="Cache-Control" content="no-cache">
-<title>SomnoLog V91 基準音圧版</title>
+<title>SomnoLog V92 基準音圧版</title>
 <style>
 :root{color-scheme:dark}
 *{box-sizing:border-box}
@@ -93,7 +93,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 1-1 起動・QR読み取り -->
 <main id="page-start" class="page" hidden>
   <header class="head">
-    <h1 class="app-name">SomnoLog V91</h1>
+    <h1 class="app-name">SomnoLog V92</h1>
     <span class="tag">患者情報確認</span>
   </header>
 
@@ -127,7 +127,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
   <div class="update-area">
     <h2 class="update-title">アプリの更新</h2>
     <section class="card">
-      <div class="kv"><span>現在のバージョン</span><b id="ver-text">SomnoLog V91</b></div>
+      <div class="kv"><span>現在のバージョン</span><b id="ver-text">SomnoLog V92</b></div>
       <button id="upd-reload" class="sub">最新版に変更（キャッシュを避けて再読み込み）</button>
       <p id="upd-msg" class="muted" hidden aria-live="polite"></p>
     </section>
@@ -155,7 +155,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 記録画面 -->
 <main id="page-record" class="page" hidden>
   <header class="head">
-    <h1 class="app-name">SomnoLog V91</h1>
+    <h1 class="app-name">SomnoLog V92</h1>
     <div style="display:flex;align-items:center;gap:10px">
       <button id="rec-back" class="sub mini" type="button">戻る</button>
       <span id="rec-badge" class="tag">待機中</span>
@@ -470,7 +470,18 @@ const SleepEngine = (() => {
   }
   const put = (s, o) => tx(s, "readwrite", (x) => x.put(o));
   const get = (s, k) => tx(s, "readonly", (x) => x.get(k));
-  const byIndex = (s, sid) => tx(s, "readonly", (x) => x.index("sid").getAll(IDBKeyRange.only(sid)));
+  const byIndex = async (s, sid) => {
+    try {
+      return await tx(s, "readonly", (x) => x.index("sid").getAll(IDBKeyRange.only(sid)));
+    } catch (e) {
+      // 索引が無い端末では、全件から拾う（V92、iPhoneのZIP失敗対策）
+      if (e && e.name === "NotFoundError") {
+        const all = await tx(s, "readonly", (x) => x.getAll());
+        return (all || []).filter((r) => r && r.sid === sid);
+      }
+      throw e;
+    }
+  };
 
   /* ---------- 状態 ---------- */
   let st = null;             // 現在の記録
@@ -1494,7 +1505,7 @@ registerProcessor("pcm-tap", PcmTap);`;
 <script>
 "use strict";
 /* ===== バージョン ===== */
-const APP_VERSION = 91;
+const APP_VERSION = 92;
 const APP = "SomnoLogV" + APP_VERSION + "_ref";
 
 /* ===== 更新の取得元（GitHub） ===== */
@@ -1795,7 +1806,18 @@ const DB = (() => {
     putMany: (store, arr) => run(store, "readwrite", (s) => { arr.forEach((o) => s.put(o)); return null; }),
     get: (store, key) => run(store, "readonly", (s) => s.get(key)),
     all: (store) => run(store, "readonly", (s) => s.getAll()),
-    byIndex: (store, idx, key) => run(store, "readonly", (s) => s.index(idx).getAll(IDBKeyRange.only(key))),
+    byIndex: async (store, idx, key) => {
+      try {
+        return await run(store, "readonly", (s) => s.index(idx).getAll(IDBKeyRange.only(key)));
+      } catch (e) {
+        // 索引が無い端末では、全件から拾う（V92、iPhoneのZIP失敗対策）
+        if (e && e.name === "NotFoundError") {
+          const all = await run(store, "readonly", (s) => s.getAll());
+          return (all || []).filter((r) => r && r[idx] === key);
+        }
+        throw e;
+      }
+    },
     delMany: (store, keys) => run(store, "readwrite", (s) => { keys.forEach((k) => s.delete(k)); return null; }),
   };
 })();
@@ -4218,8 +4240,16 @@ async function shareScope() {
   };
 }
 
+// ZIP作成の失敗箇所を画面で特定するための段取りメモ（V92）
+let ZIP_STEP = "";
+function zipErrText(e) {
+  return "ZIPを作れませんでした: " + (e && e.name ? e.name + " / " : "") + (e && e.message ? e.message : e) +
+    (ZIP_STEP ? "（失敗した所：" + ZIP_STEP + "）" : "");
+}
+
 // V63エンジン記録の共有：圧縮のままZIPを書き出してダウンロードする
 async function startShareEngine() {
+  ZIP_STEP = "エンジン記録の書き出し";
   if (S.saving) return;
   S.saving = true;
   setButtons();
@@ -4252,7 +4282,7 @@ async function startShareEngine() {
     );
   } catch (e) {
     console.error(e);
-    shMsg("ZIPを作れませんでした: " + e.message, true);
+    shMsg(zipErrText(e), true);
   } finally {
     progress.remove();
     S.saving = false;
@@ -4262,10 +4292,12 @@ async function startShareEngine() {
 }
 
 async function startShare() {
+  ZIP_STEP = "記録の種類の判定";
   if (!SH.sid) return;
   shMsg("", false);
   if (await engineHas(SH.sid)) {
     // 人声と判定された音声が残っている記録は、作る前の確認ダイアログを通す（旧方式と同じ作法）
+    ZIP_STEP = "人声の確認";
     const d = await SleepEngine.getSessionData(SH.sid, { light: true });
     const talks = d ? d.events.filter((e) => e.category === "talk" && e.fileName) : [];
     if (talks.length) {
@@ -4288,7 +4320,7 @@ async function startShare() {
     await makeZip();
   } catch (e) {
     console.error(e);
-    shMsg("ZIPを作れませんでした: " + e.message, true);
+    shMsg(zipErrText(e), true);
   }
 }
 
@@ -4341,9 +4373,11 @@ async function makeZip() {
     progress.set("記録を読み込んでいます…", 0);
     await yieldToScreen();
 
+    ZIP_STEP = "記録の読み込み";
     const sess = await DB.get("sessions", SH.sid);
     if (!sess) throw new Error("記録が見つかりませんでした。");
 
+    ZIP_STEP = "対象の抽出";
     const sc = await shareScope();
     const items = sc.snores.concat(sc.speeches).sort((a, b) => a.startMs - b.startMs);
     const total = items.length;
@@ -4360,6 +4394,7 @@ async function makeZip() {
     );
     await yieldToScreen();
 
+    ZIP_STEP = "音声の処理";
     for (let i = 0; i < total; i++) {
       const e = items[i];
       const clip = await DB.get("clips", e.clipId);
@@ -4448,7 +4483,7 @@ async function makeZip() {
     );
   } catch (e) {
     console.error(e);
-    const message = "ZIPを作れませんでした: " + e.message;
+    const message = zipErrText(e);
     shMsg(message, true);
     if (!$("rv-dialog").hidden) alert(message);
   } finally {
