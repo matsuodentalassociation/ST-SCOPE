@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
 <meta name="theme-color" content="#000000">
 <meta http-equiv="Cache-Control" content="no-cache">
-<title>SomnoLog V98 基準音圧版</title>
+<title>SomnoLog V99 基準音圧版</title>
 <style>
 :root{color-scheme:dark}
 *{box-sizing:border-box}
@@ -93,18 +93,20 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 1-1 起動・QR読み取り -->
 <main id="page-start" class="page" hidden>
   <header class="head">
-    <h1 class="app-name">SomnoLog V98</h1>
+    <h1 class="app-name">SomnoLog V99</h1>
     <span class="tag">患者情報確認</span>
   </header>
 
   <div id="scan-msg" class="err" hidden></div>
 
+  <button id="upd-reload" class="sub">アプリの更新</button>
+  <p id="upd-msg" class="muted" hidden aria-live="polite"></p>
   <section class="card">
+    <button id="usage-btn" class="warnbtn">使い方を見る</button>
     <button id="cam-btn">QRコードを読む</button>
     <button id="qr-file-btn">QR画像を選択</button>
     <input id="qr-file" type="file" accept="image/*" hidden>
-    <button id="usage-btn" class="warnbtn">使い方を見る</button>
-    <button id="back-rec-start" class="primary" hidden>記録画面に戻る</button>
+    <button id="back-rec-start" class="primary" hidden>睡眠記録画面に移動</button>
   </section>
 
   <section id="cam-box" class="card" hidden>
@@ -116,22 +118,15 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
   <section id="usage-box" class="card" hidden>
     <h2>使い方</h2>
     <ol class="steps">
-      <li>診療所の画面に表示されたQRを読み取ります。</li>
-      <li>標準のカメラアプリでQRを読むと、この画面が自動で開きます。</li>
+      <li>「アプリの更新」を押して、最新の状態にしてください。</li>
+      <li>あなたに発行されたQRを、カメラで読み取ります。</li>
+      <li>カメラが使えない場合は、メールで送られてきたQRコードを「QR画像を選択」で読み込みます。</li>
       <li>患者情報（診療所名・患者名など）が正しいか確認します。</li>
       <li>正しければ「始める」を押すと、記録の画面に進みます。</li>
-      <li>違う場合は「情報が間違っています」を押してください。診療所にご連絡ください。</li>
-      <li>すでに患者情報が登録されている場合は、「記録画面に戻る」を押すと、QRを読み直さずに記録の画面に戻れます。</li>
+      <li>違う場合は「情報が間違っています」を押して、診療所にご連絡ください。</li>
+      <li>すでに患者情報が登録されている場合は、「睡眠記録画面に移動」を押すと、QRを読み直さずに記録の画面に戻れます。</li>
     </ol>
   </section>
-  <div class="update-area">
-    <h2 class="update-title">アプリの更新</h2>
-    <section class="card">
-      <div class="kv"><span>現在のバージョン</span><b id="ver-text">SomnoLog V98</b></div>
-      <button id="upd-reload" class="sub">最新版に変更（キャッシュを避けて再読み込み）</button>
-      <p id="upd-msg" class="muted" hidden aria-live="polite"></p>
-    </section>
-  </div>
   <canvas id="scan-canvas" hidden></canvas>
 </main>
 
@@ -148,14 +143,14 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
     <div class="field"><span>ログ共有通知先（宛先）</span><b id="cf-email"></b></div>
     <button id="cf-ok" class="primary">始める</button>
     <button id="cf-ng" class="warnbtn">情報が間違っています</button>
-    <button id="back-rec-confirm" class="sub" hidden>記録画面に戻る</button>
+    <button id="back-rec-confirm" class="sub" hidden>睡眠記録画面に移動</button>
   </section>
 </main>
 
 <!-- 記録画面 -->
 <main id="page-record" class="page" hidden>
   <header class="head">
-    <h1 class="app-name">SomnoLog V98</h1>
+    <h1 class="app-name">SomnoLog V99</h1>
     <div style="display:flex;align-items:center;gap:10px">
       <button id="rec-back" class="sub mini" type="button">戻る</button>
       <span id="rec-badge" class="tag">待機中</span>
@@ -166,14 +161,37 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
   <section id="rec-usage-box" class="card" hidden>
     <h2>使い方</h2>
     <ol class="steps">
-      <li>「マイクを許可」を押して、録音の許可をください。</li>
-      <li>「iPhoneの音圧調整」のスライダーで、録音の音量を調整します。このスライダーは、iPhoneの音圧を合わせるためだけに使います。</li>
-      <li>「基準音圧を測定する」を押すと、まず2秒間静かにして環境音を測り、続けて2秒間「あ〜」と声を出します。</li>
-      <li>測定が終わると、バーの下端が環境音、白い線が「あ〜」の大きさ、上端が記録中に一番大きかった音になります。</li>
-      <li>基準音圧は端末に保存されるので、次回からは測らなくて大丈夫です。測り直すときだけ「基準音圧を測り直す」を押してください。</li>
-      <li>音量を変えたら、基準音圧を測り直してください。</li>
-      <li>基準音圧を決めたら「記録開始」を押します。「停止」を押すと記録が終わります。</li>
+      <li>「記録の準備」を押して、マイクとモーションセンサーの許可と、基準音の設定をします。</li>
+      <li>「記録開始」を押すと記録が始まります。「停止」を押すと記録が終わります。</li>
       <li>「黒画面に切り替え」を押すと、画面を暗くして記録を続けられます。</li>
+      <li>記録は「記録カレンダーを見る」から確認できます。</li>
+    </ol>
+  </section>
+
+  <section class="card">
+    <button id="prep-btn" class="primary">記録の準備</button>
+    <button id="start-btn" class="primary" disabled>記録開始</button>
+    <button id="btn-enter-black" class="sub" disabled>黒画面に切り替え</button>
+    <button id="stop-btn" class="danger" disabled>停止</button>
+    <button id="history-btn" class="sub">記録カレンダーを見る</button>
+  </section>
+</main>
+
+<!-- 記録の準備 -->
+<main id="page-prep" class="page" hidden>
+  <header class="head">
+    <h1 class="app-name">SomnoLog V99</h1>
+    <button id="prep-back" class="sub mini" type="button">戻る</button>
+  </header>
+
+  <button id="prep-usage-btn" class="warnbtn">使い方を見る</button>
+  <section id="prep-usage-box" class="card" hidden>
+    <h2>使い方</h2>
+    <ol class="steps">
+      <li>「マイクを許可」を押すと、マイクとモーションセンサーの許可をまとめて取ります。</li>
+      <li>「基準音の設定」を押すと、まず2秒間静かにして環境音を測り、続けて2秒間「あ〜」と声を出します。</li>
+      <li>基準音は端末に保存されるので、次回からは測らなくて大丈夫です。</li>
+      <li>基準音が小さい場合は「音圧調整」でマイク感度を上げてから、基準音を測り直してください。</li>
     </ol>
   </section>
 
@@ -188,29 +206,23 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
     <div class="kv"><span>白い線：「あ〜」</span><b id="g-ah">-</b></div>
     <div class="kv"><span>上端：記録中の最大</span><b id="g-top">-</b></div>
     <div class="kv"><span id="level-text">-</span><span id="base-text">待機中</span></div>
-    <label class="muted">iPhoneの音圧調整（録音の音量を変えます）</label>
+    <label class="muted">音圧調整（基準音が小さい場合にマイク感度を上げます）</label>
     <input id="gain" type="range" min="-9" max="9" step="1" value="0">
-    <p class="muted">音量を変えたら、基準音圧を測り直してください。</p>
+    <p class="muted">調整をした後、基準音を測り直してください。</p>
   </section>
 
   <section class="card">
-    <button id="ref-btn" class="primary" disabled>基準音圧を測定する（静か2秒→「あ〜」2秒）</button>
-    <p id="ref-msg" class="muted">基準音圧が未設定です。測定すると、バーの見方が決まります。</p>
-    <button id="ref-play-btn" class="sub" hidden>基準の「あ〜」を聴く</button>
+    <button id="ref-btn" class="primary" disabled>基準音の設定</button>
+    <p id="ref-msg" class="muted">基準音が未設定です。設定すると、バーの見方が決まります。</p>
+    <button id="ref-play-btn" class="sub" hidden>基準音を聴く</button>
   </section>
 
   <section class="card">
-    <button id="motion-btn">モーションセンサーを許可</button>
     <div class="kv"><span>体動（重力除去）</span><b id="motion-text">-</b></div>
     <div class="meter"><i id="motion-bar"></i></div>
   </section>
 
-  <div class="row">
-    <button id="start-btn" class="primary" disabled>記録開始</button>
-    <button id="stop-btn" class="danger" disabled>停止</button>
-  </div>
-  <button id="btn-enter-black" class="sub" disabled>黒画面に切り替え</button>
-  <button id="history-btn" class="sub">記録カレンダーを見る</button>
+  <button id="prep-back2" class="sub">戻る</button>
 </main>
 
 <!-- 記録カレンダー -->
@@ -1515,7 +1527,7 @@ registerProcessor("pcm-tap", PcmTap);`;
 <script>
 "use strict";
 /* ===== バージョン ===== */
-const APP_VERSION = 98;
+const APP_VERSION = 99;
 const APP = "SomnoLogV" + APP_VERSION + "_ref";
 
 /* ===== 更新の取得元（GitHub） ===== */
@@ -1924,8 +1936,9 @@ async function engineDetailData(sid, needClips) {
 function isBusy() { return S.running || S.saving || recActionPending || !!S.refColl; }
 
 /* ===== 画面切り替え ===== */
+let motionOn = false;
 function showPage(name) {
-  ["start", "confirm", "record", "calendar", "detail", "share"].forEach((n) => { $("page-" + n).hidden = n !== name; });
+  ["start", "confirm", "record", "prep", "calendar", "detail", "share"].forEach((n) => { $("page-" + n).hidden = n !== name; });
   window.scrollTo(0, 0);
 }
 
@@ -2376,7 +2389,7 @@ function halfMean(arr, upper, frac) {
 function finishRefEnv() {
   const arr = S.refColl || [];
   if (arr.length < REF_MIN_FRAMES) {
-    refFail("音を十分に取れませんでした。もう一度「基準音圧を測定する」を押してください。");
+    refFail("音を十分に取れませんでした。もう一度「基準音の設定」を押してください。");
     return;
   }
   S.refEnv = round2(halfMean(arr, false));
@@ -2390,7 +2403,7 @@ function finishRefMeasure() {
   const arr = S.refColl || [];
   const env = S.refEnv;
   if (arr.length < REF_MIN_FRAMES) {
-    refFail("音を十分に取れませんでした。もう一度「基準音圧を測定する」を押してください。");
+    refFail("音を十分に取れませんでした。もう一度「基準音の設定」を押してください。");
     return;
   }
   const onset = arr.findIndex((v) => v > S.refEnv + LOUD_DB);
@@ -2702,7 +2715,7 @@ function releaseWake() {
 async function startRec() {
   if (S.running || !S.ctx) return;
   if (!S.patient) { showError("患者情報がありません。最初からQRを読み取ってください。"); showPage("start"); return; }
-  if (!S.ref) { showRefMsg("先に「基準音圧を測定する」を押してください。", true); return; }
+  if (!S.ref) { showRefMsg("先に「基準音の設定」を押してください。", true); return; }
   if (S.ctx.state !== "running") await S.ctx.resume().catch(() => {});
 
   // V63：新しい録音は新エンジンで行う
@@ -2845,13 +2858,13 @@ function updateUI() {
 
 function setButtons() {
   $("rec-back").disabled = isBusy();
-  $("mic-btn").disabled = !!S.ctx;
-  $("mic-btn").textContent = S.ctx ? "マイク許可済み" : "マイクを許可";
+  $("mic-btn").disabled = !!S.ctx && motionOn;
+  $("mic-btn").textContent = S.ctx && motionOn ? "許可済み" : "マイクを許可";
 
   const measuring = !!S.refColl;
   $("ref-btn").disabled = !S.ctx || S.running || measuring;
   $("ref-btn").textContent = measuring ? "測定中…"
-    : (S.ref ? "基準音圧を測り直す（通常は不要です）" : "基準音圧を測定する（静か2秒→「あ〜」2秒）");
+    : (S.ref ? "基準音を測り直す" : "基準音の設定");
   // 設定済みなら測定ボタンを目立たなくし、「もう押さなくていい」状態を見た目でも示す
   $("ref-btn").className = S.ref && !measuring ? "sub" : "primary";
   $("ref-play-btn").hidden = !S.ref;
@@ -4699,6 +4712,7 @@ const toggleBox = (btnId, boxId) => on(btnId, "click", () => { $(boxId).hidden =
 
 toggleBox("usage-btn", "usage-box");
 toggleBox("rec-usage-btn", "rec-usage-box");
+toggleBox("prep-usage-btn", "prep-usage-box");
 toggleBox("cal-usage-btn", "cal-usage-box");
 toggleBox("det-usage-btn", "det-usage-box");
 toggleBox("sh-usage", "sh-usage-box");
@@ -4751,20 +4765,39 @@ on("rec-back", "click", () => {
 });
 
 on("mic-btn", "click", async () => {
-  if (S.ctx) return;
-  const AC = window.AudioContext || window.webkitAudioContext;
-  if (!AC) {
-    showMicMsg("この端末では音声処理を使えません。");
-    return;
+  if (S.ctx && motionOn) return;
+  // iPhoneではモーションの許可をタップの瞬間に先に出す必要があるため、最初に同期的に発行する
+  let motionPromise = null;
+  if (!motionOn && typeof DeviceMotionEvent !== "undefined" && typeof DeviceMotionEvent.requestPermission === "function") {
+    try { motionPromise = DeviceMotionEvent.requestPermission(); } catch (e) { motionPromise = null; }
   }
-  const ctx = new AC();
+  if (!S.ctx) {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) {
+      showMicMsg("この端末では音声処理を使えません。");
+      return;
+    }
+    const ctx = new AC();
+    try {
+      await setupMic(ctx);
+      $("mic-state").textContent = "許可済み";
+      showMicMsg("");
+    } catch (e) {
+      try { ctx.close(); } catch (_) { /* 無視 */ }
+      showMicMsg(micErrorMessage(e));
+    }
+  }
   try {
-    await setupMic(ctx);
-    $("mic-state").textContent = "許可済み";
-    showMicMsg("");
+    if (motionPromise) {
+      const r = await motionPromise;
+      if (r !== "granted") throw new Error("モーションセンサーの許可が得られませんでした");
+    }
+    if (!motionOn) {
+      window.addEventListener("devicemotion", onMotion);
+      motionOn = true;
+    }
   } catch (e) {
-    try { ctx.close(); } catch (_) { /* 無視 */ }
-    showMicMsg(micErrorMessage(e));
+    showMicMsg("モーションセンサーを使えませんでした: " + e.message);
   }
   setButtons();
   updateUI();
@@ -4785,23 +4818,9 @@ on("tl-ref-play", "click", async () => {
   if (!ok) $("tl-msg").textContent = "基準の音はまだ保存されていません。最初の画面で測り直すと保存されます。";
 });
 
-let motionOn = false;
-on("motion-btn", "click", async () => {
-  if (motionOn) return;
-  try {
-    if (typeof DeviceMotionEvent !== "undefined" && typeof DeviceMotionEvent.requestPermission === "function") {
-      const r = await DeviceMotionEvent.requestPermission();
-      if (r !== "granted") throw new Error("モーションセンサーの許可が得られませんでした");
-    }
-    window.addEventListener("devicemotion", onMotion);
-    motionOn = true;
-    $("motion-btn").textContent = "モーションセンサー許可済み";
-    $("motion-btn").disabled = true;
-  } catch (e) {
-    showError("モーションセンサーを使えませんでした: " + e.message);
-  }
-});
-
+on("prep-btn", "click", () => showPage("prep"));
+on("prep-back", "click", () => { setButtons(); showPage("record"); });
+on("prep-back2", "click", () => { setButtons(); showPage("record"); });
 on("start-btn", "click", () => startRec());
 on("stop-btn", "click", () => stopRec());
 on("btn-enter-black", "click", () => enterBlack());
@@ -4934,7 +4953,7 @@ window.addEventListener("pagehide", () => {
 
 /* ===== 起動 ===== */
 async function boot() {
-  $("ver-text").textContent = "SomnoLog V" + APP_VERSION;
+  const vt = $("ver-text"); if (vt) vt.textContent = "SomnoLog V" + APP_VERSION;
   document.querySelectorAll(".app-name").forEach((el) => { el.textContent = "SomnoLog V" + APP_VERSION; });
   await loadPatient();
   if (!checkHashOnLoad()) showPage("start");
