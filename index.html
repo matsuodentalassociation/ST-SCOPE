@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
 <meta name="theme-color" content="#000000">
 <meta http-equiv="Cache-Control" content="no-cache">
-<title>SomnoLog V93 基準音圧版</title>
+<title>SomnoLog V95 基準音圧版</title>
 <style>
 :root{color-scheme:dark}
 *{box-sizing:border-box}
@@ -93,7 +93,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 1-1 起動・QR読み取り -->
 <main id="page-start" class="page" hidden>
   <header class="head">
-    <h1 class="app-name">SomnoLog V93</h1>
+    <h1 class="app-name">SomnoLog V95</h1>
     <span class="tag">患者情報確認</span>
   </header>
 
@@ -127,7 +127,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
   <div class="update-area">
     <h2 class="update-title">アプリの更新</h2>
     <section class="card">
-      <div class="kv"><span>現在のバージョン</span><b id="ver-text">SomnoLog V93</b></div>
+      <div class="kv"><span>現在のバージョン</span><b id="ver-text">SomnoLog V95</b></div>
       <button id="upd-reload" class="sub">最新版に変更（キャッシュを避けて再読み込み）</button>
       <p id="upd-msg" class="muted" hidden aria-live="polite"></p>
     </section>
@@ -155,7 +155,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 記録画面 -->
 <main id="page-record" class="page" hidden>
   <header class="head">
-    <h1 class="app-name">SomnoLog V93</h1>
+    <h1 class="app-name">SomnoLog V95</h1>
     <div style="display:flex;align-items:center;gap:10px">
       <button id="rec-back" class="sub mini" type="button">戻る</button>
       <span id="rec-badge" class="tag">待機中</span>
@@ -522,7 +522,7 @@ const SleepEngine = (() => {
     a.n += d.length;
     a.sq += sq;
     pushRing(d);
-    if (st.event && st.mode === "opus") { st.event.chunks.push(d); st.event.len += d.length; }
+    if (st.event) { st.event.chunks.push(d); st.event.len += d.length; }
     feedVad(d);
   }
 
@@ -630,14 +630,6 @@ const SleepEngine = (() => {
   /* ---------- イベント（閾値超過からクリップ） ---------- */
   function startEvent(firstSlot) {
     const startMs = Math.max(0, firstSlot * C.SLOT_MS - C.PRE_MS);
-    if (st.mode !== "opus") {
-      st.event = {
-        startSlot: firstSlot, startMs,
-        chunks: [], len: 0,
-        votes: {}, peakDb: -Infinity, sumDb: 0, n: 0, motionMaxG: 0, apnea: false
-      };
-      return;
-    }
     const anchor = st.slotSample.has(firstSlot) ? st.slotSample.get(firstSlot) : st.ringTotal;
     const from = Math.max(anchor - Math.round(C.PRE_MS * st.rate / 1000), st.ringTotal - st.ringLen, 0);
     const pre = ringSlice(from, st.ringTotal);
@@ -665,17 +657,13 @@ const SleepEngine = (() => {
       peakDb: r1(ev.peakDb), meanDb: r1(ev.sumDb / Math.max(1, ev.n)),
       motionMaxG: r3(ev.motionMaxG), votes: ev.votes, endReason: reason
     };
-    let payload;
-    if (st.mode === "opus") {
-      const pcm = new Float32Array(ev.len);
-      let o = 0;
-      for (const c of ev.chunks) { pcm.set(c, o); o += c.length; }
-      marker.durationSec = r1(pcm.length / st.rate);
-      payload = { kind: "opus", pcm, rate: st.rate };
-    } else {
-      marker.durationSec = r1(Math.max(0, endMs - ev.startMs) / 1000);
-      payload = { kind: "rec", fromMs: ev.startMs, toMs: endMs };
-    }
+    const pcm = new Float32Array(ev.len);
+    let o = 0;
+    for (const c of ev.chunks) { pcm.set(c, o); o += c.length; }
+    marker.durationSec = r1(pcm.length / st.rate);
+    const payload = st.mode === "opus"
+      ? { kind: "opus", pcm, rate: st.rate }
+      : { kind: "wav", pcm, rate: st.rate };
     chainP = chainP.then(() => decideAndStore(marker, payload)).catch(fail);
   }
 
@@ -717,8 +705,7 @@ const SleepEngine = (() => {
     if (payload.kind === "opus") {
       await encodeAndStore(payload.pcm, payload.rate, marker);
     } else {
-      st.pendingRec.push({ marker, fromMs: payload.fromMs, toMs: payload.toMs });
-      await assembleRecClips();
+      await encodeWavAndStore(payload.pcm, payload.rate, marker);
     }
   }
 
@@ -730,6 +717,50 @@ const SleepEngine = (() => {
     await put("clips", {
       id: marker.id, sid: marker.sid, fileName: marker.fileName,
       blob: new Blob([webm], { type: "audio/webm" }), bytes: webm.length
+    });
+    await put("events", marker);
+  }
+
+  /* ---------- 録音機モード（WebCodecsが無い端末＝iPhone）のクリップ保存（V94） ----------
+     MediaRecorderの断片の切り貼りは、頭（ヘッダー）の無い壊れたファイルになり、
+     分析アプリでも本体でも再生できなかった。検出に使っている波形そのものから、
+     16kHzモノラル16bitのWAVとして切り出して保存する（そのまま再生できる形）。 */
+  function encodeWav(pcm, rate) {
+    const TARGET = 16000;
+    let samples = pcm, outRate = rate;
+    if (rate > TARGET) {
+      const ratio = Math.floor(rate / TARGET);
+      const n = Math.floor(pcm.length / ratio);
+      samples = new Float32Array(n);
+      for (let i = 0; i < n; i++) {
+        let s = 0;
+        for (let j = 0; j < ratio; j++) s += pcm[i * ratio + j];
+        samples[i] = s / ratio;
+      }
+      outRate = Math.round(rate / ratio);
+    }
+    const n = samples.length;
+    const buf = new ArrayBuffer(44 + n * 2);
+    const v = new DataView(buf);
+    const wstr = (off, s) => { for (let i = 0; i < s.length; i++) v.setUint8(off + i, s.charCodeAt(i)); };
+    wstr(0, "RIFF"); v.setUint32(4, 36 + n * 2, true); wstr(8, "WAVE");
+    wstr(12, "fmt "); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+    v.setUint32(24, outRate, true); v.setUint32(28, outRate * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true);
+    wstr(36, "data"); v.setUint32(40, n * 2, true);
+    for (let i = 0; i < n; i++) {
+      const x = Math.max(-1, Math.min(1, samples[i]));
+      v.setInt16(44 + i * 2, x < 0 ? x * 0x8000 : x * 0x7FFF, true);
+    }
+    return buf;
+  }
+
+  async function encodeWavAndStore(pcm, rate, marker) {
+    const wav = encodeWav(pcm, rate);
+    marker.fileName = "audio/clip_" + pad(marker.index, 4) + ".wav";
+    marker.audioFile = marker.fileName;
+    await put("clips", {
+      id: marker.id, sid: marker.sid, fileName: marker.fileName,
+      blob: new Blob([wav], { type: "audio/wav" }), bytes: wav.byteLength
     });
     await put("events", marker);
   }
@@ -1192,9 +1223,7 @@ registerProcessor("pcm-tap", PcmTap);`;
         if (sup && sup.supported) mode = "opus";
       } catch (e) { /* 録音機モードで続行 */ }
     }
-    if (mode === "recorder" && typeof MediaRecorder === "undefined") {
-      throw new Error("この端末では音声の保存方式（WebCodecs／MediaRecorder）が使えません。");
-    }
+    // 録音機モードはV94から波形→WAV方式。MediaRecorderは使わない。
 
     const sid = uid();
     const rate = ctx.sampleRate;
@@ -1246,24 +1275,7 @@ registerProcessor("pcm-tap", PcmTap);`;
     src.connect(node);
     st.node = node;
 
-    if (mode === "recorder") {
-      let mime = "";
-      for (const cand of ["audio/mp4", "audio/webm;codecs=opus", "audio/webm", "audio/aac", ""]) {
-        if (!cand || MediaRecorder.isTypeSupported(cand)) { mime = cand; break; }
-      }
-      const rec = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream);
-      st.recMime = rec.mimeType || mime || "audio/mp4";
-      rec.ondataavailable = (e) => {
-        if (!e.data || !e.data.size || !st) return;
-        const nowMs = Math.round(performance.now() - st.t0);
-        st.recChunks.push({ startMs: st.recClock, endMs: nowMs, blob: e.data });
-        st.recClock = nowMs;
-        chainP = chainP.then(() => assembleRecClips()).catch(fail);
-      };
-      rec.onerror = (e) => fail(e.error || new Error("録音機でエラーが起きました"));
-      rec.start(1000);
-      st.recorder = rec;
-    }
+    // V94: 録音機モードでもMediaRecorderは回さない（クリップは波形からWAVで作る）。
 
     window.addEventListener("devicemotion", onMotion);
     st.timer = setInterval(() => {
@@ -1505,7 +1517,7 @@ registerProcessor("pcm-tap", PcmTap);`;
 <script>
 "use strict";
 /* ===== バージョン ===== */
-const APP_VERSION = 93;
+const APP_VERSION = 95;
 const APP = "SomnoLogV" + APP_VERSION + "_ref";
 
 /* ===== 更新の取得元（GitHub） ===== */
@@ -2651,8 +2663,39 @@ function onMotion(e) {
 
 /* ===== 記録の開始・停止 ===== */
 async function acquireWake() {
-  try { if ("wakeLock" in navigator) S.wake = await navigator.wakeLock.request("screen"); }
+  try {
+    if (!("wakeLock" in navigator)) return;
+    S.wake = await navigator.wakeLock.request("screen");
+    if (S.wake) S.wake.onrelease = () => {
+      S.wake = null;
+      if (S.running && !document.hidden) acquireWake();
+    };
+  }
   catch (e) { console.warn(e); }
+}
+
+/* 録音中、無音の音を出し続ける（V95）。音を出しているページはブラウザに
+   「再生中」と見なされて寝かされにくくなる。音量ゼロなので音は出ない。 */
+function startKeepAlive() {
+  stopKeepAlive();
+  if (!S.ctx) return;
+  try {
+    const g = S.ctx.createGain();
+    g.gain.value = 0;
+    const o = S.ctx.createOscillator();
+    o.type = "sine";
+    o.frequency.value = 30;
+    o.connect(g);
+    g.connect(S.ctx.destination);
+    o.start();
+    S.keepAlive = { o, g };
+  } catch (e) { console.warn(e); }
+}
+function stopKeepAlive() {
+  if (!S.keepAlive) return;
+  try { S.keepAlive.o.stop(); } catch (e) {}
+  try { S.keepAlive.o.disconnect(); S.keepAlive.g.disconnect(); } catch (e) {}
+  S.keepAlive = null;
 }
 function releaseWake() {
   if (S.wake) { S.wake.release().catch(() => {}); S.wake = null; }
@@ -2680,6 +2723,7 @@ async function startRec() {
   }
   S.running = true;
   await acquireWake();
+  startKeepAlive();
   setButtons();
   updateUI();
   return;
@@ -2708,6 +2752,7 @@ async function startRec() {
   await DB.put("sessions", S.sess);
   S.running = true;
   await acquireWake();
+  startKeepAlive();
   S.timers.push(setInterval(flushSecs, FLUSH_SEC * 1000));
   setButtons();
   updateUI();
@@ -2720,6 +2765,7 @@ async function stopRec() {
     try { await SleepEngine.stop(); } catch (e) { console.error(e); }
     S.engineMode = false;
     S.engineSid = null;
+    stopKeepAlive();
     releaseWake();
     exitBlack();
     setButtons();
@@ -2728,6 +2774,7 @@ async function stopRec() {
     return;
   }
   S.running = false;
+  stopKeepAlive();
   S.epoch++;
   S.timers.forEach(clearInterval);
   S.timers = [];
@@ -3626,6 +3673,28 @@ function tagGraphSvg(tag, t0, t1) {
   const lineMults = (ceilR <= 8 ? [1, 2, 3, 4, 6, 8] : [1, 2, 4, 8, 16, 32, 64]).filter((m) => m <= ceilR);
 
   let g = '<rect x="' + TL_PL + '" y="' + TL_PT + '" width="' + plotW + '" height="' + plotH + '" fill="none" stroke="#2a3643"/>';
+  // 欠測（アプリが寝ていて記録が止まっていた時間）を灰色で出す（V95）。
+  // 静かな時間と区別がつくようにするため。棒1本の幅の中で音データが1秒も無い所を欠測とする。
+  {
+    const ok = new Array(NB).fill(false);
+    for (const r of tl.data.secs) {
+      if (r.dbApplied == null) continue;
+      const s = r.sec;
+      if (s < t0 || s > t1) continue;
+      ok[Math.min(NB - 1, Math.floor((s - t0) / binSec))] = true;
+    }
+    let labeled = false;
+    for (let i = 0; i < NB; i++) {
+      if (ok[i]) continue;
+      g += '<rect x="' + (TL_PL + i * bw).toFixed(1) + '" y="' + TL_PT + '" width="' + bw.toFixed(1) +
+        '" height="' + plotH + '" fill="#8a97a5" opacity="0.20"/>';
+      if (!labeled) {
+        labeled = true;
+        g += '<text x="' + (TL_PL + i * bw + 3).toFixed(1) + '" y="' + (TL_PT + plotH - 16) +
+          '" font-size="10" fill="#c3ccd4">欠測</text>';
+      }
+    }
+  }
   // 体動を上から重ねる（V90、秀司のスクショ＝元の形）: 音の棒は下から、体動の棒は上から。
   // いびきと体動が重なった所＝眠りの浅い所が一目で分かる。設定は体動タグのスライダーと共用。
   {
