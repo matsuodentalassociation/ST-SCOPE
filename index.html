@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
 <meta name="theme-color" content="#000000">
 <meta http-equiv="Cache-Control" content="no-cache">
-<title>SomnoLog V97 基準音圧版</title>
+<title>SomnoLog V98 基準音圧版</title>
 <style>
 :root{color-scheme:dark}
 *{box-sizing:border-box}
@@ -93,7 +93,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 1-1 起動・QR読み取り -->
 <main id="page-start" class="page" hidden>
   <header class="head">
-    <h1 class="app-name">SomnoLog V97</h1>
+    <h1 class="app-name">SomnoLog V98</h1>
     <span class="tag">患者情報確認</span>
   </header>
 
@@ -127,7 +127,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
   <div class="update-area">
     <h2 class="update-title">アプリの更新</h2>
     <section class="card">
-      <div class="kv"><span>現在のバージョン</span><b id="ver-text">SomnoLog V97</b></div>
+      <div class="kv"><span>現在のバージョン</span><b id="ver-text">SomnoLog V98</b></div>
       <button id="upd-reload" class="sub">最新版に変更（キャッシュを避けて再読み込み）</button>
       <p id="upd-msg" class="muted" hidden aria-live="polite"></p>
     </section>
@@ -155,7 +155,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 記録画面 -->
 <main id="page-record" class="page" hidden>
   <header class="head">
-    <h1 class="app-name">SomnoLog V97</h1>
+    <h1 class="app-name">SomnoLog V98</h1>
     <div style="display:flex;align-items:center;gap:10px">
       <button id="rec-back" class="sub mini" type="button">戻る</button>
       <span id="rec-badge" class="tag">待機中</span>
@@ -284,9 +284,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
     <div id="tl-motion-adj" hidden>
       <div class="kv"><span>体動のしきい値</span><b id="tm-thresh-val">0.05 g</b></div>
       <input id="tm-thresh" type="range" min="0" max="0.3" step="0.01" value="0.05">
-      <div class="kv"><span>グラフ上端</span><b id="tm-ceil-val">0.3 g</b></div>
-      <input id="tm-ceil" type="range" min="0.1" max="1" step="0.05" value="0.3">
-      <p class="muted">しきい値以上の体動を表示します。グラフ上端を下げると棒が高く見えます。上端を超えた値は天井で切って表示します。設定は表示だけに使い、保存済みデータやカレンダーの評価は変えません。</p>
+      <p class="muted">しきい値以上の体動を表示します。スライダーを右へ動かすと小さい動きは出なくなり、左へ動かすと小さい動きも出ます。設定は表示だけに使い、保存済みデータやカレンダーの評価は変えません。</p>
     </div>
     <p id="tl-cur-text" class="tl-info"></p>
     <label class="muted">表示位置（右へ動かすと終了時刻の方へ進みます）</label>
@@ -1517,7 +1515,7 @@ registerProcessor("pcm-tap", PcmTap);`;
 <script>
 "use strict";
 /* ===== バージョン ===== */
-const APP_VERSION = 97;
+const APP_VERSION = 98;
 const APP = "SomnoLogV" + APP_VERSION + "_ref";
 
 /* ===== 更新の取得元（GitHub） ===== */
@@ -3856,9 +3854,7 @@ function renderTimeline() {
     const th = tl.motionThresh != null ? tl.motionThresh : 0.05;
     const ce = tl.motionCeil || 0.3;
     $("tm-thresh").value = String(th);
-    $("tm-ceil").value = String(ce);
     $("tm-thresh-val").textContent = fmtSliderVal(th) + " g";
-    $("tm-ceil-val").textContent = fmtSliderVal(ce) + " g";
   }
   const listenBtn = $("tl-listen");
   if (isMotion) {
@@ -4856,19 +4852,14 @@ on("tl-cur", "input", (e) => {
 });
 // 体動グラフの調整スライダー（元の形、V89で復元）。値は端末に保存して使い回す
 try {
-  const sv = localStorage.getItem("somnolog-motion-ceil-g");
-  tl.motionCeil = sv == null ? 0.3 : Number(sv);
   const st2 = localStorage.getItem("somnolog-motion-thresh-g");
   tl.motionThresh = st2 == null ? 0.05 : Number(st2);
+  tl.motionCeil = Math.max(0.1, tl.motionThresh * 6);
 } catch (e) { tl.motionThresh = 0.05; tl.motionCeil = 0.3; }
 on("tm-thresh", "input", (e) => {
   tl.motionThresh = Number(e.target.value);
+  tl.motionCeil = Math.max(0.1, tl.motionThresh * 6);
   try { localStorage.setItem("somnolog-motion-thresh-g", String(tl.motionThresh)); } catch (err) {}
-  renderTimeline();
-});
-on("tm-ceil", "input", (e) => {
-  tl.motionCeil = Number(e.target.value);
-  try { localStorage.setItem("somnolog-motion-ceil-g", String(tl.motionCeil)); } catch (err) {}
   renderTimeline();
 });
 on("tl-listen", "click", () => listenAtCursor());
