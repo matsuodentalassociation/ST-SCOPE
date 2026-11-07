@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
 <meta name="theme-color" content="#000000">
 <meta http-equiv="Cache-Control" content="no-cache">
-<title>SomnoLog V95 基準音圧版</title>
+<title>SomnoLog V97 基準音圧版</title>
 <style>
 :root{color-scheme:dark}
 *{box-sizing:border-box}
@@ -93,7 +93,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 1-1 起動・QR読み取り -->
 <main id="page-start" class="page" hidden>
   <header class="head">
-    <h1 class="app-name">SomnoLog V95</h1>
+    <h1 class="app-name">SomnoLog V97</h1>
     <span class="tag">患者情報確認</span>
   </header>
 
@@ -127,7 +127,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
   <div class="update-area">
     <h2 class="update-title">アプリの更新</h2>
     <section class="card">
-      <div class="kv"><span>現在のバージョン</span><b id="ver-text">SomnoLog V95</b></div>
+      <div class="kv"><span>現在のバージョン</span><b id="ver-text">SomnoLog V97</b></div>
       <button id="upd-reload" class="sub">最新版に変更（キャッシュを避けて再読み込み）</button>
       <p id="upd-msg" class="muted" hidden aria-live="polite"></p>
     </section>
@@ -155,7 +155,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 記録画面 -->
 <main id="page-record" class="page" hidden>
   <header class="head">
-    <h1 class="app-name">SomnoLog V95</h1>
+    <h1 class="app-name">SomnoLog V97</h1>
     <div style="display:flex;align-items:center;gap:10px">
       <button id="rec-back" class="sub mini" type="button">戻る</button>
       <span id="rec-badge" class="tag">待機中</span>
@@ -282,9 +282,9 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
     <div id="tl-legend" class="legend"></div>
     <div id="tl-tags" class="tagbar"></div>
     <div id="tl-motion-adj" hidden>
-      <div class="kv"><span>体動のしきい値</span><b id="tm-thresh-val">0.05 m/s²</b></div>
+      <div class="kv"><span>体動のしきい値</span><b id="tm-thresh-val">0.05 g</b></div>
       <input id="tm-thresh" type="range" min="0" max="0.3" step="0.01" value="0.05">
-      <div class="kv"><span>グラフ上端</span><b id="tm-ceil-val">0.3 m/s²</b></div>
+      <div class="kv"><span>グラフ上端</span><b id="tm-ceil-val">0.3 g</b></div>
       <input id="tm-ceil" type="range" min="0.1" max="1" step="0.05" value="0.3">
       <p class="muted">しきい値以上の体動を表示します。グラフ上端を下げると棒が高く見えます。上端を超えた値は天井で切って表示します。設定は表示だけに使い、保存済みデータやカレンダーの評価は変えません。</p>
     </div>
@@ -1517,7 +1517,7 @@ registerProcessor("pcm-tap", PcmTap);`;
 <script>
 "use strict";
 /* ===== バージョン ===== */
-const APP_VERSION = 95;
+const APP_VERSION = 97;
 const APP = "SomnoLogV" + APP_VERSION + "_ref";
 
 /* ===== 更新の取得元（GitHub） ===== */
@@ -3608,7 +3608,7 @@ function renderTagBar() {
   // 回数＝しきい値以上の秒の数。
   const mTh = tl.motionThresh != null ? tl.motionThresh : 0.05;
   let mCnt = 0;
-  for (const r of tl.data.secs) if (r.motion != null && r.motion * 9.80665 >= mTh) mCnt++;
+  for (const r of tl.data.secs) if (r.motion != null && r.motion >= mTh) mCnt++;
   const mb = document.createElement("button");
   mb.className = "tagbtn" + (tl.tags.motion ? "" : " off");
   mb.innerHTML = '<i style="background:' + TAG_COLOR.motion + '"></i>' + esc(TAG_NAME.motion) + " <small>" + mCnt + "回</small>";
@@ -3661,9 +3661,9 @@ function tagGraphSvg(tag, t0, t1) {
   const LADDER = [1.5, 2, 2.5, 3, 4, 5, 6, 8, 10, 12, 16, 20, 24, 32, 40, 48, 64, 80, 96, 128];
   let ceilR = 2;
   for (const L of LADDER) { if (L >= rTop * 1.08) { ceilR = L; break; } ceilR = L; }
-  // あ〜の線の位置も固定しない（V82、秀司の指示）：あ〜より上がスカスカな晩は、あ〜の線を上へ上げる。
-  // 大きな晩（天井が高い）は従来どおり下の方（1/8）、静かな晩は最大で3/4まで上がる。
-  const ahPos = Math.min(0.75, Math.max(0.125, 1.2 / ceilR));
+  // あ〜の線の位置（V96、秀司が図解の案2を選択 2026-11-07）：中央を基準に、大きな晩ほど下へ移動する。
+  // 天井があ〜の2倍の晩は中央（1/2）、4倍で1/4、8倍以上で一番下（1/8）。中央より上には行かない。
+  const ahPos = Math.min(0.5, Math.max(0.125, 1.0 / ceilR));
   const posOfR = (r) => r <= 1 ? ahPos * r : ahPos + (r - 1) / Math.max(ceilR - 1, 0.5) * (1 - ahPos);
   const posOf = (db) => {
     const p = posOfR(Math.pow(2, (db - sc.refDb) / 10));
@@ -3703,7 +3703,7 @@ function tagGraphSvg(tag, t0, t1) {
     const mBins = new Array(NB).fill(null);
     for (const r of tl.data.secs) {
       if (r.motion == null) continue;
-      const v = r.motion * 9.80665;
+      const v = r.motion;
       if (v < mTh) continue;
       const s = r.sec;
       if (s < t0 || s > t1) continue;
@@ -3774,7 +3774,7 @@ function motionGraphSvg(t0, t1) {
   let clipped = false;
   for (const r of tl.data.secs) {
     if (r.motion == null) continue;
-    const v = r.motion * 9.80665;
+    const v = r.motion;
     if (v < thresh) continue;
     const s = r.sec;
     if (s < t0 || s > t1) continue;
@@ -3799,7 +3799,7 @@ function motionGraphSvg(t0, t1) {
   }
   g += '<text x="' + (TL_PL + 2) + '" y="' + (TL_PT + 12) + '" font-size="10" fill="#aebbc9">' + fmtSliderVal(ceil) + "</text>";
   g += '<text x="' + (TL_PL + 2) + '" y="' + (TL_PT + plotH - 3) + '" font-size="10" fill="#aebbc9">0</text>';
-  g += '<text x="' + (TL_PL + 30) + '" y="' + (TL_PT + 12) + '" font-size="11" fill="' + TAG_COLOR.motion + '">体動 m/s²（棒内の最大値）</text>';
+  g += '<text x="' + (TL_PL + 30) + '" y="' + (TL_PT + 12) + '" font-size="11" fill="' + TAG_COLOR.motion + '">体動 g（棒内の最大値）</text>';
   if (clipped) {
     g += '<text x="' + (TL_PL + 30) + '" y="' + (TL_PT + 26) + '" font-size="11" fill="' + TAG_COLOR.motion + '">上端を超えた値あり</text>';
   }
@@ -3852,15 +3852,13 @@ function renderTimeline() {
       '<span><i style="background:' + TAG_COLOR.motion + '"></i>体動（上から）</span>';
   const adj = $("tl-motion-adj");
   if (adj) {
-    adj.hidden = !isMotion;
-    if (isMotion) {
-      const th = tl.motionThresh != null ? tl.motionThresh : 0.05;
-      const ce = tl.motionCeil || 0.3;
-      $("tm-thresh").value = String(th);
-      $("tm-ceil").value = String(ce);
-      $("tm-thresh-val").textContent = fmtSliderVal(th) + " m/s²";
-      $("tm-ceil-val").textContent = fmtSliderVal(ce) + " m/s²";
-    }
+    adj.hidden = false;
+    const th = tl.motionThresh != null ? tl.motionThresh : 0.05;
+    const ce = tl.motionCeil || 0.3;
+    $("tm-thresh").value = String(th);
+    $("tm-ceil").value = String(ce);
+    $("tm-thresh-val").textContent = fmtSliderVal(th) + " g";
+    $("tm-ceil-val").textContent = fmtSliderVal(ce) + " g";
   }
   const listenBtn = $("tl-listen");
   if (isMotion) {
@@ -4858,19 +4856,19 @@ on("tl-cur", "input", (e) => {
 });
 // 体動グラフの調整スライダー（元の形、V89で復元）。値は端末に保存して使い回す
 try {
-  const sv = localStorage.getItem("somnolog-motion-ceil");
+  const sv = localStorage.getItem("somnolog-motion-ceil-g");
   tl.motionCeil = sv == null ? 0.3 : Number(sv);
-  const st2 = localStorage.getItem("somnolog-motion-thresh");
+  const st2 = localStorage.getItem("somnolog-motion-thresh-g");
   tl.motionThresh = st2 == null ? 0.05 : Number(st2);
 } catch (e) { tl.motionThresh = 0.05; tl.motionCeil = 0.3; }
 on("tm-thresh", "input", (e) => {
   tl.motionThresh = Number(e.target.value);
-  try { localStorage.setItem("somnolog-motion-thresh", String(tl.motionThresh)); } catch (err) {}
+  try { localStorage.setItem("somnolog-motion-thresh-g", String(tl.motionThresh)); } catch (err) {}
   renderTimeline();
 });
 on("tm-ceil", "input", (e) => {
   tl.motionCeil = Number(e.target.value);
-  try { localStorage.setItem("somnolog-motion-ceil", String(tl.motionCeil)); } catch (err) {}
+  try { localStorage.setItem("somnolog-motion-ceil-g", String(tl.motionCeil)); } catch (err) {}
   renderTimeline();
 });
 on("tl-listen", "click", () => listenAtCursor());
