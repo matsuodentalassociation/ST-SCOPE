@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
 <meta name="theme-color" content="#000000">
 <meta http-equiv="Cache-Control" content="no-cache">
-<title>SomnoLog V99 基準音圧版</title>
+<title>SomnoLog V101 基準音圧版</title>
 <style>
 :root{color-scheme:dark}
 *{box-sizing:border-box}
@@ -93,7 +93,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 1-1 起動・QR読み取り -->
 <main id="page-start" class="page" hidden>
   <header class="head">
-    <h1 class="app-name">SomnoLog V99</h1>
+    <h1 class="app-name">SomnoLog V101</h1>
     <span class="tag">患者情報確認</span>
   </header>
 
@@ -150,7 +150,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 記録画面 -->
 <main id="page-record" class="page" hidden>
   <header class="head">
-    <h1 class="app-name">SomnoLog V99</h1>
+    <h1 class="app-name">SomnoLog V101</h1>
     <div style="display:flex;align-items:center;gap:10px">
       <button id="rec-back" class="sub mini" type="button">戻る</button>
       <span id="rec-badge" class="tag">待機中</span>
@@ -180,7 +180,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 記録の準備 -->
 <main id="page-prep" class="page" hidden>
   <header class="head">
-    <h1 class="app-name">SomnoLog V99</h1>
+    <h1 class="app-name">SomnoLog V101</h1>
     <button id="prep-back" class="sub mini" type="button">戻る</button>
   </header>
 
@@ -367,58 +367,26 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 黒画面 -->
 <div id="black-screen" hidden>
   <span id="black-clock"></span>
-  <span class="muted">タップで戻る</span>
+  <span class="muted">2秒長押しで戻る</span>
 </div>
 
 <script>
-/* ===== V63 録音エンジン ===== */
-/* SomnoLog V63 録音エンジン
-   V62のHTMLの<script>内に置く。V62の録音・保存・ZIP書き出しの部分と差し替える。
-   公開名は SleepEngine のみ。内部の名前はすべて閉じた範囲に隠す。 */
+/* ===== 旧エンジン記録の読み取り（SleepEngine） ===== */
+/* V63〜V100のエンジン方式で録られた過去の記録を、読む・聴く・ZIPで出す・
+   消すためだけに残した読み取り専用の置き場。公開名は SleepEngine のみ。
+   V101から録音はシェル側の方式に一本化し、ここでは新しい記録は作らない。 */
 const SleepEngine = (() => {
   "use strict";
   const ENGINE_VERSION = 68;
   const SCHEMA_VERSION = 35;
   const C = {
-    DB_NAME: "somnolog-v63",   // V62の somnolog-v3 とは別の保存領域
-    DB_VERSION: 1,
-    SLOT_MS: 100,              // 時系列・判定の周期
-    BASELINE_SLOTS: 300,       // V35: 開始30秒の平均と同じ長さ
-    TRIGGER_DB: 5,             // V35: 基準+5dB以上で判定
-    BASE_MARGIN_DB: 4,         // V35: 現在値が基準+4dB未満のときだけ更新
-    BASE_EMA: 0.02,            // V35の更新率
-    BASE_EVERY: 5,             // 100ms×5 = V35の500ms
-    MIN_OVER: 2,               // 100ms単発は無視、2スロット以上でイベント化
-    PRE_MS: 3000,              // 直前3秒を結合
-    TAIL_MS: 5000,             // 閾値を下回ってから5秒追尾
-    MAX_EVENT_MS: 180000,      // 追加の安全上限
-    RING_SEC: 10,
-    OPUS_RATE: 48000,
-    OPUS_BPS: 24000,
-    TL_FLUSH: 100,             // 10秒分ずつ保存
-    ROLL_G: 0.12,              // V35の体動判定
-    APNEA_GAP_MIN: 30000,      // V35: いびき後の空白30〜120秒
-    APNEA_GAP_MAX: 120000,
-    APNEA_DB: -32,             // 旧尺度40から換算（物差し統一に伴う移行）
-    VAD_TH: 0.3,               // V62と同じ声らしさの閾値
-    VAD_URL: "./silero_vad.onnx?v=68",
-    ORT_URL: "./ort.min.js?v=68",
-    VAD_RATE: 16000,
-    VAD_FRAME: 512,            // 16kHzで32ms
-    VAD_CTX: 64
+    DB_NAME: "somnolog-v63",   // 旧エンジン記録の保存領域（V101以降は読み取り専用）
+    DB_VERSION: 1
   };
-  const DETECTION_RULE = "V35準拠: 基準=開始30秒の平均（以後、現在値が基準+4dB未満のとき0.02で更新）。判定=基準+5dB以上。";
 
   const pad = (n, w = 4) => String(n).padStart(w, "0");
   const r1 = (v) => Math.round(v * 10) / 10;
-  const r3 = (v) => Math.round(v * 1000) / 1000;
-  const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
-  const uid = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now() + "-" + Math.random().toString(16).slice(2));
   const enc = new TextEncoder();
-
-  // V35のラベル（データはこちらを保持）と、画面表示の名前
-  const LABEL = { snore: "いびき", roll: "寝返り・体動", bruxism: "歯ぎしり・硬音", talk: "寝言", apnea: "無呼吸疑い", env: "環境音" };
-  const DISPLAY = { snore: "いびき", talk: "人声", env: "環境音", roll: "判定不能", bruxism: "判定不能", apnea: "判定不能" };
 
   /* ---------- IndexedDB ---------- */
   let dbp = null;
@@ -493,657 +461,6 @@ const SleepEngine = (() => {
     }
   };
 
-  /* ---------- 状態 ---------- */
-  let st = null;             // 現在の記録
-  let errors = [];
-  let chainP = Promise.resolve(); // 保存・符号化の直列処理
-
-  function fail(e) {
-    console.error("[SleepEngine]", e);
-    errors.push(String((e && e.message) || e));
-    if (st && st.onState) st.onState({ error: String((e && e.message) || e) });
-  }
-
-  /* ---------- リングバッファ（入力PCM、原値） ---------- */
-  function pushRing(d) {
-    for (let i = 0; i < d.length; i++) st.ring[(st.ringTotal + i) % st.ringLen] = d[i];
-    st.ringTotal += d.length;
-  }
-  function ringSlice(a, b) {
-    a = Math.max(a, st.ringTotal - st.ringLen, 0);
-    b = Math.min(b, st.ringTotal);
-    const out = new Float32Array(Math.max(0, b - a));
-    for (let i = 0; i < out.length; i++) out[i] = st.ring[(a + i) % st.ringLen];
-    return out;
-  }
-
-  /* ---------- スロット（100ms）の確定 ---------- */
-  function slotNow() { return Math.floor((performance.now() - st.t0) / C.SLOT_MS); }
-
-  function onChunk(d) {
-    if (!st || !st.running) return;
-    const slot = slotNow();
-    closeUpTo(slot);
-    if (!st.slotSample.has(slot)) st.slotSample.set(slot, st.ringTotal);
-    let a = st.accs.get(slot);
-    if (!a) { a = { n: 0, sq: 0 }; st.accs.set(slot, a); }
-    let sq = 0;
-    for (let i = 0; i < d.length; i++) sq += d[i] * d[i];
-    a.n += d.length;
-    a.sq += sq;
-    pushRing(d);
-    if (st.event) { st.event.chunks.push(d); st.event.len += d.length; }
-    feedVad(d);
-  }
-
-  function tick() {
-    if (st && st.running) closeUpTo(slotNow());
-  }
-
-  function closeUpTo(slot) {
-    while (st.nextClose < slot) {
-      const s = st.nextClose;
-      st.nextClose++;
-      closeSlot(s);
-    }
-  }
-
-  function closeSlot(s) {
-    const a = st.accs.get(s);
-    st.accs.delete(s);
-    st.slotSample.delete(s - 100);
-
-    const motionSeen = st.mSeen, motionMax = st.mMax, motionNow = st.motionG;
-    st.mSeen = false;
-    st.mMax = 0;
-    const motionG = motionSeen ? r3(motionNow) : null;
-    const motionMaxG = motionSeen ? r3(motionMax) : null;
-    const sec = r1(s * C.SLOT_MS / 1000);
-
-    // 欠測（音声が届かなかったスロット）は null の行として残す
-    if (!a || a.n === 0) {
-      pushRow({ sec, db: null, motionG, motionMaxG });
-      st.live = { db: null, baseline: st.baseline == null ? null : r1(st.baseline), inEvent: !!st.event, motionG };
-      return;
-    }
-
-    const rms = Math.sqrt(a.sq / a.n);
-    const db = rms > 1e-5 ? Math.max(-100, 20 * Math.log10(rms)) : -100; // あ〜と同じ物差し（換算なし、V77で統一）
-    pushRow({ sec, db: r1(db), motionG, motionMaxG });
-    updateBaseline(s, db);
-    st.live = { db: r1(db), baseline: st.baseline == null ? null : r1(st.baseline), inEvent: !!st.event, motionG };
-    if (st.baseline == null) return; // 基準が決まるまでは判定しない
-
-    const delta = db - st.baseline;
-    const res = classifyFrame(delta, spectrum(), motionG ?? 0);
-    const over = delta >= C.TRIGGER_DB;
-
-    // V35のいびき後の空白による無呼吸疑い
-    let apnea = false;
-    if (res && res.category === "snore") {
-      if (st.lastSnoreMs != null) {
-        const gap = s * C.SLOT_MS - st.lastSnoreMs;
-        if (gap >= C.APNEA_GAP_MIN && gap <= C.APNEA_GAP_MAX && db >= C.APNEA_DB) apnea = true;
-      }
-      st.lastSnoreMs = s * C.SLOT_MS;
-    }
-
-    if (over) {
-      st.overRun++;
-      st.lastOver = s;
-      if (!st.event && st.overRun >= C.MIN_OVER) startEvent(s - st.overRun + 1);
-    } else {
-      st.overRun = 0;
-    }
-
-    const ev = st.event;
-    if (ev) {
-      ev.peakDb = Math.max(ev.peakDb, db);
-      ev.sumDb += db;
-      ev.n++;
-      ev.motionMaxG = Math.max(ev.motionMaxG, motionMaxG ?? 0);
-      if (res) ev.votes[res.category] = (ev.votes[res.category] || 0) + 1;
-      if (apnea) ev.apnea = true;
-      const quietMs = (s - st.lastOver) * C.SLOT_MS;
-      const lenMs = (s - ev.startSlot + 1) * C.SLOT_MS;
-      if (quietMs >= C.TAIL_MS) finishEvent("tail");
-      else if (lenMs >= C.MAX_EVENT_MS) finishEvent("cap");
-    }
-  }
-
-  function pushRow(row) {
-    st.rows.push(row);
-    if (st.rows.length >= C.TL_FLUSH) flushRows();
-  }
-
-  function flushRows() {
-    if (!st || !st.rows.length) return;
-    const rows = st.rows.splice(0);
-    const sid = st.sid;
-    const key = sid + ":" + pad(st.tlIdx++, 6);
-    chainP = chainP.then(() => put("timeline", { key, sid, rows })).catch(fail);
-  }
-
-  /* ---------- 基準（V35方式） ---------- */
-  function updateBaseline(s, db) {
-    if (st.baseline == null) {
-      st.baseSum += db;
-      st.baseN++;
-      if (st.baseN >= C.BASELINE_SLOTS) st.baseline = st.baseSum / st.baseN;
-      return;
-    }
-    if (s % C.BASE_EVERY === 0 && db < st.baseline + C.BASE_MARGIN_DB) {
-      st.baseline = st.baseline * (1 - C.BASE_EMA) + db * C.BASE_EMA;
-    }
-  }
-
-  /* ---------- イベント（閾値超過からクリップ） ---------- */
-  function startEvent(firstSlot) {
-    const startMs = Math.max(0, firstSlot * C.SLOT_MS - C.PRE_MS);
-    const anchor = st.slotSample.has(firstSlot) ? st.slotSample.get(firstSlot) : st.ringTotal;
-    const from = Math.max(anchor - Math.round(C.PRE_MS * st.rate / 1000), st.ringTotal - st.ringLen, 0);
-    const pre = ringSlice(from, st.ringTotal);
-    st.event = {
-      startSlot: firstSlot,
-      startMs,
-      chunks: [pre], len: pre.length,
-      votes: {}, peakDb: -Infinity, sumDb: 0, n: 0, motionMaxG: 0, apnea: false
-    };
-  }
-
-  function finishEvent(reason) {
-    const ev = st.event;
-    st.event = null;
-    if (!ev) return;
-    const category = finalCategory(ev.votes, ev.apnea);
-    st.clipSeq++;
-    const idx = st.clipSeq;
-    const endMs = Math.round((performance.now() - st.t0));
-    const marker = {
-      id: uid(), sid: st.sid, index: idx, fileName: null, audioFile: null,
-      startSec: r1(ev.startMs / 1000), startMs: ev.startMs,
-      durationSec: 0,
-      category, label: LABEL[category], displayCategory: DISPLAY[category],
-      peakDb: r1(ev.peakDb), meanDb: r1(ev.sumDb / Math.max(1, ev.n)),
-      motionMaxG: r3(ev.motionMaxG), votes: ev.votes, endReason: reason
-    };
-    const pcm = new Float32Array(ev.len);
-    let o = 0;
-    for (const c of ev.chunks) { pcm.set(c, o); o += c.length; }
-    marker.durationSec = r1(pcm.length / st.rate);
-    const payload = st.mode === "opus"
-      ? { kind: "opus", pcm, rate: st.rate }
-      : { kind: "wav", pcm, rate: st.rate };
-    chainP = chainP.then(() => decideAndStore(marker, payload)).catch(fail);
-  }
-
-  /* 声判定で振り分けてから保存する。人声と判定されたイベントは音声を残さない。 */
-  async function decideAndStore(marker, payload) {
-    let excluded = false;
-    if (st && st.vadOk) {
-      const endMs = marker.startMs + marker.durationSec * 1000;
-      await vadDrain(endMs + 1000);
-      const inside = vadMaxIn(marker.startMs, endMs);
-      const near = vadMaxIn(marker.startMs - 1000, endMs + 1000);
-      marker.vadInside = inside == null ? null : r3(inside);
-      marker.vadNear = near == null ? null : r3(near);
-      if ((inside != null && inside > C.VAD_TH) || (near != null && near > C.VAD_TH)) excluded = true;
-      if (inside == null && near == null) marker.vadUnknown = true;
-    } else {
-      marker.vadUnknown = true;
-    }
-    // あ〜基準より大きい音は声にしない（秀司の決定 2026-11-05）。
-    // 寝ている本人のそばで、あ〜より大きな人の声がすれば目が覚めるはずで、
-    // 大きいいびきを声と誤判定して捨てないための上限。
-    // peakDbもrefDbも同じ物差し（V77で統一）。そのまま比べる。
-    if (excluded && st && st.refDb != null && marker.peakDb != null && marker.peakDb >= st.refDb) {
-      excluded = false;
-      marker.vadLoudOverride = true;
-    }
-    if (excluded) {
-      // 人声と判定しても音声は保存する（2026-11-05 秀司の決定で V67 の削除方式を撤回）。
-      // 本人がタイムラインで聴いて確認でき、共有時は確認ダイアログを通す。
-      // プライバシーの判断は、聴いて確認したユーザーに預ける。
-      marker.category = "talk";
-      marker.label = LABEL.talk;
-      marker.displayCategory = DISPLAY.talk;
-      marker.voiceJudged = true;
-    }
-    if (!st) return;
-    st.counts[marker.category] = (st.counts[marker.category] || 0) + 1;
-    st.markers.push(marker);
-    if (payload.kind === "opus") {
-      await encodeAndStore(payload.pcm, payload.rate, marker);
-    } else {
-      await encodeWavAndStore(payload.pcm, payload.rate, marker);
-    }
-  }
-
-  async function encodeAndStore(pcm, rate, marker) {
-    const { frames, head } = await encodeOpus(pcm, rate);
-    const webm = buildWebm(frames, C.OPUS_RATE, head);
-    marker.fileName = "audio/clip_" + pad(marker.index, 4) + ".webm";
-    marker.audioFile = marker.fileName;
-    await put("clips", {
-      id: marker.id, sid: marker.sid, fileName: marker.fileName,
-      blob: new Blob([webm], { type: "audio/webm" }), bytes: webm.length
-    });
-    await put("events", marker);
-  }
-
-  /* ---------- 録音機モード（WebCodecsが無い端末＝iPhone）のクリップ保存（V94） ----------
-     MediaRecorderの断片の切り貼りは、頭（ヘッダー）の無い壊れたファイルになり、
-     分析アプリでも本体でも再生できなかった。検出に使っている波形そのものから、
-     16kHzモノラル16bitのWAVとして切り出して保存する（そのまま再生できる形）。 */
-  function encodeWav(pcm, rate) {
-    const TARGET = 16000;
-    let samples = pcm, outRate = rate;
-    if (rate > TARGET) {
-      const ratio = Math.floor(rate / TARGET);
-      const n = Math.floor(pcm.length / ratio);
-      samples = new Float32Array(n);
-      for (let i = 0; i < n; i++) {
-        let s = 0;
-        for (let j = 0; j < ratio; j++) s += pcm[i * ratio + j];
-        samples[i] = s / ratio;
-      }
-      outRate = Math.round(rate / ratio);
-    }
-    const n = samples.length;
-    const buf = new ArrayBuffer(44 + n * 2);
-    const v = new DataView(buf);
-    const wstr = (off, s) => { for (let i = 0; i < s.length; i++) v.setUint8(off + i, s.charCodeAt(i)); };
-    wstr(0, "RIFF"); v.setUint32(4, 36 + n * 2, true); wstr(8, "WAVE");
-    wstr(12, "fmt "); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
-    v.setUint32(24, outRate, true); v.setUint32(28, outRate * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true);
-    wstr(36, "data"); v.setUint32(40, n * 2, true);
-    for (let i = 0; i < n; i++) {
-      const x = Math.max(-1, Math.min(1, samples[i]));
-      v.setInt16(44 + i * 2, x < 0 ? x * 0x8000 : x * 0x7FFF, true);
-    }
-    return buf;
-  }
-
-  async function encodeWavAndStore(pcm, rate, marker) {
-    const wav = encodeWav(pcm, rate);
-    marker.fileName = "audio/clip_" + pad(marker.index, 4) + ".wav";
-    marker.audioFile = marker.fileName;
-    await put("clips", {
-      id: marker.id, sid: marker.sid, fileName: marker.fileName,
-      blob: new Blob([wav], { type: "audio/wav" }), bytes: wav.byteLength
-    });
-    await put("events", marker);
-  }
-
-  /* ---------- 録音機モード（WebCodecsが無い端末向け）のクリップ組み立て ----------
-     MediaRecorderのタイムスライスは1本の録音の続きなので、範囲にかかるチャンクを
-     そのまま連結すると再生できるファイルになる。 */
-  async function assembleRecClips() {
-    if (!st || st.mode === "opus") return;
-    const done = [];
-    for (const p of st.pendingRec) {
-      const covered = st.recChunks.length && st.recChunks[st.recChunks.length - 1].endMs >= p.toMs;
-      if (!covered && st.running) continue;
-      const parts = st.recChunks.filter((c) => c.endMs > p.fromMs && c.startMs < p.toMs);
-      if (!parts.length) continue;
-      const blob = new Blob(parts.map((c) => c.blob), { type: st.recMime });
-      const ext = st.recMime.includes("mp4") ? "mp4" : (st.recMime.includes("webm") ? "webm" : "m4a");
-      p.marker.fileName = "audio/clip_" + pad(p.marker.index, 4) + "." + ext;
-      p.marker.audioFile = p.marker.fileName;
-      await put("clips", { id: p.marker.id, sid: p.marker.sid, fileName: p.marker.fileName, blob, bytes: blob.size });
-      await put("events", p.marker);
-      done.push(p);
-    }
-    if (done.length) st.pendingRec = st.pendingRec.filter((p) => !done.includes(p));
-    // 使われ終わった古いチャンクを捨てる（開いている範囲より前は残す）
-    const keepFrom = Math.min(
-      st.event ? st.event.startMs : Infinity,
-      ...st.pendingRec.map((p) => p.fromMs),
-      performance.now() - st.t0 - 60000
-    );
-    st.recChunks = st.recChunks.filter((c) => c.endMs > keepFrom);
-  }
-
-  /* ---------- 分類（V35の判定を移植。ラベルは内部のまま） ---------- */
-  function spectrumOf(an, rate) {
-    const bins = an.frequencyBinCount;
-    const f = new Uint8Array(bins);
-    an.getByteFrequencyData(f);
-    const binHz = (rate / 2) / bins;
-    let total = 0, w = 0, sub = 0, low = 0, mid = 0, high = 0, pk = -1, pkI = 0;
-    for (let i = 0; i < bins; i++) {
-      const fr = i * binHz, p = f[i] * f[i];
-      total += p;
-      w += fr * p;
-      if (p > pk) { pk = p; pkI = i; }
-      if (fr >= 40 && fr < 200) sub += p;
-      else if (fr < 600) low += p;
-      else if (fr < 2500) mid += p;
-      else if (fr <= 8000) high += p;
-    }
-    if (!total) return { centroid: 0, peakHz: 0, subLowRatio: 0, lowRatio: 0, midRatio: 0, highRatio: 0 };
-    return {
-      centroid: Math.round(w / total), peakHz: Math.round(pkI * binHz),
-      subLowRatio: sub / total, lowRatio: low / total, midRatio: mid / total, highRatio: high / total
-    };
-  }
-  function spectrum() {
-    return st.an ? spectrumOf(st.an, st.rate) : { centroid: 0, peakHz: 0, subLowRatio: 0, lowRatio: 0, midRatio: 0, highRatio: 0 };
-  }
-
-  function classifyFrame(delta, sp, motionG) {
-    const breath = sp.subLowRatio + sp.lowRatio;
-    if (motionG >= C.ROLL_G) return { category: "roll", reason: "体動 " + motionG.toFixed(2) + "G" };
-    if (delta < C.TRIGGER_DB) return null;
-    if (breath >= 0.38 || sp.subLowRatio >= 0.20 || (sp.centroid >= 120 && sp.centroid <= 950 && breath >= 0.27)) {
-      return { category: "snore", reason: "呼吸低域 " + Math.round(breath * 100) + "% / 重心 " + sp.centroid + "Hz" };
-    }
-    if (delta >= 14 && sp.highRatio >= 0.42 && sp.centroid >= 2200 && breath < 0.24 && sp.subLowRatio < 0.10) {
-      return { category: "bruxism", reason: "高域 " + Math.round(sp.highRatio * 100) + "% / 重心 " + sp.centroid + "Hz" };
-    }
-    if (sp.midRatio > 0.46 && sp.centroid >= 650 && sp.centroid <= 2100 && breath < 0.34) {
-      return { category: "talk", reason: "音声中域 " + Math.round(sp.midRatio * 100) + "% / 重心 " + sp.centroid + "Hz" };
-    }
-    return { category: "env", reason: "既知分類の特徴不足 / 重心 " + sp.centroid + "Hz" };
-  }
-
-  function finalCategory(votes, apnea) {
-    const sc = (k) => Number(votes[k] || 0);
-    if (apnea || sc("apnea") >= 1) return "apnea";
-    if (sc("roll") >= 2) return "roll";
-    if (sc("snore") >= 2 && sc("snore") >= sc("bruxism")) return "snore";
-    if (sc("bruxism") >= 3 && sc("bruxism") > sc("snore") * 1.5) return "bruxism";
-    if (sc("talk") >= 3) return "talk";
-    if (sc("snore") >= 1) return "snore";
-    return "env";
-  }
-
-  /* ---------- 声判定（Silero VAD、V62の方式をエンジン内へ移植） ----------
-     入力PCMを16kHzへ落として32ms枠で推論し、声らしさ p の時系列を作る。
-     イベント確定時に「中」と「前後1秒」の最大値を見て人声を振り分ける。 */
-  function loadScriptOnce(src) {
-    return new Promise((res, rej) => {
-      const s = document.createElement("script");
-      s.src = src;
-      s.onload = () => res();
-      s.onerror = () => rej(new Error("ライブラリを読み込めませんでした"));
-      document.head.appendChild(s);
-    });
-  }
-
-  async function initVad() {
-    try {
-      if (typeof ort === "undefined") await loadScriptOnce(C.ORT_URL);
-      if (typeof ort === "undefined") throw new Error("ort unavailable");
-      const r = await fetch(C.VAD_URL, { cache: "no-store" });
-      if (!r.ok) throw new Error("HTTP " + r.status);
-      const buf = await r.arrayBuffer();
-      ort.env.wasm.numThreads = 1;
-      ort.env.wasm.wasmPaths = "./";
-      const sess = await ort.InferenceSession.create(buf, { executionProviders: ["wasm"] });
-      if (!st) return;
-      st.vadState = new ort.Tensor("float32", new Float32Array(2 * 128), [2, 1, 128]);
-      st.vadStartSample16k = st.vadPos16k;
-      st.vadSession = sess;
-      st.vadOk = true;
-      vadPump();
-    } catch (e) {
-      console.warn("[SleepEngine] VAD初期化に失敗", e);
-      if (st) { st.vadFailed = true; st.vadOk = false; }
-    }
-  }
-
-  function feedVad(d) {
-    if (!st || st.vadFailed) return;
-    st.vadInQ.push(d);
-    st.vadInLen += d.length;
-    const blockIn = Math.round(st.rate / 10); // 100ms分
-    while (st.vadInLen >= blockIn) {
-      const block = new Float32Array(blockIn);
-      let o = 0;
-      while (o < blockIn) {
-        const c = st.vadInQ[0];
-        const avail = c.length - st.vadInOff;
-        const take = Math.min(avail, blockIn - o);
-        block.set(c.subarray(st.vadInOff, st.vadInOff + take), o);
-        o += take;
-        st.vadInOff += take;
-        st.vadInLen -= take;
-        if (st.vadInOff >= c.length) { st.vadInQ.shift(); st.vadInOff = 0; }
-      }
-      const b16 = resample(block, st.rate, C.VAD_RATE);
-      if (st.vadSession) { st.vadQ.push(b16); st.vadQLen += b16.length; }
-      else { st.vadPos16k += b16.length; }
-    }
-    vadPump();
-  }
-
-  function vadTakeFrame() {
-    if (st.vadQLen < C.VAD_FRAME) return null;
-    const out = new Float32Array(C.VAD_FRAME);
-    let o = 0;
-    while (o < C.VAD_FRAME) {
-      const c = st.vadQ[0];
-      const avail = c.length - st.vadQOff;
-      const take = Math.min(avail, C.VAD_FRAME - o);
-      out.set(c.subarray(st.vadQOff, st.vadQOff + take), o);
-      o += take;
-      st.vadQOff += take;
-      st.vadQLen -= take;
-      if (st.vadQOff >= c.length) { st.vadQ.shift(); st.vadQOff = 0; }
-    }
-    return out;
-  }
-
-  function vadPump() {
-    if (!st || !st.vadSession || st.vadBusy) return;
-    st.vadBusy = true;
-    st.vadChain = (async () => {
-      try {
-        let f;
-        while (st && st.vadSession && (f = vadTakeFrame())) {
-          const p = await vadRun(f);
-          const idx = st.vadFrameSeq++;
-          if (idx >= st.vadFrames.length) {
-            const nf = new Float32Array(st.vadFrames.length * 2);
-            nf.set(st.vadFrames);
-            st.vadFrames = nf;
-          }
-          st.vadFrames[idx] = p;
-        }
-      } catch (e) { fail(e); }
-      finally { if (st) st.vadBusy = false; }
-    })();
-  }
-
-  async function vadRun(frame) {
-    const inp = new Float32Array(C.VAD_CTX + C.VAD_FRAME);
-    inp.set(st.vadCtx, 0);
-    inp.set(frame, C.VAD_CTX);
-    st.vadCtx = inp.slice(inp.length - C.VAD_CTX);
-    const out = await st.vadSession.run({
-      input: new ort.Tensor("float32", inp, [1, C.VAD_CTX + C.VAD_FRAME]),
-      state: st.vadState,
-      sr: new ort.Tensor("int64", BigInt64Array.from([BigInt(C.VAD_RATE)]), [])
-    });
-    st.vadState = out.stateN;
-    return out.output.data[0];
-  }
-
-  function vadMaxIn(aMs, bMs) {
-    if (!st || !st.vadFrameSeq) return null;
-    const S0 = st.vadStartSample16k;
-    let k0 = Math.floor((aMs * 16 - S0) / C.VAD_FRAME);
-    let k1 = Math.floor((bMs * 16 - S0) / C.VAD_FRAME);
-    if (k1 < 0 || k0 > st.vadFrameSeq - 1) return null;
-    k0 = Math.max(0, k0);
-    k1 = Math.min(st.vadFrameSeq - 1, k1);
-    let m = 0;
-    for (let k = k0; k <= k1; k++) if (st.vadFrames[k] > m) m = st.vadFrames[k];
-    return m;
-  }
-
-  async function vadDrain(targetMs) {
-    if (!st || !st.vadOk) return;
-    const need = targetMs * 16;
-    const t0 = Date.now();
-    while (st && st.vadOk && (st.vadStartSample16k + st.vadFrameSeq * C.VAD_FRAME) < need && Date.now() - t0 < 4000) {
-      vadPump();
-      await new Promise((r) => setTimeout(r, 100));
-    }
-  }
-
-  /* ---------- 体動（V35のデルタ方式） ---------- */
-  function onMotion(e) {
-    if (!st || !st.running) return;
-    const a = e.acceleration || e.accelerationIncludingGravity;
-    if (!a || a.x == null) return;
-    const cur = { x: Number(a.x) || 0, y: Number(a.y) || 0, z: Number(a.z) || 0 };
-    if (!st.lastAcc) { st.lastAcc = cur; return; }
-    const d = Math.hypot(cur.x - st.lastAcc.x, cur.y - st.lastAcc.y, cur.z - st.lastAcc.z) / 9.80665;
-    st.lastAcc = cur;
-    if (!Number.isFinite(d) || d > 4) return;
-    st.motionG = (st.motionG || 0) * 0.72 + d * 0.28;
-    st.mSeen = true;
-    st.mMax = Math.max(st.mMax, st.motionG);
-  }
-
-  /* ---------- Opus符号化（AudioEncoder）とPCMの変換 ---------- */
-  function resample(x, from, to) {
-    if (from === to) return x;
-    const n = Math.floor(x.length * to / from);
-    const y = new Float32Array(n);
-    const step = from / to;
-    for (let i = 0; i < n; i++) {
-      const p = i * step, k = Math.floor(p), f = p - k;
-      const a = x[k] || 0;
-      const b = k + 1 < x.length ? x[k + 1] : a;
-      y[i] = a + (b - a) * f;
-    }
-    return y;
-  }
-
-  function isOpusHead(h) {
-    return h && h.length >= 8 && String.fromCharCode(...h.slice(0, 8)) === "OpusHead";
-  }
-  function opusHead(rate, ch) {
-    const b = new Uint8Array(19);
-    const dv = new DataView(b.buffer);
-    b.set(enc.encode("OpusHead"), 0);
-    b[8] = 1; b[9] = ch;
-    dv.setUint16(10, 312, true);
-    dv.setUint32(12, rate, true);
-    dv.setInt16(16, 0, true);
-    b[18] = 0;
-    return b;
-  }
-
-  async function encodeOpus(pcm, rate) {
-    const x = resample(pcm, rate, C.OPUS_RATE);
-    const frames = [];
-    let head = null;
-    let err = null;
-    const encoder = new AudioEncoder({
-      output: (chunk, meta) => {
-        const d = meta && meta.decoderConfig && meta.decoderConfig.description;
-        if (d && !head) head = new Uint8Array(d);
-        const buf = new Uint8Array(chunk.byteLength);
-        chunk.copyTo(buf);
-        frames.push({ ts: chunk.timestamp, data: buf });
-      },
-      error: (e) => { err = e; }
-    });
-    encoder.configure({ codec: "opus", sampleRate: C.OPUS_RATE, numberOfChannels: 1, bitrate: C.OPUS_BPS });
-    const N = 960; // 20ms
-    for (let i = 0; i < x.length; i += N) {
-      const block = new Float32Array(N);
-      block.set(x.subarray(i, Math.min(i + N, x.length)));
-      const ad = new AudioData({
-        format: "f32", sampleRate: C.OPUS_RATE, numberOfFrames: N, numberOfChannels: 1,
-        timestamp: Math.round(i / C.OPUS_RATE * 1e6), data: block
-      });
-      encoder.encode(ad);
-      ad.close();
-    }
-    await encoder.flush();
-    encoder.close();
-    if (err) throw err;
-    if (!frames.length) throw new Error("音声データが空でした");
-    return { frames, head: isOpusHead(head) ? head : opusHead(C.OPUS_RATE, 1) };
-  }
-
-  /* ---------- WebM（EBML）の最小構成 ---------- */
-  function idBytes(id) {
-    const a = [];
-    let x = id;
-    do { a.unshift(x % 256); x = Math.floor(x / 256); } while (x > 0);
-    return Uint8Array.from(a);
-  }
-  function sizeBytes(n) {
-    const b = new Uint8Array(8);
-    b[0] = 1;
-    let x = n;
-    for (let i = 7; i >= 1; i--) { b[i] = x % 256; x = Math.floor(x / 256); }
-    return b;
-  }
-  function uintBytes(n) {
-    const a = [];
-    let x = n;
-    do { a.unshift(x % 256); x = Math.floor(x / 256); } while (x > 0);
-    return Uint8Array.from(a);
-  }
-  function cat(list) {
-    let len = 0;
-    for (const p of list) len += p.length;
-    const out = new Uint8Array(len);
-    let o = 0;
-    for (const p of list) { out.set(p, o); o += p.length; }
-    return out;
-  }
-  function el(id, ...parts) {
-    const body = cat(parts);
-    return cat([idBytes(id), sizeBytes(body.length), body]);
-  }
-  const uel = (id, n) => el(id, uintBytes(n));
-  const sel = (id, s) => el(id, enc.encode(s));
-  function f64el(id, v) {
-    const b = new Uint8Array(8);
-    new DataView(b.buffer).setFloat64(0, v, false);
-    return el(id, b);
-  }
-
-  function buildWebm(frames, rate, head) {
-    const ebml = el(0x1A45DFA3,
-      uel(0x4286, 1), uel(0x42F7, 1), uel(0x42F2, 4), uel(0x42F3, 8),
-      sel(0x4282, "webm"), uel(0x4287, 2), uel(0x4285, 2));
-    const info = el(0x1549A966, uel(0x2AD7B1, 1000000), sel(0x4D80, "SomnoLog"), sel(0x5741, "SomnoLog"));
-    const track = el(0xAE,
-      uel(0xD7, 1), uel(0x73C5, 1), uel(0x83, 2), sel(0x86, "A_OPUS"),
-      el(0x63A2, head),
-      el(0xE1, f64el(0xB5, rate), uel(0x9F, 1)));
-    const tracks = el(0x1654AE6B, track);
-
-    const clusters = [];
-    let started = false, base = 0, cb = [];
-    const flush = () => {
-      if (started) clusters.push(el(0x1F43B675, uel(0xE7, base), ...cb));
-      cb = [];
-    };
-    for (const f of frames) {
-      const ms = Math.round(f.ts / 1000);
-      if (!started || ms - base >= 1000) {
-        flush();
-        started = true;
-        base = ms;
-      }
-      const rel = ms - base;
-      cb.push(el(0xA3, Uint8Array.of(0x81, (rel >> 8) & 0xff, rel & 0xff, 0x80), f.data));
-    }
-    flush();
-    const seg = el(0x18538067, info, tracks, ...clusters);
-    return cat([ebml, seg]);
-  }
-
   /* ---------- ZIP（無圧縮・WAVなし） ---------- */
   const CRC = (() => {
     const t = new Uint32Array(256);
@@ -1207,137 +524,6 @@ const SleepEngine = (() => {
       e.setUint32(16, this.offset, true);
       return new Blob([...this.parts, ...this.central, e], { type: "application/zip" });
     }
-  }
-
-  /* ---------- 記録の開始・停止 ---------- */
-  const WORKLET_SRC = `class PcmTap extends AudioWorkletProcessor {
-process(inputs) { const c = inputs[0] && inputs[0][0]; if (c && c.length) this.port.postMessage(c.slice(0)); return true; }
-}
-registerProcessor("pcm-tap", PcmTap);`;
-
-  /* ---------- 記録の開始・停止（まみこが補完） ---------- */
-  async function start(opts) {
-    await ensureUnifiedScale();
-    if (st && st.running) return st.sid;
-    const { ctx, stream, patient } = opts || {};
-    if (!ctx || !stream) throw new Error("録音の準備（マイク）ができていません。");
-    if (!ctx.audioWorklet) throw new Error("この端末はAudioWorkletに対応していないため録音できません。");
-
-    // 方式の決定：WebCodecs(Opus→WebM)が使えればそれ、無ければ録音機モードへ逃がす
-    let mode = "recorder";
-    if (typeof AudioEncoder !== "undefined" && typeof AudioData !== "undefined") {
-      try {
-        const sup = await AudioEncoder.isConfigSupported({
-          codec: "opus", sampleRate: C.OPUS_RATE, numberOfChannels: 1, bitrate: C.OPUS_BPS
-        });
-        if (sup && sup.supported) mode = "opus";
-      } catch (e) { /* 録音機モードで続行 */ }
-    }
-    // 録音機モードはV94から波形→WAV方式。MediaRecorderは使わない。
-
-    const sid = uid();
-    const rate = ctx.sampleRate;
-    st = {
-      sid, running: true, mode, rate, t0: performance.now(),
-      patient: patient || {}, onState: (opts && opts.onState) || null,
-      refDb: (opts && opts.sessionExtra && typeof opts.sessionExtra.refDb === "number") ? opts.sessionExtra.refDb : null,
-      ring: new Float32Array(Math.round(C.RING_SEC * rate)),
-      ringLen: Math.round(C.RING_SEC * rate), ringTotal: 0,
-      accs: new Map(), slotSample: new Map(), nextClose: 0,
-      mSeen: false, mMax: 0, motionG: 0,
-      baseline: null, baseSum: 0, baseN: 0,
-      overRun: 0, lastOver: -1000000000, event: null, lastSnoreMs: null,
-      rows: [], tlIdx: 0, clipSeq: 0, counts: {}, markers: [],
-      pendingRec: [], recChunks: [], recClock: 0, recMime: "", recorder: null,
-      live: { db: null, baseline: null, inEvent: false, motionG: null },
-      an: null, node: null, src: null, timer: null, startedAt: Date.now(),
-      vadSession: null, vadOk: false, vadFailed: false, vadState: null,
-      vadCtx: new Float32Array(C.VAD_CTX), vadPos16k: 0, vadStartSample16k: 0,
-      vadInQ: [], vadInOff: 0, vadInLen: 0, vadQ: [], vadQOff: 0, vadQLen: 0,
-      vadFrames: new Float32Array(1 << 15), vadFrameSeq: 0, vadBusy: false,
-      vadChain: Promise.resolve(), vadReady: null
-    };
-
-    await put("sessions", {
-      id: sid, startedAt: st.startedAt, endedAt: null, durationSec: 0,
-      patient: st.patient, engine: ENGINE_VERSION, schema: SCHEMA_VERSION,
-      mode, counts: {}, baselineDb: null,
-      ...((opts && opts.sessionExtra) || {})
-    });
-
-    st.vadReady = initVad();
-
-    const src = ctx.createMediaStreamSource(stream);
-    st.src = src;
-    const an = ctx.createAnalyser();
-    an.fftSize = 2048;
-    src.connect(an);
-    st.an = an;
-
-    const url = URL.createObjectURL(new Blob([WORKLET_SRC], { type: "application/javascript" }));
-    try {
-      await ctx.audioWorklet.addModule(url);
-    } finally {
-      URL.revokeObjectURL(url);
-    }
-    const node = new AudioWorkletNode(ctx, "pcm-tap");
-    node.port.onmessage = (e) => { try { onChunk(e.data); } catch (err) { fail(err); } };
-    src.connect(node);
-    st.node = node;
-
-    // V94: 録音機モードでもMediaRecorderは回さない（クリップは波形からWAVで作る）。
-
-    window.addEventListener("devicemotion", onMotion);
-    st.timer = setInterval(() => {
-      try {
-        tick();
-        if (st && st.onState) st.onState(st.live);
-      } catch (e) { fail(e); }
-    }, 250);
-    if (st.onState) st.onState(st.live);
-    return sid;
-  }
-
-  async function stop() {
-    if (!st || !st.running) return null;
-    st.running = false;
-    if (st.timer) { clearInterval(st.timer); st.timer = null; }
-    window.removeEventListener("devicemotion", onMotion);
-
-    if (st.mode === "recorder" && st.recorder && st.recorder.state !== "inactive") {
-      const rec = st.recorder;
-      await new Promise((res) => {
-        rec.onstop = () => res();
-        try { rec.stop(); } catch (e) { res(); }
-      });
-    }
-
-    closeUpTo(slotNow());
-    if (st.event) finishEvent("stop");
-    flushRows();
-    await chainP;
-    if (st.mode === "recorder") await assembleRecClips();
-
-    const endedAt = Date.now();
-    const prev = await get("sessions", st.sid).catch(() => null);
-    const sess = {
-      ...(prev || {}),
-      id: st.sid, startedAt: st.startedAt, endedAt,
-      durationSec: r1((endedAt - st.startedAt) / 1000),
-      patient: st.patient, engine: ENGINE_VERSION, schema: SCHEMA_VERSION,
-      mode: st.mode, counts: st.counts,
-      baselineDb: st.baseline == null ? null : r1(st.baseline),
-      vadOk: !!st.vadOk, vadFailed: !!st.vadFailed
-    };
-    await put("sessions", sess);
-
-    try { if (st.node) st.node.disconnect(); } catch (e) {}
-    try { if (st.src) st.src.disconnect(); } catch (e) {}
-    const onState = st.onState;
-    const summary = { sid: st.sid, counts: st.counts, durationSec: sess.durationSec, mode: st.mode };
-    st = null;
-    if (onState) onState({ stopped: true, ...summary });
-    return summary;
   }
 
   /* ---------- 読み取り・書き出し（まみこが補完） ---------- */
@@ -1515,11 +701,8 @@ registerProcessor("pcm-tap", PcmTap);`;
 
   return {
     ENGINE_VERSION, SCHEMA_VERSION,
-    start, stop, exportSession, listSessions, getSessionData, deleteSession, deleteClipsForSession,
-    getClipBlob, markShared, setSessionRef,
-    isRunning: () => !!(st && st.running),
-    live: () => (st ? st.live : null),
-    errors: () => errors.slice()
+    exportSession, listSessions, getSessionData, deleteSession, deleteClipsForSession,
+    getClipBlob, markShared, setSessionRef
   };
 })();
 
@@ -1527,7 +710,7 @@ registerProcessor("pcm-tap", PcmTap);`;
 <script>
 "use strict";
 /* ===== バージョン ===== */
-const APP_VERSION = 99;
+const APP_VERSION = 101;
 const APP = "SomnoLogV" + APP_VERSION + "_ref";
 
 /* ===== 更新の取得元（GitHub） ===== */
@@ -2345,12 +1528,6 @@ function onAudio(raw) {
     }
     return;
   }
-  if (S.engineMode) {
-    let ss2 = 0;
-    for (let i = 0; i < data.length; i++) ss2 += data[i] * data[i];
-    pushDisp(toDb(Math.sqrt(ss2 / data.length)));
-    return;
-  }
   const t = S.recv / SR * 1000;
   S.recv += FRAME;
   S.ring.push(data);
@@ -2718,27 +1895,6 @@ async function startRec() {
   if (!S.ref) { showRefMsg("先に「基準音の設定」を押してください。", true); return; }
   if (S.ctx.state !== "running") await S.ctx.resume().catch(() => {});
 
-  // V63：新しい録音は新エンジンで行う
-  try {
-    S.engineSid = await SleepEngine.start({
-      ctx: S.ctx, stream: S.stream, patient: { ...S.patient },
-      sessionExtra: { refDb: S.ref.db, refEnvDb: S.ref.envDb, gainDb: S.gainDb },
-      onState: (live) => { if (live && live.db != null) pushDisp(live.db); }
-    });
-    S.engineMode = true;
-  } catch (e) {
-    console.error(e);
-    S.engineMode = false;
-    showError("記録を開始できませんでした: " + e.message);
-    return;
-  }
-  S.running = true;
-  await acquireWake();
-  startKeepAlive();
-  setButtons();
-  updateUI();
-  return;
-
   S.epoch++;
   S.sid = uid();
   S.recv = 0; S.nowMs = 0; S.ring = new Ring(RING_SEC); S.queue = []; S.dropped = 0;
@@ -2771,19 +1927,6 @@ async function startRec() {
 
 async function stopRec() {
   if (!S.running) return;
-  if (S.engineMode) {
-    S.running = false;
-    try { await SleepEngine.stop(); } catch (e) { console.error(e); }
-    S.engineMode = false;
-    S.engineSid = null;
-    stopKeepAlive();
-    releaseWake();
-    exitBlack();
-    setButtons();
-    updateUI();
-    refreshCalendar().catch(() => {});
-    return;
-  }
   S.running = false;
   stopKeepAlive();
   S.epoch++;
@@ -2845,8 +1988,6 @@ function updateUI() {
   }
   if (!S.running) {
     $("base-text").textContent = "待機中";
-  } else if (S.engineMode) {
-    $("base-text").textContent = "記録中";
   } else if (S.calibrated) {
     $("base-text").textContent = "記録中";
   } else {
@@ -4822,9 +3963,43 @@ on("prep-btn", "click", () => showPage("prep"));
 on("prep-back", "click", () => { setButtons(); showPage("record"); });
 on("prep-back2", "click", () => { setButtons(); showPage("record"); });
 on("start-btn", "click", () => startRec());
-on("stop-btn", "click", () => stopRec());
+// 誤タップで止まらないよう、停止は2秒長押しだけにする（V100）
+(() => {
+  const btn = $("stop-btn");
+  let timer = null;
+  const cancel = () => {
+    if (timer) { clearTimeout(timer); timer = null; }
+    if (btn.textContent !== "停止") btn.textContent = "停止";
+  };
+  btn.addEventListener("pointerdown", () => {
+    if (btn.disabled) return;
+    btn.textContent = "そのまま押し続けると停止";
+    timer = setTimeout(() => { timer = null; btn.textContent = "停止"; stopRec(); }, 2000);
+  });
+  btn.addEventListener("pointerup", cancel);
+  btn.addEventListener("pointerleave", cancel);
+  btn.addEventListener("pointercancel", cancel);
+  btn.addEventListener("contextmenu", (e) => e.preventDefault());
+})();
 on("btn-enter-black", "click", () => enterBlack());
-on("black-screen", "click", () => exitBlack());
+// 黒画面の解除も2秒長押しだけにする。触れただけでは解けない（V100）
+(() => {
+  const el = $("black-screen");
+  let timer = null;
+  const hint = el.querySelector(".muted");
+  const cancel = () => {
+    if (timer) { clearTimeout(timer); timer = null; }
+    if (hint) hint.textContent = "2秒長押しで戻る";
+  };
+  el.addEventListener("pointerdown", () => {
+    if (hint) hint.textContent = "そのまま押し続けて…";
+    timer = setTimeout(() => { timer = null; exitBlack(); if (hint) hint.textContent = "2秒長押しで戻る"; }, 2000);
+  });
+  el.addEventListener("pointerup", cancel);
+  el.addEventListener("pointerleave", cancel);
+  el.addEventListener("pointercancel", cancel);
+  el.addEventListener("contextmenu", (e) => e.preventDefault());
+})();
 
 on("history-btn", "click", async () => {
   const now = new Date();
