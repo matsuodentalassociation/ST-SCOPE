@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
 <meta name="theme-color" content="#000000">
 <meta http-equiv="Cache-Control" content="no-cache">
-<title>SomnoLog V104 基準音圧版</title>
+<title>SomnoLog V105 基準音圧版</title>
 <style>
 :root{color-scheme:dark}
 *{box-sizing:border-box}
@@ -97,7 +97,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 1-1 起動・QR読み取り -->
 <main id="page-start" class="page" hidden>
   <header class="head">
-    <h1 class="app-name">SomnoLog V104</h1>
+    <h1 class="app-name">SomnoLog V105</h1>
     <span class="tag">患者情報確認</span>
   </header>
 
@@ -154,7 +154,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 記録画面 -->
 <main id="page-record" class="page" hidden>
   <header class="head">
-    <h1 class="app-name">SomnoLog V104</h1>
+    <h1 class="app-name">SomnoLog V105</h1>
     <div style="display:flex;align-items:center;gap:10px">
       <button id="rec-back" class="sub mini" type="button">戻る</button>
       <span id="rec-badge" class="tag">待機中</span>
@@ -184,7 +184,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 記録の準備 -->
 <main id="page-prep" class="page" hidden>
   <header class="head">
-    <h1 class="app-name">SomnoLog V104</h1>
+    <h1 class="app-name">SomnoLog V105</h1>
     <button id="prep-back" class="sub mini" type="button">戻る</button>
   </header>
 
@@ -717,7 +717,7 @@ const SleepEngine = (() => {
 <script>
 "use strict";
 /* ===== バージョン ===== */
-const APP_VERSION = 104;
+const APP_VERSION = 105;
 const APP = "SomnoLogV" + APP_VERSION + "_ref";
 
 /* ===== 更新の取得元（GitHub） ===== */
@@ -3679,6 +3679,57 @@ function yieldToScreen() {
   return new Promise((resolve) => setTimeout(resolve, 0));
 }
 
+// 分析アプリ（ST-Oscillograph）が読める4文書を、殻側のデータから組み立てる（V105）。
+// 形は旧方式の書き出し（exportSession）に合わせる。added は makeZip が実際にZIPへ入れた
+// クリップの一覧（{ e, nm, clipSec }）で、markers はその分だけを作る。
+function buildAnalyzerDocs(sess, secRows, added, refBytes) {
+  const startedISO = isoOf(sess.startedAt);
+  const patient = { clinic: "", chartNo: "", name: "", ...((sess.patient && typeof sess.patient === "object") ? sess.patient : {}) };
+  const lastSec = secRows.length ? secRows[secRows.length - 1].sec : 0;
+  const durationSec = sess.endedAt ? Math.max(0, (sess.endedAt - sess.startedAt) / 1000) : lastSec;
+
+  const manifest = {
+    app: "SomnoLog", sessionId: sess.id, startedAt: startedISO,
+    exportedAt: new Date().toISOString()
+  };
+  if (refBytes) manifest.referenceAudio = "reference.wav";
+
+  const metadata = {
+    sessionId: sess.id, startedAt: startedISO,
+    endedAt: sess.endedAt ? isoOf(sess.endedAt) : null,
+    durationSec, patient,
+    baselineDb: sess.base == null ? null : sess.base + 72,
+    counts: sess.counts || {}
+  };
+
+  const timeline = {
+    session: { startedAt: startedISO, patient },
+    timeSeriesLogs: secRows.map((r) => ({
+      sec: r.sec, elapsedMs: Math.round(r.sec * 1000),
+      timestamp: new Date(sess.startedAt + Math.round(r.sec * 1000)).toISOString(),
+      db: r.dbApplied == null ? null : r.dbApplied + 72,
+      motionG: r.motion, motionMaxG: r.motion
+    }))
+  };
+
+  const catOf = (t) => t === "snore" ? "snore" : t === "speech" ? "talk" : "unknown";
+  const markers = {
+    clips: added.map(({ e, nm, clipSec }) => ({
+      fileName: nm, audioFile: nm,
+      startMs: e.startMs, elapsedMs: e.startMs, startSec: e.startMs / 1000,
+      durationSec: e.endMs != null ? (e.endMs - e.startMs) / 1000
+        : (e.durMs != null ? e.durMs / 1000 : clipSec),
+      category: catOf(e.type),
+      label: TAG_NAME[e.type] || e.type, displayCategory: TAG_NAME[e.type] || e.type,
+      peakDb: e.peakAppliedDb == null ? null : e.peakAppliedDb + 72,
+      meanDb: e.meanAppliedDb == null ? null : e.meanAppliedDb + 72,
+      motionMaxG: null
+    }))
+  };
+
+  return { manifest, metadata, timeline, markers };
+}
+
 async function makeZip() {
   if (S.saving) return;
   S.saving = true;
@@ -3712,6 +3763,7 @@ async function makeZip() {
     const refBytes = await loadRefAudioBytes();
     let audioCount = 0;
     let missing = 0;
+    const added = [];
 
     progress.set(
       total
@@ -3735,6 +3787,7 @@ async function makeZip() {
           fmtTime(e.startMs).replace(/:/g, "-") +
           "_" + e.id.slice(0, 4) + ".wav";
         zw.add(nm, wavBytes(pcm, clip.sr));
+        added.push({ e, nm, clipSec: clip.sr ? pcm.length / clip.sr : null });
         audioCount++;
       }
 
@@ -3778,6 +3831,15 @@ async function makeZip() {
     if (refBytes) info.referenceAudio = "reference.wav";
     zw.add("info.json", new TextEncoder().encode(JSON.stringify(info, null, 2)));
     if (refBytes) zw.add("reference.wav", refBytes);
+
+    // 分析アプリが読める文書も同じZIPに入れる（V105）。形は旧方式の書き出しに合わせる。
+    ZIP_STEP = "分析用データの追加";
+    const secRows = (await DB.byIndex("secs", "sid", SH.sid)).sort((a, b) => a.sec - b.sec);
+    const docs = buildAnalyzerDocs(sess, secRows, added, refBytes);
+    zw.add("manifest.json", new TextEncoder().encode(JSON.stringify(docs.manifest, null, 1)));
+    zw.add("session_metadata.json", new TextEncoder().encode(JSON.stringify(docs.metadata, null, 1)));
+    zw.add("sensing_timeline.json", new TextEncoder().encode(JSON.stringify(docs.timeline)));
+    zw.add("event_markers.json", new TextEncoder().encode(JSON.stringify(docs.markers, null, 1)));
 
     progress.set("ZIPを取りまとめています…\n画面を閉じずにお待ちください。", 100);
     await yieldToScreen();
