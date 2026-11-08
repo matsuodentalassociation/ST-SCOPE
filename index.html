@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
 <meta name="theme-color" content="#000000">
 <meta http-equiv="Cache-Control" content="no-cache">
-<title>SomnoLog V101 基準音圧版</title>
+<title>SomnoLog V102 基準音圧版</title>
 <style>
 :root{color-scheme:dark}
 *{box-sizing:border-box}
@@ -93,7 +93,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 1-1 起動・QR読み取り -->
 <main id="page-start" class="page" hidden>
   <header class="head">
-    <h1 class="app-name">SomnoLog V101</h1>
+    <h1 class="app-name">SomnoLog V102</h1>
     <span class="tag">患者情報確認</span>
   </header>
 
@@ -150,7 +150,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 記録画面 -->
 <main id="page-record" class="page" hidden>
   <header class="head">
-    <h1 class="app-name">SomnoLog V101</h1>
+    <h1 class="app-name">SomnoLog V102</h1>
     <div style="display:flex;align-items:center;gap:10px">
       <button id="rec-back" class="sub mini" type="button">戻る</button>
       <span id="rec-badge" class="tag">待機中</span>
@@ -180,7 +180,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 記録の準備 -->
 <main id="page-prep" class="page" hidden>
   <header class="head">
-    <h1 class="app-name">SomnoLog V101</h1>
+    <h1 class="app-name">SomnoLog V102</h1>
     <button id="prep-back" class="sub mini" type="button">戻る</button>
   </header>
 
@@ -207,7 +207,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
     <div class="kv"><span>上端：記録中の最大</span><b id="g-top">-</b></div>
     <div class="kv"><span id="level-text">-</span><span id="base-text">待機中</span></div>
     <label class="muted">音圧調整（基準音が小さい場合にマイク感度を上げます）</label>
-    <input id="gain" type="range" min="-9" max="9" step="1" value="0">
+    <input id="gain" type="range" min="-9" max="18" step="1" value="0">
     <p class="muted">調整をした後、基準音を測り直してください。</p>
   </section>
 
@@ -643,7 +643,7 @@ const SleepEngine = (() => {
     return { clinic: "", chartNo: "", name: "", ...o };
   }
 
-  async function exportSession(sid) {
+  async function exportSession(sid, refBytes) {
     await ensureUnifiedScale();
     const data = await getSessionData(sid);
     if (!data) throw new Error("記録が見つかりません。");
@@ -657,6 +657,7 @@ const SleepEngine = (() => {
       sessionId: sid, startedAt: startedISO, exportedAt: new Date().toISOString(),
       mode: session.mode || "opus"
     };
+    if (refBytes) manifest.referenceAudio = "reference.wav";
     const metadata = {
       sessionId: sid, startedAt: startedISO,
       endedAt: session.endedAt ? new Date(session.endedAt).toISOString() : null,
@@ -688,6 +689,7 @@ const SleepEngine = (() => {
     zip.add("session_metadata.json", enc.encode(JSON.stringify(metadata, null, 1)));
     zip.add("sensing_timeline.json", enc.encode(JSON.stringify(timeline)));
     zip.add("event_markers.json", enc.encode(JSON.stringify(markers, null, 1)));
+    if (refBytes) zip.add("reference.wav", refBytes);
     for (const e of events) {
       const clip = clipById.get(e.id);
       if (!clip || !clip.blob || !e.fileName) continue;
@@ -710,7 +712,7 @@ const SleepEngine = (() => {
 <script>
 "use strict";
 /* ===== バージョン ===== */
-const APP_VERSION = 101;
+const APP_VERSION = 102;
 const APP = "SomnoLogV" + APP_VERSION + "_ref";
 
 /* ===== 更新の取得元（GitHub） ===== */
@@ -1360,6 +1362,20 @@ async function playRefAudio() {
     await new Audio(refAudioUrl).play();
     return true;
   } catch (e) { console.warn("基準音の再生:", e); return false; }
+}
+
+
+/* 共有ZIPに入れるため、保存済みの基準音（WAV base64）をバイト列に戻す。無ければ null。 */
+async function loadRefAudioBytes() {
+  try {
+    const row = await DB.get("settings", "refAudio");
+    const b64 = row && row.value ? row.value : null;
+    if (!b64) return null;
+    const bin = atob(b64);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return bytes;
+  } catch (e) { console.warn("基準音の読み込み:", e); return null; }
 }
 
 async function loadRef() {
@@ -3467,7 +3483,7 @@ function zipErrText(e) {
 // V63エンジン記録の共有：圧縮のままZIPを書き出してダウンロードする
 // エンジン書き出しが「置き場所が無い」で落ちた端末向けの迂回路（V93）:
 // 軽い読み込み（実績のある経路）＋クリップを1件ずつキーで取り出して、同じ中身のZIPを組む。
-async function exportEngineFallback(sid) {
+async function exportEngineFallback(sid, refBytes) {
   ZIP_STEP = "書き出し（迂回路）";
   const d = await SleepEngine.getSessionData(sid, { light: true });
   if (!d || !d.session) throw new Error("記録が見つかりません。");
@@ -3481,6 +3497,7 @@ async function exportEngineFallback(sid) {
     sessionId: sid, startedAt: startedISO, exportedAt: new Date().toISOString(),
     mode: session.mode || "opus"
   };
+  if (refBytes) manifest.referenceAudio = "reference.wav";
   const metadata = {
     sessionId: sid, startedAt: startedISO,
     endedAt: session.endedAt ? new Date(session.endedAt).toISOString() : null,
@@ -3511,6 +3528,7 @@ async function exportEngineFallback(sid) {
   zip.add("session_metadata.json", enc.encode(JSON.stringify(metadata, null, 1)));
   zip.add("sensing_timeline.json", enc.encode(JSON.stringify(timeline)));
   zip.add("event_markers.json", enc.encode(JSON.stringify(markers, null, 1)));
+  if (refBytes) zip.add("reference.wav", refBytes);
   for (const e of events) {
     if (!e.fileName) continue;
     const blob = await SleepEngine.getClipBlob(e.id).catch(() => null);
@@ -3532,12 +3550,13 @@ async function startShareEngine() {
   try {
     progress.set("記録を読み込んでいます…", 0);
     await yieldToScreen();
+    const refBytes = await loadRefAudioBytes();
     let out;
     try {
-      out = await SleepEngine.exportSession(SH.sid);
+      out = await SleepEngine.exportSession(SH.sid, refBytes);
     } catch (e) {
       if (!e || e.name !== "NotFoundError") throw e;
-      out = await exportEngineFallback(SH.sid);
+      out = await exportEngineFallback(SH.sid, refBytes);
     }
     SH.zipName = out.fileName;
     progress.set("ダウンロードを開始しています…", 100);
@@ -3664,6 +3683,7 @@ async function makeZip() {
     const total = items.length;
 
     const zw = new ZipWriter();
+    const refBytes = await loadRefAudioBytes();
     let audioCount = 0;
     let missing = 0;
 
@@ -3729,7 +3749,9 @@ async function makeZip() {
       audioFiles: audioCount,
       missingAudio: missing
     };
+    if (refBytes) info.referenceAudio = "reference.wav";
     zw.add("info.json", new TextEncoder().encode(JSON.stringify(info, null, 2)));
+    if (refBytes) zw.add("reference.wav", refBytes);
 
     progress.set("ZIPを取りまとめています…\n画面を閉じずにお待ちください。", 100);
     await yieldToScreen();
@@ -3946,6 +3968,7 @@ on("mic-btn", "click", async () => {
 
 on("gain", "input", (e) => {
   S.gainDb = Number(e.target.value);
+  try { localStorage.setItem("somnolog-gain-db", String(S.gainDb)); } catch (err) {}
   updateUI();
 });
 
@@ -4044,6 +4067,11 @@ on("tl-cur", "input", (e) => {
   tl.cursor = Number(e.target.value);
   renderTimeline();
 });
+// 感度（音圧調整）の値も端末に保存して使い回す（V102）
+try {
+  const sg = localStorage.getItem("somnolog-gain-db");
+  if (sg != null) { S.gainDb = Math.max(-9, Math.min(18, Number(sg) || 0)); $("gain").value = S.gainDb; }
+} catch (e) {}
 // 体動グラフの調整スライダー（元の形、V89で復元）。値は端末に保存して使い回す
 try {
   const st2 = localStorage.getItem("somnolog-motion-thresh-g");
