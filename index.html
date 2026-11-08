@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
 <meta name="theme-color" content="#000000">
 <meta http-equiv="Cache-Control" content="no-cache">
-<title>SomnoLog V102 基準音圧版</title>
+<title>SomnoLog V104 基準音圧版</title>
 <style>
 :root{color-scheme:dark}
 *{box-sizing:border-box}
@@ -65,6 +65,10 @@ audio{width:100%}
 .tl-info{font-size:12px;color:#d3dde7;line-height:1.7;margin:0}
 ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 #black-screen{background-color:#000000 !important;width:100vw;height:100dvh;min-height:100vh;position:fixed;top:0;left:0;right:0;bottom:0;margin:0;padding:0;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;color:#756f61;touch-action:none;overflow:hidden}
+#black-screen,#black-screen *{user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+#black-progress{width:40vw;max-width:220px;height:3px;background:rgba(255,255,255,.14);border-radius:2px;overflow:hidden}
+#black-progress-bar{height:100%;width:0%;background:#756f61}
+#stop-btn{user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;touch-action:none}
 #black-clock{font-size:64px;font-variant-numeric:tabular-nums}
 .modal{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.75);z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px}
 .modal-box{background:#161d26;border:1px solid #2a3643;border-radius:12px;padding:18px;max-width:420px;width:100%;display:flex;flex-direction:column;gap:12px}
@@ -93,7 +97,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 1-1 起動・QR読み取り -->
 <main id="page-start" class="page" hidden>
   <header class="head">
-    <h1 class="app-name">SomnoLog V102</h1>
+    <h1 class="app-name">SomnoLog V104</h1>
     <span class="tag">患者情報確認</span>
   </header>
 
@@ -150,7 +154,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 記録画面 -->
 <main id="page-record" class="page" hidden>
   <header class="head">
-    <h1 class="app-name">SomnoLog V102</h1>
+    <h1 class="app-name">SomnoLog V104</h1>
     <div style="display:flex;align-items:center;gap:10px">
       <button id="rec-back" class="sub mini" type="button">戻る</button>
       <span id="rec-badge" class="tag">待機中</span>
@@ -180,7 +184,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 記録の準備 -->
 <main id="page-prep" class="page" hidden>
   <header class="head">
-    <h1 class="app-name">SomnoLog V102</h1>
+    <h1 class="app-name">SomnoLog V104</h1>
     <button id="prep-back" class="sub mini" type="button">戻る</button>
   </header>
 
@@ -368,6 +372,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <div id="black-screen" hidden>
   <span id="black-clock"></span>
   <span class="muted">2秒長押しで戻る</span>
+  <div id="black-progress"><div id="black-progress-bar"></div></div>
 </div>
 
 <script>
@@ -712,7 +717,7 @@ const SleepEngine = (() => {
 <script>
 "use strict";
 /* ===== バージョン ===== */
-const APP_VERSION = 102;
+const APP_VERSION = 104;
 const APP = "SomnoLogV" + APP_VERSION + "_ref";
 
 /* ===== 更新の取得元（GitHub） ===== */
@@ -746,6 +751,8 @@ const TAG_NAME = { snore: "いびき", unknown: "判定不能", env: "環境音"
 const TL_BINS = 60; // タイムラインの棒の数（1本分の時間＝表示幅÷60）
 
 /* ===== 基準音圧の設定 ===== */
+// 「あ〜」の目標値（内部尺度）。旧エンジン・分析側の尺度（+72）での 50 に相当する値。
+const REF_TARGET_DB = -22;
 const REF_SEC = 2;
 const REF_MIN_FRAMES = Math.floor(SR * REF_SEC / FRAME * 0.8);
 const REF_QUIET_DB = -60;
@@ -1034,6 +1041,7 @@ const S = {
   ctx: null, pendingCtx: null, stream: null, tap: null, micMode: "",
   vad: null, vadOk: false, vadState: null, vadCtx: new Float32Array(VAD_CTX),
   gainDb: 0,
+  calDb: 0,
   ref: null,
   refColl: null,
   refPcm: null,
@@ -1044,7 +1052,7 @@ const S = {
   wake: null, timers: [], uiTimer: null, blackOn: false, savedStyle: null, detailSid: null,
   blackTimer: null,
   ring: new Ring(RING_SEC), recv: 0, queue: [], busy: false, dropped: 0,
-  nowMs: 0, lastLv: -100, dispWin: [], dispLv: -100, motionNow: null, grav: null,
+  nowMs: 0, lastLv: -100, dispWin: [], dispLv: -100, motionNow: null, grav: null, motionTs: null,
   calibrated: false, calibVals: [], base: null, pool: [], lastBaseSec: 0,
   cand: null, pHist: [], pendingCands: [], pendingEnv: [],
   pLog: new Float32Array(PLOG_LEN), pIdx: new Int32Array(PLOG_LEN).fill(-1),
@@ -1523,7 +1531,7 @@ function micErrorMessage(e) {
 }
 
 function gainScale(data) {
-  const k = Math.pow(10, S.gainDb / 20);
+  const k = Math.pow(10, (S.gainDb + S.calDb) / 20);
   if (k === 1) return data;
   const out = new Float32Array(data.length);
   for (let i = 0; i < data.length; i++) out[i] = clamp(data[i] * k, -1, 1);
@@ -1616,7 +1624,14 @@ function finishRefMeasure() {
     refFail("「あ〜」の音が環境音より大きくありませんでした。iPhoneの音圧調整を上げてから、もう一度押してください。");
     return;
   }
-  S.ref = { db: round2(db), envDb: round2(env), at: Date.now() };
+  // 端末ごとのマイクの拾い方の違いを、その端末で測った「あ〜」を物差しに自動で合わせる（V104）。
+  // 今の db はスライダー＋今の自動調整が乗った値なので、生の大きさに戻してから目標との差を出す。
+  const rawDb = db - (S.gainDb + S.calDb);
+  const calNew = Math.max(-12, Math.min(18, REF_TARGET_DB - rawDb));
+  const shift = calNew - S.calDb;
+  S.calDb = calNew;
+  try { localStorage.setItem("somnolog-cal-db", String(S.calDb)); } catch (e) {}
+  S.ref = { db: round2(db + shift), envDb: env == null ? null : round2(env + shift), at: Date.now() };
   saveRef();
   // 測った「あ〜」の音そのものも保存する（後から聴いて確かめられるように、秀司の指示 V84）。
   if (S.refPcm && S.refPcm.length) {
@@ -1693,7 +1708,7 @@ function processFrame(f, p) {
   const sec = Math.floor(t / 1000);
   if (!S.bucket || S.bucket.sec !== sec) {
     if (S.bucket) finishSecond(S.bucket);
-    S.bucket = { sec, lv: [], p: [], mot: [] };
+    S.bucket = { sec, lv: [], p: [], motSum: 0, motDt: 0 };
   }
   S.bucket.lv.push(lv);
   S.bucket.p.push(p);
@@ -1743,10 +1758,10 @@ function decideCand(it) {
   const ev = {
     id: uid(), sid: S.sid, type,
     startMs: round1(c.startMs), endMs: round1(endMs), durMs: round1(durMs),
-    peakSourceDb: round1(c.peakDb - S.gainDb), peakAppliedDb: round1(c.peakDb),
-    meanSourceDb: round1(c.sumDb / c.n - S.gainDb), meanAppliedDb: round1(c.sumDb / c.n),
+    peakSourceDb: round1(c.peakDb - (S.gainDb + S.calDb)), peakAppliedDb: round1(c.peakDb),
+    meanSourceDb: round1(c.sumDb / c.n - (S.gainDb + S.calDb)), meanAppliedDb: round1(c.sumDb / c.n),
     vadMax: vadOn ? round2(inside) : null, vadNear: vadOn ? round2(near) : null,
-    gainDb: S.gainDb, label: null, clipId: null, review: null, saved: false
+    gainDb: S.gainDb, calDb: S.calDb, label: null, clipId: null, review: null, saved: false
   };
   if (type === "snore" || type === "unknown" || type === "speech") {
     ev.clipId = saveClip(c.startMs - PRE_MS, endMs + POST_MS, ev.id, type, false);
@@ -1787,7 +1802,7 @@ function saveClip(fromMs, toMs, eventId, kind, silenceVoice) {
     id, sid: S.sid, eventId, kind, sr: SR,
     codec: "ima-adpcm", samples: i16.length,
     startMs: round1(actualA / SR * 1000),
-    dataIsSource: true, gainDb: S.gainDb, data: encodeImaWav(i16, SR),
+    dataIsSource: true, gainDb: S.gainDb, calDb: S.calDb, data: encodeImaWav(i16, SR),
     saved: false
   }).catch(console.error);
   return id;
@@ -1797,10 +1812,10 @@ function saveClip(fromMs, toMs, eventId, kind, silenceVoice) {
 function finishSecond(b) {
   if (!b.lv.length) return;
   const mLv = mean(b.lv), qLv = lowerMean(b.lv), mP = mean(b.p);
-  const mot = b.mot.length ? mean(b.mot) : null;
+  const mot = b.motDt > 0 ? b.motSum / b.motDt : null;
   S.secBuf.push({
     key: S.sid + ":" + b.sec, sid: S.sid, sec: b.sec,
-    dbApplied: round1(mLv), dbSource: round1(mLv - S.gainDb),
+    dbApplied: round1(mLv), dbSource: round1(mLv - (S.gainDb + S.calDb)),
     peakApplied: round1(maxOf(b.lv)), vadMean: round2(mP),
     motion: mot == null ? null : round2(mot)
   });
@@ -1815,8 +1830,8 @@ function finishSecond(b) {
     const ev = {
       id: uid(), sid: S.sid, type: "env", startMs, endMs: startMs + ENV_RUN_SEC * 1000,
       durMs: ENV_RUN_SEC * 1000, peakSourceDb: null, peakAppliedDb: null,
-      meanSourceDb: round1(qLv - S.gainDb), meanAppliedDb: round1(qLv),
-      vadMax: round2(mP), vadNear: null, gainDb: S.gainDb, label: null, clipId: null, review: null, saved: false
+      meanSourceDb: round1(qLv - (S.gainDb + S.calDb)), meanAppliedDb: round1(qLv),
+      vadMax: round2(mP), vadNear: null, gainDb: S.gainDb, calDb: S.calDb, label: null, clipId: null, review: null, saved: false
     };
     S.counts.env++;
     DB.put("events", ev).catch(console.error);
@@ -1857,12 +1872,23 @@ async function flushSecs() {
 function onMotion(e) {
   const a = e.accelerationIncludingGravity;
   if (!a || a.x == null) return;
+  // 重力の寄せ方を「イベント回数」ではなく「経過時間」で決める（V104）。
+  // 通知回数が端末で違っても、同じ動きなら同じ値になるようにする。
+  const ts = e.timeStamp;
+  let dt = (S.motionTs == null || !Number.isFinite(ts)) ? NaN : ts - S.motionTs;
+  if (!Number.isFinite(dt) || dt <= 0) dt = 16.7;
+  if (dt > 100) dt = 100;
+  if (Number.isFinite(ts)) S.motionTs = ts;
   if (!S.grav) S.grav = { x: a.x, y: a.y, z: a.z };
-  const k = 0.8;
-  S.grav = { x: k * S.grav.x + (1 - k) * a.x, y: k * S.grav.y + (1 - k) * a.y, z: k * S.grav.z + (1 - k) * a.z };
+  const alpha = 1 - Math.exp(-dt / 80);
+  S.grav = {
+    x: S.grav.x + alpha * (a.x - S.grav.x),
+    y: S.grav.y + alpha * (a.y - S.grav.y),
+    z: S.grav.z + alpha * (a.z - S.grav.z)
+  };
   const m = Math.hypot(a.x - S.grav.x, a.y - S.grav.y, a.z - S.grav.z);
   S.motionNow = m;
-  if (S.bucket) S.bucket.mot.push(m);
+  if (S.bucket) { S.bucket.motSum += m * dt; S.bucket.motDt += dt; }
 }
 
 /* ===== 記録の開始・停止 ===== */
@@ -1925,7 +1951,7 @@ async function startRec() {
   S.vadCtx = new Float32Array(VAD_CTX);
   S.vadState = null;
   S.sess = {
-    id: S.sid, startedAt: Date.now(), endedAt: null, gainDb: S.gainDb, vadOk: S.vadOk,
+    id: S.sid, startedAt: Date.now(), endedAt: null, gainDb: S.gainDb, calDb: S.calDb, vadOk: S.vadOk,
     base: null,
     refDb: S.ref.db,
     refEnvDb: S.ref.envDb,
@@ -3986,41 +4012,98 @@ on("prep-btn", "click", () => showPage("prep"));
 on("prep-back", "click", () => { setButtons(); showPage("record"); });
 on("prep-back2", "click", () => { setButtons(); showPage("record"); });
 on("start-btn", "click", () => startRec());
-// 誤タップで止まらないよう、停止は2秒長押しだけにする（V100）
+// 誤タップで止まらないよう、停止は2秒長押しだけにする（V103で作り直し：
+// setTimeout単独に頼らず、押下時刻＋100msごとの確認で発動させる）
 (() => {
   const btn = $("stop-btn");
-  let timer = null;
-  const cancel = () => {
-    if (timer) { clearTimeout(timer); timer = null; }
+  const HOLD_MS = 2000, TICK_MS = 100;
+  let iv = null, startAt = 0, pressId = null, fired = false;
+  const paint = (p) => {
+    if (p > 0) {
+      const pct = Math.round(p * 100);
+      btn.style.background = "linear-gradient(90deg, #7a4b48 " + pct + "%, #3a2a2a " + pct + "%)";
+    } else btn.style.background = "";
+  };
+  const reset = () => {
+    if (iv) { clearInterval(iv); iv = null; }
+    pressId = null;
+    paint(0);
     if (btn.textContent !== "停止") btn.textContent = "停止";
   };
-  btn.addEventListener("pointerdown", () => {
-    if (btn.disabled) return;
+  const tick = () => {
+    if (fired) return;
+    const p = (Date.now() - startAt) / HOLD_MS;
+    if (p >= 1) {
+      fired = true;
+      reset();
+      try { stopRec(); } catch (e) {}
+      return;
+    }
+    paint(p);
+  };
+  btn.addEventListener("pointerdown", (e) => {
+    if (btn.disabled || iv) return;
+    e.preventDefault();
+    try { btn.setPointerCapture(e.pointerId); } catch (err) {}
+    pressId = e.pointerId;
+    fired = false;
+    startAt = Date.now();
     btn.textContent = "そのまま押し続けると停止";
-    timer = setTimeout(() => { timer = null; btn.textContent = "停止"; stopRec(); }, 2000);
+    paint(0);
+    iv = setInterval(tick, TICK_MS);
   });
-  btn.addEventListener("pointerup", cancel);
-  btn.addEventListener("pointerleave", cancel);
-  btn.addEventListener("pointercancel", cancel);
+  const end = (e) => {
+    if (pressId === null || e.pointerId !== pressId) return;
+    if (!fired) reset(); else pressId = null;
+  };
+  btn.addEventListener("pointerup", end);
+  btn.addEventListener("pointercancel", end);
   btn.addEventListener("contextmenu", (e) => e.preventDefault());
 })();
 on("btn-enter-black", "click", () => enterBlack());
-// 黒画面の解除も2秒長押しだけにする。触れただけでは解けない（V100）
+// 黒画面の解除も2秒長押しだけにする。触れただけでは解けない（V103で作り直し：
+// setTimeout単独に頼らず、押下時刻＋100msごとの確認で発動させる）
 (() => {
   const el = $("black-screen");
-  let timer = null;
+  const HOLD_MS = 2000, TICK_MS = 100;
   const hint = el.querySelector(".muted");
-  const cancel = () => {
-    if (timer) { clearTimeout(timer); timer = null; }
+  const bar = $("black-progress-bar");
+  let iv = null, startAt = 0, pressId = null, fired = false;
+  const paint = (p) => { if (bar) bar.style.width = Math.round(p * 100) + "%"; };
+  const reset = () => {
+    if (iv) { clearInterval(iv); iv = null; }
+    pressId = null;
+    paint(0);
     if (hint) hint.textContent = "2秒長押しで戻る";
   };
-  el.addEventListener("pointerdown", () => {
+  const tick = () => {
+    if (fired) return;
+    const p = (Date.now() - startAt) / HOLD_MS;
+    if (p >= 1) {
+      fired = true;
+      reset();
+      try { exitBlack(); } catch (e) {}
+      return;
+    }
+    paint(p);
+  };
+  el.addEventListener("pointerdown", (e) => {
+    if (iv) return;
+    e.preventDefault();
+    try { el.setPointerCapture(e.pointerId); } catch (err) {}
+    pressId = e.pointerId;
+    fired = false;
+    startAt = Date.now();
     if (hint) hint.textContent = "そのまま押し続けて…";
-    timer = setTimeout(() => { timer = null; exitBlack(); if (hint) hint.textContent = "2秒長押しで戻る"; }, 2000);
+    paint(0);
+    iv = setInterval(tick, TICK_MS);
   });
-  el.addEventListener("pointerup", cancel);
-  el.addEventListener("pointerleave", cancel);
-  el.addEventListener("pointercancel", cancel);
+  const end = (e) => {
+    if (pressId === null || e.pointerId !== pressId) return;
+    if (!fired) reset(); else pressId = null;
+  };
+  el.addEventListener("pointerup", end);
+  el.addEventListener("pointercancel", end);
   el.addEventListener("contextmenu", (e) => e.preventDefault());
 })();
 
@@ -4071,6 +4154,11 @@ on("tl-cur", "input", (e) => {
 try {
   const sg = localStorage.getItem("somnolog-gain-db");
   if (sg != null) { S.gainDb = Math.max(-9, Math.min(18, Number(sg) || 0)); $("gain").value = S.gainDb; }
+} catch (e) {}
+// 自動調整（「あ〜」を物差しに端末差を合わせた量）も端末に保存して使い回す（V104）
+try {
+  const sc = localStorage.getItem("somnolog-cal-db");
+  if (sc != null) S.calDb = Math.max(-12, Math.min(18, Number(sc) || 0));
 } catch (e) {}
 // 体動グラフの調整スライダー（元の形、V89で復元）。値は端末に保存して使い回す
 try {
