@@ -7,7 +7,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>SomnoLog V5</title>
+<title>SomnoLog V6</title>
 <style>
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body { margin: 0; padding: 0; }
@@ -70,7 +70,7 @@
 
 <!-- ===== 第1画面：許可を取る ===== -->
 <main id="page-perm" class="page" hidden>
-  <header class="head"><h1 class="app-name">SomnoLog V5</h1><span class="ver" id="ver-text">SomnoLog V5</span></header>
+  <header class="head"><h1 class="app-name">SomnoLog V6</h1><span class="ver" id="ver-text">SomnoLog V6</span></header>
   <div id="perm-err" class="err" hidden></div>
   <section class="card">
     <button id="perm-both" class="primary">カメラとモーションセンサーを許可</button>
@@ -95,7 +95,7 @@
 
 <!-- ===== 第2画面：QRのページ ===== -->
 <main id="page-start" class="page" hidden>
-  <header class="head"><h1 class="app-name">SomnoLog V5</h1><span class="ver">SomnoLog V5</span></header>
+  <header class="head"><h1 class="app-name">SomnoLog V6</h1><span class="ver">SomnoLog V6</span></header>
   <div id="scan-msg" class="err" hidden></div>
   <section class="card">
     <button id="cam-btn" class="primary">QRコードを読む</button>
@@ -144,7 +144,7 @@
 <!-- ===== 記録画面 ===== -->
 <main id="page-record" class="page" hidden>
   <header class="head">
-    <h1 class="app-name">SomnoLog V5</h1>
+    <h1 class="app-name">SomnoLog V6</h1>
     <button id="rec-back" class="sub mini" type="button">戻る</button>
   </header>
   <div id="rec-err" class="err" hidden></div>
@@ -293,7 +293,7 @@
    あ〜基準・人声判定）だけを根拠に、新規に書いたもの。
    過去の版のコードは持ち込んでいない。
    ================================================================ */
-const APP_VERSION = 5;
+const APP_VERSION = 6;
 const UPD_REPO = "matsuodentalassociation/ST-SCOPE";
 const UPD_BRANCH = "main";
 const UPD_FILE = "index.html";
@@ -304,7 +304,7 @@ const BASE_SEC = 10;             // 環境音の較正は最初の10秒
 const LOUD_DB = 10.0;            // 基準 +10dB で音あり
 const MOTION_TH = 0.05;          // 体動 0.05g
 const CHUNK_MS = 10000;          // 録音は10秒ずつの小分け
-const VAD_URL = "./silero_vad.onnx?v=5";
+const VAD_URL = "./silero_vad.onnx?v=6";
 const VAD_TH = 0.3;
 const VAD_SR = 16000;
 
@@ -586,8 +586,8 @@ on("cf-ok", "click", async () => {
   if (!p) { showPage("start"); return; }
   await savePatient(p);
   S.pendingPatient = null;
-  showPage("start");
   updateBackButtons();
+  goRecord();
 });
 on("cf-ng", "click", () => {
   S.pendingPatient = null;
@@ -1452,7 +1452,7 @@ async function makeZipAndShare() {
   const ext = (sess.actualMimeType || "").includes("webm") ? "webm" : "mp4";
   const manifest = {
     formatVersion: "zip-store-v1",
-    appVersion: "V5",
+    appVersion: "V6",
     sessionId: sid,
     patientId: sess.patient ? sess.patient.chartNo : "UNREGISTERED",
     recording: {
@@ -1477,7 +1477,7 @@ async function makeZipAndShare() {
   const files = [
     { name: "manifest.json", data: enc.encode(JSON.stringify(manifest, null, 2)) },
     { name: "log.json", data: enc.encode(JSON.stringify({ sessionId: sid, windowSizeMs: WIN_MS, logs: rows })) },
-    { name: "README.txt", data: enc.encode("SomnoLog V5 計測記録\n診療所: " + (sess.patient ? sess.patient.clinic : "") + "\nカルテNo: " + (sess.patient ? sess.patient.chartNo : "") + "\n開始: " + new Date(sess.startedAt).toLocaleString("ja-JP") + "\n環境音基準: " + sess.baselineDbFS + " dBFS / 閾値 +10dB / 体動 0.05g\n録音形式: " + sess.actualMimeType + "\n") },
+    { name: "README.txt", data: enc.encode("SomnoLog V6 計測記録\n診療所: " + (sess.patient ? sess.patient.clinic : "") + "\nカルテNo: " + (sess.patient ? sess.patient.chartNo : "") + "\n開始: " + new Date(sess.startedAt).toLocaleString("ja-JP") + "\n環境音基準: " + sess.baselineDbFS + " dBFS / 閾値 +10dB / 体動 0.05g\n録音形式: " + sess.actualMimeType + "\n") },
   ];
   for (let i = 0; i < chunks.length; i++) {
     const buf = new Uint8Array(await chunks[i].blob.arrayBuffer());
@@ -1550,9 +1550,13 @@ async function boot() {
       await DB.put("sessions", { ...s, status: "recovered", endedAt: s.endedAt || Date.now() });
     }
   }
-  if (S.permCam && S.permMotion) {
-    if (S.hashPatient) { const p = S.hashPatient; S.hashPatient = null; S.pendingPatient = p; showConfirm(p); }
-    else showPage("start");
+  if (S.hashPatient) {
+    if (S.permCam && S.permMotion) { const p = S.hashPatient; S.hashPatient = null; S.pendingPatient = p; showConfirm(p); }
+    else showPage("perm");
+  } else if (S.patient) {
+    showPage("record");
+  } else if (S.permCam && S.permMotion) {
+    showPage("start");
   } else {
     showPage("perm");
   }
