@@ -7,7 +7,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>SomnoLog V6</title>
+<title>③SomnoLog_muse V9</title>
 <style>
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body { margin: 0; padding: 0; }
@@ -70,7 +70,7 @@
 
 <!-- ===== 第1画面：許可を取る ===== -->
 <main id="page-perm" class="page" hidden>
-  <header class="head"><h1 class="app-name">SomnoLog V6</h1><span class="ver" id="ver-text">SomnoLog V6</span></header>
+  <header class="head"><h1 class="app-name">③SomnoLog_muse V9</h1><span class="ver" id="ver-text">③SomnoLog_muse V9</span></header>
   <div id="perm-err" class="err" hidden></div>
   <section class="card">
     <button id="perm-both" class="primary">カメラとモーションセンサーを許可</button>
@@ -91,11 +91,12 @@
     <button id="perm-update" class="sub">最新版を入れる</button>
     <p id="perm-update-msg" class="muted" hidden></p>
   </section>
+  <section class="card"><button id="perm-back" class="sub">← 戻る（検証用）</button></section>
 </main>
 
 <!-- ===== 第2画面：QRのページ ===== -->
 <main id="page-start" class="page" hidden>
-  <header class="head"><h1 class="app-name">SomnoLog V6</h1><span class="ver">SomnoLog V6</span></header>
+  <header class="head"><h1 class="app-name">③SomnoLog_muse V9</h1><span class="ver">③SomnoLog_muse V9</span></header>
   <div id="scan-msg" class="err" hidden></div>
   <section class="card">
     <button id="cam-btn" class="primary">QRコードを読む</button>
@@ -124,6 +125,7 @@
     <p id="upd-msg" class="muted" hidden></p>
   </section>
   <canvas id="scan-canvas" hidden></canvas>
+  <section class="card"><button id="start-back" class="sub">← 戻る（検証用）</button></section>
 </main>
 
 <!-- ===== 患者情報の確認 ===== -->
@@ -139,12 +141,13 @@
     <button id="cf-ng" class="warnbtn">情報が間違っています</button>
     <button id="back-rec-confirm" class="sub" hidden>睡眠記録画面に移動</button>
   </section>
+  <section class="card"><button id="confirm-back" class="sub">← 戻る（検証用）</button></section>
 </main>
 
 <!-- ===== 記録画面 ===== -->
 <main id="page-record" class="page" hidden>
   <header class="head">
-    <h1 class="app-name">SomnoLog V6</h1>
+    <h1 class="app-name">③SomnoLog_muse V9</h1>
     <button id="rec-back" class="sub mini" type="button">戻る</button>
   </header>
   <div id="rec-err" class="err" hidden></div>
@@ -288,12 +291,12 @@
 "use strict";
 
 /* ================================================================
-   SomnoLog 作り直し V1
+   ③SomnoLog_muse（作り直し版）
    仕様書「SomnoSystem統合設計仕様書」（原版＋2026-11-09追加の
    あ〜基準・人声判定）だけを根拠に、新規に書いたもの。
    過去の版のコードは持ち込んでいない。
    ================================================================ */
-const APP_VERSION = 6;
+const APP_VERSION = 9;
 const UPD_REPO = "matsuodentalassociation/ST-SCOPE";
 const UPD_BRANCH = "main";
 const UPD_FILE = "index.html";
@@ -304,7 +307,7 @@ const BASE_SEC = 10;             // 環境音の較正は最初の10秒
 const LOUD_DB = 10.0;            // 基準 +10dB で音あり
 const MOTION_TH = 0.05;          // 体動 0.05g
 const CHUNK_MS = 10000;          // 録音は10秒ずつの小分け
-const VAD_URL = "./silero_vad.onnx?v=6";
+const VAD_URL = "./silero_vad.onnx?v=9";
 const VAD_TH = 0.3;
 const VAD_SR = 16000;
 
@@ -552,6 +555,9 @@ on("perm-update", "click", () => applyLatest());
 on("usage-btn", "click", () => { $("usage-box").hidden = !$("usage-box").hidden; });
 on("rec-usage-btn", "click", () => { $("rec-usage-box").hidden = !$("rec-usage-box").hidden; });
 on("upd-reload", "click", () => applyLatest());
+on("perm-back", "click", () => showPage("start"));
+on("start-back", "click", () => showPage("perm"));
+on("confirm-back", "click", () => showPage("start"));
 
 /* ===== 第2画面：QRのページ（入口はスマホ標準のカメラ、受け口は1つ） ===== */
 function handleQrText(text) {
@@ -893,7 +899,7 @@ on("gain", "input", (e) => {
 on("ref-btn", "click", async () => {
   if (!S.micOk) return;
   if (S.ctx.state !== "running") await S.ctx.resume().catch(() => {});
-  S.measuring = { phase: "quiet", t0: performance.now(), env: [], vals: [], pcm: [] };
+  S.measuring = { phase: "quiet", t0: performance.now(), env: [], vals: [], pcm: [], rec: null, chunks: [] };
   $("ref-btn").disabled = true;
   msgPrep("静かにしてください…");
 });
@@ -913,6 +919,13 @@ async function measureTick() {
     if (el >= 2000) {
       m.phase = "voice"; m.t0 = performance.now(); m.pcm = [];
       msgPrep("「あ〜」と声を出してください…");
+      try {
+        for (const cand of REC_CANDIDATES) { m.rec = tryRecorder(cand); if (m.rec) break; }
+        if (m.rec) {
+          m.rec.ondataavailable = (e) => { if (e.data && e.data.size) m.chunks.push(e.data); };
+          m.rec.start(250);
+        }
+      } catch (e) { m.rec = null; }
     }
   } else if (m.phase === "voice") {
     if (db !== null) m.vals.push(db);
@@ -924,7 +937,24 @@ async function measureTick() {
       S.measuring = null;
       $("ref-btn").disabled = false;
       if (!(peak > envDb)) { msgPrep("声が取れませんでした。もう一度お試しください。"); return; }
-      const wav = pcmToWav(m.pcm, S.ctx.sampleRate);
+      // 声は取れた。音の取り込みが空でないか確かめてから保存する（空なら保存しない）
+      let wav = null;
+      if (m.rec) {
+        wav = await new Promise((res) => {
+          m.rec.onstop = () => res(m.chunks.length ? new Blob(m.chunks, { type: m.rec.mimeType }) : null);
+          try { m.rec.stop(); } catch (e) { res(null); }
+        });
+      }
+      if (wav) {
+        try {
+          const ab = await wav.arrayBuffer();
+          const decoded = await S.ctx.decodeAudioData(ab.slice(0));
+          const ch = decoded.getChannelData(0);
+          let pk = 0; for (let i = 0; i < ch.length; i++) { const a = Math.abs(ch[i]); if (a > pk) pk = a; }
+          if (pk < 0.01) wav = null;
+        } catch (e) { /* 確かめられない時は、そのまま使う */ }
+      }
+      if (!wav) { msgPrep("声は取れましたが、音を保存できませんでした。もう一度お試しください。"); return; }
       S.ref = { db: peak, envDb, at: Date.now(), wav };
       await saveRef();
       refUi();
@@ -934,26 +964,6 @@ async function measureTick() {
   }
 }
 setInterval(() => { if (S.measuring) measureTick(); }, WIN_MS);
-function pcmToWav(samples, rate) {
-  // 16kHzへ直して、16bit PCMのWAVにする
-  const ratio = rate / VAD_SR, n = Math.floor(samples.length / ratio);
-  const data = new Int16Array(n);
-  for (let i = 0; i < n; i++) {
-    const pos = i * ratio, j = Math.floor(pos), fr = pos - j;
-    const a = samples[j] || 0, b = samples[j + 1] !== undefined ? samples[j + 1] : a;
-    const v = Math.max(-1, Math.min(1, a + (b - a) * fr));
-    data[i] = v * 0x7FFF;
-  }
-  const buf = new ArrayBuffer(44 + data.length * 2);
-  const v = new DataView(buf);
-  const wstr = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
-  wstr(0, "RIFF"); v.setUint32(4, 36 + data.length * 2, true); wstr(8, "WAVE"); wstr(12, "fmt ");
-  v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
-  v.setUint32(24, VAD_SR, true); v.setUint32(28, VAD_SR * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true);
-  wstr(36, "data"); v.setUint32(40, data.length * 2, true);
-  for (let i = 0; i < data.length; i++) v.setInt16(44 + i * 2, data[i], true);
-  return new Blob([buf], { type: "audio/wav" });
-}
 async function saveRef() {
   if (!S.ref) return;
   await DB.put("kv", { key: "ref", value: { db: S.ref.db, envDb: S.ref.envDb, at: S.ref.at, wav: S.ref.wav } });
@@ -1066,18 +1076,24 @@ async function onChunk(blob) {
     $("rec-status").textContent = "記録中";
   }
   const idx = sess.chunkIdx++;
+  const durMs = Date.now() - sess.startedAt - sess.chunkStartMs;
   await DB.add("audioChunks", {
     sessionId: sess.sessionId, idx, startOffsetMs: sess.chunkStartMs,
-    durationMs: Date.now() - sess.startedAt - sess.chunkStartMs,
+    durationMs: durMs,
     mime: sess.actualMimeType, blob,
   }).catch(() => { sess.saveErrors = (sess.saveErrors || 0) + 1; });
-  sess.chunkStartMs += CHUNK_MS;
+  sess.chunkStartMs += durMs;
 }
 function senseTick() {
   const sess = S.session;
   if (!sess || !S.running) return;
   const now = Date.now();
   const elapsed = now - sess.startedAt;
+  if (!sess.preflight && elapsed > 15000 && !sess.preflightFailed) {
+    sess.preflightFailed = true;
+    failStart("録音データが届きませんでした").catch((e) => showErr("record", e));
+    return;
+  }
   const db = rawDbfs();
   const mg = lastMotionG;
   const vadMax = sess.vadWindow.length ? Math.max(...sess.vadWindow) : 0;
@@ -1132,7 +1148,7 @@ async function stopRec() {
   }
   if (sess.logBuf.length) {
     const rows = sess.logBuf; sess.logBuf = [];
-    await DB.add("sessionLogs", { sessionId: sess.sessionId, startElapsedMs: rows[0].elapsedMs, rows });
+    await DB.add("sessionLogs", { sessionId: sess.sessionId, startElapsedMs: rows[0].elapsedMs, rows }).catch(() => { sess.saveErrors = (sess.saveErrors || 0) + 1; });
   }
   const endedAt = Date.now();
   const events = await deriveEvents(sess);
@@ -1149,7 +1165,25 @@ async function stopRec() {
   $("rec-status").textContent = sess.saveErrors ? "待機中（記録しました。ただし保存に失敗した部分があります）" : "待機中（記録しました）";
   setButtons();
 }
-on("stop-btn", "click", stopRec);
+function bindHold(id, ms, fn) {
+  const b = $(id);
+  let timer = 0, iv = 0;
+  const label = b.textContent;
+  const clear = () => { clearTimeout(timer); clearInterval(iv); timer = 0; b.textContent = label; };
+  b.addEventListener("pointerdown", (e) => {
+    if (b.disabled) return;
+    e.preventDefault();
+    const t0 = Date.now();
+    b.textContent = "止めます…あと " + Math.ceil(ms / 1000) + " 秒";
+    iv = setInterval(() => {
+      const r = Math.ceil((ms - (Date.now() - t0)) / 1000);
+      if (r > 0) b.textContent = "止めます…あと " + r + " 秒";
+    }, 200);
+    timer = setTimeout(() => { clear(); fn(); }, ms);
+  });
+  for (const ev of ["pointerup", "pointerleave", "pointercancel"]) b.addEventListener(ev, clear);
+}
+bindHold("stop-btn", 2000, () => { stopRec().catch((e) => showErr("record", e)); });
 /* 記録の区間からイベントを作り、判定AIの結果と「あ〜」で分類する */
 async function deriveEvents(sess) {
   const blocks = await DB.bySession("sessionLogs", sess.sessionId);
@@ -1421,10 +1455,19 @@ function openShare(sid) {
   DB.all("sessions").then((all) => {
     const sess = all.find((s) => s.sessionId === sid);
     $("sh-addr").textContent = sess && sess.patient ? (sess.patient.logShareEmail || "（未記入）") : "";
+    if (sess && sess.exportedAt) $("sh-del-tl").disabled = false;
   });
+  if (S.rvPending) {
+    DB.bySession("clips", sid).then((clips) => {
+      if (clips.some((c) => c.type === "speech")) {
+        $("rv-text").textContent = "人声と判定された音が " + clips.filter((c) => c.type === "speech").length + " 件あります。聴いて確かめてから保存してください。";
+        $("rv-dialog").hidden = false;
+      } else S.rvPending = false;
+    });
+  }
   showPage("share");
 }
-on("sh-back", "click", () => showPage("record"));
+on("sh-back", "click", () => { if (S.shareSid) openDetail(S.shareSid); else showPage("record"); });
 on("sh-all", "click", async () => {
   const clips = await DB.bySession("clips", S.shareSid);
   const hasSpeech = clips.some((c) => c.type === "speech");
@@ -1435,9 +1478,9 @@ on("sh-all", "click", async () => {
   }
   await makeZipAndShare();
 });
-on("rv-close", "click", () => { $("rv-dialog").hidden = true; });
-on("rv-open", "click", () => { $("rv-dialog").hidden = true; openDetail(S.shareSid); });
-on("rv-save-direct", "click", async () => { $("rv-dialog").hidden = true; await makeZipAndShare(); });
+on("rv-close", "click", () => { S.rvPending = false; $("rv-dialog").hidden = true; });
+on("rv-open", "click", () => { S.rvPending = true; $("rv-dialog").hidden = true; openDetail(S.shareSid); });
+on("rv-save-direct", "click", async () => { S.rvPending = false; $("rv-dialog").hidden = true; await makeZipAndShare(); });
 async function makeZipAndShare() {
   const sid = S.shareSid;
   const sess = (await DB.all("sessions")).find((s) => s.sessionId === sid);
@@ -1452,7 +1495,7 @@ async function makeZipAndShare() {
   const ext = (sess.actualMimeType || "").includes("webm") ? "webm" : "mp4";
   const manifest = {
     formatVersion: "zip-store-v1",
-    appVersion: "V6",
+    appVersion: "V9",
     sessionId: sid,
     patientId: sess.patient ? sess.patient.chartNo : "UNREGISTERED",
     recording: {
@@ -1477,15 +1520,17 @@ async function makeZipAndShare() {
   const files = [
     { name: "manifest.json", data: enc.encode(JSON.stringify(manifest, null, 2)) },
     { name: "log.json", data: enc.encode(JSON.stringify({ sessionId: sid, windowSizeMs: WIN_MS, logs: rows })) },
-    { name: "README.txt", data: enc.encode("SomnoLog V6 計測記録\n診療所: " + (sess.patient ? sess.patient.clinic : "") + "\nカルテNo: " + (sess.patient ? sess.patient.chartNo : "") + "\n開始: " + new Date(sess.startedAt).toLocaleString("ja-JP") + "\n環境音基準: " + sess.baselineDbFS + " dBFS / 閾値 +10dB / 体動 0.05g\n録音形式: " + sess.actualMimeType + "\n") },
+    { name: "README.txt", data: enc.encode("③SomnoLog_muse V9 計測記録\n診療所: " + (sess.patient ? sess.patient.clinic : "") + "\nカルテNo: " + (sess.patient ? sess.patient.chartNo : "") + "\n開始: " + new Date(sess.startedAt).toLocaleString("ja-JP") + "\n環境音基準: " + sess.baselineDbFS + " dBFS / 閾値 +10dB / 体動 0.05g\n録音形式: " + sess.actualMimeType + "\n") },
   ];
   for (let i = 0; i < chunks.length; i++) {
     const buf = new Uint8Array(await chunks[i].blob.arrayBuffer());
     files.push({ name: "audio/chunk_" + String(i + 1).padStart(3, "0") + "." + ext, data: buf });
   }
   if (S.ref && S.ref.wav) {
-    files.push({ name: "reference.wav", data: new Uint8Array(await S.ref.wav.arrayBuffer()) });
+    const rt = S.ref.wav.type || "";
+    files.push({ name: "reference" + (rt.indexOf("mp4") >= 0 ? ".mp4" : rt.indexOf("webm") >= 0 ? ".webm" : ".wav"), data: new Uint8Array(await S.ref.wav.arrayBuffer()) });
   }
+  await DB.put("sessions", { ...sess, exportedAt: Date.now() });
   S.zipBlob = await makeStoreZip(files);
   const d = new Date(sess.startedAt);
   const day = d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate());
@@ -1519,7 +1564,8 @@ on("sh-pick", "click", async () => {
 });
 on("sh-del-tl", "click", async () => {
   const sid = S.shareSid;
-  if (!S.exportedSids.has(sid)) return;
+  const sessNow = (await DB.all("sessions")).find((x) => x.sessionId === sid);
+  if (!S.exportedSids.has(sid) && !(sessNow && sessNow.exportedAt)) return;
   if (!confirm("この記録の音声を削除します（残す指定した音声の分は残ります）。よろしいですか？")) return;
   const clips = await DB.bySession("clips", sid);
   const saved = clips.filter((c) => c.saved);
