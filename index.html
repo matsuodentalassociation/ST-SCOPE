@@ -5,7 +5,31 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
 <meta name="theme-color" content="#000000">
 <meta http-equiv="Cache-Control" content="no-cache">
-<title>SomnoLog V111 基準音圧版</title>
+<script>
+/* 起動直後の入れ替え（V112）：端末に保存された新しい版があれば、開かれたページの版より先にそちらを動かす。
+   これで「アプリの更新」は公開ページ（Pages）の反映を待たずに、最新版を直接読み込める。
+   ここの数字は、このファイルの APP_VERSION と必ず一致させること（版上げ時の確認項目に追加）。
+   住所に safe=1 が付いている時は、保存した版を捨てて、開かれたページの版で開く（開けなくなった時の逃げ道）。 */
+(function () {
+  try {
+    if (/[?&]safe=1(&|$)/.test(location.search)) {
+      localStorage.removeItem("sl_boot_html");
+      localStorage.removeItem("sl_boot_ver");
+      return;
+    }
+    var v = parseInt(localStorage.getItem("sl_boot_ver") || "0", 10);
+    if (v > 112) {
+      var h = localStorage.getItem("sl_boot_html");
+      if (h && h.indexOf("</html>") >= 0) {
+        document.open();
+        document.write(h);
+        document.close();
+      }
+    }
+  } catch (e) { /* 失敗したら、開かれたページの版のまま続ける */ }
+})();
+</script>
+<title>SomnoLog V112 基準音圧版</title>
 <style>
 :root{color-scheme:dark}
 *{box-sizing:border-box}
@@ -97,7 +121,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 1-1 起動・QR読み取り -->
 <main id="page-start" class="page" hidden>
   <header class="head">
-    <h1 class="app-name">SomnoLog V111</h1>
+    <h1 class="app-name">SomnoLog V112</h1>
     <span class="tag">患者情報確認</span>
   </header>
 
@@ -154,7 +178,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 記録画面 -->
 <main id="page-record" class="page" hidden>
   <header class="head">
-    <h1 class="app-name">SomnoLog V111</h1>
+    <h1 class="app-name">SomnoLog V112</h1>
     <div style="display:flex;align-items:center;gap:10px">
       <button id="rec-back" class="sub mini" type="button">戻る</button>
       <span id="rec-badge" class="tag">待機中</span>
@@ -184,7 +208,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 記録の準備 -->
 <main id="page-prep" class="page" hidden>
   <header class="head">
-    <h1 class="app-name">SomnoLog V111</h1>
+    <h1 class="app-name">SomnoLog V112</h1>
     <button id="prep-back" class="sub mini" type="button">戻る</button>
   </header>
 
@@ -718,7 +742,7 @@ const SleepEngine = (() => {
 <script>
 "use strict";
 /* ===== バージョン ===== */
-const APP_VERSION = 111;
+const APP_VERSION = 112;
 const APP = "SomnoLogV" + APP_VERSION + "_ref";
 
 /* ===== 更新の取得元（GitHub） ===== */
@@ -2120,6 +2144,24 @@ async function fetchLatest() {
   throw lastErr || new Error("取得できませんでした");
 }
 
+async function fetchLatestHtml() {
+  const t = Date.now();
+  const sha = await fetchLatestSha();
+  const urls = [];
+  if (sha) urls.push("https://raw.githubusercontent.com/" + UPD_REPO + "/" + sha + "/" + UPD_FILE + "?_=" + t);
+  urls.push("https://raw.githubusercontent.com/" + UPD_REPO + "/" + UPD_BRANCH + "/" + UPD_FILE + "?_=" + t);
+  let lastErr = null;
+  for (const url of urls) {
+    try {
+      const txt = await fetchText(url);
+      const v = parseVersion(txt);
+      if (txt.indexOf("</html>") < 0 || txt.indexOf("SomnoLog") < 0) throw new Error("最新版の内容が不完全でした");
+      return { version: v, html: txt, sha };
+    } catch (e) { lastErr = e; }
+  }
+  throw lastErr || new Error("取得できませんでした");
+}
+
 async function checkUpdate() {
   if (upd.checking) return false;
   upd.checking = true;
@@ -2152,7 +2194,7 @@ function renderUpdate() {
     if (upd.checking) msg = "最新版を確認しています…";
     else if (upd.error) msg = "確認できませんでした。通信状態を確認して、もう一度お試しください。";
     else if (upd.latest == null) msg = "";
-    else if (upd.latest > APP_VERSION) msg = "新しい版を確認しました。公開ページを確認しています…";
+    else if (upd.latest > APP_VERSION) msg = "新しい版を確認しました。最新版を取りに行きます…";
     else if (upd.latest === APP_VERSION) msg = "現在のバージョンは最新版です。";
     else msg = "公開されている版は、現在のバージョンより古いです。";
   }
@@ -2182,16 +2224,21 @@ async function applyLatest() {
   if (!ok) return;
   if (upd.latest <= APP_VERSION) return;
   if (isBusy()) return;
+  // 最新版の実物をGitHubから直接取り、端末に保存して開き直す（V112）。公開ページの反映は待たない。
+  // 開き直した先で、起動直後の仕掛け（sl_boot）が保存した版を読み込んで動かす。
+  let pack = null;
+  try { pack = await fetchLatestHtml(); } catch (e) { pack = null; }
+  if (!pack || pack.version !== upd.latest) {
+    $("upd-msg").hidden = false;
+    $("upd-msg").textContent = "最新版を取りに行けませんでした。通信状態を確認して、もう一度お試しください。";
+    return;
+  }
   try {
-    const published = await fetchText(UPD_PAGES + "?_=" + Date.now());
-    if (parseVersion(published) !== upd.latest) {
-      $("upd-msg").hidden = false;
-      $("upd-msg").textContent = "最新版が公開ページに反映されるまでお待ちください。数分後にもう一度お試しください。";
-      return;
-    }
+    localStorage.setItem("sl_boot_html", pack.html);
+    localStorage.setItem("sl_boot_ver", String(pack.version));
   } catch (e) {
     $("upd-msg").hidden = false;
-    $("upd-msg").textContent = "公開ページの最新版を確認できませんでした。時間をおいてもう一度お試しください。";
+    $("upd-msg").textContent = "最新版を端末に保存できませんでした。";
     return;
   }
   if (isBusy()) return;
