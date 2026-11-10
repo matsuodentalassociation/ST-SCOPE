@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
 <meta name="theme-color" content="#000000">
 <meta http-equiv="Cache-Control" content="no-cache">
-<title>SomnoLog V106 基準音圧版</title>
+<title>SomnoLog V107 基準音圧版</title>
 <style>
 :root{color-scheme:dark}
 *{box-sizing:border-box}
@@ -97,7 +97,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 1-1 起動・QR読み取り -->
 <main id="page-start" class="page" hidden>
   <header class="head">
-    <h1 class="app-name">SomnoLog V106</h1>
+    <h1 class="app-name">SomnoLog V107</h1>
     <span class="tag">患者情報確認</span>
   </header>
 
@@ -154,7 +154,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 記録画面 -->
 <main id="page-record" class="page" hidden>
   <header class="head">
-    <h1 class="app-name">SomnoLog V106</h1>
+    <h1 class="app-name">SomnoLog V107</h1>
     <div style="display:flex;align-items:center;gap:10px">
       <button id="rec-back" class="sub mini" type="button">戻る</button>
       <span id="rec-badge" class="tag">待機中</span>
@@ -184,7 +184,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 記録の準備 -->
 <main id="page-prep" class="page" hidden>
   <header class="head">
-    <h1 class="app-name">SomnoLog V106</h1>
+    <h1 class="app-name">SomnoLog V107</h1>
     <button id="prep-back" class="sub mini" type="button">戻る</button>
   </header>
 
@@ -718,7 +718,7 @@ const SleepEngine = (() => {
 <script>
 "use strict";
 /* ===== バージョン ===== */
-const APP_VERSION = 106;
+const APP_VERSION = 107;
 const APP = "SomnoLogV" + APP_VERSION + "_ref";
 
 /* ===== 更新の取得元（GitHub） ===== */
@@ -2944,9 +2944,9 @@ function tagGraphSvg(tag, t0, t1) {
     g += '<line x1="' + TL_PL + '" x2="' + (TL_PL + plotW) + '" y1="' + y.toFixed(1) + '" y2="' + y.toFixed(1) + '" stroke="#ffd54a" stroke-opacity="0.55" stroke-width="1" stroke-dasharray="5 4"/>';
   }
 
-  // 広いスケール（30分以上）では折れ線にする（V106、秀司の指示）。
-  // 棒だと細かくなりすぎて塊に見えるため。線は棒の天辺（区間の最大）と同じ点を結ぶので、高さの意味は変わらない。
-  const lineMode = tl.winLen >= 1800;
+  // 棒と折れ線の境目（V107、秀司の指示で確定）：全体・1時間・30分は棒グラフ、10分・5分・1分は折れ線グラフ。
+  // 細かいスケールでは、いびき1つ1つのカーブが見える方がいいため。線は棒の天辺（区間の最大）と同じ点を結ぶ。
+  const lineMode = tl.winLen <= 600;
   let any = false;
   if (lineMode) {
     let run = [];
@@ -3116,7 +3116,7 @@ function renderTimeline() {
     $("tl-msg").textContent = "体動そのものに音声はありません。音を聴くには音声タグを選んでください。";
   } else {
     listenBtn.disabled = false;
-    listenBtn.textContent = tl.winLen >= 1800 ? "タイムラインの音を聴く（線の1区間分）" : "タイムラインの音を聴く（棒1本分）";
+    listenBtn.textContent = tl.winLen <= 600 ? "タイムラインの音を聴く（線の1区間分）" : "タイムラインの音を聴く（棒1本分）";
     const listen60Btn = $("tl-listen60");
     if (listen60Btn) listen60Btn.disabled = false;
     if (($("tl-msg").textContent || "").indexOf("体動そのものに音声は") === 0) $("tl-msg").textContent = "";
