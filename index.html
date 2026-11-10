@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
 <meta name="theme-color" content="#000000">
 <meta http-equiv="Cache-Control" content="no-cache">
-<title>SomnoLog V107 基準音圧版</title>
+<title>SomnoLog V108 基準音圧版</title>
 <style>
 :root{color-scheme:dark}
 *{box-sizing:border-box}
@@ -97,7 +97,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 1-1 起動・QR読み取り -->
 <main id="page-start" class="page" hidden>
   <header class="head">
-    <h1 class="app-name">SomnoLog V107</h1>
+    <h1 class="app-name">SomnoLog V108</h1>
     <span class="tag">患者情報確認</span>
   </header>
 
@@ -154,7 +154,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 記録画面 -->
 <main id="page-record" class="page" hidden>
   <header class="head">
-    <h1 class="app-name">SomnoLog V107</h1>
+    <h1 class="app-name">SomnoLog V108</h1>
     <div style="display:flex;align-items:center;gap:10px">
       <button id="rec-back" class="sub mini" type="button">戻る</button>
       <span id="rec-badge" class="tag">待機中</span>
@@ -184,7 +184,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 記録の準備 -->
 <main id="page-prep" class="page" hidden>
   <header class="head">
-    <h1 class="app-name">SomnoLog V107</h1>
+    <h1 class="app-name">SomnoLog V108</h1>
     <button id="prep-back" class="sub mini" type="button">戻る</button>
   </header>
 
@@ -718,7 +718,7 @@ const SleepEngine = (() => {
 <script>
 "use strict";
 /* ===== バージョン ===== */
-const APP_VERSION = 107;
+const APP_VERSION = 108;
 const APP = "SomnoLogV" + APP_VERSION + "_ref";
 
 /* ===== 更新の取得元（GitHub） ===== */
@@ -2832,6 +2832,9 @@ function tagGraphSvg(tag, t0, t1) {
   const bw = plotW / NB;
   const yMid = TL_PT + plotH / 2;
   const sc = tl.scale;
+  // 棒と折れ線の境目（V107で確定）：全体・1時間・30分は棒、10分・5分・1分は折れ線。
+  const lineMode = tl.winLen <= 600;
+  let tracePts = 0;
 
   const bins = new Array(NB).fill(null);
   for (const e of tl.data.evs) {
@@ -2890,9 +2893,10 @@ function tagGraphSvg(tag, t0, t1) {
       }
     }
   }
-  // 記録された音のカーブ（V106、秀司の指示）：1秒ごとの音の大きさを細い折れ線で出す。
-  // 棒や線（区間の最大）だけでは見えない、音そのものの山と谷が分かるようにするため。
-  // 高さの物差しは棒と同じ（posOf）。欠測の所では線を切る。
+  // 記録された音のカーブ（V106、秀司の指示）：1秒ごとの音の大きさを折れ線で出す。
+  // 折れ線のスケール（10分・5分・1分）では、これが線の本体（V108、秀司の見本＝昔の滑らかな線）。
+  // 記録（いびき等）のある所だけを結ぶと点の集まりになって細切れに見えるため、線は毎秒の大きさで引く。
+  // 棒のスケールでは後ろに薄く添える。高さの物差しは棒と同じ（posOf）。欠測の所では線を切る。
   {
     const rows = [];
     for (const r of tl.data.secs) {
@@ -2903,7 +2907,7 @@ function tagGraphSvg(tag, t0, t1) {
     let run = [];
     const flush = () => {
       if (run.length >= 2) {
-        g += '<polyline points="' + run.join(" ") + '" fill="none" stroke="#84b9cf" stroke-width="1" opacity="0.5"/>';
+        g += '<polyline points="' + run.join(" ") + '" fill="none" stroke="#84b9cf" stroke-width="' + (lineMode ? "1.6" : "1") + '" opacity="' + (lineMode ? "0.95" : "0.5") + '"/>';
       }
       run = [];
     };
@@ -2913,6 +2917,7 @@ function tagGraphSvg(tag, t0, t1) {
       const x = TL_PL + (r.sec - t0) / tl.winLen * plotW;
       const y = TL_PT + plotH - posOf(r.dbApplied) * (plotH - 4);
       run.push(x.toFixed(1) + "," + y.toFixed(1));
+      tracePts++;
     }
     flush();
   }
@@ -2944,11 +2949,20 @@ function tagGraphSvg(tag, t0, t1) {
     g += '<line x1="' + TL_PL + '" x2="' + (TL_PL + plotW) + '" y1="' + y.toFixed(1) + '" y2="' + y.toFixed(1) + '" stroke="#ffd54a" stroke-opacity="0.55" stroke-width="1" stroke-dasharray="5 4"/>';
   }
 
-  // 棒と折れ線の境目（V107、秀司の指示で確定）：全体・1時間・30分は棒グラフ、10分・5分・1分は折れ線グラフ。
-  // 細かいスケールでは、いびき1つ1つのカーブが見える方がいいため。線は棒の天辺（区間の最大）と同じ点を結ぶ。
-  const lineMode = tl.winLen <= 600;
+  // 折れ線の時（V108）：線の本体は音の大きさのカーブ（毎秒つながる）。記録の位置は点で重ねる。
+  // カーブが無い記録だけ、区間の最大を結ぶ線に倒す。
   let any = false;
-  if (lineMode) {
+  if (lineMode && tracePts >= 2) {
+    for (let i = 0; i < NB; i++) {
+      const item = bins[i];
+      if (!item) continue;
+      any = true;
+      const pos = posOf(item.db);
+      const x = TL_PL + (i + 0.5) * bw;
+      const y = TL_PT + plotH - pos * (plotH - 4);
+      g += '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="2.4" fill="' + (item.saved ? SAVED_BAR_COLOR : TAG_COLOR[tag]) + '"/>';
+    }
+  } else if (lineMode) {
     let run = [];
     const flush = () => {
       if (run.length >= 2) {
@@ -2995,7 +3009,7 @@ function tagGraphSvg(tag, t0, t1) {
   g += '<text x="' + (TL_PL + 4) + '" y="' + (TL_PT + plotH - 4) + '" font-size="9" fill="#aebbc9">室内の環境音</text>';
 
   g += '<text x="' + (TL_PL + 4) + '" y="' + (TL_PT + 12) + '" font-size="11" fill="' + TAG_COLOR[tag] + '">' +
-    esc(TAG_NAME[tag]) + (lineMode ? "（線＝" + round1(binSec) + "秒ごとの最大）" : "（棒1本＝" + round1(binSec) + "秒）") + "</text>";
+    esc(TAG_NAME[tag]) + (lineMode ? "（線＝音の大きさ）" : "（棒1本＝" + round1(binSec) + "秒）") + "</text>";
   return g;
 }
 
