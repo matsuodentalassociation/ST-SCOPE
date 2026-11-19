@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#000000">
 <meta http-equiv="Cache-Control" content="no-cache">
 <script>
-/* 起動直後の入れ替え（V119）：端末に保存された新しい版があれば、開かれたページの版より先にそちらを動かす。 */
+/* 起動直後の入れ替え（V120）：端末に保存された新しい版があれば、開かれたページの版より先にそちらを動かす。 */
 (function () {
   try {
     if (/[?&]safe=1(&|$)/.test(location.search)) {
@@ -15,7 +15,7 @@
       return;
     }
     var v = parseInt(localStorage.getItem("sl_boot_ver") || "0", 10);
-    if (v > 119) {
+    if (v > 120) {
       var h = localStorage.getItem("sl_boot_html");
       if (h && h.indexOf("</html>") >= 0) {
         document.open();
@@ -26,7 +26,7 @@
   } catch (e) { /* 失敗したら、開かれたページの版のまま続ける */ }
 })();
 </script>
-<title>SomnoLog_V119</title>
+<title>SomnoLog_V120</title>
 <style>
 :root{color-scheme:dark}
 *{box-sizing:border-box}
@@ -118,7 +118,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 1-1 起動・QR読み取り -->
 <main id="page-start" class="page" hidden>
   <header class="head">
-    <h1 class="app-name">SomnoLog_V119</h1>
+    <h1 class="app-name">SomnoLog_V120</h1>
     <span class="tag">患者情報確認</span>
   </header>
 
@@ -175,7 +175,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 記録画面 -->
 <main id="page-record" class="page" hidden>
   <header class="head">
-    <h1 class="app-name">SomnoLog_V119</h1>
+    <h1 class="app-name">SomnoLog_V120</h1>
     <div style="display:flex;align-items:center;gap:10px">
       <button id="rec-back" class="sub mini" type="button">戻る</button>
       <span id="rec-badge" class="tag">待機中</span>
@@ -205,7 +205,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 記録の準備 -->
 <main id="page-prep" class="page" hidden>
   <header class="head">
-    <h1 class="app-name">SomnoLog_V119</h1>
+    <h1 class="app-name">SomnoLog_V120</h1>
     <button id="prep-back" class="sub mini" type="button">戻る</button>
   </header>
 
@@ -398,7 +398,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <script>
 "use strict";
 /* ===== バージョン ===== */
-const APP_VERSION = 119;
+const APP_VERSION = 120;
 const APP = "SomnoLog_V" + APP_VERSION;
 const SCHEMA_VERSION = 35;
 
@@ -411,9 +411,9 @@ const UPDATE_EVERY_MS = 10 * 60 * 1000;
 const UPD_TIMEOUT_MS = 10000;
 const UPD_TARGET_KEY = "somnolog-update-target";
 
-/* ===== 録音ロジック設定 ===== */
-const SR = 16000;
-const FRAME = 1600; // 100ms周期
+/* ===== 録音ロジック設定（V120：8kHz化） ===== */
+const SR = 8000;
+const FRAME = 800; // 100ms周期
 const RING_SEC = 130;
 const PRE_TRIGGER_MS = 3000;
 const POST_TRIGGER_MS = 5000;
@@ -759,14 +759,6 @@ function updateBackButtons() {
   $("back-rec-start").hidden = !has;
   $("back-rec-confirm").hidden = !has;
 }
-
-function goRecord() {
-  stopCamera();
-  if (!S.patient) { showError("患者情報が登録されていません。QRを読み取ってください。"); return; }
-  clearError();
-  setButtons();
-  showPage("record");
-}
 /* ===== QR読み取り（カメラ・画像） ===== */
 let camStream = null, camTimer = 0, detector = null, scanBusy = false;
 
@@ -1008,12 +1000,12 @@ async function loadRef() {
   } catch (e) { console.warn("基準音圧の読み込み:", e); }
 }
 
-/* ===== 音声取得（V119：初期コード準拠のクリアな集音） ===== */
+/* ===== 音声取得（V120：8kHzダウンサンプリング＋OSノイズ抑制） ===== */
 const WORKLET = `
 class Tap extends AudioWorkletProcessor {
   constructor() {
     super();
-    this.ratio = sampleRate / 16000;
+    this.ratio = sampleRate / 8000;
     this.pos = 0;
     this.prev = 0;
     this.acc = [];
@@ -1032,8 +1024,8 @@ class Tap extends AudioWorkletProcessor {
     }
     this.pos = t - n;
     this.prev = ch[n - 1];
-    while (this.acc.length >= 1600) {
-      const out = Float32Array.from(this.acc.splice(0, 1600));
+    while (this.acc.length >= 800) {
+      const out = Float32Array.from(this.acc.splice(0, 800));
       this.port.postMessage(out, [out.buffer]);
     }
     return true;
@@ -1050,7 +1042,6 @@ function micError(name, message, stage) {
 }
 
 async function getMicStream() {
-  // V119：初期コードと同じ { audio: true } を使用し、OS標準のノイズ抑制を有効化
   return await navigator.mediaDevices.getUserMedia({ audio: true });
 }
 
@@ -1137,7 +1128,6 @@ function micErrorMessage(e) {
 }
 
 function onAudio(raw) {
-  // V119：音圧判定は補正値を加味して計算し、録音バッファには非増幅の「生音(raw)」をそのまま保存
   let ss = 0;
   for (let i = 0; i < raw.length; i++) ss += raw[i] * raw[i];
   const rms = Math.sqrt(ss / raw.length);
@@ -1226,7 +1216,7 @@ function finishRefMeasure() {
   saveRef();
   if (S.refPcm && S.refPcm.length) {
     try {
-      const b64 = pcmChunksToWavBase64(S.refPcm, 16000);
+      const b64 = pcmChunksToWavBase64(S.refPcm, SR);
       DB.put("settings", { key: "refAudio", value: b64, savedAt: Date.now() }).catch(() => {});
     } catch (e) {}
   }
@@ -1352,21 +1342,59 @@ function finalizeEventV35(evState) {
   DB.put("events", ev).catch(console.error);
 }
 
+/* ===== V120：無音カット ＋ IMA ADPCM（4倍圧縮）で保存 ===== */
+function trimSilence(f, threshDb) {
+  const win = Math.round(SR * 0.1); // 100ms
+  const padFrames = 5; // 前後0.5秒の余白を残す
+  const nFrames = Math.floor(f.length / win);
+  if (nFrames <= padFrames * 2) return { data: f, offsetSamples: 0 };
+
+  const active = new Uint8Array(nFrames);
+  for (let i = 0; i < nFrames; i++) {
+    let ss = 0;
+    const off = i * win;
+    for (let j = 0; j < win; j++) { const v = f[off + j]; ss += v * v; }
+    const db = rawDbfsOf(Math.sqrt(ss / win)) + S.gainDb + S.calDb;
+    if (db > threshDb) active[i] = 1;
+  }
+
+  let first = -1, last = -1;
+  for (let i = 0; i < nFrames; i++) {
+    if (active[i]) { if (first < 0) first = i; last = i; }
+  }
+  if (first < 0) return { data: f.subarray(0, 0), offsetSamples: 0 };
+
+  const startF = Math.max(0, first - padFrames);
+  const endF = Math.min(nFrames, last + 1 + padFrames);
+  return {
+    data: f.subarray(startF * win, endF * win),
+    offsetSamples: startF * win
+  };
+}
+
 function saveClipV35(fromMs, toMs, eventId) {
   const a = Math.round(fromMs / 1000 * SR);
   const b = Math.round(toMs / 1000 * SR);
   const actualA = Math.max(a, 0, S.ring.total - S.ring.len);
-  const f = S.ring.get(a, b);
+  const rawF = S.ring.get(a, b);
+  if (!rawF.length) return null;
+
+  // 環境音（ベースライン + 3dB以下）の無音区間をトリミング
+  const cutThresh = (S.base != null ? S.base : -50) + 3;
+  const trimmed = trimSilence(rawF, cutThresh);
+  const f = trimmed.data;
   if (!f.length) return null;
+
   const i16 = new Int16Array(f.length);
   for (let i = 0; i < f.length; i++) i16[i] = Math.max(-32768, Math.min(32767, Math.round(f[i] * 32767)));
-  const wav = wavBytes(i16, SR);
+
+  const adpcm = encodeImaAdpcm(i16);
   const id = uid();
   DB.put("clips", {
     id, sid: S.sid, eventId, kind: "snore", sr: SR,
-    codec: "pcm16", samples: i16.length,
-    startMs: round1(actualA / SR * 1000),
-    dataIsSource: true, gainDb: S.gainDb, calDb: S.calDb, data: wav.buffer,
+    codec: "ima-adpcm", samples: i16.length,
+    startMs: round1((actualA + trimmed.offsetSamples) / SR * 1000),
+    dataIsSource: true, gainDb: S.gainDb, calDb: S.calDb, data: adpcm.buffer,
     saved: false
   }).catch(console.error);
   return id;
@@ -2679,7 +2707,60 @@ function tlPointerMove(e) {
 
 function tlPointerEnd() { tlDrag = null; }
 
-/* ===== 非圧縮PCM16 WAV 読み書き ===== */
+/* ===== IMA ADPCM（4倍圧縮）＆ PCM16 WAV 読み書き ===== */
+const IMA_INDEX_TABLE = [-1, -1, -1, -1, 2, 4, 6, 8, -1, -1, -1, -1, 2, 4, 6, 8];
+const IMA_STEP_TABLE = [
+  7, 8, 9, 10, 11, 12, 13, 14, 16, 17, 19, 21, 23, 25, 28, 31, 34, 37, 41, 45,
+  50, 55, 60, 66, 73, 80, 88, 97, 107, 118, 130, 143, 157, 173, 190, 209, 230,
+  253, 279, 307, 337, 371, 408, 449, 494, 544, 598, 658, 724, 796, 876, 963,
+  1060, 1166, 1282, 1411, 1552, 1707, 1878, 2066, 2272, 2499, 2749, 3024, 3327,
+  3660, 4026, 4428, 4871, 5358, 5894, 6484, 7132, 7845, 8630, 9493, 10442, 11487,
+  12635, 13899, 15289, 16818, 18500, 20350, 22385, 24623, 27086, 29794, 32767
+];
+
+function encodeImaAdpcm(pcm) {
+  const n = pcm.length;
+  const out = new Uint8Array(Math.ceil(n / 2));
+  let pred = 0, idx = 0;
+  for (let i = 0; i < n; i++) {
+    let diff = pcm[i] - pred;
+    let code = 0;
+    if (diff < 0) { code = 8; diff = -diff; }
+    let step = IMA_STEP_TABLE[idx];
+    let delta = step >> 3;
+    if (diff >= step) { code |= 4; diff -= step; delta += step; }
+    step >>= 1;
+    if (diff >= step) { code |= 2; diff -= step; delta += step; }
+    step >>= 1;
+    if (diff >= step) { code |= 1; delta += step; }
+    if (code & 8) pred -= delta; else pred += delta;
+    pred = clamp(pred, -32768, 32767);
+    idx = clamp(idx + IMA_INDEX_TABLE[code], 0, 88);
+    if ((i & 1) === 0) out[i >> 1] = code;
+    else out[i >> 1] |= (code << 4);
+  }
+  return out;
+}
+
+function decodeImaAdpcm(u8, samples) {
+  const out = new Int16Array(samples);
+  let pred = 0, idx = 0;
+  for (let i = 0; i < samples; i++) {
+    const b = u8[i >> 1];
+    const code = (i & 1) === 0 ? (b & 0x0f) : ((b >> 4) & 0x0f);
+    const step = IMA_STEP_TABLE[idx];
+    let delta = step >> 3;
+    if (code & 4) delta += step;
+    if (code & 2) delta += step >> 1;
+    if (code & 1) delta += step >> 2;
+    if (code & 8) pred -= delta; else pred += delta;
+    pred = clamp(pred, -32768, 32767);
+    idx = clamp(idx + IMA_INDEX_TABLE[code], 0, 88);
+    out[i] = pred;
+  }
+  return out;
+}
+
 function wavBytes(pcm, sr) {
   const n = pcm.length;
   const buf = new ArrayBuffer(44 + n * 2);
@@ -2699,6 +2780,9 @@ function wavBlob(pcm, sr) {
 
 function clipPcm(clip) {
   const u8 = clip.data instanceof Uint8Array ? clip.data : new Uint8Array(clip.data.buffer || clip.data);
+  if (clip.codec === "ima-adpcm") {
+    return decodeImaAdpcm(u8, clip.samples || u8.length * 2);
+  }
   const dv = new DataView(u8.buffer, u8.byteOffset, u8.byteLength);
   let p = 12;
   while (p + 8 <= u8.length) {
@@ -3594,3 +3678,11 @@ boot().catch(handleErr);
 </script>
 </body>
 </html>
+
+function goRecord() {
+  stopCamera();
+  if (!S.patient) { showError("患者情報が登録されていません。QRを読み取ってください。"); return; }
+  clearError();
+  setButtons();
+  showPage("record");
+}
