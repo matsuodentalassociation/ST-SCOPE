@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>SomnoLog_V122</title>
+<title>SomnoLog_V123</title>
 <style>
   * { box-sizing: border-box; }
   body { margin: 0; font-family: system-ui, -apple-system, sans-serif; background: #101419; color: #eef2f5; }
@@ -89,7 +89,7 @@
   try {
     var v = parseInt(localStorage.getItem("sl_boot_ver") || "0", 10);
     var h = localStorage.getItem("sl_boot_html") || "";
-    if (v > 122 && h.indexOf("SomnoLog") >= 0 && h.indexOf("</html>") >= 0) {
+    if (v > 123 && h.indexOf("SomnoLog") >= 0 && h.indexOf("</html>") >= 0) {
       document.open();
       document.write(h);
       document.close();
@@ -100,7 +100,7 @@
   } catch (e) {}
 })();
 </script>
-<script src="./ort.min.js?v=122"></script>
+<script src="./ort.min.js?v=123"></script>
 </head>
 <body>
 <main>
@@ -109,7 +109,7 @@
 <!-- 1. スタート画面 -->
 <section id="page-start">
   <div class="head">
-    <h1><span class="app-name">SomnoLog_V122</span></h1>
+    <h1><span class="app-name">SomnoLog_V123</span></h1>
     <button id="usage-btn" class="sub mini">使い方</button>
   </div>
   <div id="usage-box" class="guide" hidden>
@@ -137,7 +137,7 @@
     <button id="back-rec-start" class="sub" hidden>睡眠記録画面に移動</button>
   </div>
   <div class="card">
-    <p class="muted" id="ver-text">SomnoLog_V122</p>
+    <p class="muted" id="ver-text">SomnoLog_V123</p>
     <button id="upd-reload" class="sub">最新版に更新する</button>
     <p id="upd-msg" class="muted" hidden></p>
   </div>
@@ -162,7 +162,7 @@
 <section id="page-record" hidden>
   <div class="head">
     <button id="rec-back" class="sub mini">← 戻る</button>
-    <h1><span class="app-name">SomnoLog_V122</span></h1>
+    <h1><span class="app-name">SomnoLog_V123</span></h1>
     <button id="rec-usage-btn" class="sub mini">使い方</button>
     <span id="rec-badge" class="tag">待機中</span>
   </div>
@@ -178,7 +178,6 @@
   </div>
   <div class="card">
     <div class="kv"><span>マイクとセンサー</span><b id="mic-state">未許可</b></div>
-    <div class="kv"><span>AI人声判定</span><b id="vad-state">準備中</b></div>
     <button id="mic-btn" class="primary">マイクを許可</button>
     <div id="mic-msg" class="warn" hidden></div>
     <button id="prep-btn" class="sub">準備・置き方の確認</button>
@@ -373,7 +372,7 @@
 <script>
 "use strict";
 /* ===== バージョン ===== */
-const APP_VERSION = 122;
+const APP_VERSION = 123;
 const APP = "SomnoLog_V" + APP_VERSION;
 const SCHEMA_VERSION = 35;
 
@@ -386,7 +385,7 @@ const UPDATE_EVERY_MS = 10 * 60 * 1000;
 const UPD_TIMEOUT_MS = 10000;
 const UPD_TARGET_KEY = "somnolog-update-target";
 
-/* ===== 録音ロジック設定（V122：16kHz高音質＋Silero VAD人声判定） ===== */
+/* ===== 録音ロジック設定（V123：16kHz高音質＋Silero VAD人声判定） ===== */
 const SR = 16000;
 const FRAME = 1600; // 100ms周期
 const RING_SEC = 130;
@@ -426,6 +425,9 @@ const MOVE_TH = 0.3;
 const LINK_SEC = 2;
 const TURN_MIN = 3;
 const TURN_PER_HOUR = 3;
+const PERIOD_MIN = 6;
+const PERIOD_TOL_RATE = 0.2;
+const PERIOD_TOL_SEC = 2;
 
 /* ===== 補助関数 ===== */
 const $ = (id) => document.getElementById(id);
@@ -454,6 +456,11 @@ const stdDev = (arr) => {
   return Math.sqrt(arr.reduce((s, v) => s + (v - m) * (v - m), 0) / arr.length);
 };
 const maxOf = (a) => a.reduce((m, v) => Math.max(m, v), -Infinity);
+const fmtTime = (ms) => {
+  const s = Math.max(0, Math.floor(ms / 1000));
+  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+  return h ? h + ":" + pad(m) + ":" + pad(sec) : m + ":" + pad(sec);
+};
 const fmtHM = (ms) => {
   const s = Math.max(0, Math.floor(ms / 1000));
   return Math.floor(s / 3600) + "時間" + Math.floor((s % 3600) / 60) + "分";
@@ -552,14 +559,9 @@ const VAD = {
 };
 
 async function initVad() {
-  const el = $("vad-state");
-  if (VAD.ready) { if (el) el.textContent = "有効"; return true; }
-  if (typeof ort === "undefined") {
-    if (el) el.textContent = "無効（ort.min.jsなし）";
-    return false;
-  }
+  if (VAD.ready) return true;
+  if (typeof ort === "undefined") return false;
   try {
-    if (el) el.textContent = "読み込み中…";
     ort.env.wasm.wasmPaths = "./";
     ort.env.wasm.numThreads = 1;
     VAD.session = await ort.InferenceSession.create("./silero_vad.onnx?v=" + APP_VERSION, {
@@ -570,12 +572,10 @@ async function initVad() {
     VAD.srTensor = new ort.Tensor("int64", BigInt64Array.from([16000n]), [1]);
     resetVadState();
     VAD.ready = true;
-    if (el) el.textContent = "有効";
     return true;
   } catch (e) {
     console.warn("Silero VAD 初期化失敗:", e);
     VAD.ready = false;
-    if (el) el.textContent = "無効（読み込み失敗）";
     return false;
   }
 }
@@ -597,21 +597,14 @@ async function runVadFrame(raw1600) {
     for (let off = 0; off + 512 <= raw1600.length; off += 512) {
       const chunk = raw1600.subarray(off, off + 512);
       const input = new ort.Tensor("float32", chunk, [1, 512]);
-      let feeds;
-      if (VAD.isV5) {
-        feeds = { input, state: VAD.state, sr: VAD.srTensor };
-      } else {
-        feeds = { input, h: VAD.h, c: VAD.c, sr: VAD.srTensor };
-      }
+      const feeds = VAD.isV5
+        ? { input, state: VAD.state, sr: VAD.srTensor }
+        : { input, h: VAD.h, c: VAD.c, sr: VAD.srTensor };
       const res = await VAD.session.run(feeds);
       const out = res.output.data[0];
       if (out > maxP) maxP = out;
-      if (VAD.isV5) {
-        VAD.state = res.stateN;
-      } else {
-        VAD.h = res.hn;
-        VAD.c = res.cn;
-      }
+      if (VAD.isV5) { VAD.state = res.stateN; }
+      else { VAD.h = res.hn; VAD.c = res.cn; }
     }
     return maxP;
   } catch (e) {
@@ -1055,7 +1048,7 @@ async function loadRef() {
   } catch (e) { console.warn("基準音圧の読み込み:", e); }
 }
 
-/* ===== 音声取得（V122：16kHzダウンサンプリング＋OSノイズ抑制） ===== */
+/* ===== 音声取得（V123：16kHzダウンサンプリング＋OSノイズ抑制） ===== */
 const WORKLET = `
 class Tap extends AudioWorkletProcessor {
   constructor() {
@@ -1414,7 +1407,7 @@ function finalizeEventV35(evState) {
   DB.put("events", ev).catch(console.error);
 }
 
-/* ===== V122：16kHz フル保存（前3秒・後5秒）＋ IMA ADPCM（4倍圧縮） ===== */
+/* ===== V123：16kHz フル保存（前3秒・後5秒）＋ IMA ADPCM（4倍圧縮） ===== */
 function saveClipV35(fromMs, toMs, eventId, kind) {
   const a = Math.round(fromMs / 1000 * SR);
   const b = Math.round(toMs / 1000 * SR);
