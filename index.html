@@ -759,6 +759,14 @@ function updateBackButtons() {
   $("back-rec-start").hidden = !has;
   $("back-rec-confirm").hidden = !has;
 }
+
+function goRecord() {
+  stopCamera();
+  if (!S.patient) { showError("患者情報が登録されていません。QRを読み取ってください。"); return; }
+  clearError();
+  setButtons();
+  showPage("record");
+}
 /* ===== QR読み取り（カメラ・画像） ===== */
 let camStream = null, camTimer = 0, detector = null, scanBusy = false;
 
@@ -3678,11 +3686,3 @@ boot().catch(handleErr);
 </script>
 </body>
 </html>
-
-function goRecord() {
-  stopCamera();
-  if (!S.patient) { showError("患者情報が登録されていません。QRを読み取ってください。"); return; }
-  clearError();
-  setButtons();
-  showPage("record");
-}
