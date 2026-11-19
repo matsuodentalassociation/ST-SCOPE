@@ -6,10 +6,7 @@
 <meta name="theme-color" content="#000000">
 <meta http-equiv="Cache-Control" content="no-cache">
 <script>
-/* 起動直後の入れ替え（V118）：端末に保存された新しい版があれば、開かれたページの版より先にそちらを動かす。
-   これで「アプリの更新」は公開ページ（Pages）の反映を待たずに、最新版を直接読み込める。
-   ここの数字は、このファイルの APP_VERSION と必ず一致させること（版上げ時の確認項目）。
-   住所に safe=1 が付いている時は、保存した版を捨てて、開かれたページの版で開く（開けなくなった時の逃げ道）。 */
+/* 起動直後の入れ替え（V119）：端末に保存された新しい版があれば、開かれたページの版より先にそちらを動かす。 */
 (function () {
   try {
     if (/[?&]safe=1(&|$)/.test(location.search)) {
@@ -18,7 +15,7 @@
       return;
     }
     var v = parseInt(localStorage.getItem("sl_boot_ver") || "0", 10);
-    if (v > 118) {
+    if (v > 119) {
       var h = localStorage.getItem("sl_boot_html");
       if (h && h.indexOf("</html>") >= 0) {
         document.open();
@@ -29,7 +26,7 @@
   } catch (e) { /* 失敗したら、開かれたページの版のまま続ける */ }
 })();
 </script>
-<title>SomnoLog_V118</title>
+<title>SomnoLog_V119</title>
 <style>
 :root{color-scheme:dark}
 *{box-sizing:border-box}
@@ -121,7 +118,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 1-1 起動・QR読み取り -->
 <main id="page-start" class="page" hidden>
   <header class="head">
-    <h1 class="app-name">SomnoLog_V118</h1>
+    <h1 class="app-name">SomnoLog_V119</h1>
     <span class="tag">患者情報確認</span>
   </header>
 
@@ -178,7 +175,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 記録画面 -->
 <main id="page-record" class="page" hidden>
   <header class="head">
-    <h1 class="app-name">SomnoLog_V118</h1>
+    <h1 class="app-name">SomnoLog_V119</h1>
     <div style="display:flex;align-items:center;gap:10px">
       <button id="rec-back" class="sub mini" type="button">戻る</button>
       <span id="rec-badge" class="tag">待機中</span>
@@ -208,7 +205,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 記録の準備 -->
 <main id="page-prep" class="page" hidden>
   <header class="head">
-    <h1 class="app-name">SomnoLog_V118</h1>
+    <h1 class="app-name">SomnoLog_V119</h1>
     <button id="prep-back" class="sub mini" type="button">戻る</button>
   </header>
 
@@ -401,7 +398,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <script>
 "use strict";
 /* ===== バージョン ===== */
-const APP_VERSION = 118;
+const APP_VERSION = 119;
 const APP = "SomnoLog_V" + APP_VERSION;
 const SCHEMA_VERSION = 35;
 
@@ -414,16 +411,16 @@ const UPDATE_EVERY_MS = 10 * 60 * 1000;
 const UPD_TIMEOUT_MS = 10000;
 const UPD_TARGET_KEY = "somnolog-update-target";
 
-/* ===== 録音ロジックV35 設定 ===== */
+/* ===== 録音ロジック設定 ===== */
 const SR = 16000;
-const FRAME = 1600; // 100ms周期（16000Hz * 0.1s = 1600サンプル）
+const FRAME = 1600; // 100ms周期
 const RING_SEC = 130;
-const PRE_TRIGGER_MS = 3000;  // 先行リングバッファ 3秒
-const POST_TRIGGER_MS = 5000; // 追尾録音 5秒
-const CALIB_SAMPLES = 100;    // 初期環境音較正 10秒（100サンプル）
-const TRIGGER_OFFSET_DB = 10; // Baseline + 10dB
-const STEADY_SAMPLES = 300;   // 定常ノイズ判定 30秒（300サンプル）
-const STEADY_SIGMA_MAX = 2.0; // 標準偏差 σ < 2.0 dB
+const PRE_TRIGGER_MS = 3000;
+const POST_TRIGGER_MS = 5000;
+const CALIB_SAMPLES = 100;
+const TRIGGER_OFFSET_DB = 10;
+const STEADY_SAMPLES = 300;
+const STEADY_SIGMA_MAX = 2.0;
 const FLUSH_SEC = 60, MAX_QUEUE = 40;
 const UI_MS = 250;
 const MOTION_BAR_MAX = 2;
@@ -462,7 +459,6 @@ const PERIOD_TOL_SEC = 2;
 const $ = (id) => document.getElementById(id);
 const pad = (n) => String(n).padStart(2, "0");
 const uid = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now() + "-" + Math.random().toString(16).slice(2));
-// V35仕様 Raw dBFS (sourceDbFS) 算出と -120.0 dBFS 数値ガードロジック
 const rawDbfsOf = (rms) => (rms < 1e-6 ? -120.0 : Math.max(-120.0, 20 * Math.log10(rms)));
 const round1 = (v) => Math.round(v * 10) / 10;
 const round2 = (v) => Math.round(v * 100) / 100;
@@ -637,7 +633,7 @@ function zipName(sess) {
   return [day, time, sanitize(p.clinic, 30), sanitize(p.chartNo, 20), sanitize(p.name, 20)].join("_") + ".zip";
 }
 
-/* ===== 先行リングバッファ（V35仕様：直近130秒保持、3秒Pre-trigger対応） ===== */
+/* ===== 先行リングバッファ ===== */
 class Ring {
   constructor(sec) { this.len = SR * sec; this.buf = new Float32Array(this.len); this.total = 0; }
   push(arr) {
@@ -738,11 +734,8 @@ const S = {
   wake: null, timers: [], uiTimer: null, blackOn: false, savedStyle: null, detailSid: null, blackTimer: null,
   ring: new Ring(RING_SEC), recv: 0, queue: [], busy: false, dropped: 0,
   nowMs: 0, lastLv: -120, dispWin: [], dispLv: -120, motionNow: null, grav: null, motionTs: null,
-  // V35 センシング状態
   calibrated: false, calibVals: [], base: null,
-  steadyWin: [], // 30秒定常ノイズ追従用ウィンドウ
-  spikePending: null, // 単発スパイクフィルタリング用
-  activeEvent: null,  // 現在検知中のイベント（Post-trigger 5秒追尾含む）
+  steadyWin: [], spikePending: null, activeEvent: null,
   bucket: null, secBuf: [], log100ms: []
 };
 
@@ -1015,7 +1008,7 @@ async function loadRef() {
   } catch (e) { console.warn("基準音圧の読み込み:", e); }
 }
 
-/* ===== 音声取得（16kHzへ変換して1600サンプル=100msずつ onAudio に渡す） ===== */
+/* ===== 音声取得（V119：初期コード準拠のクリアな集音） ===== */
 const WORKLET = `
 class Tap extends AudioWorkletProcessor {
   constructor() {
@@ -1057,19 +1050,12 @@ function micError(name, message, stage) {
 }
 
 async function getMicStream() {
-  // V35 Pre-flight Check 仕様
-  const constraints = { channelCount: 1, echoCancellation: false, noiseSuppression: false, autoGainControl: false };
-  try {
-    return await navigator.mediaDevices.getUserMedia({ audio: constraints });
-  } catch (e) {
-    if (e.name !== "AbortError" && e.name !== "OverconstrainedError") throw e;
-    await new Promise((r) => setTimeout(r, 500));
-    return await navigator.mediaDevices.getUserMedia({ audio: true });
-  }
+  // V119：初期コードと同じ { audio: true } を使用し、OS標準のノイズ抑制を有効化
+  return await navigator.mediaDevices.getUserMedia({ audio: true });
 }
 
 function makeScriptTap(ctx) {
-  const node = ctx.createScriptProcessor(2048, 1, 1);
+  const node = ctx.createScriptProcessor(4096, 1, 1);
   const ratio = ctx.sampleRate / SR;
   let pos = 0, prev = 0;
   const acc = [];
@@ -1150,35 +1136,27 @@ function micErrorMessage(e) {
   return "マイクを開始できませんでした。" + detail;
 }
 
-function gainScale(data) {
-  const k = Math.pow(10, (S.gainDb + S.calDb) / 20);
-  if (k === 1) return data;
-  const out = new Float32Array(data.length);
-  for (let i = 0; i < data.length; i++) out[i] = clamp(data[i] * k, -1, 1);
-  return out;
-}
-
 function onAudio(raw) {
-  const data = gainScale(raw);
+  // V119：音圧判定は補正値を加味して計算し、録音バッファには非増幅の「生音(raw)」をそのまま保存
   let ss = 0;
-  for (let i = 0; i < data.length; i++) ss += data[i] * data[i];
-  const rms = Math.sqrt(ss / data.length);
-  const lv = rawDbfsOf(rms);
+  for (let i = 0; i < raw.length; i++) ss += raw[i] * raw[i];
+  const rms = Math.sqrt(ss / raw.length);
+  const lv = rawDbfsOf(rms) + S.gainDb + S.calDb;
 
   if (!S.running) {
     S.lastLv = lv;
     pushDisp(lv);
     if (S.refColl) {
       S.refColl.push(lv);
-      if (S.refPcm) S.refPcm.push(data.slice(0));
+      if (S.refPcm) S.refPcm.push(raw.slice(0));
     }
     return;
   }
   const t = S.recv / SR * 1000;
   S.recv += FRAME;
-  S.ring.push(data);
+  S.ring.push(raw);
   if (S.queue.length >= MAX_QUEUE) { S.queue.shift(); S.dropped++; }
-  S.queue.push({ data, lv, t, ep: S.epoch });
+  S.queue.push({ data: raw, lv, t, ep: S.epoch });
   pump();
 }
 
@@ -1258,7 +1236,7 @@ function finishRefMeasure() {
   updateUI();
 }
 
-/* ===== 録音ロジックV35 100ms周期センシング・イベント検知 ===== */
+/* ===== 100ms周期センシング・イベント検知 ===== */
 async function pump() {
   if (S.busy) return;
   S.busy = true;
@@ -1280,7 +1258,6 @@ function processFrameV35(f) {
   if (lv > S.peakDb) S.peakDb = lv;
   S.nowMs = t + (FRAME / SR) * 1000;
 
-  // 100ms周期のログ記録（非検知・欠測時は null 保持原則に準拠）
   const motNow = S.motionNow;
   S.log100ms.push({
     elapsedMs: Math.round(t),
@@ -1289,7 +1266,6 @@ function processFrameV35(f) {
     motionG: motNow == null ? null : round2(motNow)
   });
 
-  // 1秒バケット（タイムライン描画・夜の評価用）
   const sec = Math.floor(t / 1000);
   if (!S.bucket || S.bucket.sec !== sec) {
     if (S.bucket) finishSecond(S.bucket);
@@ -1297,7 +1273,6 @@ function processFrameV35(f) {
   }
   S.bucket.lv.push(lv);
 
-  // 初期10秒（100サンプル）の中央値による環境音基準値（Baseline）自動設定
   if (!S.calibrated) {
     S.calibVals.push(lv);
     if (S.calibVals.length >= CALIB_SAMPLES) {
@@ -1312,17 +1287,14 @@ function processFrameV35(f) {
   const threshold = S.base + TRIGGER_OFFSET_DB;
   const over = lv > threshold;
 
-  // 持続音追従アルゴリズム（30秒＝300サンプル連続超過 かつ 標準偏差 σ < 2.0 dB）
   if (over) {
     S.steadyWin.push(lv);
     if (S.steadyWin.length >= STEADY_SAMPLES) {
       const sig = stdDev(S.steadyWin);
       if (sig < STEADY_SIGMA_MAX) {
-        // 定常ノイズと認定し、直近30秒の75パーセンタイル値を新Baselineに設定
         S.base = percentile(S.steadyWin, 0.75);
         S.sess.base = round1(S.base);
         S.steadyWin = [];
-        // 録音中のイベントがあれば定常ノイズとして破棄しOFF復帰
         S.activeEvent = null;
         S.spikePending = null;
         return;
@@ -1333,13 +1305,11 @@ function processFrameV35(f) {
     S.steadyWin = [];
   }
 
-  // イベント検知と突発的スパイクノイズ処理（単発100msスパイクを除外）
   if (!S.activeEvent) {
     if (over) {
       if (!S.spikePending) {
         S.spikePending = { startMs: t, peakDb: lv, sumDb: lv, n: 1 };
       } else {
-        // 2サンプル連続（200ms）で閾値超過 → 本イベントとしてトリガー発動
         S.activeEvent = {
           startMs: S.spikePending.startMs,
           lastOverMs: t,
@@ -1359,7 +1329,6 @@ function processFrameV35(f) {
       S.activeEvent.sumDb += lv;
       S.activeEvent.n++;
     } else if (t - S.activeEvent.lastOverMs >= POST_TRIGGER_MS) {
-      // Post-trigger 5秒追尾満了 → 遡り結合してクリップ保存
       finalizeEventV35(S.activeEvent);
       S.activeEvent = null;
     }
@@ -3625,4 +3594,3 @@ boot().catch(handleErr);
 </script>
 </body>
 </html>
-
