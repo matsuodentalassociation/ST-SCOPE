@@ -6,6 +6,7 @@
 <meta name="theme-color" content="#000000">
 <meta http-equiv="Cache-Control" content="no-cache">
 <script>
+/* 起動直後の入れ替え（V119）：端末に保存された新しい版があれば、開かれたページの版より先にそちらを動かす。 */
 (function () {
   try {
     if (/[?&]safe=1(&|$)/.test(location.search)) {
@@ -14,7 +15,7 @@
       return;
     }
     var v = parseInt(localStorage.getItem("sl_boot_ver") || "0", 10);
-    if (v > 125) {
+    if (v > 119) {
       var h = localStorage.getItem("sl_boot_html");
       if (h && h.indexOf("</html>") >= 0) {
         document.open();
@@ -22,11 +23,10 @@
         document.close();
       }
     }
-  } catch (e) {}
+  } catch (e) { /* 失敗したら、開かれたページの版のまま続ける */ }
 })();
 </script>
-<script src="./ort.min.js?v=125"></script>
-<title>SomnoLog V125</title>
+<title>SomnoLog_V119</title>
 <style>
 :root{color-scheme:dark}
 *{box-sizing:border-box}
@@ -118,7 +118,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 1-1 起動・QR読み取り -->
 <main id="page-start" class="page" hidden>
   <header class="head">
-    <h1 class="app-name">SomnoLog V125</h1>
+    <h1 class="app-name">SomnoLog_V119</h1>
     <span class="tag">患者情報確認</span>
   </header>
 
@@ -175,7 +175,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 記録画面 -->
 <main id="page-record" class="page" hidden>
   <header class="head">
-    <h1 class="app-name">SomnoLog V125</h1>
+    <h1 class="app-name">SomnoLog_V119</h1>
     <div style="display:flex;align-items:center;gap:10px">
       <button id="rec-back" class="sub mini" type="button">戻る</button>
       <span id="rec-badge" class="tag">待機中</span>
@@ -205,7 +205,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 記録の準備 -->
 <main id="page-prep" class="page" hidden>
   <header class="head">
-    <h1 class="app-name">SomnoLog V125</h1>
+    <h1 class="app-name">SomnoLog_V119</h1>
     <button id="prep-back" class="sub mini" type="button">戻る</button>
   </header>
 
@@ -396,231 +396,13 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
   <div id="black-progress"><div id="black-progress-bar"></div></div>
 </div>
 <script>
-/* ===== 旧エンジン記録の読み取り（SleepEngine） ===== */
-const SleepEngine = (() => {
-  "use strict";
-  const ENGINE_VERSION = 68;
-  const SCHEMA_VERSION = 35;
-  const C = { DB_NAME: "somnolog-v63", DB_VERSION: 1 };
-  const pad = (n, w = 4) => String(n).padStart(w, "0");
-  const r1 = (v) => Math.round(v * 10) / 10;
-  const enc = new TextEncoder();
-
-  let dbp = null;
-  const ENGINE_SCHEMA = [
-    ["sessions", "id", false],
-    ["timeline", "key", true],
-    ["events", "id", true],
-    ["clips", "id", true]
-  ];
-  function applyEngineSchema(d, tx) {
-    for (const [n, kp, needIdx] of ENGINE_SCHEMA) {
-      let s = !d.objectStoreNames.contains(n) ? d.createObjectStore(n, { keyPath: kp }) : tx.objectStore(n);
-      if (needIdx && !s.indexNames.contains("sid")) s.createIndex("sid", "sid");
-    }
-  }
-  function engineSchemaOk(d) {
-    try {
-      return ENGINE_SCHEMA.every(([n, , needIdx]) =>
-        d.objectStoreNames.contains(n) && (!needIdx || d.transaction(n).objectStore(n).indexNames.contains("sid")));
-    } catch (e) { return false; }
-  }
-  function openEngineRaw(version) {
-    return new Promise((res, rej) => {
-      const req = version ? indexedDB.open(C.DB_NAME, version) : indexedDB.open(C.DB_NAME);
-      req.onupgradeneeded = () => applyEngineSchema(req.result, req.transaction);
-      req.onsuccess = () => res(req.result);
-      req.onerror = () => rej(req.error);
-      req.onblocked = () => rej(new Error("保存領域が他の画面で使用中です"));
-    });
-  }
-  function openDb() {
-    if (dbp) return dbp;
-    dbp = (async () => {
-      if (!window.indexedDB) throw new Error("IndexedDBを使えません");
-      let d = await openEngineRaw();
-      if (!engineSchemaOk(d)) { const v = d.version + 1; d.close(); d = await openEngineRaw(v); }
-      d.onversionchange = () => { d.close(); dbp = null; };
-      return d;
-    })().catch((e) => { dbp = null; throw e; });
-    return dbp;
-  }
-  async function tx(store, mode, fn) {
-    const d = await openDb();
-    return new Promise((res, rej) => {
-      const t = d.transaction(store, mode);
-      const r = fn(t.objectStore(store));
-      t.oncomplete = () => res(r ? r.result : undefined);
-      t.onerror = () => rej(t.error);
-      t.onabort = () => rej(t.error);
-    });
-  }
-  const put = (s, o) => tx(s, "readwrite", (x) => x.put(o));
-  const get = (s, k) => tx(s, "readonly", (x) => x.get(k));
-  const byIndex = async (s, sid) => {
-    try { return await tx(s, "readonly", (x) => x.index("sid").getAll(IDBKeyRange.only(sid))); }
-    catch (e) {
-      if (e && e.name === "NotFoundError") {
-        const all = await tx(s, "readonly", (x) => x.getAll());
-        return (all || []).filter((r) => r && r.sid === sid);
-      }
-      throw e;
-    }
-  };
-  const allRows = (s) => tx(s, "readonly", (x) => x.getAll());
-
-  const CRC = (() => {
-    const t = new Uint32Array(256);
-    for (let n = 0; n < 256; n++) {
-      let c = n;
-      for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1;
-      t[n] = c >>> 0;
-    }
-    return t;
-  })();
-  function crc32(u8) {
-    let c = 0xFFFFFFFF;
-    for (let i = 0; i < u8.length; i++) c = CRC[(c ^ u8[i]) & 255] ^ (c >>> 8);
-    return (c ^ 0xFFFFFFFF) >>> 0;
-  }
-  class ZipWriter {
-    constructor() {
-      const d = new Date();
-      this.time = (d.getHours() << 11) | (d.getMinutes() << 5) | (d.getSeconds() >> 1);
-      this.date = ((d.getFullYear() - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate();
-      this.parts = []; this.central = []; this.offset = 0; this.count = 0;
-    }
-    add(name, bytes) {
-      const nb = enc.encode(name), crc = crc32(bytes);
-      const lh = new DataView(new ArrayBuffer(30));
-      lh.setUint32(0, 0x04034b50, true); lh.setUint16(4, 20, true); lh.setUint16(6, 0x0800, true);
-      lh.setUint16(10, this.time, true); lh.setUint16(12, this.date, true);
-      lh.setUint32(14, crc, true); lh.setUint32(18, bytes.length, true); lh.setUint32(22, bytes.length, true); lh.setUint16(26, nb.length, true);
-      const cd = new DataView(new ArrayBuffer(46));
-      cd.setUint32(0, 0x02014b50, true); cd.setUint16(4, 20, true); cd.setUint16(6, 20, true); cd.setUint16(8, 0x0800, true);
-      cd.setUint16(12, this.time, true); cd.setUint16(14, this.date, true);
-      cd.setUint32(16, crc, true); cd.setUint32(20, bytes.length, true); cd.setUint32(24, bytes.length, true);
-      cd.setUint16(28, nb.length, true); cd.setUint32(42, this.offset, true);
-      this.parts.push(new Uint8Array(lh.buffer), nb, bytes);
-      this.central.push(new Uint8Array(cd.buffer), nb);
-      this.offset += 30 + nb.length + bytes.length;
-      this.count++;
-    }
-    finish() {
-      let cdSize = 0;
-      for (const c of this.central) cdSize += c.length;
-      const e = new DataView(new ArrayBuffer(22));
-      e.setUint32(0, 0x06054b50, true); e.setUint16(8, this.count, true); e.setUint16(10, this.count, true);
-      e.setUint32(12, cdSize, true); e.setUint32(16, this.offset, true);
-      return new Blob([...this.parts, ...this.central, e], { type: "application/zip" });
-    }
-  }
-
-  let scaleGate = null;
-  function ensureUnifiedScale() {
-    if (scaleGate) return scaleGate;
-    scaleGate = (async () => {
-      try {
-        if (localStorage.getItem("somnolog-scale-unified-v68")) return;
-        for (const s of await allRows("sessions")) {
-          if (s.baselineDb != null) { s.baselineDb = r1(s.baselineDb - 72); await put("sessions", s); }
-        }
-        for (const e of await allRows("events")) {
-          let ch = false;
-          if (e.peakDb != null) { e.peakDb = r1(e.peakDb - 72); ch = true; }
-          if (e.meanDb != null) { e.meanDb = r1(e.meanDb - 72); ch = true; }
-          if (ch) await put("events", e);
-        }
-        for (const c of await allRows("timeline")) {
-          if (Array.isArray(c.rows)) {
-            for (const r of c.rows) if (r.db != null) r.db = r1(r.db - 72);
-            await put("timeline", c);
-          }
-        }
-        localStorage.setItem("somnolog-scale-unified-v68", "1");
-      } catch (e) {}
-    })();
-    return scaleGate;
-  }
-
-  async function listSessions() {
-    await ensureUnifiedScale();
-    return (await allRows("sessions")).sort((a, b) => (b.startedAt || 0) - (a.startedAt || 0));
-  }
-  async function getSessionData(sid, opts) {
-    await ensureUnifiedScale();
-    const session = await get("sessions", sid);
-    if (!session) return null;
-    const chunks = (await byIndex("timeline", sid)).sort((a, b) => (a.key < b.key ? -1 : 1));
-    const rows = [];
-    for (const c of chunks) if (Array.isArray(c.rows)) rows.push(...c.rows);
-    const events = (await byIndex("events", sid)).sort((a, b) => (a.startMs || 0) - (b.startMs || 0));
-    const rawClips = await byIndex("clips", sid);
-    const clips = (opts && opts.light)
-      ? rawClips.map((c) => ({ id: c.id, sid: c.sid, fileName: c.fileName, bytes: c.bytes || (c.blob ? c.blob.size : 0) }))
-      : rawClips;
-    return { session, rows, events, clips };
-  }
-  async function deleteSession(sid) {
-    const d = await openDb();
-    const wipe = (store) => new Promise((res, rej) => {
-      const t = d.transaction(store, "readwrite");
-      const req = t.objectStore(store).index("sid").getAllKeys(IDBKeyRange.only(sid));
-      req.onsuccess = () => { const s = t.objectStore(store); for (const k of req.result) s.delete(k); };
-      t.oncomplete = () => res(); t.onerror = () => rej(t.error); t.onabort = () => rej(t.error);
-    });
-    await wipe("timeline"); await wipe("events"); await wipe("clips");
-    await tx("sessions", "readwrite", (x) => x.delete(sid));
-  }
-  async function deleteClipsForSession(sid) {
-    const d = await openDb();
-    return new Promise((res, rej) => {
-      const t = d.transaction("clips", "readwrite");
-      const req = t.objectStore("clips").index("sid").getAllKeys(IDBKeyRange.only(sid));
-      req.onsuccess = () => { const s = t.objectStore("clips"); for (const k of req.result) s.delete(k); };
-      t.oncomplete = () => res(req.result ? req.result.length : 0); t.onerror = () => rej(t.error); t.onabort = () => rej(t.error);
-    });
-  }
-  async function getClipBlob(id) { const c = await get("clips", id); return c && c.blob ? c.blob : null; }
-  async function markShared(sid) { const s = await get("sessions", sid); if (!s) return; s.sharedAt = Date.now(); await put("sessions", s); }
-  async function setSessionRef(sid, refDb, refEnvDb) { const s = await get("sessions", sid); if (!s) return; s.refDb = refDb; s.refEnvDb = refEnvDb; await put("sessions", s); }
-  async function exportSession(sid, refBytes) {
-    await ensureUnifiedScale();
-    const data = await getSessionData(sid);
-    if (!data) throw new Error("記録が見つかりません。");
-    const { session, rows, events, clips } = data;
-    const startedISO = new Date(session.startedAt).toISOString();
-    const patient = { clinic: "", chartNo: "", name: "", ...((session.patient && typeof session.patient === "object") ? session.patient : {}) };
-    const clipById = new Map(clips.map((c) => [c.id, c]));
-    const manifest = { app: "SomnoLog", engine: ENGINE_VERSION, schema: SCHEMA_VERSION, sessionId: sid, startedAt: startedISO, exportedAt: new Date().toISOString(), mode: session.mode || "opus" };
-    if (refBytes) manifest.referenceAudio = "reference.wav";
-    const metadata = { sessionId: sid, startedAt: startedISO, endedAt: session.endedAt ? new Date(session.endedAt).toISOString() : null, durationSec: session.durationSec || 0, patient, baselineDb: session.baselineDb == null ? null : session.baselineDb + 72, counts: session.counts || {} };
-    const timeline = { session: { startedAt: startedISO, patient }, timeSeriesLogs: rows.map((r) => ({ sec: r.sec, elapsedMs: Math.round(r.sec * 1000), timestamp: new Date(session.startedAt + Math.round(r.sec * 1000)).toISOString(), db: r.db == null ? null : r.db + 72, motionG: r.motionG, motionMaxG: r.motionMaxG })) };
-    const markers = { clips: events.map((e) => ({ fileName: e.fileName, audioFile: e.fileName, startMs: e.startMs, elapsedMs: e.startMs, startSec: e.startSec, durationSec: e.durationSec, category: e.category, label: e.label, displayCategory: e.displayCategory, peakDb: e.peakDb == null ? null : e.peakDb + 72, meanDb: e.meanDb == null ? null : e.meanDb + 72, motionMaxG: e.motionMaxG })) };
-    const zip = new ZipWriter();
-    zip.add("manifest.json", enc.encode(JSON.stringify(manifest, null, 1)));
-    zip.add("session_metadata.json", enc.encode(JSON.stringify(metadata, null, 1)));
-    zip.add("sensing_timeline.json", enc.encode(JSON.stringify(timeline)));
-    zip.add("event_markers.json", enc.encode(JSON.stringify(markers, null, 1)));
-    if (refBytes) zip.add("reference.wav", refBytes);
-    for (const e of events) {
-      const clip = clipById.get(e.id);
-      if (!clip || !clip.blob || !e.fileName) continue;
-      zip.add(e.fileName, new Uint8Array(await clip.blob.arrayBuffer()));
-    }
-    const d = new Date(session.startedAt);
-    const fileName = "SomnoLog_" + d.getFullYear() + pad(d.getMonth() + 1, 2) + pad(d.getDate(), 2) + "_" + pad(d.getHours(), 2) + pad(d.getMinutes(), 2) + ".zip";
-    return { blob: zip.finish(), fileName };
-  }
-  return { ENGINE_VERSION, SCHEMA_VERSION, exportSession, listSessions, getSessionData, deleteSession, deleteClipsForSession, getClipBlob, markShared, setSessionRef };
-})();
-</script>
-<script>
 "use strict";
-const APP_VERSION = 125;
-const APP = "SomnoLogV" + APP_VERSION + "_ref";
+/* ===== バージョン ===== */
+const APP_VERSION = 119;
+const APP = "SomnoLog_V" + APP_VERSION;
 const SCHEMA_VERSION = 35;
 
+/* ===== 更新の取得元（GitHub） ===== */
 const UPD_REPO = "matsuodentalassociation/ST-SCOPE";
 const UPD_BRANCH = "main";
 const UPD_FILE = "index.html";
@@ -629,9 +411,9 @@ const UPDATE_EVERY_MS = 10 * 60 * 1000;
 const UPD_TIMEOUT_MS = 10000;
 const UPD_TARGET_KEY = "somnolog-update-target";
 
-/* ===== V121高音質録音ロジック（16kHz / 100ms周期）＋ Silero VAD ===== */
+/* ===== 録音ロジック設定 ===== */
 const SR = 16000;
-const FRAME = 1600;
+const FRAME = 1600; // 100ms周期
 const RING_SEC = 130;
 const PRE_TRIGGER_MS = 3000;
 const POST_TRIGGER_MS = 5000;
@@ -639,17 +421,18 @@ const CALIB_SAMPLES = 100;
 const TRIGGER_OFFSET_DB = 10;
 const STEADY_SAMPLES = 300;
 const STEADY_SIGMA_MAX = 2.0;
-const LOUD_DB = 6;
 const FLUSH_SEC = 60, MAX_QUEUE = 40;
 const UI_MS = 250;
 const MOTION_BAR_MAX = 2;
 const DB_NAME = "somnolog-v3";
+const DB_VERSION = 2;
 const DB_WAIT_MS = 8000;
 const TAG_ORDER = ["snore", "unknown", "env", "speech"];
 const TAG_COLOR = { snore: "#4a90d9", unknown: "#ff9f43", env: "#4caf7a", speech: "#9aa5b1", motion: "#e04848" };
 const TAG_NAME = { snore: "いびき", unknown: "判定不能", env: "環境音", speech: "人声", motion: "体動" };
 const TL_BINS = 60;
 
+/* ===== 基準音圧の設定 ===== */
 const REF_TARGET_DB = -22;
 const REF_SEC = 2;
 const REF_MIN_FRAMES = Math.floor(SR * REF_SEC / FRAME * 0.8);
@@ -657,11 +440,22 @@ const REF_QUIET_DB = -60;
 const DISP_FRAMES = Math.round(SR / FRAME * REF_SEC);
 const REF_WORD_DB = 3;
 
+/* ===== タイムラインの設定 ===== */
 const TL_W = 480, TL_H = 220, TL_PL = 62, TL_PR = 8, TL_PT = 8, TL_PB = 22;
 const SAVED_BAR_COLOR = "#ffffff";
 
-const ENV_QUIET_MAX = 0, ENV_CALM_MAX = 2, MOVE_TH = 0.3, LINK_SEC = 2, TURN_MIN = 3, TURN_PER_HOUR = 3, PERIOD_MIN = 6, PERIOD_TOL_RATE = 0.2, PERIOD_TOL_SEC = 2;
+/* ===== 夜の評価 ===== */
+const ENV_QUIET_MAX = 0;
+const ENV_CALM_MAX = 2;
+const MOVE_TH = 0.3;
+const LINK_SEC = 2;
+const TURN_MIN = 3;
+const TURN_PER_HOUR = 3;
+const PERIOD_MIN = 6;
+const PERIOD_TOL_RATE = 0.2;
+const PERIOD_TOL_SEC = 2;
 
+/* ===== 補助関数 ===== */
 const $ = (id) => document.getElementById(id);
 const pad = (n) => String(n).padStart(2, "0");
 const uid = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now() + "-" + Math.random().toString(16).slice(2));
@@ -679,7 +473,8 @@ const median = (arr) => {
 const percentile = (arr, p) => {
   if (!arr.length) return null;
   const s = arr.slice().sort((a, b) => a - b);
-  return s[Math.min(s.length - 1, Math.max(0, Math.floor(s.length * p)))];
+  const idx = Math.min(s.length - 1, Math.max(0, Math.floor(s.length * p)));
+  return s[idx];
 };
 const stdDev = (arr) => {
   if (arr.length < 2) return 0;
@@ -692,396 +487,756 @@ const fmtTime = (ms) => {
   const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
   return h ? h + ":" + pad(m) + ":" + pad(sec) : m + ":" + pad(sec);
 };
-const fmtHM = (ms) => { const s = Math.max(0, Math.floor(ms / 1000)); return Math.floor(s / 3600) + "時間" + Math.floor((s % 3600) / 60) + "分"; };
+const fmtHM = (ms) => {
+  const s = Math.max(0, Math.floor(ms / 1000));
+  return Math.floor(s / 3600) + "時間" + Math.floor((s % 3600) / 60) + "分";
+};
 const fmtClock = (ms) => new Date(ms).toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 const isoOf = (ms) => new Date(ms).toISOString();
 const esc = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const newCounts = () => ({ snore: 0, speech: 0, env: 0, unknown: 0, short: 0 });
 const mb = (bytes) => (bytes / 1048576).toFixed(1) + " MB";
-const dayKey = (ms) => { const d = new Date(ms); return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); };
-const dayLabel = (key) => { const [y, m, d] = key.split("-").map(Number); return y + "年" + m + "月" + d + "日（" + "日月火水木金土"[new Date(y, m - 1, d).getDay()] + "）"; };
+const dayKey = (ms) => {
+  const d = new Date(ms);
+  return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
+};
+const dayLabel = (key) => {
+  const [y, m, d] = key.split("-").map(Number);
+  const w = "日月火水木金土"[new Date(y, m - 1, d).getDay()];
+  return y + "年" + m + "月" + d + "日（" + w + "）";
+};
+
+function scalePos(db, envDb, refDb, topDb) {
+  if (db == null) return 0;
+  if (db <= refDb) {
+    const span = Math.max(refDb - envDb, 1);
+    return clamp(0.5 * (db - envDb) / span, 0, 0.5);
+  }
+  const span = Math.max(topDb - refDb, 1);
+  return clamp(0.5 + 0.5 * (db - refDb) / span, 0.5, 1);
+}
 
 function activeRef(sess) {
   if (S.ref && S.ref.db != null) return { refDb: S.ref.db, refEnvDb: S.ref.envDb != null ? S.ref.envDb : null };
-  return { refDb: sess && sess.refDb != null ? sess.refDb : null, refEnvDb: sess && sess.refEnvDb != null ? sess.refEnvDb : null };
+  return {
+    refDb: sess && sess.refDb != null ? sess.refDb : null,
+    refEnvDb: sess && sess.refEnvDb != null ? sess.refEnvDb : null
+  };
 }
+
 function nightScale(sess, evs) {
   const ar = activeRef(sess);
   const refDb = ar.refDb != null ? ar.refDb : fallbackRefDb(evs);
   const envDb = ar.refEnvDb != null ? ar.refEnvDb : refDb - 12;
   let topDb = refDb;
-  for (const e of evs) { const db = dbOf(e); if (db != null && db > topDb) topDb = db; }
+  for (const e of evs) {
+    const db = dbOf(e);
+    if (db != null && db > topDb) topDb = db;
+  }
   return { refDb, envDb, topDb };
 }
-function scalePos(db, envDb, refDb, topDb) {
-  if (db == null) return 0;
-  if (db <= refDb) return clamp(0.5 * (db - envDb) / Math.max(refDb - envDb, 1), 0, 0.5);
-  return clamp(0.5 + 0.5 * (db - refDb) / Math.max(topDb - refDb, 1), 0.5, 1);
-}
+
 function wordOf(db, refDb) {
   if (db == null || refDb == null) return "-";
   const d = db - refDb;
-  return d >= REF_WORD_DB ? "大きい音" : (d <= -REF_WORD_DB ? "小さい音" : "基準くらい");
+  if (d >= REF_WORD_DB) return "大きい音";
+  if (d <= -REF_WORD_DB) return "小さい音";
+  return "基準くらい";
 }
+
 function fallbackRefDb(evs) {
   const v = evs.filter((e) => e.type === "snore").map((e) => e.meanAppliedDb).filter((x) => x != null);
   return v.length ? mean(v) : -40;
 }
-function showError(msg) { const b = $("errbox"); b.hidden = false; b.textContent = "エラー: " + msg + "\n（タップで閉じます）"; }
-function clearError() { const b = $("errbox"); if (b) b.hidden = true; }
+
+function showError(msg) {
+  const b = $("errbox");
+  b.hidden = false;
+  b.textContent = "エラー: " + msg + "\n（タップで閉じます）";
+}
+function clearError() {
+  const b = $("errbox");
+  if (b) b.hidden = true;
+}
 window.addEventListener("error", (e) => showError(e.message));
 window.addEventListener("unhandledrejection", (e) => showError((e.reason && e.reason.message) || String(e.reason)));
-function showMicMsg(text) { const b = $("mic-msg"); b.hidden = !text; b.textContent = text || ""; }
-function showRefMsg(text, isErr) { const b = $("ref-msg"); b.textContent = text || ""; b.className = isErr ? "err" : "muted"; }
 
-/* ===== AI人声判定（Silero VAD） ===== */
-const VAD = { session: null, ready: false, isV5: false, state: null, h: null, c: null, srTensor: null };
-async function initVad() {
-  if (VAD.ready) return true;
-  if (typeof ort === "undefined") return false;
-  try {
-    ort.env.wasm.wasmPaths = "./";
-    ort.env.wasm.numThreads = 1;
-    VAD.session = await ort.InferenceSession.create("./silero_vad.onnx?v=" + APP_VERSION, { executionProviders: ["wasm"] });
-    const names = VAD.session.inputNames || [];
-    VAD.isV5 = names.includes("state");
-    VAD.srTensor = new ort.Tensor("int64", BigInt64Array.from([16000n]), [1]);
-    resetVadState();
-    VAD.ready = true;
-    return true;
-  } catch (e) { console.warn("Silero VAD init failed:", e); VAD.ready = false; return false; }
+function showMicMsg(text) {
+  const b = $("mic-msg");
+  b.hidden = !text;
+  b.textContent = text || "";
 }
-function resetVadState() {
-  if (typeof ort === "undefined") return;
-  if (VAD.isV5) VAD.state = new ort.Tensor("float32", new Float32Array(2 * 1 * 128), [2, 1, 128]);
-  else {
-    VAD.h = new ort.Tensor("float32", new Float32Array(2 * 1 * 64), [2, 1, 64]);
-    VAD.c = new ort.Tensor("float32", new Float32Array(2 * 1 * 64), [2, 1, 64]);
-  }
-}
-async function runVadFrame(raw1600) {
-  if (!VAD.ready || !VAD.session) return null;
-  let maxP = 0;
-  try {
-    for (let off = 0; off + 512 <= raw1600.length; off += 512) {
-      const chunk = raw1600.subarray(off, off + 512);
-      const input = new ort.Tensor("float32", chunk, [1, 512]);
-      const feeds = VAD.isV5 ? { input, state: VAD.state, sr: VAD.srTensor } : { input, h: VAD.h, c: VAD.c, sr: VAD.srTensor };
-      const res = await VAD.session.run(feeds);
-      const out = res.output.data[0];
-      if (out > maxP) maxP = out;
-      if (VAD.isV5) VAD.state = res.stateN; else { VAD.h = res.hn; VAD.c = res.cn; }
-    }
-    return maxP;
-  } catch (e) { return null; }
+
+function showRefMsg(text, isErr) {
+  const b = $("ref-msg");
+  b.textContent = text || "";
+  b.className = isErr ? "err" : "muted";
 }
 
 /* ===== 患者情報（QR） ===== */
 const S_PATIENT_PENDING = { value: null };
 class PatientError extends Error {}
+
 function decodeSlp(payload) {
   let s = String(payload).trim().replace(/[^A-Za-z0-9\-_]/g, "");
   if (!s) throw new PatientError("QRの中身が空です。");
   s = s.replace(/-/g, "+").replace(/_/g, "/");
   while (s.length % 4) s += "=";
   const bin = atob(s);
-  return JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(Uint8Array.from(bin, (c) => c.charCodeAt(0))));
-}
-function patientFromText(text) {
-  const str = String(text || ""), idx = str.indexOf("#slp=");
-  if (idx < 0) throw new PatientError("患者用QRではありません。②が発行したQRを読み取ってください。");
-  let obj;
-  try { obj = decodeSlp(str.slice(idx + 5)); } catch (e) { throw new PatientError("QRの中身を読み取れませんでした。"); }
-  if (!obj || typeof obj !== "object" || Array.isArray(obj)) throw new PatientError("QRの中身の形式が正しくありません。");
-  const s = (v) => (typeof v === "string" ? v.normalize("NFC").trim() : "");
-  const p = { clinic: s(obj.clinicName), chartNo: s(obj.chartNo), name: s(obj.patientName), serialNumber: s(obj.serial), issuedOn: s(obj.issuedOn), logShareEmail: s(obj.logShareEmail), issueId: s(obj.issueId) };
-  if (!p.name) throw new PatientError("患者名がありません。");
-  if (!p.chartNo) throw new PatientError("カルテNoがありません。");
-  return p;
-}
-function sanitize(v, max = 40) {
-  return String(v ?? "").normalize("NFC").replace(/[\\/:*?"<>|\u0000-\u001f\u007f]/g, "_").replace(/\s+/g, "_").replace(/_+/g, "_").replace(/^[_.]+|[_.]+$/g, "").slice(0, max) || "未設定";
-}
-function zipName(sess) {
-  const p = sess.patient || {}, d = new Date(sess.startedAt);
-  return [d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()), pad(d.getHours()) + pad(d.getMinutes()), sanitize(p.clinic, 30), sanitize(p.chartNo, 20), sanitize(p.name, 20)].join("_") + ".zip";
+  const bytes = Uint8Array.from(bin, (c) => c.charCodeAt(0));
+  const json = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+  return JSON.parse(json);
 }
 
+function patientFromText(text) {
+  const str = String(text || "");
+  const idx = str.indexOf("#slp=");
+  if (idx < 0) throw new PatientError("患者用QRではありません。②が発行したQRを読み取ってください。");
+  let obj;
+  try { obj = decodeSlp(str.slice(idx + 5)); }
+  catch (e) { throw new PatientError("QRの中身を読み取れませんでした。QRを再発行してもらってください。"); }
+  if (!obj || typeof obj !== "object" || Array.isArray(obj)) throw new PatientError("QRの中身の形式が正しくありません。");
+  return normalizePatient(obj);
+}
+
+function normalizePatient(o) {
+  const s = (v) => (typeof v === "string" ? v.normalize("NFC").trim() : "");
+  const p = {
+    clinic: s(o.clinicName),
+    chartNo: s(o.chartNo),
+    name: s(o.patientName),
+    serialNumber: s(o.serial),
+    issuedOn: s(o.issuedOn),
+    logShareEmail: s(o.logShareEmail),
+    issueId: s(o.issueId),
+  };
+  if (!p.name) throw new PatientError("患者名がありません。このQRは利用できません。QRを再発行してもらってください。");
+  if (!p.chartNo) throw new PatientError("カルテNoがありません。QRを再発行してもらってください。");
+  return p;
+}
+
+function sanitize(v, max = 40) {
+  const s = String(v ?? "").normalize("NFC")
+    .replace(/[\\/:*?"<>|\u0000-\u001f\u007f]/g, "_")
+    .replace(/\s+/g, "_")
+    .replace(/_+/g, "_")
+    .replace(/^[_.]+|[_.]+$/g, "")
+    .slice(0, max);
+  return s || "未設定";
+}
+
+function zipName(sess) {
+  const p = sess.patient || {};
+  const d = new Date(sess.startedAt);
+  const day = d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate());
+  const time = pad(d.getHours()) + pad(d.getMinutes());
+  return [day, time, sanitize(p.clinic, 30), sanitize(p.chartNo, 20), sanitize(p.name, 20)].join("_") + ".zip";
+}
+
+/* ===== 先行リングバッファ ===== */
 class Ring {
   constructor(sec) { this.len = SR * sec; this.buf = new Float32Array(this.len); this.total = 0; }
-  push(arr) { for (let i = 0; i < arr.length; i++) this.buf[(this.total + i) % this.len] = arr[i]; this.total += arr.length; }
+  push(arr) {
+    for (let i = 0; i < arr.length; i++) this.buf[(this.total + i) % this.len] = arr[i];
+    this.total += arr.length;
+  }
   get(a, b) {
-    a = Math.max(a, 0, this.total - this.len); b = Math.min(b, this.total);
-    const n = Math.max(0, b - a), out = new Float32Array(n);
+    a = Math.max(a, 0, this.total - this.len);
+    b = Math.min(b, this.total);
+    const n = Math.max(0, b - a);
+    const out = new Float32Array(n);
     for (let i = 0; i < n; i++) out[i] = this.buf[(a + i) % this.len];
     return out;
   }
 }
 
+/* ===== IndexedDB ===== */
 const DB = (() => {
   let p = null;
-  const SCHEMA = [["sessions", "id", false], ["secs", "key", true], ["events", "id", true], ["clips", "id", true], ["settings", "key", false]];
+  const SCHEMA = [
+    ["sessions", "id", false],
+    ["secs", "key", true],
+    ["events", "id", true],
+    ["clips", "id", true],
+    ["settings", "key", false]
+  ];
   const applySchema = (d, tx) => {
     for (const [n, kp, needIdx] of SCHEMA) {
-      let s = !d.objectStoreNames.contains(n) ? d.createObjectStore(n, { keyPath: kp }) : tx.objectStore(n);
+      let s;
+      if (!d.objectStoreNames.contains(n)) s = d.createObjectStore(n, { keyPath: kp });
+      else s = tx.objectStore(n);
       if (needIdx && !s.indexNames.contains("sid")) s.createIndex("sid", "sid");
     }
   };
-  const schemaOk = (d) => { try { return SCHEMA.every(([n, , needIdx]) => d.objectStoreNames.contains(n) && (!needIdx || d.transaction(n).objectStore(n).indexNames.contains("sid"))); } catch (e) { return false; } };
+  const schemaOk = (d) => {
+    try {
+      return SCHEMA.every(([n, , needIdx]) =>
+        d.objectStoreNames.contains(n) &&
+        (!needIdx || d.transaction(n).objectStore(n).indexNames.contains("sid")));
+    } catch (e) { return false; }
+  };
   const openRaw = (version) => new Promise((res, rej) => {
     const r = version ? indexedDB.open(DB_NAME, version) : indexedDB.open(DB_NAME);
     r.onupgradeneeded = () => applySchema(r.result, r.transaction);
-    r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); r.onblocked = () => rej(new Error("保存領域が使用中です"));
+    r.onsuccess = () => res(r.result);
+    r.onerror = () => rej(r.error || new Error("保存領域を開けませんでした"));
+    r.onblocked = () => rej(new Error("保存領域が他のタブで使用中です。他のSomnoLogの画面を閉じてから開き直してください"));
   });
   const open = () => p || (p = (async () => {
+    if (!window.indexedDB) throw new Error("この端末では保存機能（IndexedDB）を使えません");
     let d = await openRaw();
-    if (!schemaOk(d)) { const v = d.version + 1; d.close(); d = await openRaw(v); }
+    if (!schemaOk(d)) {
+      const v = d.version + 1;
+      d.close();
+      d = await openRaw(v);
+    }
     d.onversionchange = () => { d.close(); p = null; };
     return d;
-  })().catch((e) => { p = null; throw e; }));
+  })().catch((e) => { dbp_reset(); throw e; }));
+  function dbp_reset() { p = null; }
   const run = async (store, mode, fn) => {
     const d = await open();
     return new Promise((res, rej) => {
-      const t = d.transaction(store, mode), req = fn(t.objectStore(store));
-      t.oncomplete = () => res(req ? req.result : undefined); t.onerror = () => rej(t.error); t.onabort = () => rej(t.error);
+      const t = d.transaction(store, mode);
+      const req = fn(t.objectStore(store));
+      t.oncomplete = () => res(req ? req.result : undefined);
+      t.onerror = () => rej(t.error);
+      t.onabort = () => rej(t.error);
     });
   };
   return {
-    put: (s, o) => run(s, "readwrite", (x) => x.put(o)),
-    putMany: (s, a) => run(s, "readwrite", (x) => { a.forEach((o) => x.put(o)); return null; }),
-    get: (s, k) => run(s, "readonly", (x) => x.get(k)),
-    all: (s) => run(s, "readonly", (x) => x.getAll()),
-    byIndex: async (s, idx, key) => {
-      try { return await run(s, "readonly", (x) => x.index(idx).getAll(IDBKeyRange.only(key))); }
-      catch (e) { if (e && e.name === "NotFoundError") return (await run(s, "readonly", (x) => x.getAll()) || []).filter((r) => r && r[idx] === key); throw e; }
+    put: (store, obj) => run(store, "readwrite", (s) => s.put(obj)),
+    putMany: (store, arr) => run(store, "readwrite", (s) => { arr.forEach((o) => s.put(o)); return null; }),
+    get: (store, key) => run(store, "readonly", (s) => s.get(key)),
+    all: (store) => run(store, "readonly", (s) => s.getAll()),
+    byIndex: async (store, idx, key) => {
+      try {
+        return await run(store, "readonly", (s) => s.index(idx).getAll(IDBKeyRange.only(key)));
+      } catch (e) {
+        if (e && e.name === "NotFoundError") {
+          const all = await run(store, "readonly", (s) => s.getAll());
+          return (all || []).filter((r) => r && r[idx] === key);
+        }
+        throw e;
+      }
     },
-    delMany: (s, keys) => run(s, "readwrite", (x) => { keys.forEach((k) => x.delete(k)); return null; }),
+    delMany: (store, keys) => run(store, "readwrite", (s) => { keys.forEach((k) => s.delete(k)); return null; }),
   };
 })();
 
+/* ===== 状態 ===== */
 const S = {
-  ctx: null, stream: null, tap: null, micMode: "", gainDb: 0, calDb: 0,
-  ref: null, refColl: null, refPcm: null, refEnv: null, peakDb: -Infinity, patient: null,
+  ctx: null, pendingCtx: null, stream: null, tap: null, micMode: "",
+  gainDb: 0, calDb: 0,
+  ref: null, refColl: null, refPcm: null, refEnv: null, peakDb: -Infinity,
+  patient: null,
   running: false, saving: false, epoch: 0, sid: null, sess: null, counts: newCounts(),
   wake: null, timers: [], uiTimer: null, blackOn: false, savedStyle: null, detailSid: null, blackTimer: null,
   ring: new Ring(RING_SEC), recv: 0, queue: [], busy: false, dropped: 0,
   nowMs: 0, lastLv: -120, dispWin: [], dispLv: -120, motionNow: null, grav: null, motionTs: null,
-  calibrated: false, calibVals: [], base: null, steadyWin: [], spikePending: null, activeEvent: null,
-  bucket: null, secBuf: []
+  calibrated: false, calibVals: [], base: null,
+  steadyWin: [], spikePending: null, activeEvent: null,
+  bucket: null, secBuf: [], log100ms: []
 };
+
 const cal = { year: 0, month: 0, selected: null, index: 0, byDay: new Map() };
 const ZOOM_DEFAULT = 0;
 const tl = { data: null, total: 0, winStart: 0, winLen: 0, cursor: 0, zoomSec: ZOOM_DEFAULT, scale: { refDb: -40, envDb: -52, topDb: -40 }, tags: { snore: true, unknown: false, env: false, speech: false } };
 const SH = { sid: null, zipDone: false, zipName: "" };
 let recActionPending = false;
-const ENGINE_IDS = new Set();
-const CAT_FROM_DISPLAY = { "いびき": "snore", "人声": "speech", "環境音": "env", "判定不能": "unknown" };
-async function engineHas(sid) { if (!sid) return false; if (ENGINE_IDS.has(sid)) return true; try { return !!(await SleepEngine.getSessionData(sid, { light: true })); } catch (e) { return false; } }
-function engineSessForUi(s) { const c = s.counts || {}; return { ...s, engine: true, counts: { snore: c.snore || 0, speech: c.talk || 0, env: c.env || 0, engineCounts: c }, base: s.baselineDb == null ? null : s.baselineDb, refDb: s.refDb != null ? s.refDb : null, refEnvDb: s.refEnvDb != null ? s.refEnvDb : null }; }
-async function engineDetailData(sid, needClips) {
-  const d = await SleepEngine.getSessionData(sid, { light: !needClips });
-  if (!d) return null;
-  const sess = engineSessForUi(d.session), bySec = new Map();
-  for (const r of d.rows) {
-    const s = Math.floor(r.sec);
-    let b = bySec.get(s); if (!b) { b = { sec: s, peak: null, sum: 0, n: 0, motion: null }; bySec.set(s, b); }
-    if (r.db != null) { b.peak = b.peak == null ? r.db : Math.max(b.peak, r.db); b.sum += r.db; b.n++; }
-    if (r.motionG != null) b.motion = b.motion == null ? r.motionG : Math.max(b.motion, r.motionG);
-  }
-  const secs = [...bySec.values()].sort((a, b) => a.sec - b.sec).map((b) => ({ sec: b.sec, dbApplied: b.n ? (b.sum / b.n) : null, dbSource: b.n ? (b.sum / b.n) : null, peakApplied: b.peak, vadMean: null, motion: b.motion }));
-  const clipById = new Map(d.clips.map((c) => [c.id, c]));
-  const evs = d.events.map((e) => ({ ...e, type: CAT_FROM_DISPLAY[e.displayCategory] || "unknown", endMs: e.startMs + Math.round((e.durationSec || 0) * 1000), durMs: Math.round((e.durationSec || 0) * 1000), peakAppliedDb: e.peakDb, meanAppliedDb: e.meanDb, clipId: clipById.has(e.id) ? e.id : null, engineClip: clipById.get(e.id) || null }));
-  return { sess, secs, evs, clips: d.clips };
-}
-function isBusy() { return S.running || S.saving || recActionPending || !!S.refColl; }
-let motionOn = false;
-function showPage(name) { ["start", "confirm", "record", "prep", "calendar", "detail", "share"].forEach((n) => { $("page-" + n).hidden = n !== name; }); window.scrollTo(0, 0); }
-function updateBackButtons() { const has = !!S.patient; $("back-rec-start").hidden = !has; $("back-rec-confirm").hidden = !has; }
-function goRecord() { stopCamera(); if (!S.patient) { showError("患者情報が登録されていません。"); return; } clearError(); setButtons(); showPage("record"); }
 
+function isBusy() { return S.running || S.saving || recActionPending || !!S.refColl; }
+
+/* ===== 画面切り替え ===== */
+let motionOn = false;
+function showPage(name) {
+  ["start", "confirm", "record", "prep", "calendar", "detail", "share"].forEach((n) => { $("page-" + n).hidden = n !== name; });
+  window.scrollTo(0, 0);
+}
+
+function updateBackButtons() {
+  const has = !!S.patient;
+  $("back-rec-start").hidden = !has;
+  $("back-rec-confirm").hidden = !has;
+}
+
+function goRecord() {
+  stopCamera();
+  if (!S.patient) { showError("患者情報が登録されていません。QRを読み取ってください。"); return; }
+  clearError();
+  setButtons();
+  showPage("record");
+}
+/* ===== QR読み取り（カメラ・画像） ===== */
 let camStream = null, camTimer = 0, detector = null, scanBusy = false;
-function showScanMsg(text) { const b = $("scan-msg"); b.hidden = !text; b.textContent = text || ""; }
-function handleQrText(text) { try { const p = patientFromText(text); showScanMsg(""); S_PATIENT_PENDING.value = p; showConfirm(p); } catch (e) { showScanMsg(e instanceof PatientError ? e.message : "QRエラー: " + e.message); } }
-function showConfirm(p) { clearError(); $("cf-clinic").textContent = p.clinic || "（未記入）"; $("cf-chart").textContent = p.chartNo || "（未記入）"; $("cf-name").textContent = p.name; $("cf-serial").textContent = p.serialNumber || "（未記入）"; $("cf-email").textContent = p.logShareEmail || "（未記入）"; updateBackButtons(); showPage("confirm"); }
+
+function showScanMsg(text) {
+  const b = $("scan-msg");
+  b.hidden = !text;
+  b.textContent = text || "";
+}
+
+function handleQrText(text) {
+  try {
+    const p = patientFromText(text);
+    showScanMsg("");
+    S_PATIENT_PENDING.value = p;
+    showConfirm(p);
+  } catch (e) {
+    showScanMsg(e instanceof PatientError ? e.message : "QRを読み取れませんでした: " + e.message);
+  }
+}
+
+function showConfirm(p) {
+  clearError();
+  $("cf-clinic").textContent = p.clinic || "（未記入）";
+  $("cf-chart").textContent = p.chartNo || "（未記入）";
+  $("cf-name").textContent = p.name;
+  $("cf-serial").textContent = p.serialNumber || "（未記入）";
+  $("cf-email").textContent = p.logShareEmail || "（未記入）";
+  updateBackButtons();
+  showPage("confirm");
+}
+
 async function decodeCanvas(canvas) {
-  if (window.BarcodeDetector) { try { if (!detector) detector = new BarcodeDetector({ formats: ["qr_code"] }); const r = await detector.detect(canvas); if (r.length && r[0].rawValue) return r[0].rawValue; } catch (e) {} }
-  if (typeof window.jsQR === "function") { const c = canvas.getContext("2d"), img = c.getImageData(0, 0, canvas.width, canvas.height), code = window.jsQR(img.data, img.width, img.height); if (code && code.data) return code.data; }
+  if (window.BarcodeDetector) {
+    try {
+      if (!detector) detector = new BarcodeDetector({ formats: ["qr_code"] });
+      const r = await detector.detect(canvas);
+      if (r.length && r[0].rawValue) return r[0].rawValue;
+    } catch (e) { console.warn(e); }
+  }
+  if (typeof window.jsQR === "function") {
+    const c = canvas.getContext("2d");
+    const img = c.getImageData(0, 0, canvas.width, canvas.height);
+    const code = window.jsQR(img.data, img.width, img.height);
+    if (code && code.data) return code.data;
+  }
   return null;
 }
-function canDecode() { return !!window.BarcodeDetector || typeof window.jsQR === "function"; }
+
+function canDecode() {
+  return !!window.BarcodeDetector || typeof window.jsQR === "function";
+}
+
 async function startCamera() {
   showScanMsg("");
-  if (!window.isSecureContext || !navigator.mediaDevices) { showScanMsg("https:// で開いてください。"); return; }
-  if (!canDecode()) { showScanMsg("標準のカメラアプリでQRを読んでください。"); return; }
+  if (!window.isSecureContext || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    showScanMsg("カメラを使うには https:// で開いてください。");
+    return;
+  }
+  if (!canDecode()) {
+    showScanMsg("この端末ではアプリ内でQRを読み取れません。標準のカメラアプリでQRを読むと、この画面が自動で開きます。");
+    return;
+  }
   try {
     camStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" } }, audio: false });
-    $("cam-video").srcObject = camStream; await $("cam-video").play(); $("cam-box").hidden = false; scanLoop();
-  } catch (e) { stopCamera(); showScanMsg("カメラを起動できませんでした。（" + e.name + "）"); }
+    const video = $("cam-video");
+    video.srcObject = camStream;
+    await video.play();
+    $("cam-box").hidden = false;
+    scanLoop();
+  } catch (e) {
+    stopCamera();
+    showScanMsg("カメラを起動できませんでした。カメラの許可を確認してください。（" + e.name + "）");
+  }
 }
-function stopCamera() { clearTimeout(camTimer); camTimer = 0; if (camStream) camStream.getTracks().forEach((t) => t.stop()); camStream = null; if ($("cam-video")) $("cam-video").srcObject = null; $("cam-box").hidden = true; }
+
+function stopCamera() {
+  clearTimeout(camTimer);
+  camTimer = 0;
+  if (camStream) camStream.getTracks().forEach((t) => t.stop());
+  camStream = null;
+  const v = $("cam-video");
+  if (v) v.srcObject = null;
+  $("cam-box").hidden = true;
+}
+
 function scanLoop() {
   if (!camStream) return;
-  const v = $("cam-video");
+  const video = $("cam-video");
   const run = async () => {
     if (!camStream) return;
-    if (!scanBusy && v.readyState >= 2 && v.videoWidth) {
+    if (!scanBusy && video.readyState >= 2 && video.videoWidth) {
       scanBusy = true;
       try {
-        const c = $("scan-canvas"); c.width = v.videoWidth; c.height = v.videoHeight; c.getContext("2d").drawImage(v, 0, 0);
-        const text = await decodeCanvas(c);
-        if (text) { stopCamera(); handleQrText(text); return; }
+        const canvas = $("scan-canvas");
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        canvas.getContext("2d").drawImage(video, 0, 0);
+        const text = await decodeCanvas(canvas);
+        if (text) {
+          stopCamera();
+          handleQrText(text);
+          return;
+        }
       } finally { scanBusy = false; }
     }
     camTimer = setTimeout(run, 250);
   };
   run();
 }
+
 async function readQrFile(file) {
-  showScanMsg(""); if (!file) return;
-  if (!canDecode()) { showScanMsg("標準のカメラアプリでQRを読んでください。"); return; }
+  showScanMsg("");
+  if (!file) return;
+  if (!canDecode()) {
+    showScanMsg("この端末では画像からQRを読み取れません。標準のカメラアプリでQRを読むと、この画面が自動で開きます。");
+    return;
+  }
   try {
-    const bmp = await createImageBitmap(file), c = $("scan-canvas");
-    c.width = bmp.width; c.height = bmp.height; c.getContext("2d").drawImage(bmp, 0, 0); bmp.close && bmp.close();
-    const text = await decodeCanvas(c);
-    if (!text) { showScanMsg("QRを見つけられませんでした。"); return; }
+    const bmp = await createImageBitmap(file);
+    const canvas = $("scan-canvas");
+    canvas.width = bmp.width;
+    canvas.height = bmp.height;
+    canvas.getContext("2d").drawImage(bmp, 0, 0);
+    bmp.close && bmp.close();
+    const text = await decodeCanvas(canvas);
+    if (!text) {
+      showScanMsg("画像からQRを見つけられませんでした。QRがはっきり写った画像を選んでください。");
+      return;
+    }
     handleQrText(text);
-  } catch (e) { showScanMsg("画像を読み込めませんでした: " + e.message); }
-}
-function checkHashOnLoad() {
-  if (location.hash.indexOf("#slp=") < 0) return false;
-  const text = location.href; history.replaceState(null, "", location.pathname + location.search); handleQrText(text); return true;
+  } catch (e) {
+    showScanMsg("画像を読み込めませんでした: " + e.message);
+  }
 }
 
-function withTimeout(p, ms, label) { let t; return Promise.race([p, new Promise((_, rej) => { t = setTimeout(() => rej(new Error(label + "タイムアウト")), ms); })]).finally(() => clearTimeout(t)); }
-async function loadPatient() { try { const r = await withTimeout(DB.get("settings", "patient"), DB_WAIT_MS, "患者情報"); S.patient = r && r.value ? r.value : null; } catch (e) { S.patient = null; } }
-async function savePatient(p) { S.patient = p; await DB.put("settings", { key: "patient", value: p, savedAt: Date.now() }); }
-async function saveRef() { if (S.ref) await DB.put("settings", { key: "ref", value: { db: S.ref.db, envDb: S.ref.envDb, at: S.ref.at }, savedAt: Date.now() }).catch(() => {}); }
-function pcmChunksToWavBase64(chunks, sr) {
-  let total = 0; for (const c of chunks) total += c.length;
-  const buf = new ArrayBuffer(44 + total * 2), v = new DataView(buf);
-  const ws = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
-  ws(0, "RIFF"); v.setUint32(4, 36 + total * 2, true); ws(8, "WAVE"); ws(12, "fmt "); v.setUint32(16, 16, true);
-  v.setUint16(20, 1, true); v.setUint16(22, 1, true); v.setUint32(24, sr, true); v.setUint32(28, sr * 2, true);
+function checkHashOnLoad() {
+  if (location.hash.indexOf("#slp=") < 0) return false;
+  const text = location.href;
+  history.replaceState(null, "", location.pathname + location.search);
+  handleQrText(text);
+  return true;
+}
+
+/* ===== 患者情報の保存・読み込み ===== */
+function withTimeout(promise, ms, label) {
+  let timer;
+  const timeout = new Promise((_, rej) => {
+    timer = setTimeout(() => rej(new Error(label + "が時間内に終わりませんでした")), ms);
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
+
+async function loadPatient() {
+  for (let i = 0; i < 2; i++) {
+    try {
+      const row = await withTimeout(DB.get("settings", "patient"), DB_WAIT_MS, "患者情報の読み込み");
+      S.patient = row && row.value ? row.value : null;
+      clearError();
+      return;
+    } catch (e) {
+      console.warn("患者情報の読み込み（" + (i + 1) + "回目）:", e);
+    }
+  }
+  S.patient = null;
+}
+
+async function savePatient(p) {
+  S.patient = p;
+  await DB.put("settings", { key: "patient", value: p, savedAt: Date.now() });
+}
+
+/* ===== 基準音圧（あ〜）の保存・読み込み ===== */
+async function saveRef() {
+  if (!S.ref) return;
+  try {
+    await DB.put("settings", { key: "ref", value: { db: S.ref.db, envDb: S.ref.envDb, at: S.ref.at }, savedAt: Date.now() });
+  } catch (e) { console.warn("基準音圧の保存:", e); }
+}
+
+function pcmChunksToWavBase64(chunks, sampleRate) {
+  let total = 0;
+  for (const c of chunks) total += c.length;
+  const buf = new ArrayBuffer(44 + total * 2);
+  const v = new DataView(buf);
+  const ws = (off, s) => { for (let i = 0; i < s.length; i++) v.setUint8(off + i, s.charCodeAt(i)); };
+  ws(0, "RIFF"); v.setUint32(4, 36 + total * 2, true); ws(8, "WAVE"); ws(12, "fmt ");
+  v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+  v.setUint32(24, sampleRate, true); v.setUint32(28, sampleRate * 2, true);
   v.setUint16(32, 2, true); v.setUint16(34, 16, true); ws(36, "data"); v.setUint32(40, total * 2, true);
   let off = 44;
-  for (const c of chunks) for (let i = 0; i < c.length; i++) { const s = Math.max(-1, Math.min(1, c[i])); v.setInt16(off, s < 0 ? s * 0x8000 : s * 0x7fff, true); off += 2; }
-  const bytes = new Uint8Array(buf); let bin = "";
+  for (const c of chunks) {
+    for (let i = 0; i < c.length; i++) {
+      const s = Math.max(-1, Math.min(1, c[i]));
+      v.setInt16(off, s < 0 ? s * 0x8000 : s * 0x7fff, true);
+      off += 2;
+    }
+  }
+  const bytes = new Uint8Array(buf);
+  let bin = "";
   for (let i = 0; i < bytes.length; i += 8192) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 8192));
   return btoa(bin);
 }
+
 let refAudioUrl = null;
 async function playRefAudio() {
   try {
-    const r = await DB.get("settings", "refAudio"), b64 = r && r.value ? r.value : null; if (!b64) return false;
-    const bin = atob(b64), bytes = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    const row = await DB.get("settings", "refAudio");
+    const b64 = row && row.value ? row.value : null;
+    if (!b64) return false;
+    const bin = atob(b64);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
     if (refAudioUrl) URL.revokeObjectURL(refAudioUrl);
     refAudioUrl = URL.createObjectURL(new Blob([bytes], { type: "audio/wav" }));
-    await new Audio(refAudioUrl).play(); return true;
-  } catch (e) { return false; }
+    await new Audio(refAudioUrl).play();
+    return true;
+  } catch (e) { console.warn("基準音の再生:", e); return false; }
 }
+
 async function loadRefAudioBytes() {
   try {
-    const r = await DB.get("settings", "refAudio"), b64 = r && r.value ? r.value : null; if (!b64) return null;
-    const bin = atob(b64), bytes = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i); return bytes;
-  } catch (e) { return null; }
+    const row = await DB.get("settings", "refAudio");
+    const b64 = row && row.value ? row.value : null;
+    if (!b64) return null;
+    const bin = atob(b64);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return bytes;
+  } catch (e) { console.warn("基準音の読み込み:", e); return null; }
 }
-async function loadRef() { try { const r = await withTimeout(DB.get("settings", "ref"), DB_WAIT_MS, "基準音圧"), v = r && r.value ? r.value : null; if (v && typeof v.db === "number") S.ref = { db: v.db, envDb: v.envDb, at: v.at || null }; } catch (e) {} }
 
-/* ===== V121高音質音声取得（16kHz / 1600サンプル=100ms周期） ===== */
+async function loadRef() {
+  try {
+    const row = await withTimeout(DB.get("settings", "ref"), DB_WAIT_MS, "基準音圧の読み込み");
+    const v = row && row.value ? row.value : null;
+    if (v && typeof v.db === "number") {
+      S.ref = { db: v.db, envDb: v.envDb, at: v.at || null };
+    }
+  } catch (e) { console.warn("基準音圧の読み込み:", e); }
+}
+
+/* ===== 音声取得（V119：初期コード準拠のクリアな集音） ===== */
 const WORKLET = `
 class Tap extends AudioWorkletProcessor {
-  constructor() { super(); this.ratio = sampleRate / 16000; this.pos = 0; this.prev = 0; this.acc = []; }
+  constructor() {
+    super();
+    this.ratio = sampleRate / 16000;
+    this.pos = 0;
+    this.prev = 0;
+    this.acc = [];
+  }
   process(inputs) {
-    const ch = inputs[0] && inputs[0][0]; if (!ch || !ch.length) return true;
-    const n = ch.length; let t = this.pos;
-    while (t < n) { const i = Math.floor(t), f = t - i; this.acc.push((i === 0 ? this.prev : ch[i - 1]) * (1 - f) + ch[i] * f); t += this.ratio; }
-    this.pos = t - n; this.prev = ch[n - 1];
-    while (this.acc.length >= 1600) { const out = Float32Array.from(this.acc.splice(0, 1600)); this.port.postMessage(out, [out.buffer]); }
+    const ch = inputs[0] && inputs[0][0];
+    if (!ch || !ch.length) return true;
+    const n = ch.length;
+    let t = this.pos;
+    while (t < n) {
+      const i = Math.floor(t), f = t - i;
+      const a = i === 0 ? this.prev : ch[i - 1];
+      const b = ch[i];
+      this.acc.push(a * (1 - f) + b * f);
+      t += this.ratio;
+    }
+    this.pos = t - n;
+    this.prev = ch[n - 1];
+    while (this.acc.length >= 1600) {
+      const out = Float32Array.from(this.acc.splice(0, 1600));
+      this.port.postMessage(out, [out.buffer]);
+    }
     return true;
   }
 }
 registerProcessor("tap", Tap);
 `;
-function micError(name, message, stage) { const e = new Error(message || name); e.name = name; e.stage = stage || ""; return e; }
-async function getMicStream() { return await navigator.mediaDevices.getUserMedia({ audio: true }); }
+
+function micError(name, message, stage) {
+  const e = new Error(message || name);
+  e.name = name;
+  e.stage = stage || "";
+  return e;
+}
+
+async function getMicStream() {
+  // V119：初期コードと同じ { audio: true } を使用し、OS標準のノイズ抑制を有効化
+  return await navigator.mediaDevices.getUserMedia({ audio: true });
+}
+
 function makeScriptTap(ctx) {
-  const node = ctx.createScriptProcessor(4096, 1, 1), ratio = ctx.sampleRate / SR, acc = []; let pos = 0, prev = 0;
+  const node = ctx.createScriptProcessor(4096, 1, 1);
+  const ratio = ctx.sampleRate / SR;
+  let pos = 0, prev = 0;
+  const acc = [];
   node.onaudioprocess = (e) => {
-    const ch = e.inputBuffer.getChannelData(0), n = ch.length; let t = pos;
-    while (t < n) { const i = Math.floor(t), f = t - i; acc.push((i === 0 ? prev : ch[i - 1]) * (1 - f) + ch[i] * f); t += ratio; }
-    pos = t - n; prev = ch[n - 1];
+    const ch = e.inputBuffer.getChannelData(0);
+    const n = ch.length;
+    let t = pos;
+    while (t < n) {
+      const i = Math.floor(t), f = t - i;
+      const a = i === 0 ? prev : ch[i - 1];
+      const b = ch[i];
+      acc.push(a * (1 - f) + b * f);
+      t += ratio;
+    }
+    pos = t - n;
+    prev = ch[n - 1];
     while (acc.length >= FRAME) onAudio(Float32Array.from(acc.splice(0, FRAME)));
   };
   return node;
 }
+
 async function setupMic(ctx) {
-  if (!window.isSecureContext || !navigator.mediaDevices) throw micError("InsecureContext", "https required", "接続の確認");
+  if (!window.isSecureContext || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    throw micError("InsecureContext", "secure context required", "接続の確認");
+  }
+  if (!ctx) throw micError("NotSupportedError", "AudioContext is not available", "音声処理の作成");
   if (S.ctx) return;
+
   let stream;
-  try { stream = await getMicStream(); } catch (e) { e.stage = "マイクの許可"; throw e; }
+  try {
+    stream = await getMicStream();
+  } catch (e) {
+    e.stage = "マイクの許可";
+    throw e;
+  }
+
   try {
     if (ctx.state !== "running") await ctx.resume();
-    const src = ctx.createMediaStreamSource(stream), mute = ctx.createGain(); mute.gain.value = 0; mute.connect(ctx.destination);
+    const src = ctx.createMediaStreamSource(stream);
+    const mute = ctx.createGain();
+    mute.gain.value = 0;
+    mute.connect(ctx.destination);
+
     let tap, mode;
     try {
       const url = URL.createObjectURL(new Blob([WORKLET], { type: "application/javascript" }));
-      try { await ctx.audioWorklet.addModule(url); } finally { URL.revokeObjectURL(url); }
-      tap = new AudioWorkletNode(ctx, "tap"); tap.port.onmessage = (e) => onAudio(e.data); mode = "worklet";
-    } catch (e) { tap = makeScriptTap(ctx); mode = "script"; }
-    src.connect(tap); tap.connect(mute);
-    S.ctx = ctx; S.stream = stream; S.tap = tap; S.micMode = mode;
+      try { await ctx.audioWorklet.addModule(url); }
+      finally { URL.revokeObjectURL(url); }
+      tap = new AudioWorkletNode(ctx, "tap");
+      tap.port.onmessage = (e) => onAudio(e.data);
+      mode = "worklet";
+    } catch (e) {
+      console.warn("AudioWorklet unavailable, using ScriptProcessor", e);
+      tap = makeScriptTap(ctx);
+      mode = "script";
+    }
+    src.connect(tap);
+    tap.connect(mute);
+
+    S.ctx = ctx; S.stream = stream; S.tap = tap; S.micMode = mode; S.pendingCtx = null;
     startUiLoop();
-  } catch (e) { stream.getTracks().forEach((t) => t.stop()); throw e; }
+  } catch (e) {
+    stream.getTracks().forEach((t) => t.stop());
+    if (!e.stage) e.stage = "音声処理の開始";
+    throw e;
+  }
 }
-function micErrorMessage(e) { return "マイクを開始できませんでした。（" + (e && e.name ? e.name : "不明") + "）"; }
+
+function micErrorMessage(e) {
+  const n = (e && e.name) || "不明";
+  const stage = (e && e.stage) ? e.stage : "不明";
+  const detail = "（段階：" + stage + "／エラー名：" + n + (e && e.message ? "／" + e.message : "") + "）";
+  if (n === "InsecureContext") return "HTTPSで開いていないため、マイクを使えません。https:// から始まるURL（GitHub Pages）で開いてください。" + detail;
+  if (n === "NotAllowedError" || n === "SecurityError") return "マイクの許可が得られませんでした。iPhoneでは「設定」→「Safari」（またはこのサイト）→「マイク」を「許可」に変更し、ページを開き直してください。" + detail;
+  if (n === "NotFoundError") return "マイクが見つかりません。機器の接続を確認してください。" + detail;
+  if (n === "NotReadableError") return "マイクが他のアプリで使用中の可能性があります。通話や録音のアプリを閉じて、再度お試しください。" + detail;
+  if (n === "AbortError") return "マイクの起動が中断されました。ボタンを一度だけ押し、許可の表示が出たら「許可」を選んでください。改善しない場合はページを開き直してください。" + detail;
+  return "マイクを開始できませんでした。" + detail;
+}
 
 function onAudio(raw) {
-  let ss = 0; for (let i = 0; i < raw.length; i++) ss += raw[i] * raw[i];
-  const lv = rawDbfsOf(Math.sqrt(ss / raw.length)) + S.gainDb + S.calDb;
+  // V119：音圧判定は補正値を加味して計算し、録音バッファには非増幅の「生音(raw)」をそのまま保存
+  let ss = 0;
+  for (let i = 0; i < raw.length; i++) ss += raw[i] * raw[i];
+  const rms = Math.sqrt(ss / raw.length);
+  const lv = rawDbfsOf(rms) + S.gainDb + S.calDb;
+
   if (!S.running) {
-    S.lastLv = lv; pushDisp(lv);
-    if (S.refColl) { S.refColl.push(lv); if (S.refPcm) S.refPcm.push(raw.slice(0)); }
+    S.lastLv = lv;
+    pushDisp(lv);
+    if (S.refColl) {
+      S.refColl.push(lv);
+      if (S.refPcm) S.refPcm.push(raw.slice(0));
+    }
     return;
   }
-  const t = S.recv / SR * 1000; S.recv += FRAME; S.ring.push(raw);
+  const t = S.recv / SR * 1000;
+  S.recv += FRAME;
+  S.ring.push(raw);
   if (S.queue.length >= MAX_QUEUE) { S.queue.shift(); S.dropped++; }
   S.queue.push({ data: raw, lv, t, ep: S.epoch });
   pump();
 }
 
-function refFail(msg) { S.refColl = null; S.refPcm = null; S.refEnv = null; showRefMsg(msg, true); setButtons(); }
+/* ===== 基準音圧を測る（①環境音 → ②「あ〜」） ===== */
+function refFail(msg) {
+  S.refColl = null; S.refPcm = null; S.refEnv = null;
+  showRefMsg(msg, true);
+  setButtons();
+}
+
 function startRefMeasure() {
   if (!S.ctx || S.running || S.refColl) return;
-  S.refEnv = null; S.refColl = []; S.refPcm = []; S.dispWin = []; S.dispLv = -120;
-  setButtons(); showRefMsg("静かにしてください…（環境音を" + REF_SEC + "秒測ります）");
+  S.refEnv = null; S.refColl = []; S.refPcm = [];
+  S.dispWin = []; S.dispLv = -120;
+  setButtons();
+  showRefMsg("静かにしてください…（環境音を" + REF_SEC + "秒測ります）");
   setTimeout(finishRefEnv, REF_SEC * 1000);
 }
-function halfMean(arr, upper, frac) { const a = [...arr].sort((x, y) => x - y), n = Math.max(1, Math.round(a.length * (frac || 0.5))); return mean(upper ? a.slice(a.length - n) : a.slice(0, n)); }
+
+function halfMean(arr, upper, frac) {
+  const a = [...arr].sort((x, y) => x - y);
+  const n = Math.max(1, Math.round(a.length * (frac || 0.5)));
+  const part = upper ? a.slice(a.length - n) : a.slice(0, n);
+  return mean(part);
+}
+
 function finishRefEnv() {
-  const arr = S.refColl || []; if (arr.length < REF_MIN_FRAMES) { refFail("音を十分に取れませんでした。"); return; }
-  S.refEnv = round2(halfMean(arr, false)); S.refColl = []; S.refPcm = [];
+  const arr = S.refColl || [];
+  if (arr.length < REF_MIN_FRAMES) {
+    refFail("音を十分に取れませんでした。もう一度「基準音の設定」を押してください。");
+    return;
+  }
+  S.refEnv = round2(halfMean(arr, false));
+  S.refColl = []; S.refPcm = [];
   showRefMsg("「あ〜」と声を出し続けてください…（" + REF_SEC + "秒）");
   setTimeout(finishRefMeasure, REF_SEC * 1000);
 }
+
 function finishRefMeasure() {
-  const arr = S.refColl || [], env = S.refEnv;
-  if (arr.length < REF_MIN_FRAMES) { refFail("音を十分に取れませんでした。"); return; }
-  const onset = arr.findIndex((v) => v > S.refEnv + LOUD_DB);
+  const arr = S.refColl || [];
+  const env = S.refEnv;
+  if (arr.length < REF_MIN_FRAMES) {
+    refFail("音を十分に取れませんでした。もう一度「基準音の設定」を押してください。");
+    return;
+  }
+  const onset = arr.findIndex((v) => v > S.refEnv + 6);
   let seg = arr;
-  if (onset >= 0) { const from = onset + Math.round(0.3 * SR / FRAME); if (arr.length - from >= Math.round(0.8 * SR / FRAME)) seg = arr.slice(from); }
+  if (onset >= 0) {
+    const from = onset + Math.round(0.3 * SR / FRAME);
+    if (arr.length - from >= Math.round(0.8 * SR / FRAME)) seg = arr.slice(from);
+  }
   const db = Math.max(...seg);
-  if (db < REF_QUIET_DB || env == null || db <= env) { refFail("声が小さすぎます。音圧調整を上げてからやり直してください。"); return; }
-  const rawDb = db - (S.gainDb + S.calDb), calNew = Math.max(-12, Math.min(18, REF_TARGET_DB - rawDb)), shift = calNew - S.calDb;
-  S.calDb = calNew; try { localStorage.setItem("somnolog-cal-db", String(S.calDb)); } catch (e) {}
-  S.ref = { db: round2(db + shift), envDb: round2(env + shift), at: Date.now() };
+  if (db < REF_QUIET_DB) {
+    refFail("声が小さすぎます。iPhoneの音圧調整を上げてから、もう一度押してください。");
+    return;
+  }
+  if (env == null || db <= env) {
+    refFail("「あ〜」の音が環境音より大きくありませんでした。iPhoneの音圧調整を上げてから、もう一度押してください。");
+    return;
+  }
+  const rawDb = db - (S.gainDb + S.calDb);
+  const calNew = Math.max(-12, Math.min(18, REF_TARGET_DB - rawDb));
+  const shift = calNew - S.calDb;
+  S.calDb = calNew;
+  try { localStorage.setItem("somnolog-cal-db", String(S.calDb)); } catch (e) {}
+  S.ref = { db: round2(db + shift), envDb: env == null ? null : round2(env + shift), at: Date.now() };
   saveRef();
-  if (S.refPcm && S.refPcm.length) { try { DB.put("settings", { key: "refAudio", value: pcmChunksToWavBase64(S.refPcm, SR), savedAt: Date.now() }).catch(() => {}); } catch (e) {} }
+  if (S.refPcm && S.refPcm.length) {
+    try {
+      const b64 = pcmChunksToWavBase64(S.refPcm, 16000);
+      DB.put("settings", { key: "refAudio", value: b64, savedAt: Date.now() }).catch(() => {});
+    } catch (e) {}
+  }
   S.refColl = null; S.refPcm = null; S.refEnv = null;
-  showRefMsg("基準音圧を設定しました（「あ〜」" + S.ref.db.toFixed(1) + "dB）。そのまま「記録開始」を押してください。");
-  setButtons(); updateUI();
+  showRefMsg("基準音圧を設定しました（「あ〜」" + S.ref.db.toFixed(1) + "dB）。この設定は保存されるので、次回からは測らなくて大丈夫です。そのまま「記録開始」を押してください。");
+  setButtons();
+  updateUI();
 }
 
-/* ===== 100ms周期処理 ＋ Silero VAD ===== */
+/* ===== 100ms周期センシング・イベント検知 ===== */
 async function pump() {
   if (S.busy) return;
   S.busy = true;
@@ -1089,628 +1244,2353 @@ async function pump() {
     while (S.running && S.queue.length) {
       const f = S.queue.shift();
       if (f.ep !== S.epoch) continue;
-      const vadP = VAD.ready ? await runVadFrame(f.data) : null;
       if (!S.running || f.ep !== S.epoch) break;
-      processFrameV35(f, vadP);
+      processFrameV35(f);
     }
   } finally { S.busy = false; }
 }
 
-function processFrameV35(f, vadP) {
-  const t = f.t, lv = f.lv;
-  S.lastLv = lv; pushDisp(lv);
+function processFrameV35(f) {
+  const t = f.t;
+  const lv = f.lv;
+  S.lastLv = lv;
+  pushDisp(lv);
   if (lv > S.peakDb) S.peakDb = lv;
   S.nowMs = t + (FRAME / SR) * 1000;
 
+  const motNow = S.motionNow;
+  S.log100ms.push({
+    elapsedMs: Math.round(t),
+    timestamp: isoOf(S.sess.startedAt + Math.round(t)),
+    sourceDbFS: round1(lv),
+    motionG: motNow == null ? null : round2(motNow)
+  });
+
   const sec = Math.floor(t / 1000);
-  if (!S.bucket || S.bucket.sec !== sec) { if (S.bucket) finishSecond(S.bucket); S.bucket = { sec, lv: [], vads: [], motSum: 0, motDt: 0 }; }
+  if (!S.bucket || S.bucket.sec !== sec) {
+    if (S.bucket) finishSecond(S.bucket);
+    S.bucket = { sec, lv: [], motSum: 0, motDt: 0 };
+  }
   S.bucket.lv.push(lv);
-  if (vadP != null) S.bucket.vads.push(vadP);
 
   if (!S.calibrated) {
     S.calibVals.push(lv);
-    if (S.calibVals.length >= CALIB_SAMPLES) { S.base = median(S.calibVals); S.calibrated = true; S.calibVals = []; S.sess.base = round1(S.base); }
+    if (S.calibVals.length >= CALIB_SAMPLES) {
+      S.base = median(S.calibVals);
+      S.calibrated = true;
+      S.calibVals = [];
+      S.sess.base = round1(S.base);
+    }
     return;
   }
 
-  const over = lv > S.base + TRIGGER_OFFSET_DB;
+  const threshold = S.base + TRIGGER_OFFSET_DB;
+  const over = lv > threshold;
+
   if (over) {
     S.steadyWin.push(lv);
     if (S.steadyWin.length >= STEADY_SAMPLES) {
-      if (stdDev(S.steadyWin) < STEADY_SIGMA_MAX) {
-        S.base = percentile(S.steadyWin, 0.75); S.sess.base = round1(S.base);
-        S.steadyWin = []; S.activeEvent = null; S.spikePending = null; return;
+      const sig = stdDev(S.steadyWin);
+      if (sig < STEADY_SIGMA_MAX) {
+        S.base = percentile(S.steadyWin, 0.75);
+        S.sess.base = round1(S.base);
+        S.steadyWin = [];
+        S.activeEvent = null;
+        S.spikePending = null;
+        return;
       }
       S.steadyWin.shift();
     }
-  } else { S.steadyWin = []; }
+  } else {
+    S.steadyWin = [];
+  }
 
   if (!S.activeEvent) {
     if (over) {
-      if (!S.spikePending) S.spikePending = { startMs: t, peakDb: lv, sumDb: lv, n: 1, vads: vadP != null ? [vadP] : [] };
-      else {
-        const vads = S.spikePending.vads.slice(); if (vadP != null) vads.push(vadP);
-        S.activeEvent = { startMs: S.spikePending.startMs, lastOverMs: t, peakDb: Math.max(S.spikePending.peakDb, lv), sumDb: S.spikePending.sumDb + lv, n: 2, vads };
+      if (!S.spikePending) {
+        S.spikePending = { startMs: t, peakDb: lv, sumDb: lv, n: 1 };
+      } else {
+        S.activeEvent = {
+          startMs: S.spikePending.startMs,
+          lastOverMs: t,
+          peakDb: Math.max(S.spikePending.peakDb, lv),
+          sumDb: S.spikePending.sumDb + lv,
+          n: 2
+        };
         S.spikePending = null;
       }
-    } else { S.spikePending = null; }
+    } else {
+      S.spikePending = null;
+    }
   } else {
     if (over) {
-      S.activeEvent.lastOverMs = t; S.activeEvent.peakDb = Math.max(S.activeEvent.peakDb, lv); S.activeEvent.sumDb += lv; S.activeEvent.n++;
-      if (vadP != null) S.activeEvent.vads.push(vadP);
+      S.activeEvent.lastOverMs = t;
+      S.activeEvent.peakDb = Math.max(S.activeEvent.peakDb, lv);
+      S.activeEvent.sumDb += lv;
+      S.activeEvent.n++;
     } else if (t - S.activeEvent.lastOverMs >= POST_TRIGGER_MS) {
-      finalizeEventV35(S.activeEvent); S.activeEvent = null;
+      finalizeEventV35(S.activeEvent);
+      S.activeEvent = null;
     }
   }
 }
 
 function finalizeEventV35(evState) {
-  const endMs = evState.lastOverMs + POST_TRIGGER_MS, durMs = endMs - evState.startMs;
-  const vads = evState.vads || [], vadMax = vads.length ? maxOf(vads) : null, vadMean = vads.length ? mean(vads) : null;
-  let evType = "snore";
-  if (vadMax != null && (vadMax >= 0.55 || (vadMean != null && vadMean >= 0.35))) evType = "speech";
+  const endMs = evState.lastOverMs + POST_TRIGGER_MS;
+  const durMs = endMs - evState.startMs;
   const ev = {
-    id: uid(), sid: S.sid, type: evType, startMs: round1(evState.startMs), endMs: round1(endMs), durMs: round1(durMs),
-    peakSourceDb: round1(evState.peakDb - (S.gainDb + S.calDb)), peakAppliedDb: round1(evState.peakDb),
-    meanSourceDb: round1(evState.sumDb / evState.n - (S.gainDb + S.calDb)), meanAppliedDb: round1(evState.sumDb / evState.n),
-    vadMax: vadMax == null ? null : round2(vadMax), vadMean: vadMean == null ? null : round2(vadMean),
+    id: uid(), sid: S.sid, type: "snore",
+    startMs: round1(evState.startMs), endMs: round1(endMs), durMs: round1(durMs),
+    peakSourceDb: round1(evState.peakDb - (S.gainDb + S.calDb)),
+    peakAppliedDb: round1(evState.peakDb),
+    meanSourceDb: round1(evState.sumDb / evState.n - (S.gainDb + S.calDb)),
+    meanAppliedDb: round1(evState.sumDb / evState.n),
     gainDb: S.gainDb, calDb: S.calDb, label: null, clipId: null, saved: false
   };
-  ev.clipId = saveClipV35(evState.startMs - PRE_TRIGGER_MS, endMs, ev.id, evType);
-  S.counts[evType]++;
+  ev.clipId = saveClipV35(evState.startMs - PRE_TRIGGER_MS, endMs, ev.id);
+  S.counts.snore++;
   DB.put("events", ev).catch(console.error);
 }
 
-function saveClipV35(fromMs, toMs, eventId, kind) {
-  const a = Math.round(fromMs / 1000 * SR), b = Math.round(toMs / 1000 * SR), actualA = Math.max(a, 0, S.ring.total - S.ring.len), f = S.ring.get(a, b);
+function saveClipV35(fromMs, toMs, eventId) {
+  const a = Math.round(fromMs / 1000 * SR);
+  const b = Math.round(toMs / 1000 * SR);
+  const actualA = Math.max(a, 0, S.ring.total - S.ring.len);
+  const f = S.ring.get(a, b);
   if (!f.length) return null;
   const i16 = new Int16Array(f.length);
   for (let i = 0; i < f.length; i++) i16[i] = Math.max(-32768, Math.min(32767, Math.round(f[i] * 32767)));
+  const wav = wavBytes(i16, SR);
   const id = uid();
-  DB.put("clips", { id, sid: S.sid, eventId, kind: kind || "snore", sr: SR, codec: "ima-adpcm", samples: i16.length, startMs: round1(actualA / SR * 1000), dataIsSource: true, gainDb: S.gainDb, calDb: S.calDb, data: encodeImaWav(i16, SR), saved: false }).catch(console.error);
+  DB.put("clips", {
+    id, sid: S.sid, eventId, kind: "snore", sr: SR,
+    codec: "pcm16", samples: i16.length,
+    startMs: round1(actualA / SR * 1000),
+    dataIsSource: true, gainDb: S.gainDb, calDb: S.calDb, data: wav.buffer,
+    saved: false
+  }).catch(console.error);
   return id;
 }
 
+/* ===== 1秒の集計 ===== */
 function finishSecond(b) {
   if (!b.lv.length) return;
-  const mLv = mean(b.lv), mot = b.motDt > 0 ? b.motSum / b.motDt : null, vMean = b.vads && b.vads.length ? round2(mean(b.vads)) : null;
-  S.secBuf.push({ key: S.sid + ":" + b.sec, sid: S.sid, sec: b.sec, dbApplied: round1(mLv), dbSource: round1(mLv - (S.gainDb + S.calDb)), peakApplied: round1(maxOf(b.lv)), vadMean: vMean, motion: mot == null ? null : round2(mot) });
+  const mLv = mean(b.lv);
+  const mot = b.motDt > 0 ? b.motSum / b.motDt : null;
+  S.secBuf.push({
+    key: S.sid + ":" + b.sec, sid: S.sid, sec: b.sec,
+    dbApplied: round1(mLv), dbSource: round1(mLv - (S.gainDb + S.calDb)),
+    peakApplied: round1(maxOf(b.lv)), vadMean: null,
+    motion: mot == null ? null : round2(mot)
+  });
 }
+
 async function flushSecs() {
   if (!S.sess) return;
   const rows = S.secBuf.splice(0);
-  try { if (rows.length) await DB.putMany("secs", rows); S.sess.counts = { ...S.counts }; await DB.put("sessions", S.sess); }
-  catch (e) { S.secBuf.unshift(...rows); }
+  try {
+    if (rows.length) await DB.putMany("secs", rows);
+    S.sess.counts = { ...S.counts };
+    await DB.put("sessions", S.sess);
+  } catch (e) {
+    console.error(e);
+    S.secBuf.unshift(...rows);
+    showError("保存に失敗しました: " + e.message);
+  }
 }
 
+/* ===== 体動（重力成分を除去） ===== */
 function onMotion(e) {
-  const a = e.accelerationIncludingGravity; if (!a || a.x == null) return;
-  const ts = e.timeStamp; let dt = (S.motionTs == null || !Number.isFinite(ts)) ? NaN : ts - S.motionTs;
-  if (!Number.isFinite(dt) || dt <= 0) dt = 16.7; if (dt > 100) dt = 100; if (Number.isFinite(ts)) S.motionTs = ts;
+  const a = e.accelerationIncludingGravity;
+  if (!a || a.x == null) return;
+  const ts = e.timeStamp;
+  let dt = (S.motionTs == null || !Number.isFinite(ts)) ? NaN : ts - S.motionTs;
+  if (!Number.isFinite(dt) || dt <= 0) dt = 16.7;
+  if (dt > 100) dt = 100;
+  if (Number.isFinite(ts)) S.motionTs = ts;
   if (!S.grav) S.grav = { x: a.x, y: a.y, z: a.z };
   const alpha = 1 - Math.exp(-dt / 80);
-  S.grav = { x: S.grav.x + alpha * (a.x - S.grav.x), y: S.grav.y + alpha * (a.y - S.grav.y), z: S.grav.z + alpha * (a.z - S.grav.z) };
+  S.grav = {
+    x: S.grav.x + alpha * (a.x - S.grav.x),
+    y: S.grav.y + alpha * (a.y - S.grav.y),
+    z: S.grav.z + alpha * (a.z - S.grav.z)
+  };
   const m = Math.hypot(a.x - S.grav.x, a.y - S.grav.y, a.z - S.grav.z);
-  S.motionNow = m; if (S.bucket) { S.bucket.motSum += m * dt; S.bucket.motDt += dt; }
+  S.motionNow = m;
+  if (S.bucket) { S.bucket.motSum += m * dt; S.bucket.motDt += dt; }
 }
 
-async function acquireWake() { try { if ("wakeLock" in navigator) { S.wake = await navigator.wakeLock.request("screen"); if (S.wake) S.wake.onrelease = () => { S.wake = null; if (S.running && !document.hidden) acquireWake(); }; } } catch (e) {} }
-function startKeepAlive() { stopKeepAlive(); if (!S.ctx) return; try { const g = S.ctx.createGain(); g.gain.value = 0; const o = S.ctx.createOscillator(); o.type = "sine"; o.frequency.value = 30; o.connect(g); g.connect(S.ctx.destination); o.start(); S.keepAlive = { o, g }; } catch (e) {} }
-function stopKeepAlive() { if (!S.keepAlive) return; try { S.keepAlive.o.stop(); S.keepAlive.o.disconnect(); S.keepAlive.g.disconnect(); } catch (e) {} S.keepAlive = null; }
-function releaseWake() { if (S.wake) { S.wake.release().catch(() => {}); S.wake = null; } }
+/* ===== 記録の開始・停止 ===== */
+async function acquireWake() {
+  try {
+    if (!("wakeLock" in navigator)) return;
+    S.wake = await navigator.wakeLock.request("screen");
+    if (S.wake) S.wake.onrelease = () => {
+      S.wake = null;
+      if (S.running && !document.hidden) acquireWake();
+    };
+  } catch (e) { console.warn(e); }
+}
+
+function startKeepAlive() {
+  stopKeepAlive();
+  if (!S.ctx) return;
+  try {
+    const g = S.ctx.createGain();
+    g.gain.value = 0;
+    const o = S.ctx.createOscillator();
+    o.type = "sine";
+    o.frequency.value = 30;
+    o.connect(g);
+    g.connect(S.ctx.destination);
+    o.start();
+    S.keepAlive = { o, g };
+  } catch (e) { console.warn(e); }
+}
+function stopKeepAlive() {
+  if (!S.keepAlive) return;
+  try { S.keepAlive.o.stop(); } catch (e) {}
+  try { S.keepAlive.o.disconnect(); S.keepAlive.g.disconnect(); } catch (e) {}
+  S.keepAlive = null;
+}
+function releaseWake() {
+  if (S.wake) { S.wake.release().catch(() => {}); S.wake = null; }
+}
 
 async function startRec() {
-  if (S.running || !S.ctx || !S.patient || !S.ref) return;
+  if (S.running || !S.ctx) return;
+  if (!S.patient) { showError("患者情報がありません。最初からQRを読み取ってください。"); showPage("start"); return; }
+  if (!S.ref) { showRefMsg("先に「基準音の設定」を押してください。", true); return; }
   if (S.ctx.state !== "running") await S.ctx.resume().catch(() => {});
-  if (!VAD.ready) await initVad();
-  resetVadState();
-  S.epoch++; S.sid = uid(); S.recv = 0; S.nowMs = 0; S.ring = new Ring(RING_SEC); S.queue = []; S.dropped = 0; S.peakDb = -Infinity; S.dispWin = []; S.dispLv = -120;
-  S.calibrated = false; S.calibVals = []; S.base = null; S.steadyWin = []; S.spikePending = null; S.activeEvent = null; S.bucket = null; S.secBuf = []; S.counts = newCounts();
-  S.sess = { id: S.sid, startedAt: Date.now(), endedAt: null, gainDb: S.gainDb, calDb: S.calDb, vadOk: VAD.ready, base: null, refDb: S.ref.db, refEnvDb: S.ref.envDb, counts: newCounts(), app: APP, schema: SCHEMA_VERSION, ua: navigator.userAgent, micMode: S.micMode, patient: { ...S.patient } };
+
+  S.epoch++;
+  S.sid = uid();
+  S.recv = 0; S.nowMs = 0; S.ring = new Ring(RING_SEC); S.queue = []; S.dropped = 0;
+  S.peakDb = -Infinity;
+  S.dispWin = []; S.dispLv = -120;
+  S.calibrated = false; S.calibVals = []; S.base = null;
+  S.steadyWin = []; S.spikePending = null; S.activeEvent = null;
+  S.bucket = null; S.secBuf = []; S.log100ms = [];
+  S.counts = newCounts();
+  S.sess = {
+    id: S.sid, startedAt: Date.now(), endedAt: null, gainDb: S.gainDb, calDb: S.calDb,
+    base: null, refDb: S.ref.db, refEnvDb: S.ref.envDb,
+    counts: newCounts(), app: APP, schema: SCHEMA_VERSION,
+    ua: navigator.userAgent, micMode: S.micMode, patient: { ...S.patient }
+  };
   await DB.put("sessions", S.sess);
-  S.running = true; await acquireWake(); startKeepAlive(); S.timers.push(setInterval(flushSecs, FLUSH_SEC * 1000));
-  setButtons(); updateUI();
+  S.running = true;
+  await acquireWake();
+  startKeepAlive();
+  S.timers.push(setInterval(flushSecs, FLUSH_SEC * 1000));
+  setButtons();
+  updateUI();
 }
+
 async function stopRec() {
   if (!S.running) return;
-  S.running = false; stopKeepAlive(); S.epoch++; S.timers.forEach(clearInterval); S.timers = []; S.queue = [];
+  S.running = false;
+  stopKeepAlive();
+  S.epoch++;
+  S.timers.forEach(clearInterval);
+  S.timers = [];
+  S.queue = [];
   if (S.activeEvent) { finalizeEventV35(S.activeEvent); S.activeEvent = null; }
   if (S.bucket) { finishSecond(S.bucket); S.bucket = null; }
   await flushSecs();
-  S.sess.endedAt = Date.now(); S.sess.counts = { ...S.counts };
-  await DB.put("sessions", S.sess).catch(() => {});
-  releaseWake(); exitBlack(); setButtons(); updateUI();
+  S.sess.endedAt = Date.now();
+  S.sess.counts = { ...S.counts };
+  await DB.put("sessions", S.sess).catch(console.error);
+  releaseWake();
+  exitBlack();
+  setButtons();
+  updateUI();
 }
 
-function startUiLoop() { if (!S.uiTimer) S.uiTimer = setInterval(updateUI, UI_MS); }
-function pushDisp(lv) { S.dispWin.push(lv); if (S.dispWin.length > DISP_FRAMES) S.dispWin.shift(); S.dispLv = mean(S.dispWin); }
+/* ===== 画面更新 ===== */
+function startUiLoop() {
+  if (S.uiTimer) return;
+  S.uiTimer = setInterval(updateUI, UI_MS);
+}
+
+function pushDisp(lv) {
+  S.dispWin.push(lv);
+  if (S.dispWin.length > DISP_FRAMES) S.dispWin.shift();
+  S.dispLv = mean(S.dispWin);
+}
+
+function gaugeOf(lv) {
+  const env = S.ref.envDb;
+  const ref = S.ref.db;
+  const top = Math.max(S.peakDb, ref + 10);
+  return { env, ref, top, pos: scalePos(lv, env, ref, top) };
+}
+
 function updateUI() {
-  const lv = S.dispLv, bar = $("level-bar");
+  const lv = S.dispLv;
+  const bar = $("level-bar");
   if (S.ref) {
-    const top = Math.max(S.peakDb, S.ref.db + 10);
-    bar.style.width = (scalePos(lv, S.ref.envDb, S.ref.db, top) * 100).toFixed(1) + "%";
+    const g = gaugeOf(lv);
+    bar.style.width = (g.pos * 100).toFixed(1) + "%";
     $("mid-line").style.left = "50%";
     $("level-text").textContent = "いまの音：" + wordOf(lv, S.ref.db);
-    $("g-env").textContent = S.ref.envDb.toFixed(1) + " dB"; $("g-ah").textContent = S.ref.db.toFixed(1) + " dB"; $("g-top").textContent = top.toFixed(1) + " dB";
-    $("scale-row").innerHTML = "<span>" + S.ref.envDb.toFixed(0) + "</span><span>" + S.ref.db.toFixed(0) + "</span><span>" + top.toFixed(0) + "</span>";
+    $("g-env").textContent = g.env.toFixed(1) + " dB";
+    $("g-ah").textContent = g.ref.toFixed(1) + " dB";
+    $("g-top").textContent = g.top.toFixed(1) + " dB";
+    $("scale-row").innerHTML = "<span>" + g.env.toFixed(0) + "</span><span>" + g.ref.toFixed(0) + "</span><span>" + g.top.toFixed(0) + "</span>";
   } else {
     bar.style.width = clamp((lv + 80) / 80 * 100, 0, 100).toFixed(1) + "%";
-    $("level-text").textContent = "基準音圧が未設定です"; $("g-env").textContent = "-"; $("g-ah").textContent = "-"; $("g-top").textContent = "-"; $("scale-row").innerHTML = "";
+    $("mid-line").style.left = "50%";
+    $("level-text").textContent = "基準音圧が未設定です";
+    $("g-env").textContent = "-";
+    $("g-ah").textContent = "-";
+    $("g-top").textContent = "-";
+    $("scale-row").innerHTML = "";
   }
-  $("base-text").textContent = !S.running ? "待機中" : (S.calibrated ? "記録中" : "雑音を計測中 残り " + Math.max(0, Math.ceil((CALIB_SAMPLES - S.calibVals.length) * 0.1)) + " 秒");
+  if (!S.running) {
+    $("base-text").textContent = "待機中";
+  } else if (S.calibrated) {
+    $("base-text").textContent = "記録中";
+  } else {
+    $("base-text").textContent = "環境音較正中 残り " + Math.max(0, Math.ceil((CALIB_SAMPLES - S.calibVals.length) * 0.1)) + " 秒";
+  }
   $("motion-text").textContent = S.motionNow == null ? "-" : S.motionNow.toFixed(2) + " m/s²";
   $("motion-bar").style.width = S.motionNow == null ? "0%" : clamp(S.motionNow / MOTION_BAR_MAX * 100, 0, 100) + "%";
 }
+
 function setButtons() {
-  $("rec-back").disabled = isBusy(); $("mic-btn").disabled = !!S.ctx && motionOn; $("mic-btn").textContent = S.ctx && motionOn ? "許可済み" : "マイクを許可";
+  $("rec-back").disabled = isBusy();
+  $("mic-btn").disabled = !!S.ctx && motionOn;
+  $("mic-btn").textContent = S.ctx && motionOn ? "許可済み" : "マイクを許可";
+
   const measuring = !!S.refColl;
-  $("ref-btn").disabled = !S.ctx || S.running || measuring; $("ref-btn").textContent = measuring ? "測定中…" : (S.ref ? "基準音を測り直す" : "基準音の設定");
-  $("ref-btn").className = S.ref && !measuring ? "sub" : "primary"; $("ref-play-btn").hidden = !S.ref;
-  $("start-btn").disabled = S.running || !S.ctx || !S.patient || !S.ref; $("stop-btn").disabled = !S.running; $("btn-enter-black").disabled = !S.running; $("gain").disabled = S.running || measuring;
-  $("rec-badge").textContent = S.running ? "記録中" : "待機中"; $("rec-badge").className = S.running ? "tag rec" : "tag";
-  updateBackButtons(); renderUpdate();
+  $("ref-btn").disabled = !S.ctx || S.running || measuring;
+  $("ref-btn").textContent = measuring ? "測定中…"
+    : (S.ref ? "基準音を測り直す" : "基準音の設定");
+  $("ref-btn").className = S.ref && !measuring ? "sub" : "primary";
+  $("ref-play-btn").hidden = !S.ref;
+
+  $("start-btn").disabled = S.running || !S.ctx || !S.patient || !S.ref;
+  $("stop-btn").disabled = !S.running;
+  $("btn-enter-black").disabled = !S.running;
+  $("gain").disabled = S.running || measuring;
+  $("rec-badge").textContent = S.running ? "記録中" : "待機中";
+  $("rec-badge").className = S.running ? "tag rec" : "tag";
+  updateBackButtons();
+  renderUpdate();
 }
 
-const upd = { latest: null, sha: null, error: null, checking: false };
-function setUpdTarget(v) { try { if (v == null) sessionStorage.removeItem(UPD_TARGET_KEY); else sessionStorage.setItem(UPD_TARGET_KEY, v); } catch (e) {} }
-function fetchNoCache(url) { const c = new AbortController(), t = setTimeout(() => c.abort(), UPD_TIMEOUT_MS); return fetch(url, { cache: "no-store", signal: c.signal }).finally(() => clearTimeout(t)); }
-async function fetchText(url) { const r = await fetchNoCache(url); if (!r.ok) throw new Error("HTTP " + r.status); return r.text(); }
-function parseVersion(txt) { const m = String(txt).match(/const\s+APP_VERSION\s*=\s*(\d+)/); if (!m) throw new Error("版番号不明"); return Number(m[1]); }
-async function fetchLatestSha() { try { const r = await fetchNoCache("https://api.github.com/repos/" + UPD_REPO + "/commits?sha=" + UPD_BRANCH + "&path=" + UPD_FILE + "&per_page=1&_=" + Date.now()); if (!r.ok) return null; const j = await r.json(); return Array.isArray(j) && j[0] ? j[0].sha : null; } catch (e) { return null; } }
-async function fetchLatest() {
-  const t = Date.now(), sha = await fetchLatestSha(), tries = [];
-  if (sha) tries.push("https://raw.githubusercontent.com/" + UPD_REPO + "/" + sha + "/" + UPD_FILE + "?_=" + t);
-  tries.push("https://raw.githubusercontent.com/" + UPD_REPO + "/" + UPD_BRANCH + "/" + UPD_FILE + "?_=" + t, UPD_PAGES + "?_=" + t);
-  for (const u of tries) { try { return { latest: parseVersion(await fetchText(u)), sha }; } catch (e) {} }
-  throw new Error("取得できませんでした");
+/* ===== 更新の確認（GitHubの最新コミットから取得） ===== */
+const upd = { latest: null, sha: null, source: "", checkedAt: null, error: null, checking: false };
+
+function setUpdTarget(v) {
+  try { if (v == null) sessionStorage.removeItem(UPD_TARGET_KEY); else sessionStorage.setItem(UPD_TARGET_KEY, v); } catch (e) {}
 }
+
+function fetchNoCache(url) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), UPD_TIMEOUT_MS);
+  return fetch(url, { cache: "no-store", signal: ctrl.signal }).finally(() => clearTimeout(timer));
+}
+
+async function fetchText(url) {
+  const r = await fetchNoCache(url);
+  if (!r.ok) throw new Error("HTTP " + r.status);
+  return r.text();
+}
+
+function parseVersion(txt) {
+  const m = String(txt).match(/const\s+APP_VERSION\s*=\s*(\d+)/);
+  if (!m) throw new Error("版番号を読み取れませんでした");
+  return Number(m[1]);
+}
+
+async function fetchLatestSha() {
+  try {
+    const url = "https://api.github.com/repos/" + UPD_REPO + "/commits?sha=" + UPD_BRANCH +
+      "&path=" + UPD_FILE + "&per_page=1&_=" + Date.now();
+    const r = await fetchNoCache(url);
+    if (!r.ok) return null;
+    const j = await r.json();
+    return Array.isArray(j) && j[0] && j[0].sha ? j[0].sha : null;
+  } catch (e) {
+    console.warn("コミットIDを取得できませんでした", e);
+    return null;
+  }
+}
+
+async function fetchLatest() {
+  const t = Date.now();
+  const sha = await fetchLatestSha();
+  const tries = [];
+  if (sha) tries.push({ url: "https://raw.githubusercontent.com/" + UPD_REPO + "/" + sha + "/" + UPD_FILE + "?_=" + t, src: "GitHub（最新コミット）" });
+  tries.push({ url: "https://raw.githubusercontent.com/" + UPD_REPO + "/" + UPD_BRANCH + "/" + UPD_FILE + "?_=" + t, src: "GitHub（main）" });
+  tries.push({ url: UPD_PAGES + "?_=" + t, src: "公開ページ" });
+
+  let lastErr = null;
+  for (const x of tries) {
+    try {
+      const txt = await fetchText(x.url);
+      return { latest: parseVersion(txt), sha, source: x.src };
+    } catch (e) { lastErr = e; }
+  }
+  throw lastErr || new Error("取得できませんでした");
+}
+
 async function fetchLatestHtml() {
-  const t = Date.now(), sha = await fetchLatestSha(), urls = [];
+  const t = Date.now();
+  const sha = await fetchLatestSha();
+  const urls = [];
   if (sha) urls.push("https://raw.githubusercontent.com/" + UPD_REPO + "/" + sha + "/" + UPD_FILE + "?_=" + t);
   urls.push("https://raw.githubusercontent.com/" + UPD_REPO + "/" + UPD_BRANCH + "/" + UPD_FILE + "?_=" + t);
-  for (const u of urls) { try { const txt = await fetchText(u); const v = parseVersion(txt); if (txt.indexOf("</html>") >= 0) return { version: v, html: txt, sha }; } catch (e) {} }
-  throw new Error("取得できませんでした");
+  let lastErr = null;
+  for (const url of urls) {
+    try {
+      const txt = await fetchText(url);
+      const v = parseVersion(txt);
+      if (txt.indexOf("</html>") < 0 || txt.indexOf("SomnoLog") < 0) throw new Error("最新版の内容が不完全でした");
+      return { version: v, html: txt, sha };
+    } catch (e) { lastErr = e; }
+  }
+  throw lastErr || new Error("取得できませんでした");
 }
+
 async function checkUpdate() {
-  if (upd.checking) return false; upd.checking = true; upd.error = null; renderUpdate();
-  try { const r = await fetchLatest(); upd.latest = r.latest; upd.sha = r.sha; if (r.latest <= APP_VERSION) setUpdTarget(null); return true; }
-  catch (e) { upd.error = e.message; return false; }
-  finally { upd.checking = false; renderUpdate(); }
+  if (upd.checking) return false;
+  upd.checking = true;
+  upd.error = null;
+  renderUpdate();
+  let ok = false;
+  try {
+    const r = await fetchLatest();
+    upd.latest = r.latest;
+    upd.sha = r.sha;
+    upd.source = r.source;
+    if (r.latest <= APP_VERSION) setUpdTarget(null);
+    ok = true;
+  } catch (e) {
+    upd.error = e.message;
+  } finally {
+    upd.checking = false;
+    upd.checkedAt = new Date();
+    renderUpdate();
+  }
+  return ok;
 }
+
 let updateByUser = false;
+
 function renderUpdate() {
+  const busy = isBusy();
   let msg = "";
   if (updateByUser) {
     if (upd.checking) msg = "最新版を確認しています…";
-    else if (upd.error) msg = "確認できませんでした。";
+    else if (upd.error) msg = "確認できませんでした。通信状態を確認して、もう一度お試しください。";
+    else if (upd.latest == null) msg = "";
     else if (upd.latest > APP_VERSION) msg = "新しい版を確認しました。最新版を取りに行きます…";
     else if (upd.latest === APP_VERSION) msg = "現在のバージョンは最新版です。";
+    else msg = "公開されている版は、現在のバージョンより古いです。";
   }
-  $("upd-msg").textContent = msg; $("upd-msg").hidden = !msg; $("upd-reload").disabled = isBusy() || upd.checking;
-}
-async function applyLatest() {
-  if (isBusy() || upd.checking || !(await checkUpdate()) || upd.latest <= APP_VERSION) return;
-  let pack = null; try { pack = await fetchLatestHtml(); } catch (e) {}
-  if (!pack || pack.version !== upd.latest) { $("upd-msg").hidden = false; $("upd-msg").textContent = "最新版を取りに行けませんでした。"; return; }
-  try { localStorage.setItem("sl_boot_html", pack.html); localStorage.setItem("sl_boot_ver", String(pack.version)); } catch (e) { return; }
-  setUpdTarget(String(upd.latest));
-  const u = new URL(location.href); u.hash = ""; u.searchParams.set("v", String(upd.latest)); u.searchParams.set("t", String(Date.now())); location.replace(u.toString());
+  $("upd-msg").textContent = msg;
+  $("upd-msg").hidden = !msg;
+  $("upd-reload").disabled = busy || upd.checking;
 }
 
+async function clearAppCache() {
+  try {
+    if (window.caches && caches.keys) {
+      const keys = await caches.keys();
+      await Promise.all(keys.map((k) => caches.delete(k)));
+    }
+  } catch (e) { console.warn(e); }
+  try {
+    if (navigator.serviceWorker && navigator.serviceWorker.getRegistrations) {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map((r) => r.unregister()));
+    }
+  } catch (e) { console.warn(e); }
+}
+
+async function applyLatest() {
+  if (isBusy() || upd.checking) return;
+  const ok = await checkUpdate();
+  if (!ok) return;
+  if (upd.latest <= APP_VERSION) return;
+  if (isBusy()) return;
+  let pack = null;
+  try { pack = await fetchLatestHtml(); } catch (e) { pack = null; }
+  if (!pack || pack.version !== upd.latest) {
+    $("upd-msg").hidden = false;
+    $("upd-msg").textContent = "最新版を取りに行けませんでした。通信状態を確認して、もう一度お試しください。";
+    return;
+  }
+  try {
+    localStorage.setItem("sl_boot_html", pack.html);
+    localStorage.setItem("sl_boot_ver", String(pack.version));
+  } catch (e) {
+    $("upd-msg").hidden = false;
+    $("upd-msg").textContent = "最新版を端末に保存できませんでした。";
+    return;
+  }
+  if (isBusy()) return;
+  await clearAppCache();
+  setUpdTarget(String(upd.latest));
+  const u = new URL(location.href);
+  u.hash = "";
+  u.searchParams.set("v", String(upd.latest));
+  u.searchParams.set("c", upd.sha ? upd.sha.slice(0, 12) : String(Date.now()));
+  u.searchParams.set("t", String(Date.now()));
+  location.replace(u.toString());
+}
+
+/* ===== 黒画面 ===== */
 function setRootBlack(on) {
   const h = document.documentElement, b = document.body;
-  if (on) { S.savedStyle = { h: h.getAttribute("style"), b: b.getAttribute("style") }; h.style.setProperty("background-color", "#000000", "important"); b.style.setProperty("background-color", "#000000", "important"); h.style.setProperty("overflow", "hidden"); b.style.setProperty("overflow", "hidden"); }
-  else if (S.savedStyle) { if (S.savedStyle.h == null) h.removeAttribute("style"); else h.setAttribute("style", S.savedStyle.h); if (S.savedStyle.b == null) b.removeAttribute("style"); else b.setAttribute("style", S.savedStyle.b); S.savedStyle = null; }
-}
-function updateBlack() { $("black-clock").textContent = new Date().toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" }); }
-function enterBlack() { if (S.blackOn) return; S.blackOn = true; setRootBlack(true); $("black-screen").hidden = false; updateBlack(); S.blackTimer = setInterval(updateBlack, 1000); }
-function exitBlack() { if (!S.blackOn) return; S.blackOn = false; clearInterval(S.blackTimer); S.blackTimer = null; $("black-screen").hidden = true; setRootBlack(false); }
-
-/* ===== カレンダー・タイムライン（V113正本完全復元） ===== */
-async function loadCalendarData() {
-  const oldSessions = await DB.all("sessions"); let engSessions = [];
-  try { engSessions = await SleepEngine.listSessions(); } catch (e) {}
-  ENGINE_IDS.clear(); for (const s of engSessions) ENGINE_IDS.add(s.id);
-  cal.byDay = new Map();
-  for (const s of oldSessions.concat(engSessions.map(engineSessForUi)).sort((a, b) => a.startedAt - b.startedAt)) {
-    const k = dayKey(s.startedAt); if (!cal.byDay.has(k)) cal.byDay.set(k, []); cal.byDay.get(k).push(s);
+  if (on) {
+    S.savedStyle = { h: h.getAttribute("style"), b: b.getAttribute("style") };
+    h.style.setProperty("background-color", "#000000", "important");
+    b.style.setProperty("background-color", "#000000", "important");
+    h.style.setProperty("overflow", "hidden");
+    b.style.setProperty("overflow", "hidden");
+  } else {
+    if (S.savedStyle) {
+      if (S.savedStyle.h == null) h.removeAttribute("style"); else h.setAttribute("style", S.savedStyle.h);
+      if (S.savedStyle.b == null) b.removeAttribute("style"); else b.setAttribute("style", S.savedStyle.b);
+    }
+    S.savedStyle = null;
   }
 }
-async function refreshCalendar() { await loadCalendarData(); renderCalendar(); renderDaySummary(); }
-function shiftMonth(n) { let m = cal.month + n, y = cal.year; while (m < 1) { m += 12; y--; } while (m > 12) { m -= 12; y++; } cal.year = y; cal.month = m; renderCalendar(); }
+
+function requestFs() {
+  const el = document.documentElement;
+  const req = el.requestFullscreen || el.webkitRequestFullscreen;
+  if (!req) return;
+  try {
+    const r = req.call(el);
+    if (r && r.catch) r.catch(() => {});
+  } catch (e) { console.warn(e); }
+}
+
+function exitFs() {
+  const doc = document;
+  const isFs = doc.fullscreenElement || doc.webkitFullscreenElement;
+  if (!isFs) return;
+  const exit = doc.exitFullscreen || doc.webkitExitFullscreen;
+  if (exit) {
+    try {
+      const r = exit.call(doc);
+      if (r && r.catch) r.catch(() => {});
+    } catch (e) { console.warn(e); }
+  }
+}
+
+function updateBlack() {
+  $("black-clock").textContent = new Date().toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" });
+}
+
+function enterBlack() {
+  if (S.blackOn) return;
+  S.blackOn = true;
+  setRootBlack(true);
+  $("black-screen").hidden = false;
+  updateBlack();
+  S.blackTimer = setInterval(updateBlack, 1000);
+  requestFs();
+}
+
+function exitBlack() {
+  if (!S.blackOn) return;
+  S.blackOn = false;
+  if (S.blackTimer) clearInterval(S.blackTimer);
+  S.blackTimer = null;
+  $("black-screen").hidden = true;
+  setRootBlack(false);
+  exitFs();
+}
+/* ===== 記録カレンダー ===== */
+async function loadCalendarData() {
+  const sessions = (await DB.all("sessions")).sort((a, b) => a.startedAt - b.startedAt);
+  cal.byDay = new Map();
+  for (const s of sessions) {
+    const k = dayKey(s.startedAt);
+    if (!cal.byDay.has(k)) cal.byDay.set(k, []);
+    cal.byDay.get(k).push(s);
+  }
+}
+
+async function refreshCalendar() {
+  await loadCalendarData();
+  renderCalendar();
+  renderDaySummary();
+}
+
+function shiftMonth(n) {
+  let m = cal.month + n, y = cal.year;
+  while (m < 1) { m += 12; y--; }
+  while (m > 12) { m -= 12; y++; }
+  cal.year = y;
+  cal.month = m;
+  renderCalendar();
+}
+
 function renderCalendar() {
   $("cal-title").textContent = cal.year + "年" + cal.month + "月";
   $("cal-weekdays").innerHTML = "日月火水木金土".split("").map((w) => '<div class="cal-wk">' + w + "</div>").join("");
-  const first = new Date(cal.year, cal.month - 1, 1).getDay(), days = new Date(cal.year, cal.month, 0).getDate(), today = dayKey(Date.now());
-  let html = ""; for (let i = 0; i < first; i++) html += "<div></div>";
+  const first = new Date(cal.year, cal.month - 1, 1).getDay();
+  const days = new Date(cal.year, cal.month, 0).getDate();
+  const today = dayKey(Date.now());
+  let html = "";
+  for (let i = 0; i < first; i++) html += "<div></div>";
   for (let d = 1; d <= days; d++) {
-    const key = cal.year + "-" + pad(cal.month) + "-" + pad(d), cls = ["cal-day"];
-    if (cal.byDay.has(key)) cls.push("has"); if (key === cal.selected) cls.push("sel"); if (key === today) cls.push("today");
+    const key = cal.year + "-" + pad(cal.month) + "-" + pad(d);
+    const cls = ["cal-day"];
+    if (cal.byDay.has(key)) cls.push("has");
+    if (key === cal.selected) cls.push("sel");
+    if (key === today) cls.push("today");
     html += '<button class="' + cls.join(" ") + '" data-key="' + key + '">' + d + "</button>";
   }
-  $("cal-days").innerHTML = html;
-  $("cal-days").querySelectorAll("button[data-key]").forEach((b) => {
-    b.onclick = () => {
-      const key = b.dataset.key;
-      if (cal.selected === key) { const list = cal.byDay.get(key) || []; if (list.length) openDetail(list[Math.min(cal.index, list.length - 1)].id); return; }
-      cal.selected = key; cal.index = 0; renderCalendar(); renderDaySummary();
-    };
+  const box = $("cal-days");
+  box.innerHTML = html;
+  box.querySelectorAll("button[data-key]").forEach((b) => {
+    b.onclick = () => onDayTap(b.dataset.key);
   });
 }
-function evalEnv(n) { return n <= ENV_QUIET_MAX ? "とても静かな環境でした" : (n <= ENV_CALM_MAX ? "静かな環境でした" : "やや騒がしい環境でした"); }
+
+function onDayTap(key) {
+  if (cal.selected === key) {
+    const list = cal.byDay.get(key) || [];
+    if (list.length) {
+      const s = list[Math.min(cal.index, list.length - 1)];
+      openDetail(s.id).catch((err) => showError("詳細を開けませんでした: " + err.message));
+    }
+    return;
+  }
+  cal.selected = key;
+  cal.index = 0;
+  renderCalendar();
+  renderDaySummary();
+}
+
+/* ===== 夜の評価 ===== */
+function evalEnv(n) {
+  if (n <= ENV_QUIET_MAX) return "とても静かな環境でした";
+  if (n <= ENV_CALM_MAX) return "静かな環境でした";
+  return "やや騒がしい環境でした";
+}
+
 function longestPeriodicRun(starts) {
   if (starts.length < 2) return starts.length;
-  const iv = []; for (let i = 1; i < starts.length; i++) iv.push(starts[i] - starts[i - 1]);
+  const iv = [];
+  for (let i = 1; i < starts.length; i++) iv.push(starts[i] - starts[i - 1]);
   let best = 2;
   for (let i = 0; i < iv.length; i++) {
     let lo = iv[i], hi = iv[i], n = 1;
-    for (let j = i + 1; j < iv.length; j++) { lo = Math.min(lo, iv[j]); hi = Math.max(hi, iv[j]); if (hi - lo > Math.max(PERIOD_TOL_SEC, lo * PERIOD_TOL_RATE)) break; n++; }
+    for (let j = i + 1; j < iv.length; j++) {
+      lo = Math.min(lo, iv[j]);
+      hi = Math.max(hi, iv[j]);
+      if (hi - lo > Math.max(PERIOD_TOL_SEC, lo * PERIOD_TOL_RATE)) break;
+      n++;
+    }
     best = Math.max(best, n + 1);
   }
   return best;
 }
+
 function analyzeMotion(sess, secs) {
-  const withMot = secs.filter((s) => s.motion != null); if (!withMot.length) return { status: "nodata" };
+  const withMot = secs.filter((s) => s.motion != null);
+  if (!withMot.length) return { status: "nodata" };
   if (sess.base == null) return { status: "nobase" };
-  const thr = sess.base + LOUD_DB, dbBySec = new Map(secs.map((s) => [s.sec, s.dbApplied])), moves = []; let cur = null;
-  for (const s of withMot) { if (s.motion >= MOVE_TH) { if (cur && s.sec === cur.end + 1) cur.end = s.sec; else { cur = { start: s.sec, end: s.sec }; moves.push(cur); } } else cur = null; }
+
+  const thr = sess.base + TRIGGER_OFFSET_DB;
+  const dbBySec = new Map(secs.map((s) => [s.sec, s.dbApplied]));
+
+  const moves = [];
+  let cur = null;
+  for (const s of withMot) {
+    if (s.motion >= MOVE_TH) {
+      if (cur && s.sec === cur.end + 1) cur.end = s.sec;
+      else { cur = { start: s.sec, end: s.sec }; moves.push(cur); }
+    } else {
+      cur = null;
+    }
+  }
+
   const turns = [], others = [];
   for (const m of moves) {
-    let linked = false; for (let k = m.start - LINK_SEC; k <= m.end + LINK_SEC; k++) { const db = dbBySec.get(k); if (db != null && db >= thr) { linked = true; break; } }
+    let linked = false;
+    for (let k = m.start - LINK_SEC; k <= m.end + LINK_SEC; k++) {
+      const db = dbBySec.get(k);
+      if (db != null && db >= thr) { linked = true; break; }
+    }
     (linked ? turns : others).push(m);
   }
-  const hours = Math.max(1, secs[secs.length - 1].sec + 1) / 3600, perHour = turns.length / hours, run = longestPeriodicRun(others.map((m) => m.start));
-  return { status: "ok", turns: turns.length, turnMany: turns.length >= TURN_MIN && perHour >= TURN_PER_HOUR, periodic: run >= PERIOD_MIN };
+
+  const hours = Math.max(1, secs[secs.length - 1].sec + 1) / 3600;
+  const perHour = turns.length / hours;
+  const run = longestPeriodicRun(others.map((m) => m.start));
+  return {
+    status: "ok",
+    turns: turns.length, others: others.length, perHour,
+    turnMany: turns.length >= TURN_MIN && perHour >= TURN_PER_HOUR,
+    periodic: run >= PERIOD_MIN, run
+  };
 }
+
 function snoreStats(evs) {
-  const sn = evs.filter((e) => e.type === "snore"), means = sn.map((e) => e.meanAppliedDb).filter((v) => v != null), peaks = sn.map((e) => e.peakAppliedDb).filter((v) => v != null);
+  const sn = evs.filter((e) => e.type === "snore");
+  const means = sn.map((e) => e.meanAppliedDb).filter((v) => v != null);
+  const peaks = sn.map((e) => e.peakAppliedDb).filter((v) => v != null);
   return { n: sn.length, mean: means.length ? mean(means) : null, peak: peaks.length ? maxOf(peaks) : null };
 }
+
 function nightHtml(sess, secs, evs) {
   const row = (k, v) => '<div class="kv"><span>' + esc(k) + "</span><b>" + esc(v) + "</b></div>";
-  const c = sess.counts || {}, sn = snoreStats(evs), mo = analyzeMotion(sess, secs), ref = activeRef(sess).refDb != null ? activeRef(sess).refDb : fallbackRefDb(evs);
-  let h = row("いびきの平均の大きさ", sn.mean == null ? "-" : wordOf(sn.mean, ref)) + row("いびきの最大の大きさ", sn.peak == null ? "-" : wordOf(sn.peak, ref)) + row("環境音", evalEnv(c.env || 0));
-  if (mo.status === "nodata") h += row("体動", "体動データなし");
-  else if (mo.status === "nobase") h += row("体動", "判定できません");
-  else { if (mo.turnMany) h += row("体動", "寝返りが多いみたいです"); if (mo.periodic) h += row("体動", "定期的な振動がありました"); if (!mo.turnMany && !mo.periodic) h += row("体動", "体動は少ない"); }
+  const c = sess.counts || {};
+  const sn = snoreStats(evs);
+  const mo = analyzeMotion(sess, secs);
+  const ref = activeRef(sess).refDb != null ? activeRef(sess).refDb : fallbackRefDb(evs);
+
+  let h = row("いびきの平均の大きさ", sn.mean == null ? "-" : wordOf(sn.mean, ref)) +
+    row("いびきの最大の大きさ", sn.peak == null ? "-" : wordOf(sn.peak, ref)) +
+    row("環境音", evalEnv(c.env || 0));
+
+  if (mo.status === "nodata") {
+    h += row("体動", "体動データなし");
+  } else if (mo.status === "nobase") {
+    h += row("体動", "判定できません（基準値がありません）");
+  } else {
+    if (mo.turnMany) h += row("体動", "寝返りが多いみたいです");
+    if (mo.periodic) h += row("体動", "定期的な振動がありました");
+    if (!mo.turnMany && !mo.periodic) h += row("体動", "体動は少ない");
+  }
   return h;
 }
+
 let daySumToken = 0;
+
 async function loadDayDetail(s, token) {
   try {
-    if (s.engine || (await engineHas(s.id))) { const d = await engineDetailData(s.id); if (token === daySumToken && $("cs-detail") && d) { $("cs-detail").innerHTML = nightHtml(d.sess, d.secs, d.evs); return; } }
-    const secs = (await DB.byIndex("secs", "sid", s.id)).sort((a, b) => a.sec - b.sec), evs = await DB.byIndex("events", "sid", s.id);
-    if (token === daySumToken && $("cs-detail")) $("cs-detail").innerHTML = nightHtml(s, secs, evs);
-  } catch (e) {}
-}
-async function planDayDelete(key) {
-  const sessions = (await DB.all("sessions")).filter((s) => dayKey(s.startedAt) === key), plan = { sessions: [], total: 0, savedCount: 0, delCount: 0, delBytes: 0, totalBytes: 0, unsharedWithAudio: 0 };
-  for (const s of sessions) {
-    const clips = await DB.byIndex("clips", "sid", s.id), evs = await DB.byIndex("events", "sid", s.id), pIds = new Set(evs.filter((e) => e.saved && e.clipId).map((e) => e.clipId)), del = [], keep = [];
-    for (const c of clips) { const b = c.data ? c.data.byteLength : 0; plan.totalBytes += b; if (c.saved || pIds.has(c.id)) keep.push(c); else { del.push(c); plan.delBytes += b; } }
-    plan.total += clips.length; plan.savedCount += keep.length; plan.delCount += del.length; if (clips.length && !s.sharedAt) plan.unsharedWithAudio++; plan.sessions.push({ s, del, evs });
-  }
-  return plan;
-}
-async function deleteAudioForDay(key) {
-  const plan = await planDayDelete(key);
-  if (!plan.delCount || plan.unsharedWithAudio) return false;
-  if (!confirm(dayLabel(key) + " の音声 " + plan.delCount + "件を削除しますか？")) return false;
-  for (const item of plan.sessions) {
-    if (!item.del.length) continue;
-    const ids = new Set(item.del.map((c) => c.id));
-    for (const e of item.evs) if (e.clipId && ids.has(e.clipId)) { e.clipId = null; await DB.put("events", e); }
-    await DB.delMany("clips", [...ids]);
-  }
-  return true;
-}
-async function renderDaySummary() {
-  const token = ++daySumToken, box = $("cal-summary");
-  if (!cal.selected) { box.innerHTML = '<p class="muted">日付を選んでください。</p>'; return; }
-  const list = cal.byDay.get(cal.selected) || [];
-  if (!list.length) { box.innerHTML = "<h2>" + esc(dayLabel(cal.selected)) + '</h2><p class="muted">この日の記録はありません。</p>'; return; }
-  if (cal.index >= list.length) cal.index = list.length - 1;
-  const s = list[cal.index], c = s.counts || {}, sleep = s.endedAt ? fmtHM(s.endedAt - s.startedAt) : "記録中または中断";
-  box.innerHTML = '<div class="cal-sum-head"><h2>' + esc(dayLabel(cal.selected)) + '</h2><div class="pager"><button id="cs-prev" class="sub mini">▲</button><span class="tag">' + (cal.index + 1) + "件目/" + list.length + '件中</span><button id="cs-next" class="sub mini">▼</button></div></div>' +
-    '<div class="kv"><span>開始</span><b>' + esc(fmtClock(s.startedAt)) + '</b></div><div class="kv"><span>睡眠記録時間</span><b>' + esc(sleep) + '</b></div><div class="kv"><span>いびき検出</span><b>' + (c.snore || 0) + '</b></div><div class="kv"><span>寝言・話し声として除外</span><b>' + (c.speech || 0) + '</b></div><div class="kv"><span>環境音の変化</span><b>' + (c.env || 0) + '</b></div><div id="cs-detail"><p class="muted">評価を計算中…</p></div><button id="cs-open" class="primary">詳細を見る</button>' +
-    '<div class="card"><h2>この日の音声データ</h2><p id="cs-audio" class="muted">確認中…</p><div id="cs-del-wrap" hidden><button id="cs-del-audio" class="danger" disabled>この日の音声データを削除</button></div></div>';
-  $("cs-prev").onclick = () => { cal.index = Math.max(0, cal.index - 1); renderDaySummary(); };
-  $("cs-next").onclick = () => { cal.index = Math.min(list.length - 1, cal.index + 1); renderDaySummary(); };
-  $("cs-open").onclick = () => openDetail(s.id);
-  $("cs-del-audio").onclick = async () => { if (await deleteAudioForDay(cal.selected)) await refreshCalendar(); };
-  loadDayDetail(s, token);
-  const plan = await planDayDelete(cal.selected);
-  if (token === daySumToken) {
-    $("cs-audio").textContent = "全体 " + plan.total + "件（約 " + mb(plan.totalBytes) + "）／残す音声 " + plan.savedCount + "件／削除できる音声 " + plan.delCount + "件";
-    $("cs-del-audio").disabled = plan.delCount === 0; $("cs-del-wrap").hidden = !(plan.delCount > 0 && plan.unsharedWithAudio === 0);
+    const secs = (await DB.byIndex("secs", "sid", s.id)).sort((a, b) => a.sec - b.sec);
+    const evs = await DB.byIndex("events", "sid", s.id);
+    const box = $("cs-detail");
+    if (token !== daySumToken || !box) return;
+    box.innerHTML = nightHtml(s, secs, evs);
+  } catch (e) {
+    console.error(e);
+    const box = $("cs-detail");
+    if (token === daySumToken && box) box.innerHTML = '<p class="muted">評価を計算できませんでした: ' + esc(e.message) + "</p>";
   }
 }
 
+/* ===== 音声データの集計と削除（日付単位） ===== */
+async function planDayDelete(key) {
+  const sessions = (await DB.all("sessions")).filter((s) => dayKey(s.startedAt) === key);
+  const plan = { sessions: [], total: 0, savedCount: 0, delCount: 0, delBytes: 0, totalBytes: 0, unsharedWithAudio: 0 };
+  for (const s of sessions) {
+    const clips = await DB.byIndex("clips", "sid", s.id);
+    const evs = await DB.byIndex("events", "sid", s.id);
+    const protectedIds = new Set(evs.filter((e) => e.saved && e.clipId).map((e) => e.clipId));
+    const del = [], keep = [];
+    for (const c of clips) {
+      const bytes = c.data ? c.data.byteLength : 0;
+      plan.totalBytes += bytes;
+      if (c.saved || protectedIds.has(c.id)) keep.push(c);
+      else { del.push(c); plan.delBytes += bytes; }
+    }
+    plan.total += clips.length;
+    plan.savedCount += keep.length;
+    plan.delCount += del.length;
+    if (clips.length && !s.sharedAt) plan.unsharedWithAudio++;
+    plan.sessions.push({ s, del, evs });
+  }
+  return plan;
+}
+
+async function deleteAudioForDay(key) {
+  const plan = await planDayDelete(key);
+  if (!plan.sessions.length) {
+    alert("この日の記録はありません。");
+    return false;
+  }
+  if (plan.unsharedWithAudio) {
+    alert("音声の削除は、ZIPを保存した後にできます。先に記録を開いて、共有からZIPを書き出してください。");
+    return false;
+  }
+  if (!plan.delCount) {
+    alert(plan.savedCount
+      ? "この日に削除できる音声はありません。保存して残した音声 " + plan.savedCount + "件は残っています。"
+      : "この日の音声データはありません。");
+    return false;
+  }
+  const ok = confirm(
+    "【最終確認】" + dayLabel(key) + " の音声データを削除します。\n\n" +
+    "・削除する音声：" + plan.delCount + "件（約 " + mb(plan.delBytes) + "）\n" +
+    "・残す音声（保存したもの）：" + plan.savedCount + "件\n" +
+    "・簡易ログとグラフは残ります。\n\n" +
+    "削除した音声は元に戻せません。その日の音声は、削除後に再生できなくなります。\n" +
+    "よろしいですか？"
+  );
+  if (!ok) return false;
+  try {
+    for (const item of plan.sessions) {
+      const { del, evs } = item;
+      if (!del.length) continue;
+      const ids = new Set(del.map((c) => c.id));
+      for (const e of evs) {
+        if (e.clipId && ids.has(e.clipId)) {
+          e.clipId = null;
+          await DB.put("events", e);
+        }
+      }
+      await DB.delMany("clips", [...ids]);
+    }
+    return true;
+  } catch (e) {
+    console.error(e);
+    showError("音声を削除できませんでした: " + e.message);
+    return false;
+  }
+}
+
+async function planSessionDelete(sid) {
+  const sess = await DB.get("sessions", sid);
+  if (!sess) return null;
+  const clips = await DB.byIndex("clips", "sid", sid);
+  const evs = await DB.byIndex("events", "sid", sid);
+  const protectedIds = new Set(evs.filter((e) => e.saved && e.clipId).map((e) => e.clipId));
+  const plan = { sess, evs, del: [], savedCount: 0, delBytes: 0 };
+  for (const c of clips) {
+    if (c.saved || protectedIds.has(c.id)) {
+      plan.savedCount++;
+    } else {
+      plan.del.push(c);
+      plan.delBytes += c.data ? c.data.byteLength : 0;
+    }
+  }
+  plan.delCount = plan.del.length;
+  return plan;
+}
+
+async function deleteAudioForSession(sid) {
+  const plan = await planSessionDelete(sid);
+  if (!plan) {
+    alert("この記録が見つかりません。");
+    return false;
+  }
+  if (!plan.delCount) {
+    alert(plan.savedCount
+      ? "削除できる音声はありません。保存して残した音声 " + plan.savedCount + "件は残っています。"
+      : "このタイムラインの音声データはありません。");
+    return false;
+  }
+  const ok = confirm(
+    "【最終確認】このタイムラインの音声データを削除します。\n\n" +
+    "・削除する音声：" + plan.delCount + "件（約 " + mb(plan.delBytes) + "）\n" +
+    "・残す音声（保存したもの）：" + plan.savedCount + "件\n" +
+    "・簡易ログとグラフは残ります。\n\n" +
+    "削除した音声は元に戻せません。\n" +
+    "よろしいですか？"
+  );
+  if (!ok) return false;
+  try {
+    const ids = new Set(plan.del.map((c) => c.id));
+    for (const e of plan.evs) {
+      if (e.clipId && ids.has(e.clipId)) {
+        e.clipId = null;
+        await DB.put("events", e);
+      }
+    }
+    await DB.delMany("clips", [...ids]);
+    return true;
+  } catch (e) {
+    console.error(e);
+    showError("音声を削除できませんでした: " + e.message);
+    return false;
+  }
+}
+
+async function renderDaySummary() {
+  const token = ++daySumToken;
+  const box = $("cal-summary");
+  if (!cal.selected) {
+    box.innerHTML = '<p class="muted">日付を選んでください。</p>';
+    return;
+  }
+  const list = cal.byDay.get(cal.selected) || [];
+  if (!list.length) {
+    box.innerHTML = "<h2>" + esc(dayLabel(cal.selected)) + '</h2><p class="muted">この日の記録はありません。</p>';
+    return;
+  }
+  if (cal.index >= list.length) cal.index = list.length - 1;
+  const s = list[cal.index];
+  const c = s.counts || {};
+  const sleep = s.endedAt ? fmtHM(s.endedAt - s.startedAt) : "記録中または中断";
+  box.innerHTML =
+    '<div class="cal-sum-head"><h2>' + esc(dayLabel(cal.selected)) + "</h2>" +
+    '<div class="pager"><button id="cs-prev" class="sub mini">▲</button>' +
+    '<span class="tag">' + (cal.index + 1) + "件目/" + list.length + "件中</span>" +
+    '<button id="cs-next" class="sub mini">▼</button></div></div>' +
+    '<div class="kv"><span>開始</span><b>' + esc(fmtClock(s.startedAt)) + "</b></div>" +
+    '<div class="kv"><span>睡眠記録時間</span><b>' + esc(sleep) + "</b></div>" +
+    '<div class="kv"><span>いびき検出</span><b>' + (c.snore || 0) + "</b></div>" +
+    '<div class="kv"><span>寝言・話し声として除外</span><b>' + (c.speech || 0) + "</b></div>" +
+    '<div class="kv"><span>環境音の変化</span><b>' + (c.env || 0) + "</b></div>" +
+    '<div id="cs-detail"><p class="muted">評価を計算中…</p></div>' +
+    '<button id="cs-open" class="primary">詳細を見る</button>' +
+    '<div class="card"><h2>この日の音声データ</h2><p id="cs-audio" class="muted">確認中…</p>' +
+    '<div id="cs-del-wrap" hidden><button id="cs-del-audio" class="danger" disabled>この日の音声データを削除</button>' +
+    '<p class="muted">押すと、この日のすべての記録の音声を消します（保存した音声は残ります）。簡易ログとグラフは残ります。元に戻せません。</p></div></div>';
+
+  $("cs-prev").onclick = () => { cal.index = Math.max(0, cal.index - 1); renderDaySummary(); };
+  $("cs-next").onclick = () => { cal.index = Math.min(list.length - 1, cal.index + 1); renderDaySummary(); };
+  $("cs-open").onclick = () => openDetail(s.id).catch((err) => showError("詳細を開けませんでした: " + err.message));
+  $("cs-del-audio").onclick = async () => {
+    $("cs-del-audio").disabled = true;
+    const done = await deleteAudioForDay(cal.selected);
+    await refreshCalendar();
+    if (done) alert("この日の音声データを削除しました。簡易ログとグラフは残っています。");
+  };
+  loadDayDetail(s, token);
+
+  try {
+    const plan = await planDayDelete(cal.selected);
+    if (token !== daySumToken) return;
+    $("cs-audio").textContent =
+      "全体 " + plan.total + "件（約 " + mb(plan.totalBytes) + "）／保存して残す音声 " + plan.savedCount +
+      "件／削除できる音声 " + plan.delCount + "件（約 " + mb(plan.delBytes) + "）";
+    $("cs-del-audio").disabled = plan.delCount === 0;
+    $("cs-del-wrap").hidden = !(plan.delCount > 0 && plan.unsharedWithAudio === 0);
+  } catch (e) {
+    console.error(e);
+    if (token === daySumToken) $("cs-audio").textContent = "音声の数を確認できませんでした。";
+  }
+}
+
+/* ===== 詳細・タイムライン ===== */
 let blobUrls = [];
 function revokeUrls() { blobUrls.forEach((u) => URL.revokeObjectURL(u)); blobUrls = []; }
 const PLAY = { list: [] };
-function setSaveEnabled(on) { $("tl-save").disabled = !on; }
-async function deleteLegacySession(sid) {
+
+function setSaveEnabled(on) {
+  $("tl-save").disabled = !on;
+}
+
+async function deleteSessionRecord(sid) {
   for (const store of ["secs", "events", "clips"]) {
-    const rows = await DB.byIndex(store, "sid", sid), keys = rows.map((r) => (r.key != null ? r.key : r.id)).filter((k) => k != null);
+    const rows = await DB.byIndex(store, "sid", sid);
+    const keys = rows.map((r) => (r.key != null ? r.key : r.id)).filter((k) => k != null);
     if (keys.length) await DB.delMany(store, keys);
   }
   await DB.delMany("sessions", [sid]);
 }
+
 async function openDetail(sid) {
-  S.detailSid = sid; tl.data = null; PLAY.list = []; revokeUrls(); setSaveEnabled(false); showPage("detail");
+  S.detailSid = sid;
+  tl.data = null;
+  PLAY.list = [];
+  revokeUrls();
   const sess = await DB.get("sessions", sid);
-  if (!sess) { if (await engineHas(sid)) { const d = await engineDetailData(sid, false); if (d) { initTimeline(d.sess, d.secs, d.evs); tl.data.engine = true; } } return; }
-  const secs = (await DB.byIndex("secs", "sid", sid)).sort((a, b) => a.sec - b.sec), evs = (await DB.byIndex("events", "sid", sid)).sort((a, b) => a.startMs - b.startMs);
+  if (!sess) return;
+  $("d-chart").innerHTML = '<p class="muted">読み込み中…</p>';
+  $("tl-tags").innerHTML = "";
+  $("tl-legend").innerHTML = "";
+  setSaveEnabled(false);
+  showPage("detail");
+
+  const secs = (await DB.byIndex("secs", "sid", sid)).sort((a, b) => a.sec - b.sec);
+  const evs = (await DB.byIndex("events", "sid", sid)).sort((a, b) => a.startMs - b.startMs);
+  if (S.detailSid !== sid) return;
   initTimeline(sess, secs, evs);
 }
-function dbOf(e) { return e.peakAppliedDb != null ? e.peakAppliedDb : (e.meanAppliedDb != null ? e.meanAppliedDb : null); }
+
+function dbOf(e) {
+  if (e.peakAppliedDb != null) return e.peakAppliedDb;
+  if (e.meanAppliedDb != null) return e.meanAppliedDb;
+  return null;
+}
+
 function initTimeline(sess, secs, evs) {
   const last = secs.length ? secs[secs.length - 1].sec : 0;
-  tl.data = { sess, secs, evs }; tl.scale = nightScale(sess, evs); tl.total = Math.max(60, last + 1);
-  tl.zoomSec = ZOOM_DEFAULT; tl.winStart = 0; tl.cursor = 0; tl.tags = { snore: true, unknown: false, env: false, speech: false, motion: false };
-  $("tl-zoom").value = String(ZOOM_DEFAULT); $("tl-msg").textContent = ""; $("tl-audio").innerHTML = ""; PLAY.list = []; setSaveEnabled(false); renderTimeline();
-}
-function clampTl() { tl.winLen = tl.zoomSec > 0 ? Math.min(tl.zoomSec, tl.total) : tl.total; tl.winStart = clamp(tl.winStart, 0, Math.max(0, tl.total - tl.winLen)); tl.cursor = clamp(tl.cursor, tl.winStart, tl.winStart + tl.winLen); }
-function selectedTag() { return TAG_ORDER.find((t) => tl.tags[t]) || "snore"; }
-function renderTagBar() {
-  const box = $("tl-tags"); box.innerHTML = ""; if (!tl.data) return;
-  const cnt = {}, aud = {}; for (const t of TAG_ORDER) { cnt[t] = 0; aud[t] = 0; }
-  for (const e of tl.data.evs) { if (cnt[e.type] != null) { cnt[e.type]++; if (e.clipId) aud[e.type]++; } }
-  for (const t of TAG_ORDER) {
-    const b = document.createElement("button"); b.className = "tagbtn" + (tl.tags[t] ? "" : " off");
-    b.innerHTML = '<i style="background:' + TAG_COLOR[t] + '"></i>' + esc(TAG_NAME[t]) + " <small>" + cnt[t] + (aud[t] !== cnt[t] ? "（音声" + aud[t] + "）" : "") + "</small>";
-    b.onclick = () => { if (!tl.tags[t]) { for (const k of TAG_ORDER) tl.tags[k] = false; tl.tags.motion = false; tl.tags[t] = true; PLAY.list = []; $("tl-audio").innerHTML = ""; setSaveEnabled(false); renderTimeline(); } };
-    box.appendChild(b);
-  }
-  const mTh = tl.motionThresh != null ? tl.motionThresh : 0.05; let mCnt = 0; for (const r of tl.data.secs) if (r.motion != null && r.motion >= mTh) mCnt++;
-  const mb = document.createElement("button"); mb.className = "tagbtn" + (tl.tags.motion ? "" : " off");
-  mb.innerHTML = '<i style="background:' + TAG_COLOR.motion + '"></i>' + esc(TAG_NAME.motion) + " <small>" + mCnt + "回</small>";
-  mb.onclick = () => { if (!tl.tags.motion) { for (const k of TAG_ORDER) tl.tags[k] = false; tl.tags.motion = true; PLAY.list = []; $("tl-audio").innerHTML = ""; setSaveEnabled(false); renderTimeline(); } };
-  box.appendChild(mb);
-}
-function tagGraphSvg(tag, t0, t1) {
-  const NB = TL_BINS, binSec = tl.winLen / NB, plotW = TL_W - TL_PL - TL_PR, plotH = TL_H - TL_PT - TL_PB, bw = plotW / NB, sc = tl.scale;
-  const bins = new Array(NB).fill(null);
-  for (const e of tl.data.evs) {
-    if (e.type !== tag) continue; const s = e.startMs / 1000; if (s < t0 || s > t1) continue; const db = dbOf(e); if (db == null) continue;
-    const i = Math.min(NB - 1, Math.floor((s - t0) / binSec));
-    if (!bins[i]) bins[i] = { db, saved: !!e.saved }; else { if (db > bins[i].db) bins[i].db = db; if (e.saved) bins[i].saved = true; }
-  }
-  const rTop = Math.pow(2, (sc.topDb - sc.refDb) / 10), LADDER = [1.5, 2, 2.5, 3, 4, 5, 6, 8, 10, 12, 16, 20, 24, 32, 40, 48, 64, 80, 96, 128];
-  let ceilR = 2; for (const L of LADDER) { if (L >= rTop * 1.08) { ceilR = L; break; } ceilR = L; }
-  const ahPos = Math.min(0.5, Math.max(0.125, 1.0 / ceilR)), posOfR = (r) => r <= 1 ? ahPos * r : ahPos + (r - 1) / Math.max(ceilR - 1, 0.5) * (1 - ahPos);
-  const posOf = (db) => Math.min(1, Math.max(0, posOfR(Math.pow(2, (db - sc.refDb) / 10)))), yOfMult = (m) => TL_PT + plotH - posOfR(m) * (plotH - 4);
-  const lineMults = (ceilR <= 8 ? [1, 2, 3, 4, 6, 8] : [1, 2, 4, 8, 16, 32, 64]).filter((m) => m <= ceilR);
-  let g = '<rect x="' + TL_PL + '" y="' + TL_PT + '" width="' + plotW + '" height="' + plotH + '" fill="none" stroke="#2a3643"/>';
-  for (const m of lineMults) g += '<line x1="' + TL_PL + '" x2="' + (TL_PL + plotW) + '" y1="' + yOfMult(m).toFixed(1) + '" y2="' + yOfMult(m).toFixed(1) + '" stroke="#ffd54a" stroke-opacity="0.55" stroke-width="1" stroke-dasharray="5 4"/>';
-  for (let i = 0; i < NB; i++) {
-    const item = bins[i]; if (!item) continue; const h = Math.max(3, posOf(item.db) * (plotH - 4));
-    g += '<rect x="' + (TL_PL + i * bw + 0.5).toFixed(1) + '" y="' + (TL_PT + plotH - h).toFixed(1) + '" width="' + Math.max(1, bw - 1).toFixed(1) + '" height="' + h.toFixed(1) + '" fill="' + (item.saved ? SAVED_BAR_COLOR : TAG_COLOR[tag]) + '"/>';
-  }
-  const mTh = tl.motionThresh != null ? tl.motionThresh : 0.05, mCeil = tl.motionCeil || 0.3, motBins = new Array(NB).fill(null);
-  for (const r of tl.data.secs) { if (r.motion != null && r.motion >= mTh && r.sec >= t0 && r.sec <= t1) { const i = Math.min(NB - 1, Math.floor((r.sec - t0) / binSec)); if (motBins[i] == null || r.motion > motBins[i]) motBins[i] = r.motion; } }
-  for (let i = 0; i < NB; i++) { if (motBins[i] == null) continue; const mh = Math.max(2, Math.min(plotH, motBins[i] / mCeil * plotH)); g += '<rect x="' + (TL_PL + i * bw + 0.5).toFixed(1) + '" y="' + (TL_PT + plotH - mh).toFixed(1) + '" width="' + Math.max(1, bw - 1).toFixed(1) + '" height="' + mh.toFixed(1) + '" fill="' + TAG_COLOR.motion + '" fill-opacity="0.55"/>'; }
-  for (const m of lineMults) g += '<text x="' + (TL_PL + 4) + '" y="' + (yOfMult(m) - 3).toFixed(1) + '" font-size="9" fill="#f3e7c9">' + (m === 1 ? "あ〜の音量" : "あ〜の" + m + "倍") + "</text>";
-  return g;
-}
-function motionGraphSvg(t0, t1) {
-  const NB = TL_BINS, binSec = tl.winLen / NB, plotW = TL_W - TL_PL - TL_PR, plotH = TL_H - TL_PT - TL_PB, bw = plotW / NB, thresh = tl.motionThresh != null ? tl.motionThresh : 0.05, ceil = tl.motionCeil || 0.3, bins = new Array(NB).fill(null);
-  for (const r of tl.data.secs) { if (r.motion != null && r.motion >= thresh && r.sec >= t0 && r.sec <= t1) { const i = Math.min(NB - 1, Math.floor((r.sec - t0) / binSec)); if (bins[i] == null || r.motion > bins[i]) bins[i] = r.motion; } }
-  let g = '<rect x="' + TL_PL + '" y="' + TL_PT + '" width="' + plotW + '" height="' + plotH + '" fill="none" stroke="#2a3643"/>';
-  for (let i = 0; i < NB; i++) { if (bins[i] == null) continue; const h = Math.max(2, Math.min(plotH, bins[i] / ceil * plotH)); g += '<rect x="' + (TL_PL + i * bw + 0.5).toFixed(1) + '" y="' + (TL_PT + plotH - h).toFixed(1) + '" width="' + Math.max(1, bw - 1).toFixed(1) + '" height="' + h.toFixed(1) + '" fill="' + TAG_COLOR.motion + '"/>'; }
-  return g;
-}
-function renderTimeline() {
-  if (!tl.data) return; clampTl(); renderTagBar();
-  const box = $("d-chart");
-  $("tl-pos").max = String(Math.round(tl.total - tl.winLen)); $("tl-pos").value = String(Math.round(tl.winStart));
-  $("tl-cur").min = String(Math.round(tl.winStart)); $("tl-cur").max = String(Math.round(tl.winStart + tl.winLen)); $("tl-cur").value = String(Math.round(tl.cursor));
-  const t0 = tl.winStart, t1 = tl.winStart + tl.winLen, X = (t) => TL_PL + (t - t0) / tl.winLen * (TL_W - TL_PL - TL_PR);
-  const cursorLine = '<line x1="' + X(tl.cursor).toFixed(1) + '" x2="' + X(tl.cursor).toFixed(1) + '" y1="' + TL_PT + '" y2="' + (TL_H - TL_PB) + '" stroke="#ffd54a" stroke-width="2"/>';
-  const axisText = '<text x="' + TL_PL + '" y="' + (TL_H - 6) + '" font-size="10" fill="#aebbc9">' + fmtTime(t0 * 1000) + '</text><text x="' + (TL_W - TL_PR) + '" y="' + (TL_H - 6) + '" font-size="10" fill="#aebbc9" text-anchor="end">' + fmtTime(t1 * 1000) + "</text>";
-  const tag = selectedTag(), isMotion = !!tl.tags.motion;
-  box.innerHTML = '<svg viewBox="0 0 ' + TL_W + " " + TL_H + '" xmlns="http://www.w3.org/2000/svg">' + (isMotion ? motionGraphSvg(t0, t1) : tagGraphSvg(tag, t0, t1)) + cursorLine + axisText + "</svg>";
-  $("tl-legend").innerHTML = isMotion ? "" : '<span><i style="background:' + TAG_COLOR[tag] + '"></i>' + esc(TAG_NAME[tag]) + '</span><span><i style="background:' + SAVED_BAR_COLOR + '"></i>保存した音声</span><span><i style="background:' + TAG_COLOR.motion + '"></i>体動</span>';
-  $("tl-motion-adj").hidden = false; $("tm-thresh").value = String(tl.motionThresh != null ? tl.motionThresh : 0.05); $("tm-thresh-val").textContent = (tl.motionThresh != null ? tl.motionThresh : 0.05) + " g";
-  $("tl-listen").disabled = isMotion;
-  $("tl-info").textContent = "表示：" + fmtTime(t0 * 1000) + " 〜 " + fmtTime(t1 * 1000);
-  $("tl-cur-text").textContent = "黄色い線：記録から " + fmtTime(tl.cursor * 1000);
-}
-async function buildRangePcm(fromMs, toMs, list) {
-  const n = Math.max(0, Math.round((toMs - fromMs) / 1000 * SR)), acc = new Int32Array(n);
-  for (const e of list) {
-    if (!e.clipId) continue; const clip = await DB.get("clips", e.clipId); if (!clip) continue;
-    const pcm = decodeImaWav(clip.data, clip.samples), base = Math.round((clip.startMs - fromMs) / 1000 * SR);
-    for (let i = 0; i < pcm.length; i++) { const j = base + i; if (j >= 0 && j < n) acc[j] += pcm[i]; }
-  }
-  const out = new Int16Array(n); for (let i = 0; i < n; i++) out[i] = clamp(acc[i], -32768, 32767); return out;
-}
-async function listenAtCursor() {
-  if (!tl.data || (tl.tags && tl.tags.motion)) return;
-  const msg = $("tl-msg"), box = $("tl-audio"); box.innerHTML = ""; PLAY.list = []; setSaveEnabled(false); revokeUrls();
-  const tag = selectedTag(), binSec = tl.winLen / TL_BINS, idx = clamp(Math.floor((tl.cursor - tl.winStart) / binSec), 0, TL_BINS - 1);
-  const binStart = tl.winStart + idx * binSec, binEnd = Math.min(tl.winStart + tl.winLen, binStart + binSec);
-  const list = tl.data.evs.filter((e) => e.type === tag && e.startMs / 1000 >= binStart && e.startMs / 1000 < binEnd && e.clipId);
-  if (!list.length) { msg.textContent = "この棒の音声データはありません。"; return; }
-  const pcm = await buildRangePcm(binStart * 1000, binEnd * 1000, list);
-  const url = URL.createObjectURL(wavBlob(pcm, SR)); blobUrls.push(url);
-  const au = document.createElement("audio"); au.controls = true; au.src = url; box.appendChild(au); au.play().catch(() => {});
-  PLAY.list = list; setSaveEnabled(list.some((e) => !e.saved));
-}
-async function savePlayedAudio() {
-  const list = PLAY.list.filter((e) => !e.saved); if (!list.length) return;
-  for (const e of list) { e.saved = true; await DB.put("events", e); if (e.clipId) { const c = await DB.get("clips", e.clipId); if (c) { c.saved = true; await DB.put("clips", c); } } }
+  tl.data = { sess, secs, evs };
+  tl.scale = nightScale(sess, evs);
+  tl.total = Math.max(60, last + 1);
+  tl.zoomSec = ZOOM_DEFAULT;
+  tl.winStart = 0;
+  tl.cursor = 0;
+  tl.tags = { snore: true, unknown: false, env: false, speech: false, motion: false };
+  tl.motion = null;
+  $("tl-zoom").value = String(ZOOM_DEFAULT);
+  $("tl-msg").textContent = "";
+  $("tl-audio").innerHTML = "";
+  PLAY.list = [];
+  setSaveEnabled(false);
   renderTimeline();
 }
 
-const IMA_STEP = [7,8,9,10,11,12,13,14,16,17,19,21,23,25,28,31,34,37,41,45,50,55,60,66,73,80,88,97,107,118,130,143,157,173,190,209,230,253,279,307,337,371,408,449,494,544,598,658,724,796,876,963,1060,1166,1282,1411,1552,1707,1878,2066,2272,2499,2749,3024,3327,3660,4026,4428,4871,5358,5894,6484,7132,7845,8630,9493,10442,11487,12635,13899,15289,16818,18500,20350,22385,24623,27086,29794,32767];
-const IMA_IDX = [-1, -1, -1, -1, 2, 4, 6, 8], IMA_BLOCK = 256, IMA_SPB = (IMA_BLOCK - 4) * 2 + 1;
-function encodeImaWav(pcm, sr) {
-  const n = pcm.length, blocks = Math.max(1, Math.ceil(n / IMA_SPB)), dataLen = blocks * IMA_BLOCK, buf = new ArrayBuffer(60 + dataLen), dv = new DataView(buf), u8 = new Uint8Array(buf);
-  const wr = (o, s) => { for (let i = 0; i < s.length; i++) u8[o + i] = s.charCodeAt(i); };
-  wr(0, "RIFF"); dv.setUint32(4, 52 + dataLen, true); wr(8, "WAVE"); wr(12, "fmt "); dv.setUint32(16, 20, true); dv.setUint16(20, 0x11, true); dv.setUint16(22, 1, true);
-  dv.setUint32(24, sr, true); dv.setUint32(28, Math.round(sr * IMA_BLOCK / IMA_SPB), true); dv.setUint16(32, IMA_BLOCK, true); dv.setUint16(34, 4, true); dv.setUint16(36, 2, true); dv.setUint16(38, IMA_SPB, true);
-  wr(40, "fact"); dv.setUint32(44, 4, true); dv.setUint32(48, n, true); wr(52, "data"); dv.setUint32(56, dataLen, true);
-  let pos = 60, idx = 0;
-  for (let b = 0; b < blocks; b++) {
-    const s0 = b * IMA_SPB; let pred = s0 < n ? pcm[s0] : 0; dv.setInt16(pos, pred, true); u8[pos + 2] = idx; u8[pos + 3] = 0; let o = pos + 4;
-    for (let i = 0; i < IMA_BLOCK - 4; i++) {
-      let byte = 0;
-      for (let h = 0; h < 2; h++) {
-        const si = s0 + 1 + i * 2 + h, smp = si < n ? pcm[si] : pred; let diff = smp - pred, sign = 0; if (diff < 0) { sign = 8; diff = -diff; }
-        let step = IMA_STEP[idx], code = 0, vp = step >> 3;
-        if (diff >= step) { code |= 4; diff -= step; vp += step; } step >>= 1; if (diff >= step) { code |= 2; diff -= step; vp += step; } step >>= 1; if (diff >= step) { code |= 1; vp += step; }
-        pred = clamp(pred + (sign ? -vp : vp), -32768, 32767); idx = clamp(idx + IMA_IDX[code], 0, 88); byte |= (code | sign) << (h * 4);
-      }
-      u8[o++] = byte;
-    }
-    pos += IMA_BLOCK;
-  }
-  return buf;
+function clampTl() {
+  tl.winLen = tl.zoomSec > 0 ? Math.min(tl.zoomSec, tl.total) : tl.total;
+  tl.winStart = clamp(tl.winStart, 0, Math.max(0, tl.total - tl.winLen));
+  tl.cursor = clamp(tl.cursor, tl.winStart, tl.winStart + tl.winLen);
 }
-function decodeImaWav(data, wantSamples) {
-  const u8 = data instanceof Uint8Array ? data : new Uint8Array(data.buffer || data), dv = new DataView(u8.buffer, u8.byteOffset, u8.byteLength);
-  let p = 12, blockAlign = IMA_BLOCK, dStart = -1, dLen = 0;
-  while (p + 8 <= u8.length) {
-    const id = String.fromCharCode(u8[p], u8[p + 1], u8[p + 2], u8[p + 3]), sz = dv.getUint32(p + 4, true);
-    if (id === "fmt ") blockAlign = dv.getUint16(p + 8 + 12, true);
-    else if (id === "data") { dStart = p + 8; dLen = Math.min(sz, u8.length - dStart); break; }
-    p += 8 + sz + (sz & 1);
+
+function renderTagBar() {
+  const box = $("tl-tags");
+  box.innerHTML = "";
+  if (!tl.data) return;
+  const cnt = {}, aud = {};
+  for (const t of TAG_ORDER) { cnt[t] = 0; aud[t] = 0; }
+  for (const e of tl.data.evs) {
+    if (cnt[e.type] == null) continue;
+    cnt[e.type]++;
+    if (e.clipId) aud[e.type]++;
   }
-  const total = wantSamples || Math.floor(dLen / blockAlign) * IMA_SPB, out = new Int16Array(total); let w = 0;
-  for (let b = 0; b * blockAlign + 4 <= dLen && w < total; b++) {
-    const o = dStart + b * blockAlign; let pred = dv.getInt16(o, true), idx = clamp(u8[o + 2], 0, 88); out[w++] = pred;
-    for (let i = 4; i < blockAlign && w < total; i++) {
-      const byte = u8[o + i];
-      for (let h = 0; h < 2 && w < total; h++) {
-        const code = (byte >> (h * 4)) & 15, step = IMA_STEP[idx]; let vp = step >> 3;
-        if (code & 4) vp += step; if (code & 2) vp += step >> 1; if (code & 1) vp += step >> 2;
-        pred = clamp(pred + ((code & 8) ? -vp : vp), -32768, 32767); idx = clamp(idx + IMA_IDX[code & 7], 0, 88); out[w++] = pred;
+  for (const t of TAG_ORDER) {
+    const on = !!tl.tags[t];
+    const b = document.createElement("button");
+    b.className = "tagbtn" + (on ? "" : " off");
+    b.innerHTML = '<i style="background:' + TAG_COLOR[t] + '"></i>' + esc(TAG_NAME[t]) +
+      " <small>" + cnt[t] + (aud[t] !== cnt[t] ? "（音声" + aud[t] + "）" : "") + "</small>";
+    b.onclick = () => {
+      if (tl.tags[t]) return;
+      for (const k of TAG_ORDER) tl.tags[k] = false;
+      tl.tags.motion = false;
+      tl.tags[t] = true;
+      PLAY.list = [];
+      $("tl-audio").innerHTML = "";
+      setSaveEnabled(false);
+      renderTimeline();
+    };
+    box.appendChild(b);
+  }
+  const mTh = tl.motionThresh != null ? tl.motionThresh : 0.05;
+  let mCnt = 0;
+  for (const r of tl.data.secs) if (r.motion != null && r.motion >= mTh) mCnt++;
+  const mb = document.createElement("button");
+  mb.className = "tagbtn" + (tl.tags.motion ? "" : " off");
+  mb.innerHTML = '<i style="background:' + TAG_COLOR.motion + '"></i>' + esc(TAG_NAME.motion) + " <small>" + mCnt + "回</small>";
+  mb.onclick = () => {
+    if (tl.tags.motion) return;
+    for (const k of TAG_ORDER) tl.tags[k] = false;
+    tl.tags.motion = true;
+    PLAY.list = [];
+    $("tl-audio").innerHTML = "";
+    setSaveEnabled(false);
+    renderTimeline();
+  };
+  box.appendChild(mb);
+}
+
+function selectedTag() {
+  return TAG_ORDER.find((t) => tl.tags[t]) || "snore";
+}
+
+function tagGraphSvg(tag, t0, t1) {
+  const NB = TL_BINS;
+  const binSec = tl.winLen / NB;
+  const plotW = TL_W - TL_PL - TL_PR;
+  const plotH = TL_H - TL_PT - TL_PB;
+  const bw = plotW / NB;
+  const sc = tl.scale;
+
+  const bins = new Array(NB).fill(null);
+  for (const e of tl.data.evs) {
+    if (e.type !== tag) continue;
+    const s = e.startMs / 1000;
+    if (s < t0 || s > t1) continue;
+    const db = dbOf(e);
+    if (db == null) continue;
+    const i = Math.min(NB - 1, Math.floor((s - t0) / binSec));
+    if (!bins[i]) bins[i] = { db, saved: !!e.saved };
+    else {
+      if (db > bins[i].db) bins[i].db = db;
+      if (e.saved) bins[i].saved = true;
+    }
+  }
+
+  const rTop = Math.pow(2, (sc.topDb - sc.refDb) / 10);
+  const LADDER = [1.5, 2, 2.5, 3, 4, 5, 6, 8, 10, 12, 16, 20, 24, 32, 40, 48, 64, 80, 96, 128];
+  let ceilR = 2;
+  for (const L of LADDER) { if (L >= rTop * 1.08) { ceilR = L; break; } ceilR = L; }
+  const ahPos = Math.min(0.5, Math.max(0.125, 1.0 / ceilR));
+  const posOfR = (r) => r <= 1 ? ahPos * r : ahPos + (r - 1) / Math.max(ceilR - 1, 0.5) * (1 - ahPos);
+  const posOf = (db) => {
+    const p = posOfR(Math.pow(2, (db - sc.refDb) / 10));
+    return Math.min(1, Math.max(0, p));
+  };
+  const yOfMult = (m) => TL_PT + plotH - posOfR(m) * (plotH - 4);
+  const lineMults = (ceilR <= 8 ? [1, 2, 3, 4, 6, 8] : [1, 2, 4, 8, 16, 32, 64]).filter((m) => m <= ceilR);
+
+  let g = '<rect x="' + TL_PL + '" y="' + TL_PT + '" width="' + plotW + '" height="' + plotH + '" fill="none" stroke="#2a3643"/>';
+  {
+    const ok = new Array(NB).fill(false);
+    for (const r of tl.data.secs) {
+      if (r.dbApplied == null) continue;
+      const s = r.sec;
+      if (s < t0 || s > t1) continue;
+      ok[Math.min(NB - 1, Math.floor((s - t0) / binSec))] = true;
+    }
+    let labeled = false;
+    for (let i = 0; i < NB; i++) {
+      if (ok[i]) continue;
+      g += '<rect x="' + (TL_PL + i * bw).toFixed(1) + '" y="' + TL_PT + '" width="' + bw.toFixed(1) +
+        '" height="' + plotH + '" fill="#8a97a5" opacity="0.20"/>';
+      if (!labeled) {
+        labeled = true;
+        g += '<text x="' + (TL_PL + i * bw + 3).toFixed(1) + '" y="' + (TL_PT + plotH - 16) +
+          '" font-size="10" fill="#c3ccd4">欠測</text>';
       }
     }
   }
-  return out;
+  {
+    const mTh = tl.motionThresh != null ? tl.motionThresh : 0.05;
+    const mCeil = tl.motionCeil || 0.3;
+    const mBins = new Array(NB).fill(null);
+    for (const r of tl.data.secs) {
+      if (r.motion == null) continue;
+      const v = r.motion;
+      if (v < mTh) continue;
+      const s = r.sec;
+      if (s < t0 || s > t1) continue;
+      const i = Math.min(NB - 1, Math.floor((s - t0) / binSec));
+      if (mBins[i] == null || v > mBins[i]) mBins[i] = v;
+    }
+    for (let i = 0; i < NB; i++) {
+      const v = mBins[i];
+      if (v == null) continue;
+      const h = Math.max(2, Math.min(plotH, v / mCeil * plotH));
+      g += '<rect x="' + (TL_PL + i * bw + 0.5).toFixed(1) + '" y="' + TL_PT + '" width="' +
+        Math.max(1, bw - 1).toFixed(1) + '" height="' + h.toFixed(1) + '" fill="' + TAG_COLOR.motion + '" opacity="0.85"/>';
+    }
+  }
+  for (const m of lineMults) {
+    const y = yOfMult(m);
+    g += '<line x1="' + TL_PL + '" x2="' + (TL_PL + plotW) + '" y1="' + y.toFixed(1) + '" y2="' + y.toFixed(1) + '" stroke="#ffd54a" stroke-opacity="0.55" stroke-width="1" stroke-dasharray="5 4"/>';
+  }
+
+  let any = false;
+  for (let i = 0; i < NB; i++) {
+    const item = bins[i];
+    if (!item) continue;
+    any = true;
+    const pos = posOf(item.db);
+    const h = Math.max(3, pos * (plotH - 4));
+    const color = item.saved ? SAVED_BAR_COLOR : TAG_COLOR[tag];
+    g += '<rect x="' + (TL_PL + i * bw + 0.5).toFixed(1) + '" y="' + (TL_PT + plotH - h).toFixed(1) +
+      '" width="' + Math.max(1, bw - 1).toFixed(1) + '" height="' + h.toFixed(1) + '" fill="' + color + '"/>';
+  }
+  if (!any) {
+    g += '<text x="' + (TL_PL + 8) + '" y="' + (TL_PT + plotH / 2 + 30) + '" font-size="12" fill="#aebbc9">この種類の音はありません</text>';
+  }
+
+  for (const m of lineMults) {
+    const label = m === 1 ? "あ〜の音量" : "あ〜の" + m + "倍";
+    g += '<text x="' + (TL_PL + 4) + '" y="' + (yOfMult(m) - 3).toFixed(1) + '" font-size="9" fill="' +
+      (m === 1 ? "#f3e7c9" : "#e8e4d8") + '">' + label + "</text>";
+  }
+  g += '<text x="' + (TL_PL + 4) + '" y="' + (TL_PT + plotH - 4) + '" font-size="9" fill="#aebbc9">室内の環境音</text>';
+
+  g += '<text x="' + (TL_PL + 4) + '" y="' + (TL_PT + 12) + '" font-size="11" fill="' + TAG_COLOR[tag] + '">' +
+    esc(TAG_NAME[tag]) + "（棒1本＝" + round1(binSec) + "秒）</text>";
+  return g;
 }
+
+function tagLineSvg(tag, t0, t1) {
+  const NB = TL_BINS;
+  const binSec = tl.winLen / NB;
+  const plotW = TL_W - TL_PL - TL_PR;
+  const plotH = TL_H - TL_PT - TL_PB;
+  const bw = plotW / NB;
+  const sc = tl.scale;
+
+  const rTop = Math.pow(2, (sc.topDb - sc.refDb) / 10);
+  const LADDER = [1.5, 2, 2.5, 3, 4, 5, 6, 8, 10, 12, 16, 20, 24, 32, 40, 48, 64, 80, 96, 128];
+  let ceilR = 2;
+  for (const L of LADDER) { if (L >= rTop * 1.08) { ceilR = L; break; } ceilR = L; }
+  const ahPos = Math.min(0.5, Math.max(0.125, 1.0 / ceilR));
+  const posOfR = (r) => r <= 1 ? ahPos * r : ahPos + (r - 1) / Math.max(ceilR - 1, 0.5) * (1 - ahPos);
+  const posOf = (db) => {
+    const p = posOfR(Math.pow(2, (db - sc.refDb) / 10));
+    return Math.min(1, Math.max(0, p));
+  };
+  const yOfMult = (m) => TL_PT + plotH - posOfR(m) * (plotH - 4);
+  const lineMults = (ceilR <= 8 ? [1, 2, 3, 4, 6, 8] : [1, 2, 4, 8, 16, 32, 64]).filter((m) => m <= ceilR);
+  const X = (t) => TL_PL + (t - t0) / tl.winLen * plotW;
+  const Y = (db) => TL_PT + plotH - posOf(db) * (plotH - 4);
+
+  let g = '<rect x="' + TL_PL + '" y="' + TL_PT + '" width="' + plotW + '" height="' + plotH + '" fill="none" stroke="#2a3643"/>';
+  {
+    const ok = new Array(NB).fill(false);
+    for (const r of tl.data.secs) {
+      if (r.dbApplied == null) continue;
+      const s = r.sec;
+      if (s < t0 || s > t1) continue;
+      ok[Math.min(NB - 1, Math.floor((s - t0) / binSec))] = true;
+    }
+    let labeled = false;
+    for (let i = 0; i < NB; i++) {
+      if (ok[i]) continue;
+      g += '<rect x="' + (TL_PL + i * bw).toFixed(1) + '" y="' + TL_PT + '" width="' + bw.toFixed(1) +
+        '" height="' + plotH + '" fill="#8a97a5" opacity="0.20"/>';
+      if (!labeled) {
+        labeled = true;
+        g += '<text x="' + (TL_PL + i * bw + 3).toFixed(1) + '" y="' + (TL_PT + plotH - 16) +
+          '" font-size="10" fill="#c3ccd4">欠測</text>';
+      }
+    }
+  }
+  {
+    const mTh = tl.motionThresh != null ? tl.motionThresh : 0.05;
+    const mCeil = tl.motionCeil || 0.3;
+    const mBins = new Array(NB).fill(null);
+    for (const r of tl.data.secs) {
+      if (r.motion == null) continue;
+      const v = r.motion;
+      if (v < mTh) continue;
+      const s = r.sec;
+      if (s < t0 || s > t1) continue;
+      const i = Math.min(NB - 1, Math.floor((s - t0) / binSec));
+      if (mBins[i] == null || v > mBins[i]) mBins[i] = v;
+    }
+    for (let i = 0; i < NB; i++) {
+      const v = mBins[i];
+      if (v == null) continue;
+      const h = Math.max(2, Math.min(plotH, v / mCeil * plotH));
+      g += '<rect x="' + (TL_PL + i * bw + 0.5).toFixed(1) + '" y="' + TL_PT + '" width="' +
+        Math.max(1, bw - 1).toFixed(1) + '" height="' + h.toFixed(1) + '" fill="' + TAG_COLOR.motion + '" opacity="0.85"/>';
+    }
+  }
+  for (const m of lineMults) {
+    const y = yOfMult(m);
+    g += '<line x1="' + TL_PL + '" x2="' + (TL_PL + plotW) + '" y1="' + y.toFixed(1) + '" y2="' + y.toFixed(1) + '" stroke="#ffd54a" stroke-opacity="0.55" stroke-width="1" stroke-dasharray="5 4"/>';
+  }
+
+  const ranges = [];
+  for (const e of tl.data.evs) {
+    if (e.type !== tag) continue;
+    const s = e.startMs / 1000;
+    const en = (e.endMs != null ? e.endMs : e.startMs) / 1000;
+    if (en < t0 || s > t1) continue;
+    ranges.push([s, Math.max(en, s + 0.5)]);
+  }
+  ranges.sort((a, b) => a[0] - b[0]);
+
+  let line = "";
+  if (ranges.length) {
+    const pts = [];
+    let ri = 0;
+    for (const r of tl.data.secs) {
+      if (r.peakApplied == null) continue;
+      const s = r.sec;
+      if (s < t0 || s > t1) continue;
+      while (ri < ranges.length && ranges[ri][1] < s) ri++;
+      let inside = false;
+      for (let k = ri; k < ranges.length && ranges[k][0] <= s + 1; k++) {
+        if (s + 1 >= ranges[k][0] && s <= ranges[k][1]) { inside = true; break; }
+      }
+      if (inside) pts.push([X(s + 0.5), Y(r.peakApplied), s]);
+    }
+    if (pts.length) {
+      let d = "";
+      let prevSec = null;
+      for (const p of pts) {
+        if (prevSec == null || p[2] - prevSec > 1.5) d += "M" + p[0].toFixed(1) + " " + p[1].toFixed(1);
+        else d += "L" + p[0].toFixed(1) + " " + p[1].toFixed(1);
+        prevSec = p[2];
+      }
+      line = '<path d="' + d + '" fill="none" stroke="' + TAG_COLOR[tag] + '" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" opacity="0.95"/>';
+    } else {
+      const bins = new Array(NB).fill(null);
+      for (const e of tl.data.evs) {
+        if (e.type !== tag) continue;
+        const s = e.startMs / 1000;
+        if (s < t0 || s > t1) continue;
+        const db = dbOf(e);
+        if (db == null) continue;
+        const i = Math.min(NB - 1, Math.floor((s - t0) / binSec));
+        if (bins[i] == null || db > bins[i]) bins[i] = db;
+      }
+      let d = "";
+      let started = false;
+      for (let i = 0; i < NB; i++) {
+        if (bins[i] == null) { started = false; continue; }
+        d += (started ? "L" : "M") + (TL_PL + (i + 0.5) * bw).toFixed(1) + " " + Y(bins[i]).toFixed(1);
+        started = true;
+      }
+      if (d) line = '<path d="' + d + '" fill="none" stroke="' + TAG_COLOR[tag] + '" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" opacity="0.95"/>';
+    }
+  }
+  g += line;
+  if (!ranges.length) {
+    g += '<text x="' + (TL_PL + 8) + '" y="' + (TL_PT + plotH / 2 + 30) + '" font-size="12" fill="#aebbc9">この種類の音はありません</text>';
+  }
+
+  for (const m of lineMults) {
+    const label = m === 1 ? "あ〜の音量" : "あ〜の" + m + "倍";
+    g += '<text x="' + (TL_PL + 4) + '" y="' + (yOfMult(m) - 3).toFixed(1) + '" font-size="9" fill="' +
+      (m === 1 ? "#f3e7c9" : "#e8e4d8") + '">' + label + "</text>";
+  }
+  g += '<text x="' + (TL_PL + 4) + '" y="' + (TL_PT + plotH - 4) + '" font-size="9" fill="#aebbc9">室内の環境音</text>';
+  g += '<text x="' + (TL_PL + 4) + '" y="' + (TL_PT + 12) + '" font-size="11" fill="' + TAG_COLOR[tag] + '">' +
+    esc(TAG_NAME[tag]) + "（線）</text>";
+  return g;
+}
+
+function motionInfoText() {
+  return "体動：各棒に含まれる1秒平均の最大値";
+}
+
+function motionGraphSvg(t0, t1) {
+  const NB = TL_BINS;
+  const binSec = tl.winLen / NB;
+  const plotW = TL_W - TL_PL - TL_PR;
+  const plotH = TL_H - TL_PT - TL_PB;
+  const bw = plotW / NB;
+  const thresh = tl.motionThresh != null ? tl.motionThresh : 0.05;
+  const ceil = tl.motionCeil || 0.3;
+  const bins = new Array(NB).fill(null);
+  let clipped = false;
+  for (const r of tl.data.secs) {
+    if (r.motion == null) continue;
+    const v = r.motion;
+    if (v < thresh) continue;
+    const s = r.sec;
+    if (s < t0 || s > t1) continue;
+    if (v > ceil) clipped = true;
+    const i = Math.min(NB - 1, Math.floor((s - t0) / binSec));
+    if (bins[i] == null || v > bins[i]) bins[i] = v;
+  }
+  let g = '<rect x="' + TL_PL + '" y="' + TL_PT + '" width="' + plotW + '" height="' + plotH + '" fill="none" stroke="#2a3643"/>';
+  let any = false;
+  for (let i = 0; i < NB; i++) {
+    const v = bins[i];
+    if (v == null) continue;
+    any = true;
+    const h = Math.max(2, Math.min(plotH, v / ceil * plotH));
+    g += '<rect x="' + (TL_PL + i * bw + 0.5).toFixed(1) + '" y="' + (TL_PT + plotH - h).toFixed(1) +
+      '" width="' + Math.max(1, bw - 1).toFixed(1) + '" height="' + h.toFixed(1) + '" fill="' + TAG_COLOR.motion + '"/>';
+  }
+  if (thresh > 0 && thresh < ceil) {
+    const ty = TL_PT + plotH - thresh / ceil * plotH;
+    g += '<line x1="' + TL_PL + '" x2="' + (TL_PL + plotW) + '" y1="' + ty.toFixed(1) + '" y2="' + ty.toFixed(1) +
+      '" stroke="#aebbc9" stroke-width="1" stroke-dasharray="5 4" opacity="0.7"/>';
+  }
+  g += '<text x="' + (TL_PL + 2) + '" y="' + (TL_PT + 12) + '" font-size="10" fill="#aebbc9">' + fmtSliderVal(ceil) + "</text>";
+  g += '<text x="' + (TL_PL + 2) + '" y="' + (TL_PT + plotH - 3) + '" font-size="10" fill="#aebbc9">0</text>';
+  g += '<text x="' + (TL_PL + 30) + '" y="' + (TL_PT + 12) + '" font-size="11" fill="' + TAG_COLOR.motion + '">体動 g（棒内の最大値）</text>';
+  if (clipped) {
+    g += '<text x="' + (TL_PL + 30) + '" y="' + (TL_PT + 26) + '" font-size="11" fill="' + TAG_COLOR.motion + '">上端を超えた値あり</text>';
+  }
+  if (!any) {
+    g += '<text x="' + (TL_PL + 8) + '" y="' + (TL_PT + plotH / 2 + 30) + '" font-size="12" fill="#aebbc9">しきい値以上の体動がありません</text>';
+  }
+  return g;
+}
+
+function fmtSliderVal(v) {
+  return String(Math.round(v * 100) / 100);
+}
+
+function renderTimeline() {
+  if (!tl.data) return;
+  clampTl();
+  renderTagBar();
+  const { secs } = tl.data;
+  const box = $("d-chart");
+
+  $("tl-pos").max = String(Math.round(tl.total - tl.winLen));
+  $("tl-pos").value = String(Math.round(tl.winStart));
+  $("tl-cur").min = String(Math.round(tl.winStart));
+  $("tl-cur").max = String(Math.round(tl.winStart + tl.winLen));
+  $("tl-cur").value = String(Math.round(tl.cursor));
+
+  if (!secs.length) {
+    box.innerHTML = '<p class="muted">データがありません。</p>';
+    $("tl-info").textContent = "";
+    $("tl-cur-text").textContent = "";
+    return;
+  }
+
+  const t0 = tl.winStart, t1 = tl.winStart + tl.winLen;
+  const X = (t) => TL_PL + (t - t0) / tl.winLen * (TL_W - TL_PL - TL_PR);
+  const cursorLine = '<line x1="' + X(tl.cursor).toFixed(1) + '" x2="' + X(tl.cursor).toFixed(1) + '" y1="' + TL_PT + '" y2="' + (TL_H - TL_PB) + '" stroke="#ffd54a" stroke-width="2"/>';
+  const axisText =
+    '<text x="' + TL_PL + '" y="' + (TL_H - 6) + '" font-size="10" fill="#aebbc9">' + fmtTime(t0 * 1000) + "</text>" +
+    '<text x="' + (TL_W - TL_PR) + '" y="' + (TL_H - 6) + '" font-size="10" fill="#aebbc9" text-anchor="end">' + fmtTime(t1 * 1000) + "</text>";
+
+  const tag = selectedTag();
+  const isMotion = !!tl.tags.motion;
+  const lineMode = !isMotion && tl.winLen <= 600;
+  box.innerHTML = '<svg viewBox="0 0 ' + TL_W + " " + TL_H + '" xmlns="http://www.w3.org/2000/svg">' +
+    (isMotion ? motionGraphSvg(t0, t1) : (lineMode ? tagLineSvg(tag, t0, t1) : tagGraphSvg(tag, t0, t1))) + cursorLine + axisText + "</svg>";
+
+  $("tl-legend").innerHTML = isMotion
+    ? ""
+    : '<span><i style="background:' + TAG_COLOR[tag] + '"></i>' + esc(TAG_NAME[tag]) + "</span>" +
+      '<span><i style="background:' + SAVED_BAR_COLOR + '"></i>保存した音声</span>' +
+      '<span><i style="background:' + TAG_COLOR.motion + '"></i>体動（上から）</span>';
+  const adj = $("tl-motion-adj");
+  if (adj) {
+    adj.hidden = false;
+    const th = tl.motionThresh != null ? tl.motionThresh : 0.05;
+    $("tm-thresh").value = String(th);
+    $("tm-thresh-val").textContent = fmtSliderVal(th) + " g";
+  }
+  const listenBtn = $("tl-listen");
+  if (isMotion) {
+    listenBtn.disabled = true;
+    listenBtn.textContent = "タイムラインの音を聴く";
+    $("tl-msg").textContent = "体動そのものに音声はありません。音を聴くには音声タグを選んでください。";
+  } else {
+    listenBtn.disabled = false;
+    listenBtn.textContent = lineMode ? "タイムラインの音を聴く" : "タイムラインの音を聴く（棒1本分）";
+    if (($("tl-msg").textContent || "").indexOf("体動そのものに音声は") === 0) $("tl-msg").textContent = "";
+  }
+  $("tl-info").textContent = "表示：" + fmtTime(t0 * 1000) + " 〜 " + fmtTime(t1 * 1000) +
+    "（記録の終了 " + fmtTime(tl.total * 1000) + "）　" + (isMotion ? motionInfoText() : "下端＝室内の環境音、高さ＝「あ〜」の何倍か");
+  $("tl-cur-text").textContent = "黄色い線：記録から " + fmtTime(tl.cursor * 1000) +
+    "（" + fmtClock(tl.data.sess.startedAt + tl.cursor * 1000) + "）";
+}
+
+let tlDrag = null;
+function tlPointerDown(e) {
+  if (!tl.data || !tl.data.secs.length) return;
+  const box = $("d-chart");
+  const rect = box.getBoundingClientRect();
+  const k = rect.width / TL_W;
+  const x = e.clientX - rect.left;
+  const plotW = TL_W - TL_PL - TL_PR;
+  const cx = (TL_PL + (tl.cursor - tl.winStart) / tl.winLen * plotW) * k;
+  tlDrag = {
+    mode: Math.abs(x - cx) <= 24 ? "cursor" : "window",
+    lastX: e.clientX,
+    pxSec: (plotW * k) / tl.winLen
+  };
+  try { box.setPointerCapture(e.pointerId); } catch (_) {}
+}
+
+function tlPointerMove(e) {
+  if (!tlDrag) return;
+  const dx = e.clientX - tlDrag.lastX;
+  tlDrag.lastX = e.clientX;
+  if (tlDrag.mode === "cursor") tl.cursor += dx / tlDrag.pxSec;
+  else tl.winStart += dx / tlDrag.pxSec;
+  renderTimeline();
+}
+
+function tlPointerEnd() { tlDrag = null; }
+
+/* ===== 非圧縮PCM16 WAV 読み書き ===== */
 function wavBytes(pcm, sr) {
-  const n = pcm.length, buf = new ArrayBuffer(44 + n * 2), dv = new DataView(buf);
+  const n = pcm.length;
+  const buf = new ArrayBuffer(44 + n * 2);
+  const dv = new DataView(buf);
   const wr = (o, s) => { for (let i = 0; i < s.length; i++) dv.setUint8(o + i, s.charCodeAt(i)); };
-  wr(0, "RIFF"); dv.setUint32(4, 36 + n * 2, true); wr(8, "WAVE"); wr(12, "fmt "); dv.setUint32(16, 16, true); dv.setUint16(20, 1, true); dv.setUint16(22, 1, true);
-  dv.setUint32(24, sr, true); dv.setUint32(28, sr * 2, true); dv.setUint16(32, 2, true); dv.setUint16(34, 16, true); wr(36, "data"); dv.setUint32(40, n * 2, true);
+  wr(0, "RIFF"); dv.setUint32(4, 36 + n * 2, true); wr(8, "WAVE");
+  wr(12, "fmt "); dv.setUint32(16, 16, true); dv.setUint16(20, 1, true); dv.setUint16(22, 1, true);
+  dv.setUint32(24, sr, true); dv.setUint32(28, sr * 2, true); dv.setUint16(32, 2, true); dv.setUint16(34, 16, true);
+  wr(36, "data"); dv.setUint32(40, n * 2, true);
   for (let i = 0; i < n; i++) dv.setInt16(44 + i * 2, pcm[i], true);
   return new Uint8Array(buf);
 }
-function wavBlob(pcm, sr) { return new Blob([wavBytes(pcm, sr)], { type: "audio/wav" }); }
+
+function wavBlob(pcm, sr) {
+  return new Blob([wavBytes(pcm, sr)], { type: "audio/wav" });
+}
+
+function clipPcm(clip) {
+  const u8 = clip.data instanceof Uint8Array ? clip.data : new Uint8Array(clip.data.buffer || clip.data);
+  const dv = new DataView(u8.buffer, u8.byteOffset, u8.byteLength);
+  let p = 12;
+  while (p + 8 <= u8.length) {
+    const id = String.fromCharCode(u8[p], u8[p + 1], u8[p + 2], u8[p + 3]);
+    const sz = dv.getUint32(p + 4, true);
+    if (id === "data") {
+      const start = p + 8;
+      const samples = Math.floor(Math.min(sz, u8.length - start) / 2);
+      const out = new Int16Array(samples);
+      for (let i = 0; i < samples; i++) out[i] = dv.getInt16(start + i * 2, true);
+      return out;
+    }
+    p += 8 + sz + (sz & 1);
+  }
+  return new Int16Array(0);
+}
+
+async function buildRangePcm(fromMs, toMs, list) {
+  const n = Math.max(0, Math.round((toMs - fromMs) / 1000 * SR));
+  const acc = new Int32Array(n);
+  for (const e of list) {
+    if (!e.clipId) continue;
+    const clip = await DB.get("clips", e.clipId);
+    if (!clip) continue;
+    const pcm = clipPcm(clip);
+    const base = Math.round((clip.startMs - fromMs) / 1000 * SR);
+    for (let i = 0; i < pcm.length; i++) {
+      const j = base + i;
+      if (j >= 0 && j < n) acc[j] += pcm[i];
+    }
+  }
+  const out = new Int16Array(n);
+  for (let i = 0; i < n; i++) out[i] = clamp(acc[i], -32768, 32767);
+  return out;
+}
+
+async function listenAtCursor() {
+  if (tl.tags && tl.tags.motion) { $("tl-msg").textContent = "体動に音声はありません。"; return; }
+  const msg = $("tl-msg"), box = $("tl-audio");
+  box.innerHTML = "";
+  PLAY.list = [];
+  setSaveEnabled(false);
+  revokeUrls();
+  if (!tl.data) return;
+
+  const tag = selectedTag();
+  const binSec = tl.winLen / TL_BINS;
+  const idx = clamp(Math.floor((tl.cursor - tl.winStart) / binSec), 0, TL_BINS - 1);
+  const binStart = tl.winStart + idx * binSec;
+  const binEnd = Math.min(tl.winStart + tl.winLen, binStart + binSec);
+
+  const inBin = tl.data.evs
+    .filter((e) => e.type === tag && e.startMs / 1000 >= binStart && e.startMs / 1000 < binEnd)
+    .sort((a, b) => a.startMs - b.startMs);
+  if (!inBin.length) {
+    msg.textContent = "音なし（この棒には" + TAG_NAME[tag] + "がありません）";
+    return;
+  }
+  const list = inBin.filter((e) => e.clipId);
+  if (!list.length) {
+    msg.textContent = "この棒の音声データはありません（削除済み、または音声が保存されていません）。";
+    return;
+  }
+
+  msg.textContent = "読み込み中…";
+  try {
+    const pcm = await buildRangePcm(binStart * 1000, binEnd * 1000, list);
+    if (!pcm.length) { msg.textContent = "再生できる音声がありません。"; return; }
+    const url = URL.createObjectURL(wavBlob(pcm, SR));
+    blobUrls.push(url);
+    const au = document.createElement("audio");
+    au.controls = true;
+    au.preload = "auto";
+    au.src = url;
+    box.appendChild(au);
+    au.play().catch(() => {});
+
+    PLAY.list = list;
+    const unsaved = list.filter((e) => !e.saved).length;
+    setSaveEnabled(unsaved > 0);
+    msg.textContent = TAG_NAME[tag] + "の棒1本分（" + round1(binSec) + "秒）を再生します。音声 " + list.length + "件。" +
+      (unsaved ? "残したい場合は「この音声を保存する」を押してください。" : "この棒の音声はすべて保存済みです。");
+  } catch (err) {
+    console.error(err);
+    msg.textContent = "読み込めませんでした。もう一度押してください。";
+  }
+}
+
+async function savePlayedAudio() {
+  const list = PLAY.list.filter((e) => !e.saved);
+  if (!list.length) return;
+  setSaveEnabled(false);
+  try {
+    for (const e of list) {
+      e.saved = true;
+      await DB.put("events", e);
+      if (e.clipId) {
+        const clip = await DB.get("clips", e.clipId);
+        if (clip) {
+          clip.saved = true;
+          await DB.put("clips", clip);
+        }
+      }
+    }
+    $("tl-msg").textContent = "この棒の音声を保存しました（" + list.length + "件）。白い棒で表示され、日付の音声削除の対象から外れます。";
+    renderTimeline();
+  } catch (e) {
+    console.error(e);
+    showError("音声を保存できませんでした: " + e.message);
+    setSaveEnabled(true);
+  }
+}
+
+/* ===== ZIP（無圧縮） ===== */
+const CRC_TABLE = (() => {
+  const t = new Uint32Array(256);
+  for (let n = 0; n < 256; n++) {
+    let c = n;
+    for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1;
+    t[n] = c >>> 0;
+  }
+  return t;
+})();
+
+function crc32(u8) {
+  let c = 0xFFFFFFFF;
+  for (let i = 0; i < u8.length; i++) c = CRC_TABLE[(c ^ u8[i]) & 255] ^ (c >>> 8);
+  return (c ^ 0xFFFFFFFF) >>> 0;
+}
+
+class ZipWriter {
+  constructor() {
+    const d = new Date();
+    this.enc = new TextEncoder();
+    this.dosTime = (d.getHours() << 11) | (d.getMinutes() << 5) | (d.getSeconds() >> 1);
+    this.dosDate = ((d.getFullYear() - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate();
+    this.parts = [];
+    this.central = [];
+    this.offset = 0;
+    this.count = 0;
+  }
+
+  add(name, data) {
+    const nameBytes = this.enc.encode(name);
+    const crc = crc32(data);
+    const lh = new Uint8Array(30 + nameBytes.length);
+    const lv = new DataView(lh.buffer);
+    lv.setUint32(0, 0x04034b50, true);
+    lv.setUint16(4, 20, true);
+    lv.setUint16(6, 0x0800, true);
+    lv.setUint16(8, 0, true);
+    lv.setUint16(10, this.dosTime, true);
+    lv.setUint16(12, this.dosDate, true);
+    lv.setUint32(14, crc, true);
+    lv.setUint32(18, data.length, true);
+    lv.setUint32(22, data.length, true);
+    lv.setUint16(26, nameBytes.length, true);
+    lv.setUint16(28, 0, true);
+    lh.set(nameBytes, 30);
+
+    const ch = new Uint8Array(46 + nameBytes.length);
+    const cv = new DataView(ch.buffer);
+    cv.setUint32(0, 0x02014b50, true);
+    cv.setUint16(4, 20, true);
+    cv.setUint16(6, 20, true);
+    cv.setUint16(8, 0x0800, true);
+    cv.setUint16(10, 0, true);
+    cv.setUint16(12, this.dosTime, true);
+    cv.setUint16(14, this.dosDate, true);
+    cv.setUint32(16, crc, true);
+    cv.setUint32(20, data.length, true);
+    cv.setUint32(24, data.length, true);
+    cv.setUint16(28, nameBytes.length, true);
+    cv.setUint32(42, this.offset, true);
+    ch.set(nameBytes, 46);
+
+    this.parts.push(lh, new Blob([data]));
+    this.central.push(ch);
+    this.offset += lh.length + data.length;
+    this.count++;
+  }
+
+  finish() {
+    let cdSize = 0;
+    for (const c of this.central) cdSize += c.length;
+    const end = new Uint8Array(22);
+    const ev = new DataView(end.buffer);
+    ev.setUint32(0, 0x06054b50, true);
+    ev.setUint16(8, this.count, true);
+    ev.setUint16(10, this.count, true);
+    ev.setUint32(12, cdSize, true);
+    ev.setUint32(16, this.offset, true);
+    return new Blob([...this.parts, ...this.central, end], { type: "application/zip" });
+  }
+}
+
+/* ===== 共有（ZIP作成） ===== */
+function shMsg(text, isErr) {
+  const b = $("sh-msg");
+  b.hidden = !text;
+  b.textContent = text || "";
+  b.className = isErr ? "err" : "warn";
+}
+
+function updateShareButtons() {
+  const show = !!SH.zipDone && !!SH.sid;
+  $("sh-del-tl-card").hidden = !show;
+  $("sh-del-tl").disabled = S.saving || !show;
+}
 
 async function openShare() {
-  if (!S.detailSid) return; SH.sid = S.detailSid; SH.zipDone = false;
-  $("sh-addr").textContent = (S.patient && S.patient.logShareEmail) || "（未記入）";
-  $("sh-msg").hidden = true; $("sh-del-tl-card").hidden = true; showPage("share");
-}
-async function startShare() {
-  if (!SH.sid) return;
-  const evs = await DB.byIndex("events", "sid", SH.sid);
-  if (evs.some((e) => e.type === "speech" && e.clipId)) { $("rv-dialog").hidden = false; return; }
-  await makeZip();
-}
-async function makeZip() {
-  if (S.saving) return; S.saving = true; setButtons();
+  if (!S.detailSid) return;
+  SH.sid = S.detailSid;
+  SH.zipDone = false;
   try {
-    const sess = await DB.get("sessions", SH.sid), evs = (await DB.byIndex("events", "sid", SH.sid)).filter((e) => (e.type === "snore" || e.type === "speech") && e.clipId);
-    const enc = new TextEncoder(), zw = new (class {
-      constructor() { this.parts = []; this.central = []; this.offset = 0; this.count = 0; }
-      add(name, data) {
-        const nb = enc.encode(name), lh = new Uint8Array(30 + nb.length), lv = new DataView(lh.buffer);
-        lv.setUint32(0, 0x04034b50, true); lv.setUint16(4, 20, true); lv.setUint16(26, nb.length, true); lv.setUint32(18, data.length, true); lv.setUint32(22, data.length, true); lh.set(nb, 30);
-        const ch = new Uint8Array(46 + nb.length), cv = new DataView(ch.buffer);
-        cv.setUint32(0, 0x02014b50, true); cv.setUint16(4, 20, true); cv.setUint16(6, 20, true); cv.setUint32(20, data.length, true); cv.setUint32(24, data.length, true); cv.setUint16(28, nb.length, true); cv.setUint32(42, this.offset, true); ch.set(nb, 46);
-        this.parts.push(lh, new Blob([data])); this.central.push(ch); this.offset += lh.length + data.length; this.count++;
-      }
-      finish() {
-        let cs = 0; for (const c of this.central) cs += c.length; const end = new Uint8Array(22), ev = new DataView(end.buffer);
-        ev.setUint32(0, 0x06054b50, true); ev.setUint16(8, this.count, true); ev.setUint16(10, this.count, true); ev.setUint32(12, cs, true); ev.setUint32(16, this.offset, true);
-        return new Blob([...this.parts, ...this.central, end], { type: "application/zip" });
-      }
-    })();
-    for (const e of evs) {
-      const clip = await DB.get("clips", e.clipId); if (!clip) continue;
-      zw.add((e.type === "snore" ? "snore_" : "voice_") + e.id.slice(0, 6) + ".wav", wavBytes(decodeImaWav(clip.data, clip.samples), clip.sr));
-    }
-    const blob = zw.finish(), a = document.createElement("a"), url = URL.createObjectURL(blob);
-    a.href = url; a.download = zipName(sess); document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 60000);
-    SH.zipDone = true; $("sh-del-tl-card").hidden = false; $("sh-del-tl").disabled = false;
-    $("sh-msg").hidden = false; $("sh-msg").textContent = "ダウンロードを開始しました：" + a.download;
-  } finally { S.saving = false; setButtons(); }
+    const legacy = await DB.get("sessions", SH.sid);
+    if (legacy && legacy.sharedAt) SH.zipDone = true;
+  } catch (e) { console.warn(e); }
+  $("sh-addr").textContent = (S.patient && S.patient.logShareEmail) || "（未記入）";
+  shMsg("", false);
+  updateShareButtons();
+  showPage("share");
 }
 
-const on = (id, ev, fn) => $(id).addEventListener(ev, fn);
-const toggleBox = (b, x) => on(b, "click", () => { $(x).hidden = !$(x).hidden; });
-toggleBox("usage-btn", "usage-box"); toggleBox("rec-usage-btn", "rec-usage-box"); toggleBox("prep-usage-btn", "prep-usage-box");
-toggleBox("cal-usage-btn", "cal-usage-box"); toggleBox("det-usage-btn", "det-usage-box"); toggleBox("sh-usage", "sh-usage-box");
-on("errbox", "click", clearError); on("cam-btn", "click", startCamera); on("cam-stop", "click", stopCamera);
-on("qr-file-btn", "click", () => $("qr-file").click()); on("qr-file", "change", (e) => { readQrFile(e.target.files[0]); e.target.value = ""; });
-on("back-rec-start", "click", goRecord); on("back-rec-confirm", "click", goRecord);
-on("cf-ok", "click", async () => { if (S_PATIENT_PENDING.value) { await savePatient(S_PATIENT_PENDING.value); S_PATIENT_PENDING.value = null; goRecord(); } });
-on("cf-ng", "click", () => { S_PATIENT_PENDING.value = null; showPage("start"); });
-on("upd-reload", "click", () => { updateByUser = true; applyLatest(); });
-on("rec-back", "click", () => { if (!isBusy()) { showPage("start"); updateBackButtons(); } });
+async function shareScope() {
+  const evs = (await DB.byIndex("events", "sid", SH.sid)).sort((a, b) => a.startMs - b.startMs);
+  return {
+    evs,
+    snores: evs.filter((e) => e.type === "snore" && e.clipId),
+    speeches: evs.filter((e) => e.type === "speech" && e.clipId)
+  };
+}
+
+let ZIP_STEP = "";
+function zipErrText(e) {
+  return "ZIPを作れませんでした: " + (e && e.name ? e.name + " / " : "") + (e && e.message ? e.message : e) +
+    (ZIP_STEP ? "（失敗した所：" + ZIP_STEP + "）" : "");
+}
+
+async function startShare() {
+  ZIP_STEP = "対象の判定";
+  if (!SH.sid) return;
+  shMsg("", false);
+  try {
+    const sc = await shareScope();
+    if (!sc.snores.length && !sc.speeches.length) {
+      shMsg("保存する音声がありません。", true);
+      return;
+    }
+    if (sc.speeches.length) {
+      $("rv-dialog").hidden = false;
+      return;
+    }
+    await makeZip();
+  } catch (e) {
+    console.error(e);
+    shMsg(zipErrText(e), true);
+  }
+}
+
+function createZipProgress() {
+  const box = document.createElement("div");
+  box.className = "zip-progress";
+  box.setAttribute("role", "status");
+  box.setAttribute("aria-live", "polite");
+  box.innerHTML =
+    '<p class="zip-progress-title">ZIPを作成中</p>' +
+    '<div class="zip-bar"><i></i></div>' +
+    '<p class="zip-progress-text"></p>';
+  document.body.appendChild(box);
+  const text = box.querySelector(".zip-progress-text");
+  const bar = box.querySelector(".zip-bar i");
+  return {
+    set(message, percent) {
+      text.textContent = message;
+      if (percent != null) bar.style.width = clamp(percent, 0, 100).toFixed(1) + "%";
+    },
+    remove() { box.remove(); }
+  };
+}
+
+function yieldToScreen() {
+  return new Promise((resolve) => setTimeout(resolve, 0));
+}
+
+function buildAnalyzerDocs(sess, secRows, added, refBytes) {
+  const startedISO = isoOf(sess.startedAt);
+  const patient = { clinic: "", chartNo: "", name: "", ...((sess.patient && typeof sess.patient === "object") ? sess.patient : {}) };
+  const lastSec = secRows.length ? secRows[secRows.length - 1].sec : 0;
+  const durationSec = sess.endedAt ? Math.max(0, (sess.endedAt - sess.startedAt) / 1000) : lastSec;
+
+  const manifest = {
+    app: "SomnoLog", schema: SCHEMA_VERSION, sessionId: sess.id, startedAt: startedISO,
+    exportedAt: new Date().toISOString()
+  };
+  if (refBytes) manifest.referenceAudio = "reference.wav";
+
+  const metadata = {
+    sessionId: sess.id, startedAt: startedISO,
+    endedAt: sess.endedAt ? isoOf(sess.endedAt) : null,
+    durationSec, patient,
+    baselineDb: sess.base == null ? null : sess.base + 72,
+    counts: sess.counts || {}
+  };
+
+  const timeline = {
+    session: { startedAt: startedISO, patient },
+    timeSeriesLogs: secRows.map((r) => ({
+      sec: r.sec, elapsedMs: Math.round(r.sec * 1000),
+      timestamp: new Date(sess.startedAt + Math.round(r.sec * 1000)).toISOString(),
+      db: r.dbApplied == null ? null : r.dbApplied + 72,
+      motionG: r.motion, motionMaxG: r.motion
+    }))
+  };
+
+  const catOf = (t) => t === "snore" ? "snore" : t === "speech" ? "talk" : "unknown";
+  const markers = {
+    clips: added.map(({ e, nm, clipSec }) => ({
+      fileName: nm, audioFile: nm,
+      startMs: e.startMs, elapsedMs: e.startMs, startSec: e.startMs / 1000,
+      durationSec: e.endMs != null ? (e.endMs - e.startMs) / 1000
+        : (e.durMs != null ? e.durMs / 1000 : clipSec),
+      category: catOf(e.type),
+      label: TAG_NAME[e.type] || e.type, displayCategory: TAG_NAME[e.type] || e.type,
+      peakDb: e.peakAppliedDb == null ? null : e.peakAppliedDb + 72,
+      meanDb: e.meanAppliedDb == null ? null : e.meanAppliedDb + 72,
+      motionMaxG: null
+    }))
+  };
+
+  return { manifest, metadata, timeline, markers };
+}
+
+async function makeZip() {
+  if (S.saving) return;
+  S.saving = true;
+  setButtons();
+
+  const buttonIds = ["sh-all", "sh-back", "sh-copy", "sh-pick", "sh-del-tl", "rv-open", "rv-save-direct", "rv-close", "tl-go-share"];
+  const buttonStates = buttonIds.map((id) => {
+    const button = $(id);
+    const wasDisabled = button ? button.disabled : false;
+    if (button) button.disabled = true;
+    return { button, wasDisabled };
+  });
+
+  const progress = createZipProgress();
+  shMsg("ZIPを作っています…", false);
+
+  try {
+    progress.set("記録を読み込んでいます…", 0);
+    await yieldToScreen();
+
+    ZIP_STEP = "記録の読み込み";
+    const sess = await DB.get("sessions", SH.sid);
+    if (!sess) throw new Error("記録が見つかりませんでした。");
+
+    ZIP_STEP = "対象の抽出";
+    const sc = await shareScope();
+    const items = sc.snores.concat(sc.speeches).sort((a, b) => a.startMs - b.startMs);
+    const total = items.length;
+
+    const zw = new ZipWriter();
+    const refBytes = await loadRefAudioBytes();
+    let audioCount = 0;
+    let missing = 0;
+    const added = [];
+
+    progress.set(
+      total
+        ? "音声を処理しています：0 / " + total + "件（0%）"
+        : "対象の音声はありません。記録情報をまとめています…",
+      0
+    );
+    await yieldToScreen();
+
+    ZIP_STEP = "音声の処理";
+    for (let i = 0; i < total; i++) {
+      const e = items[i];
+      const clip = await DB.get("clips", e.clipId);
+
+      if (!clip) {
+        missing++;
+      } else {
+        const pcm = clipPcm(clip);
+        const nm =
+          (e.type === "snore" ? "snore_" : "voice_") +
+          fmtTime(e.startMs).replace(/:/g, "-") +
+          "_" + e.id.slice(0, 4) + ".wav";
+        zw.add(nm, wavBytes(pcm, clip.sr));
+        added.push({ e, nm, clipSec: clip.sr ? pcm.length / clip.sr : null });
+        audioCount++;
+      }
+
+      const done = i + 1;
+      const percent = done / total * 100;
+      progress.set(
+        "音声を処理しています：" + done + " / " + total + "件（" + Math.floor(percent) + "%）" +
+        (missing ? "\n見つからない音声：" + missing + "件" : "") +
+        "\n画面を閉じずにお待ちください。",
+        percent
+      );
+      await yieldToScreen();
+    }
+
+    progress.set("音声の処理が終わりました。\n記録情報をまとめています…", 100);
+    await yieldToScreen();
+
+    const csv = ["type,startSec,durSec,peakDb,meanDb"].concat(
+      sc.evs.map((e) => [
+        e.type,
+        round1(e.startMs / 1000),
+        round1(e.durMs / 1000),
+        e.peakSourceDb,
+        e.meanSourceDb
+      ].join(","))
+    ).join("\n");
+    zw.add("events.csv", new TextEncoder().encode("\uFEFF" + csv));
+
+    const info = {
+      app: sess.app,
+      startedAt: isoOf(sess.startedAt),
+      endedAt: sess.endedAt ? isoOf(sess.endedAt) : null,
+      base: sess.base,
+      refDb: sess.refDb,
+      refEnvDb: sess.refEnvDb,
+      counts: sess.counts,
+      patient: sess.patient,
+      audioFiles: audioCount,
+      missingAudio: missing
+    };
+    if (refBytes) info.referenceAudio = "reference.wav";
+    zw.add("info.json", new TextEncoder().encode(JSON.stringify(info, null, 2)));
+    if (refBytes) zw.add("reference.wav", refBytes);
+
+    ZIP_STEP = "分析用データの追加";
+    const secRows = (await DB.byIndex("secs", "sid", SH.sid)).sort((a, b) => a.sec - b.sec);
+    const docs = buildAnalyzerDocs(sess, secRows, added, refBytes);
+    zw.add("manifest.json", new TextEncoder().encode(JSON.stringify(docs.manifest, null, 1)));
+    zw.add("session_metadata.json", new TextEncoder().encode(JSON.stringify(docs.metadata, null, 1)));
+    zw.add("sensing_timeline.json", new TextEncoder().encode(JSON.stringify(docs.timeline)));
+    zw.add("event_markers.json", new TextEncoder().encode(JSON.stringify(docs.markers, null, 1)));
+
+    progress.set("ZIPを取りまとめています…\n画面を閉じずにお待ちください。", 100);
+    await yieldToScreen();
+
+    const blob = zw.finish();
+    SH.zipName = zipName(sess);
+
+    progress.set("ダウンロードを開始しています…", 100);
+    await yieldToScreen();
+
+    const a = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    a.href = url;
+    a.download = SH.zipName;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+
+    SH.zipDone = true;
+    try {
+      const sessRow = await DB.get("sessions", SH.sid);
+      if (sessRow) { sessRow.sharedAt = Date.now(); await DB.put("sessions", sessRow); }
+    } catch (e) { console.warn(e); }
+    shMsg(
+      "ダウンロードを開始しました：" + SH.zipName +
+      "（音声 " + audioCount + "件" +
+      (missing ? "／見つからない音声 " + missing + "件" : "") +
+      "）。ダウンロード先を確認してから、「②ファイルを選んで送信」を押してください。" +
+      "\n確認が済んだら、下の「このタイムラインから音声を削除」を押せます。",
+      false
+    );
+  } catch (e) {
+    console.error(e);
+    const message = zipErrText(e);
+    shMsg(message, true);
+    if (!$("rv-dialog").hidden) alert(message);
+  } finally {
+    progress.remove();
+    for (const state of buttonStates) {
+      if (state.button) state.button.disabled = state.wasDisabled;
+    }
+    S.saving = false;
+    setButtons();
+    updateShareButtons();
+  }
+}
+
+async function deleteTimelineAudioFromShare() {
+  if (!SH.zipDone || !SH.sid || S.saving) return;
+  const done = await deleteAudioForSession(SH.sid);
+  if (done) {
+    SH.zipDone = false;
+    updateShareButtons();
+    shMsg("このタイムラインの音声データを削除しました。簡易ログとグラフは残っています。保存した音声は残っています。", false);
+  }
+}
+
+async function sendPicked(file) {
+  if (!file) return;
+  try {
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({ files: [file], title: file.name });
+    } else {
+      shMsg("この端末では共有画面を開けません。ZIPをメールに添付して送ってください。", true);
+    }
+  } catch (e) {
+    if (e.name !== "AbortError") shMsg("共有できませんでした: " + e.message, true);
+  }
+}
+
+async function copyAddr() {
+  const a = (S.patient && S.patient.logShareEmail) || "";
+  if (!a) { shMsg("宛先が登録されていません。", true); return; }
+  try {
+    await navigator.clipboard.writeText(a);
+    shMsg("コピーしました：" + a, false);
+  } catch (e) {
+    shMsg("コピーできませんでした。宛先：" + a, true);
+  }
+}
+
+async function openSpeechInTimeline() {
+  $("rv-dialog").hidden = true;
+  if (!SH.sid) return;
+  try {
+    await openDetail(SH.sid);
+    if (S.detailSid !== SH.sid || !tl.data) return;
+    tl.tags = { snore: false, unknown: false, env: false, speech: true };
+    renderTimeline();
+    $("tl-msg").textContent = "人声を表示しています。聴くには「タイムラインの音を聴く」を押してください。残したい音は「この音声を保存する」を押せます。";
+  } catch (e) {
+    console.error(e);
+    showError("タイムラインを開けませんでした: " + e.message);
+  }
+}
+
+/* ===== ボタンの接続 ===== */
+const handleErr = (err) => {
+  console.error(err);
+  showError(err && err.message ? err.message : String(err));
+};
+const run = (fn) => (e) => {
+  try {
+    const r = fn(e);
+    if (r && r.catch) r.catch(handleErr);
+  } catch (err) {
+    handleErr(err);
+  }
+};
+const on = (id, ev, fn) => $(id).addEventListener(ev, run(fn));
+const toggleBox = (btnId, boxId) => on(btnId, "click", () => { $(boxId).hidden = !$(boxId).hidden; });
+
+toggleBox("usage-btn", "usage-box");
+toggleBox("rec-usage-btn", "rec-usage-box");
+toggleBox("prep-usage-btn", "prep-usage-box");
+toggleBox("cal-usage-btn", "cal-usage-box");
+toggleBox("det-usage-btn", "det-usage-box");
+toggleBox("sh-usage", "sh-usage-box");
+
+on("errbox", "click", () => clearError());
+on("cam-btn", "click", () => startCamera());
+on("cam-stop", "click", () => stopCamera());
+on("qr-file-btn", "click", () => $("qr-file").click());
+on("qr-file", "change", (e) => {
+  const f = e.target.files && e.target.files[0];
+  e.target.value = "";
+  return readQrFile(f);
+});
+on("back-rec-start", "click", () => goRecord());
+on("back-rec-confirm", "click", () => goRecord());
+
+on("cf-ok", "click", async () => {
+  const p = S_PATIENT_PENDING.value;
+  if (!p) {
+    showScanMsg("QRを読み直してください。");
+    showPage("start");
+    return;
+  }
+  await savePatient(p);
+  S_PATIENT_PENDING.value = null;
+  goRecord();
+});
+on("cf-ng", "click", () => {
+  S_PATIENT_PENDING.value = null;
+  showScanMsg("患者情報が違う場合は、診療所にご連絡ください。QRを読み直す場合は、カメラかQR画像を選んでください。");
+  showPage("start");
+});
+
+on("upd-reload", "click", async () => {
+  updateByUser = true;
+  renderUpdate();
+  await applyLatest();
+  renderUpdate();
+});
+
+on("rec-back", "click", () => {
+  if (isBusy()) return;
+  showPage("start");
+  updateBackButtons();
+});
+
 on("mic-btn", "click", async () => {
   if (S.ctx && motionOn) return;
-  let mp = null;
-  if (!motionOn && typeof DeviceMotionEvent !== "undefined" && typeof DeviceMotionEvent.requestPermission === "function") try { mp = DeviceMotionEvent.requestPermission(); } catch (e) {}
-  if (!S.ctx) {
-    const AC = window.AudioContext || window.webkitAudioContext, ctx = new AC();
-    try { await setupMic(ctx); $("mic-state").textContent = "許可済み"; showMicMsg(""); initVad(); } catch (e) { showMicMsg(micErrorMessage(e)); }
+  let motionPromise = null;
+  if (!motionOn && typeof DeviceMotionEvent !== "undefined" && typeof DeviceMotionEvent.requestPermission === "function") {
+    try { motionPromise = DeviceMotionEvent.requestPermission(); } catch (e) { motionPromise = null; }
   }
-  try { if (mp) await mp; if (!motionOn) { window.addEventListener("devicemotion", onMotion); motionOn = true; } } catch (e) {}
-  setButtons(); updateUI();
+  if (!S.ctx) {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) {
+      showMicMsg("この端末では音声処理を使えません。");
+      return;
+    }
+    const ctx = new AC();
+    try {
+      await setupMic(ctx);
+      $("mic-state").textContent = "許可済み";
+      showMicMsg("");
+    } catch (e) {
+      try { ctx.close(); } catch (_) {}
+      showMicMsg(micErrorMessage(e));
+    }
+  }
+  try {
+    if (motionPromise) {
+      const r = await motionPromise;
+      if (r !== "granted") throw new Error("モーションセンサーの許可が得られませんでした");
+    }
+    if (!motionOn) {
+      window.addEventListener("devicemotion", onMotion);
+      motionOn = true;
+    }
+  } catch (e) {
+    showMicMsg("モーションセンサーを使えませんでした: " + e.message);
+  }
+  setButtons();
+  updateUI();
 });
-on("gain", "input", (e) => { S.gainDb = Number(e.target.value); try { localStorage.setItem("somnolog-gain-db", String(S.gainDb)); } catch (err) {} updateUI(); });
-on("ref-btn", "click", startRefMeasure); on("ref-play-btn", "click", playRefAudio); on("tl-ref-play", "click", playRefAudio);
-on("prep-btn", "click", () => showPage("prep")); on("prep-back", "click", () => { setButtons(); showPage("record"); }); on("prep-back2", "click", () => { setButtons(); showPage("record"); });
-on("start-btn", "click", startRec);
+
+on("gain", "input", (e) => {
+  S.gainDb = Number(e.target.value);
+  try { localStorage.setItem("somnolog-gain-db", String(S.gainDb)); } catch (err) {}
+  updateUI();
+});
+
+on("ref-btn", "click", () => startRefMeasure());
+on("ref-play-btn", "click", async () => {
+  const ok = await playRefAudio();
+  if (!ok) showRefMsg("基準の音はまだ保存されていません。測り直すと保存されます。", true);
+});
+on("tl-ref-play", "click", async () => {
+  const ok = await playRefAudio();
+  if (!ok) $("tl-msg").textContent = "基準の音はまだ保存されていません。最初の画面で測り直すと保存されます。";
+});
+
+on("prep-btn", "click", () => showPage("prep"));
+on("prep-back", "click", () => { setButtons(); showPage("record"); });
+on("prep-back2", "click", () => { setButtons(); showPage("record"); });
+on("start-btn", "click", () => startRec());
 (() => {
-  const btn = $("stop-btn"); let iv = null, startAt = 0;
+  const btn = $("stop-btn");
+  const HOLD_MS = 2000, TICK_MS = 100;
+  let iv = null, startAt = 0, pressId = null, fired = false;
+  const paint = (p) => {
+    if (p > 0) {
+      const pct = Math.round(p * 100);
+      btn.style.background = "linear-gradient(90deg, #7a4b48 " + pct + "%, #3a2a2a " + pct + "%)";
+    } else btn.style.background = "";
+  };
+  const reset = () => {
+    if (iv) { clearInterval(iv); iv = null; }
+    pressId = null;
+    paint(0);
+    if (btn.textContent !== "停止") btn.textContent = "停止";
+  };
+  const tick = () => {
+    if (fired) return;
+    const p = (Date.now() - startAt) / HOLD_MS;
+    if (p >= 1) {
+      fired = true;
+      reset();
+      try { stopRec(); } catch (e) {}
+      return;
+    }
+    paint(p);
+  };
   btn.addEventListener("pointerdown", (e) => {
-    if (btn.disabled || iv) return; e.preventDefault(); startAt = Date.now(); btn.textContent = "そのまま押し続けると停止";
-    iv = setInterval(() => { if (Date.now() - startAt >= 2000) { clearInterval(iv); iv = null; btn.textContent = "停止"; stopRec(); } }, 100);
+    if (btn.disabled || iv) return;
+    e.preventDefault();
+    try { btn.setPointerCapture(e.pointerId); } catch (err) {}
+    pressId = e.pointerId;
+    fired = false;
+    startAt = Date.now();
+    btn.textContent = "そのまま押し続けると停止";
+    paint(0);
+    iv = setInterval(tick, TICK_MS);
   });
-  const end = () => { if (iv) { clearInterval(iv); iv = null; btn.textContent = "停止"; } };
-  btn.addEventListener("pointerup", end); btn.addEventListener("pointercancel", end);
+  const end = (e) => {
+    if (pressId === null || e.pointerId !== pressId) return;
+    if (!fired) reset(); else pressId = null;
+  };
+  btn.addEventListener("pointerup", end);
+  btn.addEventListener("pointercancel", end);
+  btn.addEventListener("contextmenu", (e) => e.preventDefault());
 })();
-on("btn-enter-black", "click", enterBlack);
+on("btn-enter-black", "click", () => enterBlack());
 (() => {
-  const el = $("black-screen"), bar = $("black-progress-bar"); let iv = null, startAt = 0;
+  const el = $("black-screen");
+  const HOLD_MS = 2000, TICK_MS = 100;
+  const hint = el.querySelector(".muted");
+  const bar = $("black-progress-bar");
+  let iv = null, startAt = 0, pressId = null, fired = false;
+  const paint = (p) => { if (bar) bar.style.width = Math.round(p * 100) + "%"; };
+  const reset = () => {
+    if (iv) { clearInterval(iv); iv = null; }
+    pressId = null;
+    paint(0);
+    if (hint) hint.textContent = "2秒長押しで戻る";
+  };
+  const tick = () => {
+    if (fired) return;
+    const p = (Date.now() - startAt) / HOLD_MS;
+    if (p >= 1) {
+      fired = true;
+      reset();
+      try { exitBlack(); } catch (e) {}
+      return;
+    }
+    paint(p);
+  };
   el.addEventListener("pointerdown", (e) => {
-    if (iv) return; e.preventDefault(); startAt = Date.now();
-    iv = setInterval(() => { const p = (Date.now() - startAt) / 2000; if (bar) bar.style.width = Math.min(100, Math.round(p * 100)) + "%"; if (p >= 1) { clearInterval(iv); iv = null; if (bar) bar.style.width = "0%"; exitBlack(); } }, 100);
+    if (iv) return;
+    e.preventDefault();
+    try { el.setPointerCapture(e.pointerId); } catch (err) {}
+    pressId = e.pointerId;
+    fired = false;
+    startAt = Date.now();
+    if (hint) hint.textContent = "そのまま押し続けて…";
+    paint(0);
+    iv = setInterval(tick, TICK_MS);
   });
-  const end = () => { if (iv) { clearInterval(iv); iv = null; if (bar) bar.style.width = "0%"; } };
-  el.addEventListener("pointerup", end); el.addEventListener("pointercancel", end);
+  const end = (e) => {
+    if (pressId === null || e.pointerId !== pressId) return;
+    if (!fired) reset(); else pressId = null;
+  };
+  el.addEventListener("pointerup", end);
+  el.addEventListener("pointercancel", end);
+  el.addEventListener("contextmenu", (e) => e.preventDefault());
 })();
-on("history-btn", "click", async () => { const now = new Date(); cal.year = now.getFullYear(); cal.month = now.getMonth() + 1; cal.selected = null; showPage("calendar"); await refreshCalendar(); });
-on("cal-back", "click", () => showPage("record")); on("cal-prev", "click", () => shiftMonth(-1)); on("cal-next", "click", () => shiftMonth(1));
-on("detail-back", "click", async () => { revokeUrls(); PLAY.list = []; tl.data = null; S.detailSid = null; showPage("calendar"); await refreshCalendar(); });
-on("tl-zoom", "change", (e) => { tl.zoomSec = Number(e.target.value); renderTimeline(); });
-on("tl-pos", "input", (e) => { tl.winStart = Number(e.target.value); renderTimeline(); });
-on("tl-cur", "input", (e) => { tl.cursor = Number(e.target.value); renderTimeline(); });
-on("tm-thresh", "input", (e) => { tl.motionThresh = Number(e.target.value); tl.motionCeil = Math.max(0.1, tl.motionThresh * 6); renderTimeline(); });
-on("tl-listen", "click", listenAtCursor); on("tl-save", "click", savePlayedAudio); on("tl-go-share", "click", openShare);
-on("tl-delete", "click", async () => { if (S.detailSid && confirm("この記録を削除しますか？")) { await deleteLegacySession(S.detailSid); await refreshCalendar(); showPage("calendar"); } });
-on("sh-all", "click", startShare); on("sh-copy", "click", () => { navigator.clipboard.writeText((S.patient && S.patient.logShareEmail) || ""); });
-on("sh-pick", "click", () => $("sh-file").click()); on("sh-file", "change", async (e) => { const f = e.target.files[0]; e.target.value = ""; if (f && navigator.canShare && navigator.canShare({ files: [f] })) await navigator.share({ files: [f], title: f.name }); });
-on("sh-back", "click", () => { showPage("record"); updateBackButtons(); });
-on("rv-open", "click", async () => { $("rv-dialog").hidden = true; await openDetail(SH.sid); tl.tags = { snore: false, unknown: false, env: false, speech: true }; renderTimeline(); });
-on("rv-save-direct", "click", () => { $("rv-dialog").hidden = true; makeZip(); });
+
+on("history-btn", "click", async () => {
+  const now = new Date();
+  cal.year = now.getFullYear();
+  cal.month = now.getMonth() + 1;
+  cal.selected = null;
+  cal.index = 0;
+  showPage("calendar");
+  await refreshCalendar();
+});
+
+on("cal-back", "click", () => showPage("record"));
+on("cal-prev", "click", () => shiftMonth(-1));
+on("cal-next", "click", () => shiftMonth(1));
+
+on("detail-back", "click", async () => {
+  revokeUrls();
+  PLAY.list = [];
+  $("tl-audio").innerHTML = "";
+  setSaveEnabled(false);
+  tl.data = null;
+  S.detailSid = null;
+  showPage("calendar");
+  await refreshCalendar();
+});
+
+on("tl-zoom", "change", (e) => {
+  if (!tl.data) return;
+  const z = Number(e.target.value);
+  tl.zoomSec = z;
+  const len = z > 0 ? Math.min(z, tl.total) : tl.total;
+  tl.winStart = tl.cursor - len / 2;
+  renderTimeline();
+});
+on("tl-pos", "input", (e) => {
+  tl.winStart = Number(e.target.value);
+  renderTimeline();
+});
+on("tl-cur", "input", (e) => {
+  tl.cursor = Number(e.target.value);
+  renderTimeline();
+});
+try {
+  const sg = localStorage.getItem("somnolog-gain-db");
+  if (sg != null) { S.gainDb = Math.max(-9, Math.min(18, Number(sg) || 0)); $("gain").value = S.gainDb; }
+} catch (e) {}
+try {
+  const sc = localStorage.getItem("somnolog-cal-db");
+  if (sc != null) S.calDb = Math.max(-12, Math.min(18, Number(sc) || 0));
+} catch (e) {}
+try {
+  const st2 = localStorage.getItem("somnolog-motion-thresh-g");
+  tl.motionThresh = st2 == null ? 0.05 : Number(st2);
+  tl.motionCeil = Math.max(0.1, tl.motionThresh * 6);
+} catch (e) { tl.motionThresh = 0.05; tl.motionCeil = 0.3; }
+on("tm-thresh", "input", (e) => {
+  tl.motionThresh = Number(e.target.value);
+  tl.motionCeil = Math.max(0.1, tl.motionThresh * 6);
+  try { localStorage.setItem("somnolog-motion-thresh-g", String(tl.motionThresh)); } catch (err) {}
+  renderTimeline();
+});
+on("tl-listen", "click", () => listenAtCursor());
+on("tl-delete", "click", async () => {
+  if (!S.detailSid) return;
+  if (!confirm("この記録を削除しますか？（音声も含めて全部消えます。元に戻せません）")) return;
+  const sid = S.detailSid;
+  try { await deleteSessionRecord(sid); } catch (e) { console.error(e); }
+  S.detailSid = null;
+  tl.data = null;
+  await refreshCalendar();
+  showPage("calendar");
+});
+on("tl-save", "click", () => savePlayedAudio());
+on("tl-go-share", "click", () => {
+  $("tl-audio").innerHTML = "";
+  PLAY.list = [];
+  setSaveEnabled(false);
+  openShare();
+});
+
+const chart = $("d-chart");
+chart.addEventListener("pointerdown", tlPointerDown);
+chart.addEventListener("pointermove", tlPointerMove);
+chart.addEventListener("pointerup", tlPointerEnd);
+chart.addEventListener("pointercancel", tlPointerEnd);
+
+on("sh-all", "click", () => startShare());
+on("sh-copy", "click", () => copyAddr());
+on("sh-pick", "click", () => $("sh-file").click());
+on("sh-file", "change", async (e) => {
+  const f = e.target.files && e.target.files[0];
+  e.target.value = "";
+  await sendPicked(f);
+});
+on("sh-del-tl", "click", async () => {
+  await deleteTimelineAudioFromShare();
+});
+on("sh-back", "click", () => {
+  showPage("record");
+  updateBackButtons();
+});
+
+on("rv-open", "click", () => openSpeechInTimeline());
+on("rv-save-direct", "click", async () => {
+  $("rv-dialog").hidden = true;
+  return makeZip();
+});
 on("rv-close", "click", () => { $("rv-dialog").hidden = true; });
 
-(async function boot() {
-  document.querySelectorAll(".app-name").forEach((el) => { el.textContent = "SomnoLog V" + APP_VERSION; });
-  await loadPatient(); if (!checkHashOnLoad()) showPage("start"); await loadRef();
-  initVad(); updateBackButtons(); setButtons(); updateUI();
-  if (S.ref) showRefMsg("基準音圧は設定済みです（「あ〜」" + S.ref.db.toFixed(1) + "dB、保存済み）。");
-})();
+/* ===== 画面の状態に応じた処理 ===== */
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) {
+    if (S.running) flushSecs().catch(() => {});
+    return;
+  }
+  if (S.running && !S.wake) acquireWake();
+});
+window.addEventListener("pagehide", () => {
+  if (S.running) flushSecs().catch(() => {});
+});
+
+/* ===== 起動 ===== */
+async function boot() {
+  const vt = $("ver-text"); if (vt) vt.textContent = "SomnoLog_V" + APP_VERSION;
+  document.querySelectorAll(".app-name").forEach((el) => { el.textContent = "SomnoLog_V" + APP_VERSION; });
+  await loadPatient();
+  if (!checkHashOnLoad()) showPage("start");
+  await loadRef();
+  updateBackButtons();
+  setButtons();
+  updateUI();
+  if (S.ref) showRefMsg("基準音圧は設定済みです（「あ〜」" + S.ref.db.toFixed(1) + "dB、保存済み）。測り直さずに、そのまま「記録開始」を押せます。");
+
+  checkUpdate().then(() => renderUpdate()).catch(() => {});
+  setInterval(() => {
+    if (!isBusy()) checkUpdate().catch(() => {});
+  }, UPDATE_EVERY_MS);
+}
+
+boot().catch(handleErr);
 </script>
 </body>
 </html>
