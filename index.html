@@ -53,6 +53,7 @@ button:disabled{opacity:.45;cursor:not-allowed}.primary,.selected{background:var
     <li>記録の準備でマイクを許可し、静かな状態で基準音を測ります。</li>
     <li>記録中はこの画面を前面に保ちます。黒画面は端末の画面ロックではありません。</li>
     <li>記録はカレンダーから確認し、必要な場合だけ共有します。</li>
+    <li>このアプリはオフラインでは使えません。</li>
   </ol></details>
   <section class="card">
     <button id="update">アプリの更新</button><p id="updateStatus" class="note" aria-live="polite"></p>
@@ -114,7 +115,7 @@ button:disabled{opacity:.45;cursor:not-allowed}.primary,.selected{background:var
 </main>
 <main id="share" hidden>
   <h1>セッションログの共有</h1><section class="card">
-    <p class="note">ZIPは非暗号化です。計測者情報と、人声を含む可能性のある実音声が入ります。宛先と内容を確認してください。自動送信はしません。</p>
+    <p class="note">ZIPは非暗号化です。計測者情報と、会話が検出されなかった音声が入ります。会話を検出した音声と判定できなかった音声は含めません。自動判定には見逃しがあります。自動送信はしません。</p>
     <p id="address" class="wrap"></p><button id="download" class="primary">セッションZIPを保存</button>
     <button id="copy">① 宛先をコピー</button><button id="pick">② ZIPを選んで共有</button><input id="shareFile" type="file" accept=".zip,application/zip" hidden>
     <button id="deleteAudio" class="danger">この記録の未保護音声を削除</button>
@@ -351,7 +352,7 @@ async function allowMic(){
     tap=new AudioWorkletNode(ctx,"st-capture",{numberOfInputs:1,numberOfOutputs:1,outputChannelCount:[1]});
     source=ctx.createMediaStreamSource(stream);silencer=ctx.createGain();silencer.gain.value=0;
     tap.port.onmessage=e=>{
-      try { if(e.data.done===audioDone?.token){audioDone?.finish();return} receive(e.data); }
+      try { if(audioDone && e.data?.done===audioDone.token){audioDone.finish();return} receive(e.data); }
       catch(err){msg(err.message);if(current)stopRec("audio-processing-error").catch(e=>msg(e.message))}
     };
     tap.onprocessorerror=()=>{msg("音声処理が中断されました。");if(current)stopRec("processor-error").catch(e=>msg(e.message));};
@@ -765,9 +766,12 @@ function draw(){
 function selectAt(t){
   cursor=t;
   const c=detailClips.find(c=>!c.deleted&&t>=c.startSec&&t<c.endSec);
+  if(clipID!==(c?.id||""))clearPlayer();
   clipID=c?.id||"";refreshClips();draw();
 }
+let playbackGeneration=0;
 function clearPlayer(){
+  ++playbackGeneration;
   const a=$("audio");a.pause();a.removeAttribute("src");a.hidden=true;
   if(playerUrl)URL.revokeObjectURL(playerUrl);playerUrl="";
 }
@@ -781,12 +785,114 @@ async function clipParts(c){
   if(parts.length!==c.chunks||!frames||frames!==c.endSample-c.startSample)throw Error("音声に欠落があります。");
   return [wavHeader(frames),...parts.map(p=>p.pcm)];
 }
+// 音響イベント分類。Speech / Snoring / Cough 等のスコアは除外条件にしない。
+// モデル未調整の暫定閾値。生のlogitをsigmoidに変換して比較する。
+const CONVERSATION_SCORE=.5;
+const CONVERSATION_WINDOW=RATE*10;
+const CONVERSATION_HOP=RATE*5;
+let classifierPromise=null, reviewQueue=Promise.resolve();
+
+function conversationClassifier(){
+  if(!classifierPromise){
+    classifierPromise=(async()=>{
+      if(navigator.onLine===false)throw Error("このアプリはオフラインでは使えません。");
+      const {AutoProcessor,AutoModelForAudioClassification,env}=await import(
+        "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.5.2"
+      );
+      env.allowLocalModels=false;
+      const name="Xenova/ast-finetuned-audioset-10-10-0.4593";
+      const processor=await AutoProcessor.from_pretrained(name);
+      if(processor.feature_extractor?.config?.sampling_rate!==RATE)
+        throw Error("会話判定器のサンプルレートを確認できません。");
+      const model=await AutoModelForAudioClassification.from_pretrained(
+        name,{device:"wasm",dtype:"q8"}
+      );
+      const matches=Object.entries(model.config.id2label||{})
+        .filter(([,label])=>String(label).trim().toLowerCase()==="conversation");
+      if(matches.length!==1)throw Error("モデルに会話クラスがありません。");
+      const index=Number(matches[0][0]);
+      if(!Number.isSafeInteger(index)||index<0)throw Error("会話クラス番号が不正です。");
+      return {processor,model,index};
+    })().catch(e=>{classifierPromise=null;throw e});
+  }
+  return classifierPromise;
+}
+
+async function scanConversation(parts){
+  const chunks=parts.slice(1);
+  const frames=chunks.reduce((n,b)=>n+b.byteLength/2,0);
+  if(!Number.isSafeInteger(frames)||frames<=0)throw Error("判定対象の音声がありません。");
+  const {processor,model,index}=await conversationClassifier();
+  const window=new Float32Array(CONVERSATION_WINDOW);
+  let chunkIndex=0, byteOffset=0, consumed=0;
+  let view=new DataView(chunks[0]);
+  function fill(start,end){
+    for(let j=start;j<end&&consumed<frames;j++,consumed++){
+      while(byteOffset===view.byteLength){
+        view=new DataView(chunks[++chunkIndex]);byteOffset=0;
+      }
+      window[j]=view.getInt16(byteOffset,true)/32768;
+      byteOffset+=2;
+    }
+  }
+  fill(0,window.length);
+  for(;;){
+    const inputs=await processor(window);
+    const {logits}=await model(inputs);
+    const values=logits?.data;
+    if(logits?.dims?.length!==2||logits.dims[0]!==1||!values||!finite(values[index]))
+      throw Error("会話判定器の出力が不正です。");
+    const score=1/(1+Math.exp(-values[index]));
+    if(score>=CONVERSATION_SCORE)return "conversation";
+    if(consumed===frames)return "no-conversation-detected";
+    window.copyWithin(0,CONVERSATION_HOP);
+    const retained=window.length-CONVERSATION_HOP;
+    window.fill(0,retained);
+    fill(retained,window.length);
+    await new Promise(resolve=>setTimeout(resolve,0));
+  }
+}
+
+function reviewAudio(c){
+  const job=reviewQueue.then(async()=>{
+    try{
+      const parts=await clipParts(c);
+      const result=await scanConversation(parts);
+      return result==="no-conversation-detected"?{result,parts}:{result};
+    }catch(e){
+      console.warn("会話判定を完了できませんでした",e);
+      return {result:"unverified"};
+    }
+  });
+  reviewQueue=job.then(()=>undefined,()=>undefined);
+  return job;
+}
+
 async function listen(){
+  if(busy())return;
   const c=detailClips.find(c=>c.id===clipID&&!c.deleted);if(!c)return;
-  const parts=await clipParts(c);if(page!=="detail"||c.id!==clipID)return;
-  clearPlayer();const a=$("audio");a.hidden=false;
-  a.src=playerUrl=URL.createObjectURL(new Blob(parts,{type:"audio/wav"}));
-  await a.play().catch(()=>{});
+  clearPlayer();
+  const generation=playbackGeneration, sid=selectedSession?.id;
+  const b=$("listen");
+  b.disabled=true;
+  b.textContent="会話を確認中…";
+  try{
+    const checked=await reviewAudio(c);
+    if(generation!==playbackGeneration||page!=="detail"||
+        selectedSession?.id!==sid||clipID!==c.id)return;
+    if(checked.result!=="no-conversation-detected"){
+      msg(checked.result==="conversation"
+        ?"会話を検出したため再生しません。"
+        :"会話の有無を確認できなかったため再生しません。");
+      return;
+    }
+    const a=$("audio");a.hidden=false;
+    a.src=playerUrl=URL.createObjectURL(new Blob(checked.parts,{type:"audio/wav"}));
+    await a.play().catch(()=>{});
+  }finally{
+    b.textContent="選択したイベントの音声を聴く";
+    b.disabled=!detailClips.some(item=>item.id===clipID&&!item.deleted);
+  }
 }
 async function keep(){
   if(busy())return;const c=detailClips.find(c=>c.id===clipID&&!c.deleted);if(!c)return;
@@ -865,10 +971,17 @@ async function exportZip(){
     shareStatus("ログを読み込んでいます…");
     const [logs,bins,clips]=await Promise.all([read("sessionLogs",range(s.id)),read("profileBins",range(s.id)),sessionClips(s.id)]);
     const zip=new ZIP(), info=[];
+    const excludedAudio={conversation:0,unverified:0};
     const list=clips.filter(c=>!c.deleted).sort((a,b)=>a.startSample-b.startSample);
     for(const [i,c] of list.entries()){
       const path=`audio/clip_${String(i+1).padStart(4,"0")}.wav`;
-      zip.add(path,await clipParts(c));
+      shareStatus(`会話を確認中：${i+1} / ${list.length} 件`);
+      const checked=await reviewAudio(c);
+      if(checked.result!=="no-conversation-detected"){
+        excludedAudio[checked.result]++;
+        continue;
+      }
+      zip.add(path,checked.parts);
       info.push({id:c.id,file:path,audioFile:path,startSec:c.startSec,endSec:c.endSec,durationSec:c.durationSec,
         detectedSec:c.detectedSec,category:c.category,peakDb:c.peakDb,sampleCount:c.endSample-c.startSample,
         truncated:c.truncated||(!c.final?"interrupted":null),continuationOf:c.continuationOf||null});
@@ -882,15 +995,17 @@ async function exportZip(){
       endedAt:s.endedAt?new Date(s.endedAt).toISOString():null,durationSec,status:s.status,stopReason:s.stopReason??null,
       baselineDbFS:s.baselineDbFS,triggerDbOverBaseline:10,preSec:3,postSec:5,
       audioSampleRate:RATE,audioChannels:1,audioBitDepth:16,gainDb:0,logFile:"log.json",logPeriodSec:.1,
-      clips:info,timeSeriesLogs,profileBins:bins.filter(b=>b.avgMotion!==null)});
+      clips:info,excludedAudio,timeSeriesLogs,profileBins:bins.filter(b=>b.avgMotion!==null)});
     zip.json("log.json",{format:"zip-store-v1",periodSec:.1,fields:["sec","db","peakHz","motionG","motionValid","partial"],
       rows:logs.map(a=>[a.sec,a.sourceDbFS,a.peakHz,a.motionG,a.motionG!==null,a.partial])});
-    zip.add("README.txt",[enc.encode(`${APP}\r\n無圧縮・非暗号化ZIPです。音声および計測者情報を含みます。\r\ndbは未校正の生音圧dBFS、motionGは端末の加速度です。欠測はnullです。\r\nstartSecはWAV先頭、detectedSecは検知時刻です。停止・入力断・サイズ上限による打切りはtruncatedに記録します。\r\n本アプリは診断を行いません。V41実機互換性は未検証です。\r\n`)]);
+    zip.add("README.txt",[enc.encode(`${APP}\r\n無圧縮・非暗号化ZIPです。計測者情報を含みます。会話を検出した音声と判定不能の音声は収録しません。自動判定には見逃しがあります。\r\ndbは未校正の生音圧dBFS、motionGは端末の加速度です。欠測はnullです。\r\nstartSecはWAV先頭、detectedSecは検知時刻です。停止・入力断・サイズ上限による打切りはtruncatedに記録します。\r\n本アプリは診断を行いません。V41実機互換性は未検証です。\r\n`)]);
     const url=URL.createObjectURL(zip.finish()),a=document.createElement("a");
     a.href=url;a.download=`SomnoLog_${day(s.startedAt)}_${s.id.slice(0,8)}.zip`;document.body.append(a);a.click();a.remove();
     setTimeout(()=>URL.revokeObjectURL(url),60000);
     const next={...s,exportedAt:Date.now()};await put("sessions",next);selectedSession=next;
-    shareStatus("ダウンロードを開始しました。削除する前に、ZIPが保存され開けることを確認してください。");
+    shareStatus(`ダウンロードを開始しました。音声収録 ${info.length} 件、`+
+      `会話で除外 ${excludedAudio.conversation} 件、判定不能で除外 ${excludedAudio.unverified} 件。`+
+      "削除する前に、ZIPが保存され開けることを確認してください。");
   }catch(e){shareStatus("ZIP処理："+e.message)}
   finally{exporting=false;controls()}
 }
