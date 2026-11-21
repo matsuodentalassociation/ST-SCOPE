@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#000000">
 <meta name="somnolog-app" content="ST-SCOPE-SomnoLog">
-<meta name="somnolog-version" content="130">
-<title>③SomnoLog_V130</title>
+<meta name="somnolog-version" content="131">
+<title>③SomnoLog_V131</title>
 <script>
 (() => {
   const key = "somnolog.commit-package.v1";
@@ -38,7 +38,16 @@ button:disabled{opacity:.45;cursor:not-allowed}.primary,.selected{background:var
 #notice{position:sticky;top:0;z-index:2;max-width:480px;margin:auto;padding:10px;background:#4a2929;white-space:pre-wrap}
 #calendar{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;text-align:center}
 #calendar button{min-width:0;padding:4px}.today{outline:1px solid #f3e7c9}.has::after{content:" •";color:#79cce9}.selected.has::after{color:#10202a}
-#plot{width:100%;height:192px;background:#101923;touch-action:none}audio,video,input[type=range],meter{width:100%}
+.chart{background:#101923;border:1px solid #2a3643;border-radius:10px;padding:6px;touch-action:none;user-select:none;-webkit-user-select:none;cursor:ew-resize}
+.chart svg{width:100%;height:auto;display:block}
+.legend{display:flex;flex-wrap:wrap;gap:12px;font-size:12px;color:#d3dde7}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:4px;vertical-align:middle}
+.tagbar{display:flex;flex-wrap:wrap;gap:8px}
+.tagbtn{width:auto;min-height:40px;padding:8px 12px;font-size:13px;display:flex;align-items:center;gap:6px;background:#171f29;border-color:#34424f;color:#d3dde7}
+.tagbtn i{display:inline-block;width:12px;height:12px;border-radius:3px}
+.tagbtn.off{opacity:.45;border-style:dashed}
+.tagbtn.off i{background:transparent!important;border:1px solid #8fa0b3}
+audio,video,input[type=range],meter{width:100%}
 #black{position:fixed;inset:0;z-index:9;display:grid;place-content:center;text-align:center;gap:16px;background:#000;color:#8a8170;touch-action:none;user-select:none;-webkit-user-select:none}
 #black time{font-size:66px}#black progress{width:200px}#stop{touch-action:none;user-select:none}
 .wrap{overflow-wrap:anywhere}ol{margin:4px 0;padding-left:24px}
@@ -47,7 +56,7 @@ button:disabled{opacity:.45;cursor:not-allowed}.primary,.selected{background:var
 <body>
 <p id="notice" hidden role="alert"></p>
 <main id="home">
-  <header class="row"><h1>③SomnoLog_V130</h1><small>計測者の確認</small></header>
+  <header class="row"><h1>③SomnoLog_V131</h1><small>計測者の確認</small></header>
   <details class="card"><summary>使い方を見る</summary><ol>
     <li>発行元のQRを読み取り、内容を確認します。</li>
     <li>記録の準備でマイクを許可し、静かな状態で基準音を測ります。</li>
@@ -70,7 +79,7 @@ button:disabled{opacity:.45;cursor:not-allowed}.primary,.selected{background:var
   </section>
 </main>
 <main id="record" hidden>
-  <header class="row"><h1>③SomnoLog_V130</h1><small id="state">待機中</small></header>
+  <header class="row"><h1>③SomnoLog_V131</h1><small id="state">待機中</small></header>
   <section class="card">
     <button id="prepOpen">記録の準備</button><button id="start" class="primary">記録開始</button>
     <button id="blackOpen">黒画面に切り替え</button><button id="stop" class="danger">停止（2秒長押し）</button>
@@ -98,12 +107,17 @@ button:disabled{opacity:.45;cursor:not-allowed}.primary,.selected{background:var
   <header class="row"><h1>タイムライン</h1><button id="detailBack">カレンダーに戻る</button></header>
   <section class="card">
     <p id="detailInfo" class="note"></p>
-    <div class="row"><label>表示幅 <select id="zoom"><option value="0">全体</option><option value="3600">1時間</option><option value="1800">30分</option><option value="600">10分</option><option value="300">5分</option><option value="60">1分</option></select></label>
-    <label>表示 <select id="series"><option value="sourceDbFS">音圧</option><option value="motionG">体動</option></select></label></div>
-    <canvas id="plot" aria-label="時系列とイベント位置"></canvas>
-    <p class="note">青線：実測値（欠測は線を切断） ／ 橙：イベント ／ 白：保存指定 ／ 黄線：カーソル</p>
+    <div class="row"><label>表示幅 <select id="zoom"><option value="0">全体</option><option value="3600">1時間</option><option value="1800">30分</option><option value="600">10分</option><option value="300">5分</option><option value="60">1分</option></select></label></div>
+    <div id="plot" class="chart" aria-label="時系列とイベント位置"></div>
+    <div id="tlLegend" class="legend"></div>
+    <div id="tlTags" class="tagbar"></div>
+    <div id="motionAdj">
+      <div class="row"><span class="note">体動のしきい値</span><b id="tmThreshVal" class="note">0.05 g</b></div>
+      <input id="tmThresh" type="range" min="0" max="0.3" step="0.01" value="0.05">
+      <p class="note">しきい値以上の体動を表示します。設定は表示だけに使い、保存済みデータは変えません。</p>
+    </div>
     <label>表示位置<input id="pan" type="range" min="0" max="0" step=".1"></label>
-    <label>再生位置<input id="cursor" type="range" min="0" max="0" step=".1"></label>
+    <label>黄色い線（時刻の位置）<input id="cursor" type="range" min="0" max="0" step=".1"></label>
     <p id="cursorText" class="note"></p>
     <label>音声イベント <select id="clipSelect"></select></label>
     <button id="listen">選択したイベントの音声を聴く</button><audio id="audio" controls hidden></audio>
@@ -125,8 +139,8 @@ button:disabled{opacity:.45;cursor:not-allowed}.primary,.selected{background:var
 <div id="black" hidden><time id="clock"></time><small>2秒長押しで戻る</small><progress id="progress" max="1" value="0"></progress></div>
 <script>
 "use strict";
-const APP_VERSION = 130;
-const APP = "③SomnoLog_V130", RATE = 16000, STEP = 1600, PRE = RATE*3, POST = RATE*5;
+const APP_VERSION = 131;
+const APP = "③SomnoLog_V131", RATE = 16000, STEP = 1600, PRE = RATE*3, POST = RATE*5;
 const DB_NAME = "SomnoLog.v130", PROFILE = 300, MAX_CLIP = RATE*3600;
 const LABELS = Object.freeze({ issuer:"発行元", user:"計測者（User）", admin:"解析者（Admin）", number:"計測者番号", log:"セッションログ", event:"音響イベント" });
 const $ = id => document.getElementById(id);
@@ -144,6 +158,8 @@ let selectedSession=null, detailRows=[], detailClips=[], clipID="", shift=0, cur
 let month=new Date(), chosenDay=null, historyFrom="home", calendarRows=[], calendarGeneration=0;
 let motionAllowed=false, motionAt=-Infinity, motionG=null, gravity=null, lastMotionTime=0;
 let cameraStream=null, cameraPending=false, cameraGeneration=0, qrLibrary=null;
+let plotMode="sound", motionThresh=0.05;
+try{const st=localStorage.getItem("somnolog-motion-thresh-g");if(st!=null)motionThresh=clamp(Number(st)||0.05,0,0.3);}catch(_){}
 const busy = () => !!(current||stopping||starting||updating||exporting||changing||calibration||micBusy);
 const micReady = () => !!stream?.getAudioTracks().some(t=>t.readyState==="live");
 function show(name) {
@@ -280,7 +296,6 @@ async function readImage(file){
   }finally{URL.revokeObjectURL(url)}
 }
 
-// AudioWorklet内で16kHzへ変換。1パケットは100ms。出力は常に無音。
 const WORKLET = `
 class STCapture extends AudioWorkletProcessor {
   constructor(){
@@ -430,7 +445,6 @@ function feedCal(raw,dbFS){
   catch(_){$("calStatus").textContent="端末に基準音を保存できませんでした。この画面を開いている間は利用できます。"}
   controls();
 }
-// 100ms区間の支配的な周波数。Hann窓・1024点FFT。無信号ではnull。
 const NFFT=1024;
 const hann=Float32Array.from({length:NFFT},(_,i)=>.5-.5*Math.cos(2*Math.PI*i/(NFFT-1)));
 function peakHz(raw,dbFS){
@@ -715,7 +729,7 @@ async function openDetail(sid){
     s.durationSec=Math.max(s.durationSec||0,tail?tail.sec+.1:0,...clips.map(c=>c.endSec));
   }
   selectedSession=s;detailRows=rows;detailClips=clips.sort((a,b)=>a.startSec-b.startSec);
-  shift=0;cursor=0;clipID="";$("zoom").value="0";refreshClips();show("detail");draw();
+  shift=0;cursor=0;clipID="";plotMode="sound";$("zoom").value="0";refreshClips();show("detail");draw();
 }
 function refreshClips(){
   const select=$("clipSelect");empty(select);
@@ -727,42 +741,150 @@ function refreshClips(){
   $("listen").disabled=!detailClips.some(c=>c.id===clipID&&!c.deleted);
   controls();
 }
-const totalSec=()=>Math.max(.1,selectedSession?.durationSec||0,detailRows.at(-1)?.sec||0,detailClips.reduce((m,c)=>Math.max(m,c.endSec),0));
+const totalSec=()=>Math.max(60,selectedSession?.durationSec||0,detailRows.at(-1)?.sec||0,detailClips.reduce((m,c)=>Math.max(m,c.endSec),0));
 const widthSec=()=>Math.min(totalSec(),Number($("zoom").value)||totalSec());
+const fmtMMSS=sec=>{const s=Math.max(0,Math.floor(sec));const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),ss=s%60;return h?`${h}:${String(m).padStart(2,"0")}:${String(ss).padStart(2,"0")}`:`${m}:${String(ss).padStart(2,"0")}`};
+
 function draw(){
   if(page!=="detail"||!selectedSession)return;
-  const total=totalSec(), span=widthSec();shift=clamp(shift,0,total-span);cursor=clamp(cursor,shift,shift+span);
-  $("pan").max=String(total-span);$("pan").value=String(shift);
+  const total=totalSec(), span=widthSec();
+  shift=clamp(shift,0,Math.max(0,total-span));
+  cursor=clamp(cursor,shift,shift+span);
+  $("pan").max=String(Math.max(0,total-span));$("pan").value=String(shift);
   $("cursor").min=String(shift);$("cursor").max=String(shift+span);$("cursor").value=String(cursor);
-  $("cursorText").textContent=`${cursor.toFixed(1)} 秒 ／ ${total.toFixed(1)} 秒`;
+  $("cursorText").textContent=`黄色い線：記録から ${fmtMMSS(cursor)}（${new Date(selectedSession.startedAt+cursor*1000).toLocaleTimeString("ja-JP",{hour:"2-digit",minute:"2-digit",second:"2-digit"})}）`;
   $("detailInfo").textContent=`${new Date(selectedSession.startedAt).toLocaleString("ja-JP")} ／ ${detailRows.length} 点 ／ ${detailClips.length} 件`+
     (selectedSession.status==="recording"?" ／ 最終停止未確認（保存済み部分を表示）":selectedSession.stopReason&&selectedSession.stopReason!=="user"?" ／ 中断記録":"");
-  const cv=$("plot"), w=cv.clientWidth||400,h=cv.clientHeight||192,dpr=Math.min(devicePixelRatio||1,2);
-  cv.width=Math.round(w*dpr);cv.height=Math.round(h*dpr);
-  const g=cv.getContext("2d");g.scale(dpr,dpr);
-  const l=36,pw=w-l-8,top=12,ph=h-30;
-  const X=t=>l+(t-shift)/span*pw, key=$("series").value, motion=key==="motionG", lo=motion?0:-120,hi=motion?.3:0;
-  const Y=v=>top+(1-clamp((v-lo)/(hi-lo),0,1))*ph;
-  g.font="10px system-ui";g.fillStyle="#b6c3d1";g.strokeStyle="#344453";
-  for(const v of [lo,(lo+hi)/2,hi]){const y=Y(v);g.fillText(String(v),1,y+3);g.beginPath();g.moveTo(l,y);g.lineTo(l+pw,y);g.stroke()}
-  g.save();g.beginPath();g.rect(l,top,pw,ph);g.clip();
-  for(const c of detailClips){
-    if(c.endSec<shift||c.startSec>shift+span)continue;
-    g.fillStyle=c.saved?"#ffffff60":"#ff9f4350";
-    g.fillRect(X(c.startSec),top,Math.max(1,X(c.endSec)-X(c.startSec)),ph);
+
+  const tags=$("tlTags"); empty(tags);
+  const bSound=document.createElement("button");
+  bSound.className="tagbtn"+(plotMode==="sound"?"":" off");
+  bSound.innerHTML=`<i style="background:#4a90d9"></i>音（イベント）`;
+  bSound.onclick=()=>{plotMode="sound";draw()};
+  const bMot=document.createElement("button");
+  bMot.className="tagbtn"+(plotMode==="motion"?"":" off");
+  bMot.innerHTML=`<i style="background:#e04848"></i>体動`;
+  bMot.onclick=()=>{plotMode="motion";draw()};
+  tags.append(bSound,bMot);
+  $("tmThresh").value=String(motionThresh);
+  $("tmThreshVal").textContent=r(motionThresh,2)+" g";
+  $("tlLegend").innerHTML=plotMode==="motion"?"":`<span><i style="background:#4a90d9"></i>音声イベント</span><span><i style="background:#ffffff"></i>保存指定</span><span><i style="background:#e04848"></i>体動（上から）</span>`;
+
+  const W=480,H=220,PL=62,PR=8,PT=8,PB=22,plotW=W-PL-PR,plotH=H-PT-PB,NB=60;
+  const t0=shift,t1=shift+span,binSec=span/NB,bw=plotW/NB;
+  const X=t=>PL+(t-t0)/span*plotW;
+  let body=`<rect x="${PL}" y="${PT}" width="${plotW}" height="${plotH}" fill="none" stroke="#2a3643"/>`;
+
+  if(plotMode==="motion"){
+    const ceil=Math.max(0.1,motionThresh*6);
+    const bins=new Array(NB).fill(null);
+    let clipped=false,any=false;
+    for(const row of detailRows){
+      if(!finite(row.motionG)||row.motionG<motionThresh||row.sec<t0||row.sec>t1)continue;
+      if(row.motionG>ceil)clipped=true;
+      const i=Math.min(NB-1,Math.floor((row.sec-t0)/binSec));
+      if(bins[i]===null||row.motionG>bins[i])bins[i]=row.motionG;
+    }
+    for(let i=0;i<NB;i++){
+      const v=bins[i];if(v===null)continue;any=true;
+      const h=Math.max(2,Math.min(plotH,v/ceil*plotH));
+      body+=`<rect x="${(PL+i*bw+0.5).toFixed(1)}" y="${(PT+plotH-h).toFixed(1)}" width="${Math.max(1,bw-1).toFixed(1)}" height="${h.toFixed(1)}" fill="#e04848"/>`;
+    }
+    if(motionThresh>0&&motionThresh<ceil){
+      const ty=PT+plotH-motionThresh/ceil*plotH;
+      body+=`<line x1="${PL}" x2="${PL+plotW}" y1="${ty.toFixed(1)}" y2="${ty.toFixed(1)}" stroke="#b6c3d1" stroke-width="1" stroke-dasharray="5 4" opacity="0.7"/>`;
+    }
+    body+=`<text x="${PL+2}" y="${PT+12}" font-size="10" fill="#b6c3d1">${r(ceil,2)}</text>`;
+    body+=`<text x="${PL+2}" y="${PT+plotH-3}" font-size="10" fill="#b6c3d1">0</text>`;
+    body+=`<text x="${PL+30}" y="${PT+12}" font-size="11" fill="#e04848">体動 g（棒内の最大値）</text>`;
+    if(clipped)body+=`<text x="${PL+30}" y="${PT+26}" font-size="11" fill="#e04848">上端を超えた値あり</text>`;
+    if(!any)body+=`<text x="${PL+8}" y="${PT+plotH/2+30}" font-size="12" fill="#b6c3d1">しきい値以上の体動がありません</text>`;
+  }else{
+    const refDb=finite(selectedSession.referenceDbFS)?selectedSession.referenceDbFS:(finite(ref?.refDbFS)?ref.refDbFS:-40);
+    let topDb=refDb;
+    for(const c of detailClips)if(!c.deleted&&finite(c.peakDb)&&c.peakDb>topDb)topDb=c.peakDb;
+    const rTop=Math.pow(2,(topDb-refDb)/10);
+    const LADDER=[1.5,2,2.5,3,4,5,6,8,10,12,16,20,24,32,40,48,64,80,96,128];
+    let ceilR=2;for(const L of LADDER){ceilR=L;if(L>=rTop*1.08)break;}
+    const ahPos=Math.min(0.5,Math.max(0.125,1/ceilR));
+    const posOfR=rv=>rv<=1?ahPos*rv:ahPos+(rv-1)/Math.max(ceilR-1,0.5)*(1-ahPos);
+    const posOf=db=>clamp(posOfR(Math.pow(2,(db-refDb)/10)),0,1);
+    const yOfMult=m=>PT+plotH-posOfR(m)*(plotH-4);
+    const Y=db=>PT+plotH-posOf(db)*(plotH-4);
+    const lineMults=(ceilR<=8?[1,2,3,4,6,8]:[1,2,4,8,16,32,64]).filter(m=>m<=ceilR);
+
+    const ok=new Array(NB).fill(false);
+    for(const row of detailRows){
+      if(!finite(row.sourceDbFS)||row.sec<t0||row.sec>t1)continue;
+      ok[Math.min(NB-1,Math.floor((row.sec-t0)/binSec))]=true;
+    }
+    let labeled=false;
+    for(let i=0;i<NB;i++){
+      if(ok[i])continue;
+      body+=`<rect x="${(PL+i*bw).toFixed(1)}" y="${PT}" width="${bw.toFixed(1)}" height="${plotH}" fill="#8a97a5" opacity="0.20"/>`;
+      if(!labeled){labeled=true;body+=`<text x="${(PL+i*bw+3).toFixed(1)}" y="${PT+plotH-16}" font-size="10" fill="#c3ccd4">欠測</text>`;}
+    }
+
+    const mCeil=Math.max(0.1,motionThresh*6),mBins=new Array(NB).fill(null);
+    for(const row of detailRows){
+      if(!finite(row.motionG)||row.motionG<motionThresh||row.sec<t0||row.sec>t1)continue;
+      const i=Math.min(NB-1,Math.floor((row.sec-t0)/binSec));
+      if(mBins[i]===null||row.motionG>mBins[i])mBins[i]=row.motionG;
+    }
+    for(let i=0;i<NB;i++){
+      const v=mBins[i];if(v===null)continue;
+      const h=Math.max(2,Math.min(plotH,v/mCeil*plotH));
+      body+=`<rect x="${(PL+i*bw+0.5).toFixed(1)}" y="${PT}" width="${Math.max(1,bw-1).toFixed(1)}" height="${h.toFixed(1)}" fill="#e04848" opacity="0.85"/>`;
+    }
+
+    for(const m of lineMults){
+      const y=yOfMult(m);
+      body+=`<line x1="${PL}" x2="${PL+plotW}" y1="${y.toFixed(1)}" y2="${y.toFixed(1)}" stroke="#ffd54a" stroke-opacity="0.55" stroke-width="1" stroke-dasharray="5 4"/>`;
+    }
+
+    const lineMode=span<=600;
+    let any=false;
+    if(lineMode){
+      const ranges=detailClips.filter(c=>!c.deleted&&c.endSec>=t0&&c.startSec<=t1).map(c=>[c.startSec,c.endSec]);
+      if(ranges.length){
+        any=true;
+        let d="",prev=null;
+        for(const row of detailRows){
+          if(!finite(row.sourceDbFS)||row.sec<t0||row.sec>t1)continue;
+          if(!ranges.some(([a,b])=>row.sec>=a&&row.sec<=b)){prev=null;continue;}
+          d+=(prev===null||row.sec-prev>0.25?"M":"L")+X(row.sec).toFixed(1)+" "+Y(row.sourceDbFS).toFixed(1);
+          prev=row.sec;
+        }
+        if(d)body+=`<path d="${d}" fill="none" stroke="#4a90d9" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" opacity="0.95"/>`;
+      }
+    }else{
+      const bins=new Array(NB).fill(null);
+      for(const c of detailClips){
+        if(c.deleted||c.startSec<t0||c.startSec>t1||!finite(c.peakDb))continue;
+        const i=Math.min(NB-1,Math.floor((c.startSec-t0)/binSec));
+        if(!bins[i])bins[i]={db:c.peakDb,saved:!!c.saved};
+        else{if(c.peakDb>bins[i].db)bins[i].db=c.peakDb;if(c.saved)bins[i].saved=true;}
+      }
+      for(let i=0;i<NB;i++){
+        const item=bins[i];if(!item)continue;any=true;
+        const h=Math.max(3,posOf(item.db)*(plotH-4));
+        body+=`<rect x="${(PL+i*bw+0.5).toFixed(1)}" y="${(PT+plotH-h).toFixed(1)}" width="${Math.max(1,bw-1).toFixed(1)}" height="${h.toFixed(1)}" fill="${item.saved?"#ffffff":"#4a90d9"}"/>`;
+      }
+    }
+    if(!any)body+=`<text x="${PL+8}" y="${PT+plotH/2+30}" font-size="12" fill="#b6c3d1">この区間に音声イベントはありません</text>`;
+    for(const m of lineMults){
+      const label=m===1?"あ〜の音量":`あ〜の${m}倍`;
+      body+=`<text x="${PL+4}" y="${(yOfMult(m)-3).toFixed(1)}" font-size="9" fill="${m===1?"#f3e7c9":"#e8e4d8"}">${label}</text>`;
+    }
+    body+=`<text x="${PL+4}" y="${PT+plotH-4}" font-size="9" fill="#b6c3d1">室内の環境音</text>`;
+    body+=`<text x="${PL+4}" y="${PT+12}" font-size="11" fill="#4a90d9">${lineMode?"音声イベント（線）":`音声イベント（棒1本＝${r(binSec,1)}秒）`}</text>`;
   }
-  g.strokeStyle="#84b9cf";g.lineWidth=1.2;g.beginPath();
-  let last=-Infinity;
-  for(const a of detailRows){
-    if(a.sec<shift-.1)continue;if(a.sec>shift+span+.1)break;
-    if(!finite(a[key])){last=-Infinity;continue}
-    if(a.index-last!==1){g.moveTo(X(a.sec),Y(a[key]));g.lineTo(X(a.sec)+.5,Y(a[key]))}
-    else g.lineTo(X(a.sec),Y(a[key]));
-    last=a.index;
-  }
-  g.stroke();g.strokeStyle="#ffd54a";g.beginPath();g.moveTo(X(cursor),top);g.lineTo(X(cursor),top+ph);g.stroke();g.restore();
-  g.fillStyle="#b6c3d1";g.fillText(motion?"体動 g":"音圧 dBFS",l,h-3);
+
+  const cursorLine=`<line x1="${X(cursor).toFixed(1)}" x2="${X(cursor).toFixed(1)}" y1="${PT}" y2="${H-PB}" stroke="#ffd54a" stroke-width="2"/>`;
+  const axisText=`<text x="${PL}" y="${H-6}" font-size="10" fill="#b6c3d1">${fmtMMSS(t0)}</text><text x="${W-PR}" y="${H-6}" font-size="10" fill="#b6c3d1" text-anchor="end">${fmtMMSS(t1)}</text>`;
+  $("plot").innerHTML=`<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">${body}${cursorLine}${axisText}</svg>`;
 }
+
 function selectAt(t){
   cursor=t;
   const c=detailClips.find(c=>!c.deleted&&t>=c.startSec&&t<c.endSec);
@@ -785,8 +907,6 @@ async function clipParts(c){
   if(parts.length!==c.chunks||!frames||frames!==c.endSample-c.startSample)throw Error("音声に欠落があります。");
   return [wavHeader(frames),...parts.map(p=>p.pcm)];
 }
-// 音響イベント分類。Speech / Snoring / Cough 等のスコアは除外条件にしない。
-// モデル未調整の暫定閾値。生のlogitをsigmoidに変換して比較する。
 const CONVERSATION_SCORE=.5;
 const CONVERSATION_WINDOW=RATE*10;
 const CONVERSATION_HOP=RATE*5;
@@ -927,7 +1047,6 @@ async function eraseSession(){
   await openHistory();
 }
 
-// ZIP STORE。ローカルヘッダーと中央ディレクトリに同じサイズ・CRCを格納。
 const enc=new TextEncoder();
 const crcTable=Uint32Array.from({length:256},(_,n)=>{
   for(let j=0;j<8;j++)n=n&1?(n>>>1)^0xedb88320:n>>>1;return n>>>0;
@@ -1010,7 +1129,6 @@ async function exportZip(){
   finally{exporting=false;controls()}
 }
 
-// 同一コミットから版番号とHTMLを取得。適用は明示操作で行う。
 const UPDATE_KEY="somnolog.commit-package.v1";
 const REPO="matsuodentalassociation/ST-SCOPE";
 async function update(){
@@ -1054,10 +1172,13 @@ action("historyBack",()=>{++detailGeneration;show(historyFrom)});
 action("prevMonth",()=>{month=new Date(month.getFullYear(),month.getMonth()-1,1);renderCal()});
 action("nextMonth",()=>{month=new Date(month.getFullYear(),month.getMonth()+1,1);renderCal()});
 action("detailBack",()=>openHistory());
-action("zoom",()=>{shift=cursor-widthSec()/2;draw()},"change");action("series",draw,"change");
+action("zoom",()=>{shift=cursor-widthSec()/2;draw()},"change");
+action("tmThresh",e=>{motionThresh=Number(e.target.value);try{localStorage.setItem("somnolog-motion-thresh-g",String(motionThresh))}catch(_){}draw()},"input");
 action("pan",e=>{shift=Number(e.target.value);draw()},"input");action("cursor",e=>selectAt(Number(e.target.value)),"input");
 function plotPointer(e){
-  const rect=$("plot").getBoundingClientRect();selectAt(shift+clamp((e.clientX-rect.left-36)/(rect.width-44),0,1)*widthSec());
+  const rect=$("plot").getBoundingClientRect();
+  const k=rect.width/480, plotW=410;
+  selectAt(shift+clamp((e.clientX-rect.left-62*k)/(plotW*k),0,1)*widthSec());
 }
 $("plot").addEventListener("pointerdown",e=>{try{$("plot").setPointerCapture(e.pointerId)}catch(_){}plotPointer(e)});
 $("plot").addEventListener("pointermove",e=>{if($("plot").hasPointerCapture(e.pointerId))plotPointer(e)});
