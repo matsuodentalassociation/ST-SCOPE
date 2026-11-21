@@ -1,1654 +1,1222 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#000000">
-<meta http-equiv="Cache-Control" content="no-cache">
-<meta name="somnolog-app" content="somnolog-v141">
-<meta name="somnolog-build" content="SomnoLog-V141">
+<meta name="somnolog-app" content="ST-SCOPE-SomnoLog">
+<meta name="somnolog-version" content="131">
+<title>③SomnoLog_V131</title>
 <script>
-(function () {
+(() => {
+  const key = "somnolog.commit-package.v1";
   try {
-    if (/[?&]safe=1(&|$)/.test(location.search)) {
-      localStorage.removeItem("sl_boot_html");
-      localStorage.removeItem("sl_boot_ver");
-      return;
-    }
-    var v = parseInt(localStorage.getItem("sl_boot_ver") || "0", 10);
-    if (v > 141) {
-      var h = localStorage.getItem("sl_boot_html");
-      if (h && h.indexOf("</html>") >= 0) {
-        document.open();
-        document.write(h);
-        document.close();
-      }
-    }
-  } catch (e) {}
+    const q = new URLSearchParams(location.search);
+    if (q.get("safe") === "1") { localStorage.removeItem(key); return; }
+    const local = Number(document.querySelector('meta[name="somnolog-version"]').content);
+    const p = JSON.parse(localStorage.getItem(key) || "null");
+    if (!p || p.version <= local || q.get("commit") !== p.sha ||
+        !/^[a-f0-9]{40}$/.test(p.sha) || typeof p.html !== "string") return;
+    const d = new DOMParser().parseFromString(p.html, "text/html");
+    if (d.querySelector('meta[name="somnolog-app"]')?.content !== "ST-SCOPE-SomnoLog" ||
+        Number(d.querySelector('meta[name="somnolog-version"]')?.content) !== p.version) return;
+    document.open();
+    document.write(p.html);
+    document.close();
+  } catch (e) { console.warn("更新パッケージを起動できませんでした", e); }
 })();
 </script>
-<title>SomnoLog V141 基準音圧版</title>
 <style>
-:root{color-scheme:dark}
-*{box-sizing:border-box}
-body{margin:0;background:#0d1117;color:#f0eee6;font-family:-apple-system,BlinkMacSystemFont,"Noto Sans JP",sans-serif}
-[hidden]{display:none!important}
-button,input,select{font:inherit}
-button{min-height:48px;padding:12px 14px;border-radius:10px;border:1px solid #3c4f63;background:#223649;color:#e5f1fb;font-size:15px;font-weight:600;width:100%;cursor:pointer}
-button.primary{background:#84b9cf;border-color:#84b9cf;color:#10202a}
-button.danger{background:#3a2a2a;border-color:#7a4b48;color:#f2d2cf}
-button.sub{background:#171f29;border-color:#34424f;color:#d3dde7}
-button.warnbtn{background:#353024;border-color:#6d6240;color:#f3e7c9}
-button:disabled{opacity:.4;cursor:not-allowed}
-select{min-height:40px;padding:8px 10px;border-radius:10px;border:1px solid #3c4f63;background:#223649;color:#e5f1fb;font-size:14px;width:auto}
-.mini{width:auto;min-width:44px;min-height:40px;padding:8px 12px;font-size:14px}
-.page{max-width:480px;margin:0 auto;padding:20px 16px 40px;display:flex;flex-direction:column;gap:14px}
-#page-start{min-height:100vh;min-height:100dvh}
-.sticky-bar{position:sticky;top:0;z-index:10;background:#0d1117;padding:8px 0;display:grid;grid-template-columns:1fr;gap:10px}
-.head{display:flex;justify-content:space-between;align-items:center;gap:10px}
-h1{margin:0;font-size:22px}
-h2{margin:0;font-size:17px}
-.card{background:#161d26;border:1px solid #2a3643;border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:10px}
-.muted{color:#aebbc9;font-size:12px;line-height:1.7;margin:0}
-.warn{background:#3a2f1a;border:1px solid #7a6a3a;color:#f3e7c9;padding:10px 12px;border-radius:10px;font-size:13px;line-height:1.6}
-.err{background:#4a1f1f;border:1px solid #9a4a4a;color:#ffd9d6;padding:10px 12px;border-radius:10px;font-size:13px;line-height:1.6;white-space:pre-wrap;word-break:break-all}
-.err.tap{cursor:pointer}
-.tag{font-size:11px;padding:4px 9px;border-radius:999px;background:#263b38;color:#bfdbd1;white-space:nowrap}
-.tag.rec{background:#7a2e2e;color:#ffd9d6}
-.kv{display:flex;justify-content:space-between;gap:8px;font-size:14px;padding:4px 0;border-bottom:1px solid #2a3643}
-.kv b{color:#f3e7c9;font-weight:600;text-align:right;word-break:break-all}
-.field{background:#0d1117;border:1px solid #2a3643;border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:4px}
-.field span{font-size:11px;color:#8fa0b3}
-.field b{font-size:16px;font-weight:600;word-break:break-all}
-.meter{position:relative;height:12px;background:#111820;border-radius:6px;overflow:hidden}
-.meter i{display:block;height:100%;width:0;background:#84b9cf}
-.meter .tk{position:absolute;top:0;bottom:0;width:1px;background:#3c4f63}
-.meter .mid{position:absolute;left:50%;top:0;bottom:0;width:2px;background:#f3e7c9}
-.scale-row{display:flex;justify-content:space-between;font-size:11px;color:#8fa0b3}
-input[type=range]{width:100%;accent-color:#84b9cf}
-.chart{background:#101923;border:1px solid #2a3643;border-radius:10px;padding:6px}
+:root{color-scheme:dark;--bg:#0d1117;--card:#161d26;--line:#344453;--ink:#f0eee6;--muted:#b6c3d1;--blue:#84b9cf}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px system-ui,sans-serif}
+[hidden]{display:none!important}main{max-width:480px;margin:auto;padding:20px 16px 44px;display:grid;gap:14px}
+h1,h2,p{margin:0}h1{font-size:22px}h2{font-size:17px}p,li{line-height:1.65}
+button,input,select{font:inherit}button{min-height:46px;padding:8px 12px;border:1px solid #496074;border-radius:10px;background:#223649;color:var(--ink);cursor:pointer}
+button:disabled{opacity:.45;cursor:not-allowed}.primary,.selected{background:var(--blue);color:#10202a}.danger{background:#492a2a}
+.card{display:grid;gap:10px;padding:14px;background:var(--card);border:1px solid var(--line);border-radius:12px}
+.row{display:flex;align-items:center;justify-content:space-between;gap:8px}.note,small{color:var(--muted);font-size:13px}
+#notice{position:sticky;top:0;z-index:2;max-width:480px;margin:auto;padding:10px;background:#4a2929;white-space:pre-wrap}
+#calendar{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;text-align:center}
+#calendar button{min-width:0;padding:4px}.today{outline:1px solid #f3e7c9}.has::after{content:" •";color:#79cce9}.selected.has::after{color:#10202a}
+.chart{background:#101923;border:1px solid #2a3643;border-radius:10px;padding:6px;touch-action:none;user-select:none;-webkit-user-select:none;cursor:ew-resize}
 .chart svg{width:100%;height:auto;display:block}
-.tl-area{touch-action:none;user-select:none;-webkit-user-select:none;cursor:ew-resize}
-audio{width:100%}
-.cal-nav{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center}
-.cal-nav h2{text-align:center}
-.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
-.cal-wk{font-size:11px;color:#8fa0b3;text-align:center;padding:4px 0}
-.cal-day{position:relative;min-height:44px;padding:6px 0;font-size:14px;background:#111820;border-color:#2a3643}
-.cal-day.has::after{content:"";position:absolute;bottom:5px;left:50%;transform:translateX(-50%);width:5px;height:5px;border-radius:50%;background:#84b9cf}
-.cal-day.today{border-color:#f3e7c9}
-.cal-day.sel{background:#84b9cf;border-color:#84b9cf;color:#10202a}
-.cal-day.sel::after{background:#10202a}
-.pager{display:flex;align-items:center;gap:8px}
-.cal-sum-head{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
-.tl-info{font-size:12px;color:#d3dde7;line-height:1.7;margin:0}
-ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
-#black-screen{background-color:#000000 !important;width:100vw;height:100dvh;min-height:100vh;position:fixed;top:0;left:0;right:0;bottom:0;margin:0;padding:0;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;color:#756f61;touch-action:none;overflow:hidden}
-#black-screen,#black-screen *{user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
-#black-progress{width:40vw;max-width:220px;height:3px;background:rgba(255,255,255,.14);border-radius:2px;overflow:hidden}
-#black-progress-bar{height:100%;width:0%;background:#756f61}
-#stop-btn{user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;touch-action:none}
-#black-clock{font-size:64px;font-variant-numeric:tabular-nums}
-.modal{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.75);z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px}
-.modal-box{background:#161d26;border:1px solid #2a3643;border-radius:12px;padding:18px;max-width:420px;width:100%;display:flex;flex-direction:column;gap:12px}
-.modal-box p{margin:0;font-size:14px;line-height:1.8}
+.legend{display:flex;flex-wrap:wrap;gap:12px;font-size:12px;color:#d3dde7}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:4px;vertical-align:middle}
 .tagbar{display:flex;flex-wrap:wrap;gap:8px}
 .tagbtn{width:auto;min-height:40px;padding:8px 12px;font-size:13px;display:flex;align-items:center;gap:6px;background:#171f29;border-color:#34424f;color:#d3dde7}
 .tagbtn i{display:inline-block;width:12px;height:12px;border-radius:3px}
 .tagbtn.off{opacity:.45;border-style:dashed}
 .tagbtn.off i{background:transparent!important;border:1px solid #8fa0b3}
-.tagbtn small{font-size:11px;color:#aebbc9;font-weight:400}
-.legend{display:flex;flex-wrap:wrap;gap:12px;font-size:12px;color:#d3dde7}
-.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:4px;vertical-align:middle}
-#level-bar{background:#ff9f43}
-#motion-bar{background:#e04848}
-.zip-progress{position:fixed;left:16px;right:16px;bottom:16px;z-index:100000;max-width:448px;margin:0 auto;padding:14px;border-radius:12px;border:1px solid #84b9cf;background:#161d26;color:#f0eee6;box-shadow:0 4px 20px rgba(0,0,0,.6);display:flex;flex-direction:column;gap:10px}
-.zip-progress-title{font-size:15px;font-weight:600;margin:0}
-.zip-progress-text{font-size:13px;line-height:1.7;margin:0;white-space:pre-line;color:#d3dde7}
-.zip-bar{position:relative;height:12px;background:#111820;border-radius:6px;overflow:hidden;border:1px solid #2a3643}
-.zip-bar i{display:block;height:100%;width:0%;background:#84b9cf;transition:width .2s}
+audio,video,input[type=range],meter{width:100%}
+#black{position:fixed;inset:0;z-index:9;display:grid;place-content:center;text-align:center;gap:16px;background:#000;color:#8a8170;touch-action:none;user-select:none;-webkit-user-select:none}
+#black time{font-size:66px}#black progress{width:200px}#stop{touch-action:none;user-select:none}
+.wrap{overflow-wrap:anywhere}ol{margin:4px 0;padding-left:24px}
 </style>
 </head>
 <body>
-
-<div id="errbox" class="err tap" hidden></div>
-
-<!-- 1-1 起動・QR読み取り -->
-<main id="page-start" class="page" hidden>
-  <header class="head">
-    <h1 class="app-name">SomnoLog V141</h1>
-    <span class="tag">患者情報確認</span>
-  </header>
-
-  <div id="scan-msg" class="err" hidden></div>
-
-  <button id="upd-reload" class="sub">アプリの更新</button>
-  <p id="upd-msg" class="muted" hidden aria-live="polite"></p>
+<p id="notice" hidden role="alert"></p>
+<main id="home">
+  <header class="row"><h1>③SomnoLog_V131</h1><small>計測者の確認</small></header>
+  <details class="card"><summary>使い方を見る</summary><ol>
+    <li>発行元のQRを読み取り、内容を確認します。</li>
+    <li>記録の準備でマイクを許可し、静かな状態で基準音を測ります。</li>
+    <li>記録中はこの画面を前面に保ちます。黒画面は端末の画面ロックではありません。</li>
+    <li>記録はカレンダーから確認し、必要な場合だけ共有します。</li>
+    <li>このアプリはオフラインでは使えません。</li>
+  </ol></details>
   <section class="card">
-    <button id="usage-btn" class="warnbtn">使い方を見る</button>
-    <button id="cam-btn">QRコードを読む</button>
-    <button id="qr-file-btn">QR画像を選択</button>
-    <input id="qr-file" type="file" accept="image/*" hidden>
-    <button id="back-rec-start" class="primary" hidden>睡眠記録画面に移動</button>
-  </section>
-
-  <section id="cam-box" class="card" hidden>
-    <video id="cam-video" playsinline muted></video>
-    <p class="muted">QRを枠内に収めてください。読み取れると自動で次に進みます。</p>
-    <button id="cam-stop" class="sub">カメラを止める</button>
-  </section>
-
-  <section id="usage-box" class="card" hidden>
-    <h2>使い方</h2>
-    <ol class="steps">
-      <li>「アプリの更新」を押して、最新の状態にしてください。</li>
-      <li>あなたに発行されたQRを、カメラで読み取ります。</li>
-      <li>カメラが使えない場合は、メールで送られてきたQRコードを「QR画像を選択」で読み込みます。</li>
-      <li>患者情報（診療所名・患者名など）が正しいか確認します。</li>
-      <li>正しければ「始める」を押すと、記録の画面に進みます。</li>
-      <li>違う場合は「情報が間違っています」を押して、診療所にご連絡ください。</li>
-      <li>すでに患者情報が登録されている場合は、「睡眠記録画面に移動」を押すと、QRを読み直さずに記録の画面に戻れます。</li>
-    </ol>
-  </section>
-  <canvas id="scan-canvas" hidden></canvas>
-</main>
-
-<!-- 1-2 患者情報の確認 -->
-<main id="page-confirm" class="page" hidden>
-  <header class="head">
-    <h1>患者情報の確認</h1>
-  </header>
-  <section class="card">
-    <div class="field"><span>診療所名</span><b id="cf-clinic"></b></div>
-    <div class="field"><span>カルテNo</span><b id="cf-chart"></b></div>
-    <div class="field"><span>患者名</span><b id="cf-name"></b></div>
-    <div class="field"><span>シリアルNo</span><b id="cf-serial"></b></div>
-    <div class="field"><span>ログ共有通知先（宛先）</span><b id="cf-email"></b></div>
-    <button id="cf-ok" class="primary">始める</button>
-    <button id="cf-ng" class="warnbtn">情報が間違っています</button>
-    <button id="back-rec-confirm" class="sub" hidden>睡眠記録画面に移動</button>
+    <button id="update">アプリの更新</button><p id="updateStatus" class="note" aria-live="polite"></p>
+    <button id="camera">QRコードを読む</button><video id="video" playsinline muted hidden></video>
+    <button id="cameraStop" hidden>カメラを止める</button>
+    <button id="imagePick">QR画像を選択</button><input id="image" type="file" accept="image/*" hidden>
+    <button id="homeRecord" class="primary" hidden>記録画面に移動</button>
+    <button id="homeHistory">記録カレンダーを見る</button>
   </section>
 </main>
-
-<!-- 記録画面 -->
-<main id="page-record" class="page" hidden>
-  <header class="head">
-    <h1 class="app-name">SomnoLog V141</h1>
-    <div style="display:flex;align-items:center;gap:10px">
-      <button id="rec-back" class="sub mini" type="button">戻る</button>
-      <span id="rec-badge" class="tag">待機中</span>
+<main id="confirm" hidden>
+  <h1>計測者の確認</h1><section class="card">
+    <p id="identity" class="wrap"></p><button id="accept" class="primary">始める</button><button id="reject">読み直す</button>
+  </section>
+</main>
+<main id="record" hidden>
+  <header class="row"><h1>③SomnoLog_V131</h1><small id="state">待機中</small></header>
+  <section class="card">
+    <button id="prepOpen">記録の準備</button><button id="start" class="primary">記録開始</button>
+    <button id="blackOpen">黒画面に切り替え</button><button id="stop" class="danger">停止（2秒長押し）</button>
+    <button id="recordHistory">記録カレンダーを見る</button><button id="recordBack">戻る</button>
+    <p id="live" class="note" aria-live="polite"></p>
+  </section>
+</main>
+<main id="prep" hidden>
+  <h1>記録の準備</h1><section class="card">
+    <button id="mic">マイク・体動センサーを許可</button>
+    <meter id="meter" min="-120" max="0" value="-120"></meter><p id="level" class="note">マイク未取得</p>
+    <button id="calibrate" class="primary">基準音の設定</button><p id="calStatus" class="note"></p>
+    <button id="referencePlay">基準の「あ〜」を聴く</button>
+    <p class="note">最初の約2秒は静かにし、続く約2秒で「あ〜」と発声してください。検出は環境音＋10 dB。基準は記録中に自動変更しません。</p>
+    <button id="prepBack">戻る</button>
+  </section>
+</main>
+<main id="history" hidden>
+  <header class="row"><h1>記録カレンダー</h1><button id="historyBack">戻る</button></header>
+  <section class="card"><div class="row"><button id="prevMonth" aria-label="前月">‹</button><h2 id="month"></h2><button id="nextMonth" aria-label="翌月">›</button></div>
+    <div id="calendar"></div><p class="note">印のある日を選ぶと記録を表示します。同じ日をもう一度押すと詳細を開きます。</p>
+  </section><section id="dayRows" class="card"></section>
+</main>
+<main id="detail" hidden>
+  <header class="row"><h1>タイムライン</h1><button id="detailBack">カレンダーに戻る</button></header>
+  <section class="card">
+    <p id="detailInfo" class="note"></p>
+    <div class="row"><label>表示幅 <select id="zoom"><option value="0">全体</option><option value="3600">1時間</option><option value="1800">30分</option><option value="600">10分</option><option value="300">5分</option><option value="60">1分</option></select></label></div>
+    <div id="plot" class="chart" aria-label="時系列とイベント位置"></div>
+    <div id="tlLegend" class="legend"></div>
+    <div id="tlTags" class="tagbar"></div>
+    <div id="motionAdj">
+      <div class="row"><span class="note">体動のしきい値</span><b id="tmThreshVal" class="note">0.05 g</b></div>
+      <input id="tmThresh" type="range" min="0" max="0.3" step="0.01" value="0.05">
+      <p class="note">しきい値以上の体動を表示します。設定は表示だけに使い、保存済みデータは変えません。</p>
     </div>
-  </header>
-
-  <button id="rec-usage-btn" class="warnbtn">使い方を見る</button>
-  <section id="rec-usage-box" class="card" hidden>
-    <h2>使い方</h2>
-    <ol class="steps">
-      <li>「記録の準備」を押して、マイクとモーションセンサーの許可と、基準音の設定をします。</li>
-      <li>「記録開始」を押すと記録が始まります。「停止」を2秒長押しすると記録が終わります。</li>
-      <li>「黒画面に切り替え」を押すと、画面を暗くして記録を続けられます。</li>
-      <li>記録は「記録カレンダーを見る」から確認できます。</li>
-    </ol>
-  </section>
-
-  <section class="card">
-    <button id="prep-btn" class="primary">記録の準備</button>
-    <button id="start-btn" class="primary" disabled>記録開始</button>
-    <button id="btn-enter-black" class="sub" disabled>黒画面に切り替え</button>
-    <button id="stop-btn" class="danger" disabled>停止</button>
-    <button id="history-btn" class="sub">記録カレンダーを見る</button>
+    <label>表示位置<input id="pan" type="range" min="0" max="0" step=".1"></label>
+    <label>黄色い線（時刻の位置）<input id="cursor" type="range" min="0" max="0" step=".1"></label>
+    <p id="cursorText" class="note"></p>
+    <label>音声イベント <select id="clipSelect"></select></label>
+    <button id="listen">選択したイベントの音声を聴く</button><audio id="audio" controls hidden></audio>
+    <button id="keep">この音声を保存する（削除から保護）</button>
+    <button id="detailReference">基準の「あ〜」を聴く</button>
+    <button id="shareOpen" class="primary">共有画面に移行する</button>
+    <button id="deleteSession" class="danger">この記録を削除する</button>
   </section>
 </main>
-
-<!-- 記録の準備 -->
-<main id="page-prep" class="page" hidden>
-  <header class="head">
-    <h1 class="app-name">SomnoLog V141</h1>
-    <button id="prep-back" class="sub mini" type="button">戻る</button>
-  </header>
-
-  <button id="prep-usage-btn" class="warnbtn">使い方を見る</button>
-  <section id="prep-usage-box" class="card" hidden>
-    <h2>使い方</h2>
-    <ol class="steps">
-      <li>「マイクを許可」を押すと、マイクとモーションセンサーの許可をまとめて取ります。</li>
-      <li>「基準音の設定」を押すと、まず2秒間静かにして環境音を測り、続けて2秒間「あ〜」と声を出します。</li>
-      <li>基準音は端末に保存されるので、次回からは測らなくて大丈夫です。</li>
-      <li>基準音が小さい場合は「音圧調整」でマイク感度を上げてから、基準音を測り直してください。</li>
-    </ol>
+<main id="share" hidden>
+  <h1>セッションログの共有</h1><section class="card">
+    <p class="note">ZIPは非暗号化です。計測者情報と、会話が検出されなかった音声が入ります。会話を検出した音声と判定できなかった音声は含めません。自動判定には見逃しがあります。自動送信はしません。</p>
+    <p id="address" class="wrap"></p><button id="download" class="primary">セッションZIPを保存</button>
+    <button id="copy">① 宛先をコピー</button><button id="pick">② ZIPを選んで共有</button><input id="shareFile" type="file" accept=".zip,application/zip" hidden>
+    <button id="deleteAudio" class="danger">この記録の未保護音声を削除</button>
+    <p id="shareStatus" class="note" aria-live="polite"></p><button id="shareBack">タイムラインに戻る</button>
   </section>
-
-  <div id="mic-msg" class="err" hidden></div>
-
-  <section class="card">
-    <div class="kv"><span>マイク</span><b id="mic-state">未許可</b></div>
-    <button id="mic-btn">マイクを許可</button>
-    <div class="meter"><i id="level-bar"></i><i class="tk" style="left:25%"></i><i class="tk" style="left:50%"></i><i class="tk" style="left:75%"></i><b id="mid-line" class="mid"></b></div>
-    <div id="scale-row" class="scale-row"></div>
-    <div class="kv"><span>下端：環境音</span><b id="g-env">-</b></div>
-    <div class="kv"><span>白い線：「あ〜」</span><b id="g-ah">-</b></div>
-    <div class="kv"><span>上端：記録中の最大</span><b id="g-top">-</b></div>
-    <div class="kv"><span id="level-text">-</span><span id="base-text">待機中</span></div>
-    <label class="muted">音圧調整（基準音が小さい場合にマイク感度を上げます）</label>
-    <input id="gain" type="range" min="-9" max="18" step="1" value="0">
-    <p class="muted">調整をした後、基準音を測り直してください。</p>
-  </section>
-
-  <section class="card">
-    <button id="ref-btn" class="primary" disabled>基準音の設定</button>
-    <p id="ref-msg" class="muted">基準音が未設定です。設定すると、バーの見方が決まります。</p>
-    <button id="ref-play-btn" class="sub" hidden>基準音を聴く</button>
-  </section>
-
-  <section class="card">
-    <div class="kv"><span>体動（重力除去）</span><b id="motion-text">-</b></div>
-    <div class="meter"><i id="motion-bar"></i></div>
-  </section>
-
-  <button id="prep-back2" class="sub">戻る</button>
 </main>
-
-<!-- 記録カレンダー -->
-<main id="page-calendar" class="page" hidden>
-  <header class="head">
-    <h1>記録カレンダー</h1>
-    <button id="cal-back" class="sub mini">戻る</button>
-  </header>
-  <p class="muted">記録がある日には●が付きます。日付を1回押すと簡易睡眠記録を表示し、同じ日付をもう一度押すと詳細を開きます。</p>
-  <button id="cal-usage-btn" class="warnbtn">使い方を見る</button>
-  <section id="cal-usage-box" class="card" hidden>
-    <h2>使い方</h2>
-    <ol class="steps">
-      <li>記録がある日には●が付きます。</li>
-      <li>印のある日付を1回押すと、簡易睡眠記録が表示されます。</li>
-      <li>同じ日付をもう一度押すと、いびき音声詳細画面が開きます。</li>
-      <li>‹ › で前後の月に移動できます。</li>
-      <li>昼寝や仮眠を記録したときは、▲ ▼ で、同じ日の記録を1件ずつ切り替えられます。</li>
-      <li>「この日の音声データを削除」は、その日の記録すべての音声を消します。</li>
-      <li>タイムラインで「保存」した音声は消えません。</li>
-      <li>音声データを削除しても、簡易ログとグラフは残ります。</li>
-    </ol>
-  </section>
-  <section class="card">
-    <div class="cal-nav">
-      <button id="cal-prev" class="sub mini">‹</button>
-      <h2 id="cal-title">-</h2>
-      <button id="cal-next" class="sub mini">›</button>
-    </div>
-    <div id="cal-weekdays" class="cal-grid"></div>
-    <div id="cal-days" class="cal-grid"></div>
-    <p class="muted">● 記録あり ／ 枠：今日</p>
-  </section>
-  <section id="cal-summary" class="card"></section>
-</main>
-
-<!-- 詳細画面（タイムライン） -->
-<main id="page-detail" class="page" hidden>
-  <div class="sticky-bar">
-    <button id="detail-back" class="sub">カレンダーに戻る</button>
-  </div>
-  <button id="det-usage-btn" class="warnbtn">使い方を見る</button>
-  <section id="det-usage-box" class="card" hidden>
-    <h2>使い方</h2>
-    <ol class="steps">
-      <li>上のボタンで「いびき」「判定不能」「環境音」「人声」「体動」を切り替えます。最初は「いびき」が選ばれています。</li>
-      <li>棒の高さは、下端が環境音、真ん中の線が「あ〜」、上端がその晩の最大音です。</li>
-      <li>黄色い線を動かして、聴きたい位置に合わせます。</li>
-      <li>「タイムラインの音を聴く」を押すと、黄色い線の棒1本分の時間の音を再生します。</li>
-      <li>残したい音は「この音声を保存する」を押します。保存した棒は白色になり、音声削除の対象から外れます。</li>
-      <li>「共有画面に移行する」を押すと、睡眠記録の共有画面に進みます。</li>
-    </ol>
-  </section>
-  <section class="card">
-    <div class="head">
-      <h2>タイムライン</h2>
-      <select id="tl-zoom" aria-label="タイムライン圧縮">
-        <option value="60">1分</option>
-        <option value="300">5分</option>
-        <option value="600">10分</option>
-        <option value="1800">30分</option>
-        <option value="3600">1時間</option>
-        <option value="0" selected>全体</option>
-      </select>
-    </div>
-    <p id="tl-info" class="tl-info"></p>
-    <div id="d-chart" class="chart tl-area"></div>
-    <div id="tl-legend" class="legend"></div>
-    <div id="tl-tags" class="tagbar"></div>
-    <div id="tl-motion-adj" hidden>
-      <div class="kv"><span>体動のしきい値</span><b id="tm-thresh-val">0.05 g</b></div>
-      <input id="tm-thresh" type="range" min="0" max="0.3" step="0.01" value="0.05">
-      <p class="muted">しきい値以上の体動を表示します。設定は表示だけに使い、保存済みデータやカレンダーの評価は変えません。</p>
-    </div>
-    <p id="tl-cur-text" class="tl-info"></p>
-    <label class="muted">表示位置（右へ動かすと終了時刻の方へ進みます）</label>
-    <input id="tl-pos" type="range" min="0" max="0" step="1" value="0">
-    <label class="muted">黄色い線（時刻の位置）</label>
-    <input id="tl-cur" type="range" min="0" max="0" step="1" value="0">
-    <button id="tl-listen" class="primary">タイムラインの音を聴く（棒1本分）</button>
-    <button id="tl-ref-play" class="sub">基準の「あ〜」を聴く</button>
-    <div id="tl-audio"></div>
-    <p id="tl-msg" class="muted"></p>
-    <button id="tl-save" class="primary" disabled>この音声を保存する（残す）</button>
-    <button id="tl-go-share" class="sub">共有画面に移行する</button>
-    <button id="tl-delete" class="danger">この記録を削除する</button>
-  </section>
-  <p class="muted">本アプリは診断を行うものではありません。医師の判断の参考資料です。</p>
-</main>
-
-<!-- 睡眠記録の共有 -->
-<main id="page-share" class="page" hidden>
-  <header class="head">
-    <h1>睡眠記録の共有</h1>
-  </header>
-  <p id="sh-msg" class="warn" hidden></p>
-  <button id="sh-usage" class="warnbtn">使い方を見る</button>
-  <section id="sh-usage-box" class="card" hidden>
-    <h2>送り方</h2>
-    <ol class="steps">
-      <li>「全てのいびき記録を保存」を押すと、ZIPファイルがダウンロードに保存されます。</li>
-      <li>「①アドレスをコピー」を押してから、「②ファイルを選んで送信」で、保存したZIPファイルを選びます。</li>
-      <li>共有の画面が開いたら、メールを選び、宛先の欄にコピーしたアドレスを貼り付けて送信します。</li>
-      <li>ZIPを保存できたことを確認したら、「このタイムラインから音声を削除」を押せます。簡易ログとグラフは残ります。</li>
-    </ol>
-  </section>
-  <section class="card">
-    <button id="sh-all" class="primary">全てのいびき記録を保存</button>
-  </section>
-  <section class="card">
-    <h2>共有先確認（宛先）</h2>
-    <div class="field"><span>共有先アドレス（QRコードから引用）</span><b id="sh-addr"></b></div>
-    <button id="sh-copy">①アドレスをコピー</button>
-    <button id="sh-pick">②ファイルを選んで送信</button>
-    <input id="sh-file" type="file" accept=".zip,application/zip" hidden>
-  </section>
-  <section id="sh-del-tl-card" class="card" hidden>
-    <h2>保存済の音声データの削除</h2>
-    <p class="muted">ZIPをダウンロードしたことを確認してから【このタイムラインから音声を削除】を押してください。簡易ログとグラフは残ります。</p>
-    <button id="sh-del-tl" class="danger" disabled>このタイムラインから音声を削除</button>
-  </section>
-  <button id="sh-back" class="sub">記録画面に戻る</button>
-</main>
-
-<!-- 黒画面（1.5秒長押しで戻る） -->
-<div id="black-screen" hidden>
-  <span id="black-clock"></span>
-  <span class="muted">1.5秒長押しで戻る</span>
-  <div id="black-progress"><div id="black-progress-bar"></div></div>
-</div>
-
+<div id="black" hidden><time id="clock"></time><small>2秒長押しで戻る</small><progress id="progress" max="1" value="0"></progress></div>
 <script>
 "use strict";
-/* ===== バージョン ===== */
-const APP_VERSION = 141;
-const VERSION = "SomnoLog-V" + APP_VERSION;
-const REVISION = "v141-unified";
-
-/* ===== 更新の取得元（GitHub） ===== */
-const UPD_REPO = "matsuodentalassociation/ST-SCOPE";
-const UPD_BRANCH = "main";
-const UPD_FILE = "index.html";
-const UPD_PAGES = "https://matsuodentalassociation.github.io/ST-SCOPE/";
-const UPDATE_EVERY_MS = 10 * 60 * 1000;
-const UPD_TIMEOUT_MS = 10000;
-const UPD_TARGET_KEY = "somnolog-update-target";
-
-/* ===== 計測・判定パラメータ（V20 repair-1 仕様） ===== */
-const RATE = 16000;
-const FRAME = 400; // 25ms
-const HOP = 160;   // 10ms
-const FFT_N = 512;
-const BASELINE_SEC = 10;
-const TRIGGER_DB = 5;
-const PRE_SEC = 3;
-const POST_SEC = 5;
-const MIN_EVENT = 0.5;
-const MAX_EVENT = 4.0;
-const MERGE_GAP = 0.2;
-const PERIOD_WINDOW = 12;
-const PERIOD_MIN_COUNT = 3;
-const PERIOD_MIN_GAP = 1.5;
-const DECIDE_LAG = 17;
-const RING_SEC = 26;
-const CENTROID_MAX = 1200;
-const FLATNESS_MAX = 0.25;
-const HF_RATIO_MAX = 0.35;
-const HF_HZ = 2000;
-const SUSTAIN_LOGS = 600;
-const SUSTAIN_SPREAD_DB = 6;
-const MOTION_EVENT_G = 0.025;
-const PROFILE_SEC = 30;
-const LOG_BATCH = 60;
-const UI_MS = 250;
-const MOTION_BAR_MAX = 0.5;
-
-/* ===== DB設定（V20 5ストア + settings） ===== */
-const DB_NAME = "SomnoLog.real.v8";
-const DB_VERSION = 2;
-const DB_WAIT_MS = 8000;
-const LOCK_NAME = DB_NAME + ".exclusive";
-
-/* ===== 基準音圧・タイムライン表示設定（V113 仕様） ===== */
-const REF_TARGET_DB = -22;
-const REF_SEC = 2;
-const REF_MIN_FRAMES = 40;
-const REF_QUIET_DB = -60;
-const DISP_FRAMES = 50;
-const REF_WORD_DB = 3;
-
-const TAG_ORDER = ["snore", "unknown", "env", "speech"];
-const TAG_COLOR = { snore: "#4a90d9", unknown: "#ff9f43", env: "#4caf7a", speech: "#9aa5b1", motion: "#e04848" };
-const TAG_NAME = { snore: "いびき", unknown: "判定不能", env: "環境音", speech: "人声", motion: "体動" };
-const TL_BINS = 60;
-const TL_W = 480, TL_H = 220, TL_PL = 62, TL_PR = 8, TL_PT = 8, TL_PB = 22;
-const SAVED_BAR_COLOR = "#ffffff";
-
-/* ===== 補助関数 ===== */
-const $ = (id) => document.getElementById(id);
-const pad = (n) => String(n).padStart(2, "0");
-const uid = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now() + "-" + Math.random().toString(16).slice(2));
-const round = (n, d = 3) => Number(n.toFixed(d));
-const round2 = (v) => Math.round(v * 100) / 100;
-const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
-const mean = (a) => (a.length ? a.reduce((s, v) => s + v, 0) / a.length : 0);
-const median = (a) => { if (!a.length) return null; const s = [...a].sort((x, y) => x - y); const m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
-const fmtTime = (ms) => { const s = Math.max(0, Math.floor(ms / 1000)); const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60; return h ? h + ":" + pad(m) + ":" + pad(sec) : m + ":" + pad(sec); };
-const fmtHM = (ms) => { const s = Math.max(0, Math.floor(ms / 1000)); return Math.floor(s / 3600) + "時間" + Math.floor((s % 3600) / 60) + "分"; };
-const fmtClock = (ms) => new Date(ms).toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
-const esc = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-const dayKey = (ms) => { const d = new Date(ms); return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); };
-const dayLabel = (key) => { const [y, m, d] = key.split("-").map(Number); const w = "日月火水木金土"[new Date(y, m - 1, d).getDay()]; return y + "年" + m + "月" + d + "日（" + w + "）"; };
-
-function showError(msg) { const b = $("errbox"); b.hidden = false; b.textContent = "エラー: " + msg + "\n（タップで閉じます）"; }
-function clearError() { const b = $("errbox"); if (b) b.hidden = true; }
-window.addEventListener("error", (e) => showError(e.message));
-window.addEventListener("unhandledrejection", (e) => showError((e.reason && e.reason.message) || String(e.reason)));
-function showMicMsg(text) { const b = $("mic-msg"); b.hidden = !text; b.textContent = text || ""; }
-function showRefMsg(text, isErr) { const b = $("ref-msg"); b.textContent = text || ""; b.className = isErr ? "err" : "muted"; }
-function showScanMsg(text) { const b = $("scan-msg"); b.hidden = !text; b.textContent = text || ""; }
-
-/* ===== 患者情報（QR） ===== */
-const S_PATIENT_PENDING = { value: null };
-class PatientError extends Error {}
-
-function decodeSlp(payload) {
-  let s = String(payload).trim().replace(/[^A-Za-z0-9\-_]/g, "");
-  if (!s) throw new PatientError("QRの中身が空です。");
-  s = s.replace(/-/g, "+").replace(/_/g, "/");
-  while (s.length % 4) s += "=";
-  const bin = atob(s);
-  const bytes = Uint8Array.from(bin, (c) => c.charCodeAt(0));
-  const json = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
-  return JSON.parse(json);
+const APP_VERSION = 131;
+const APP = "③SomnoLog_V131", RATE = 16000, STEP = 1600, PRE = RATE*3, POST = RATE*5;
+const DB_NAME = "SomnoLog.v130", PROFILE = 300, MAX_CLIP = RATE*3600;
+const LABELS = Object.freeze({ issuer:"発行元", user:"計測者（User）", admin:"解析者（Admin）", number:"計測者番号", log:"セッションログ", event:"音響イベント" });
+const $ = id => document.getElementById(id);
+const finite = Number.isFinite, clamp = (v,a,b) => Math.min(b,Math.max(a,v));
+const r = (x,n=3) => Number(x.toFixed(n));
+const id = () => crypto.randomUUID();
+const day = t => { const d=new Date(t); return [d.getFullYear(),d.getMonth()+1,d.getDate()].map((v,i)=>i?String(v).padStart(2,"0"):v).join("-"); };
+const rmsDb = (power,n) => Math.max(-120,10*Math.log10(Math.max(1e-12,power/n)));
+const msg = s => { $("notice").textContent=s||""; $("notice").hidden=!s; };
+const pages = ["home","confirm","record","prep","history","detail","share"];
+let page="home", db, person=null, candidate=null, ref=null, refUrl="", playerUrl="";
+let stream=null, ctx=null, tap=null, source=null, silencer=null, wake=null, captureEpoch=0, micBusy=false;
+let calibration=null, current=null, stopping=null, starting=false, updating=false, exporting=false, changing=false;
+let selectedSession=null, detailRows=[], detailClips=[], clipID="", shift=0, cursor=0;
+let month=new Date(), chosenDay=null, historyFrom="home", calendarRows=[], calendarGeneration=0;
+let motionAllowed=false, motionAt=-Infinity, motionG=null, gravity=null, lastMotionTime=0;
+let cameraStream=null, cameraPending=false, cameraGeneration=0, qrLibrary=null;
+let plotMode="sound", motionThresh=0.05;
+try{const st=localStorage.getItem("somnolog-motion-thresh-g");if(st!=null)motionThresh=clamp(Number(st)||0.05,0,0.3);}catch(_){}
+const busy = () => !!(current||stopping||starting||updating||exporting||changing||calibration||micBusy);
+const micReady = () => !!stream?.getAudioTracks().some(t=>t.readyState==="live");
+function show(name) {
+  if(name!=="home") stopCamera();
+  if(name!=="detail") clearPlayer();
+  page=name; for(const p of pages) $(p).hidden=p!==name;
+  window.scrollTo(0,0); controls(); if(name==="detail") draw();
 }
-
-function patientFromText(text) {
-  const str = String(text || "");
-  const idx = str.indexOf("#slp=");
-  if (idx < 0) throw new PatientError("患者用QRではありません。②が発行したQRを読み取ってください。");
-  let obj;
-  try { obj = decodeSlp(str.slice(idx + 5)); } catch (e) { throw new PatientError("QRの中身を読み取れませんでした。QRを再発行してもらってください。"); }
-  if (!obj || typeof obj !== "object" || Array.isArray(obj)) throw new PatientError("QRの中身の形式が正しくありません。");
-  const s = (v) => (typeof v === "string" ? v.normalize("NFC").trim() : "");
-  const p = {
-    clinic: s(obj.clinicName),
-    chartNo: s(obj.chartNo),
-    name: s(obj.patientName),
-    serialNumber: s(obj.serial),
-    issuedOn: s(obj.issuedOn),
-    logShareEmail: s(obj.logShareEmail || obj.doctorEmail || obj.email),
-    issueId: s(obj.issueId),
-  };
-  if (!p.name) throw new PatientError("患者名がありません。このQRは利用できません。");
-  if (!p.chartNo) throw new PatientError("カルテNoがありません。QRを再発行してもらってください。");
-  return p;
+function action(id,fn,type="click") {
+  $(id).addEventListener(type,e=>Promise.resolve().then(()=>fn(e)).catch(err=>msg(err.message||String(err))));
 }
-
-function sanitize(v, max = 40) {
-  const s = String(v ?? "").normalize("NFC").replace(/[\\/:*?"<>|\u0000-\u001f\u007f]/g, "_").replace(/\s+/g, "_").replace(/_+/g, "_").replace(/^[_.]+|[_.]+$/g, "").slice(0, max);
-  return s || "未設定";
+function controls(){
+  const locked=busy();
+  $("homeRecord").hidden=!person;
+  $("start").disabled=locked||!db||!person||!micReady()||!finite(ref?.envDbFS);
+  for(const k of ["recordBack","recordHistory","homeHistory","prepOpen","update"]) $(k).disabled=locked;
+  $("calibrate").disabled=locked||!micReady(); $("mic").disabled=locked;
+  $("referencePlay").disabled=!ref?.wav; $("detailReference").disabled=!ref?.wav;
+  $("prepBack").disabled=locked; $("homeRecord").disabled=locked;
+  $("stop").disabled=!current||!!stopping; $("blackOpen").disabled=!current||!!stopping;
+  $("state").textContent=stopping?"保存中":current?"記録中":starting?"準備中":"待機中";
+  for(const k of ["download","deleteAudio","deleteSession","shareBack","keep","pick","copy"])
+    $(k).disabled=locked||!selectedSession;
+  if(!locked) $("keep").disabled=!detailClips.some(c=>c.id===clipID&&!c.deleted&&!c.saved);
 }
-
-function zipName(sess) {
-  const p = sess.patient || {};
-  const d = new Date(sess.startTimeMs);
-  const day = d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate());
-  const time = pad(d.getHours()) + pad(d.getMinutes());
-  return [day, time, sanitize(p.clinic, 30), sanitize(p.chartNo, 20), sanitize(p.name, 20)].join("_") + ".zip";
-}
-
-/* ===== IndexedDB (V20 5ストア + settings) ===== */
-const DB = (() => {
-  let db = null, p = null;
-  const open = () => p || (p = new Promise((res, rej) => {
-    const req = indexedDB.open(DB_NAME, DB_VERSION);
-    req.onupgradeneeded = () => {
-      const d = req.result;
-      if (!d.objectStoreNames.contains("sessions")) d.createObjectStore("sessions", { keyPath: "id" });
-      if (!d.objectStoreNames.contains("sessionLogs")) d.createObjectStore("sessionLogs", { keyPath: ["sessionId", "index"] });
-      if (!d.objectStoreNames.contains("profileBins")) d.createObjectStore("profileBins", { keyPath: ["sessionId", "bin"] });
-      if (!d.objectStoreNames.contains("clips")) {
-        const clips = d.createObjectStore("clips", { keyPath: "id" });
-        clips.createIndex("sessionId", "sessionId");
-      }
-      if (!d.objectStoreNames.contains("audioChunks")) {
-        const chunks = d.createObjectStore("audioChunks", { keyPath: ["clipId", "n"] });
-        chunks.createIndex("clipId", "clipId");
-      }
-      if (!d.objectStoreNames.contains("settings")) d.createObjectStore("settings", { keyPath: "key" });
+function database(){
+  return new Promise((resolve,reject)=>{
+    const q=indexedDB.open(DB_NAME,1);
+    q.onupgradeneeded=()=>{
+      const d=q.result;
+      d.createObjectStore("sessions",{keyPath:"id"});
+      d.createObjectStore("sessionLogs",{keyPath:["sessionId","index"]});
+      d.createObjectStore("profileBins",{keyPath:["sessionId","bin"]});
+      d.createObjectStore("clips",{keyPath:"id"}).createIndex("sessionId","sessionId");
+      d.createObjectStore("audioChunks",{keyPath:["clipId","n"]});
     };
-    req.onsuccess = () => {
-      db = req.result;
-      db.onversionchange = () => { db.close(); db = null; p = null; };
-      res(db);
-    };
-    req.onerror = () => rej(req.error || new Error("保存領域を開けませんでした"));
-    req.onblocked = () => rej(new Error("保存領域が他のタブで使用中です。"));
-  }));
-
-  const write = async (stores, fn) => {
-    const d = await open();
-    return new Promise((res, rej) => {
-      const tx = d.transaction(stores, "readwrite");
-      tx.oncomplete = () => res();
-      tx.onabort = () => rej(tx.error || new Error("保存処理が中断されました"));
-      try { fn(tx); } catch (e) { try { tx.abort(); } catch (_) {} rej(e); }
-    });
-  };
-
-  const get = async (store, key) => {
-    const d = await open();
-    return new Promise((res, rej) => {
-      const req = d.transaction(store, "readonly").objectStore(store).get(key);
-      req.onsuccess = () => res(req.result);
-      req.onerror = () => rej(req.error);
-    });
-  };
-
-  const all = async (store) => {
-    const d = await open();
-    return new Promise((res, rej) => {
-      const req = d.transaction(store, "readonly").objectStore(store).getAll();
-      req.onsuccess = () => res(req.result || []);
-      req.onerror = () => rej(req.error);
-    });
-  };
-
-  const eachIn = async (store, indexName, range, fn) => {
-    const d = await open();
-    return new Promise((res, rej) => {
-      const tx = d.transaction(store, "readonly");
-      tx.oncomplete = () => res();
-      tx.onabort = () => rej(tx.error);
-      const src = indexName ? tx.objectStore(store).index(indexName) : tx.objectStore(store);
-      const req = src.openCursor(range);
-      req.onsuccess = () => {
-        const c = req.result;
-        if (!c) return;
-        try { fn(c.value); c.continue(); } catch (e) { try { tx.abort(); } catch (_) {} rej(e); }
-      };
-      req.onerror = () => rej(req.error);
-    });
-  };
-
-  return { open, write, get, all, eachIn, put: (s, o) => write([s], (tx) => tx.objectStore(s).put(o)) };
-})();
-
-const sessionRange = (id) => IDBKeyRange.bound([id, -Infinity], [id, Infinity]);
-
-/* ===== 状態 ===== */
-const S = {
-  ac: null, stream: null, source: null, analyser: null, mutedOutput: null, processor: null, refProcessor: null,
-  gainDb: 0, calDb: 0, ref: null, refColl: null, refPcm: null, refEnv: null, peakDb: -Infinity,
-  patient: null, running: false, saving: false, wake: null, uiTimer: null, blackOn: false, savedStyle: null, blackTimer: null, detailSid: null,
-  lastLv: -100, dispWin: [], dispLv: -100, motionAllowed: false, motionValue: 0, motionAt: 0, motionSource: "", gravity: null, gravityAt: 0,
-  // V20 エンジン状態
-  session: null, sampleCount: 0, frameIdx: 0, pendingF: new Float32Array(0), resampleFill: 0, resampleSum: 0, lastAudioTime: null,
-  winPow: 0, winCount: 0, winPeakHz: 0, winPeakPow: -1, winMotion: 0, winMotionValid: false,
-  baseline: null, initialBaseline: null, calibration: [], recent: [],
-  blocks: new Map(), curBlock: null, curK: -1, run: null, candQueue: [], candSeq: 0, decideIdx: 0,
-  clipSeq: 0, confirmedCount: 0, openClip: null, clipSecTotal: 0, motionSec: 0,
-  logBatch: [], logIndex: 0, profile: null, initialMotionSource: "", saveChain: Promise.resolve(), saveError: null
-};
-
-const cal = { year: 0, month: 0, selected: null, index: 0, byDay: new Map() };
-const tl = { data: null, total: 0, winStart: 0, winLen: 0, cursor: 0, zoomSec: 0, scale: { refDb: -40, envDb: -52, topDb: -40 }, tags: { snore: true, unknown: false, env: false, speech: false, motion: false }, motionThresh: 0.05, motionCeil: 0.3 };
-const SH = { sid: null, zipDone: false, zipName: "" };
-const PLAY = { list: [] };
-
-function isBusy() { return S.running || S.saving || !!S.refColl; }
-function showPage(name) {
-  ["start", "confirm", "record", "prep", "calendar", "detail", "share"].forEach((n) => { $("page-" + n).hidden = n !== name; });
-  window.scrollTo(0, 0);
-}
-function updateBackButtons() {
-  const has = !!S.patient;
-  $("back-rec-start").hidden = !has;
-  $("back-rec-confirm").hidden = !has;
-}
-function goRecord() {
-  stopCamera();
-  if (!S.patient) { showError("患者情報が登録されていません。QRを読み取ってください。"); return; }
-  clearError(); setButtons(); showPage("record");
-}
-
-/* ===== QR読み取り ===== */
-let camStream = null, camTimer = 0, detector = null, scanBusy = false;
-function handleQrText(text) {
-  try {
-    const p = patientFromText(text);
-    showScanMsg(""); S_PATIENT_PENDING.value = p;
-    clearError();
-    $("cf-clinic").textContent = p.clinic || "（未記入）";
-    $("cf-chart").textContent = p.chartNo || "（未記入）";
-    $("cf-name").textContent = p.name;
-    $("cf-serial").textContent = p.serialNumber || "（未記入）";
-    $("cf-email").textContent = p.logShareEmail || "（未記入）";
-    updateBackButtons(); showPage("confirm");
-  } catch (e) { showScanMsg(e instanceof PatientError ? e.message : "QRを読み取れませんでした: " + e.message); }
-}
-
-async function decodeCanvas(canvas) {
-  if (window.BarcodeDetector) {
-    try {
-      if (!detector) detector = new BarcodeDetector({ formats: ["qr_code"] });
-      const r = await detector.detect(canvas);
-      if (r.length && r[0].rawValue) return r[0].rawValue;
-    } catch (e) {}
-  }
-  if (typeof window.jsQR === "function") {
-    const c = canvas.getContext("2d");
-    const img = c.getImageData(0, 0, canvas.width, canvas.height);
-    const code = window.jsQR(img.data, img.width, img.height);
-    if (code && code.data) return code.data;
-  }
-  return null;
-}
-
-async function startCamera() {
-  showScanMsg("");
-  if (!window.isSecureContext || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { showScanMsg("カメラを使うには https:// で開いてください。"); return; }
-  try {
-    camStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" } }, audio: false });
-    const video = $("cam-video"); video.srcObject = camStream; await video.play(); $("cam-box").hidden = false;
-    const run = async () => {
-      if (!camStream) return;
-      if (!scanBusy && video.readyState >= 2 && video.videoWidth) {
-        scanBusy = true;
-        try {
-          const canvas = $("scan-canvas"); canvas.width = video.videoWidth; canvas.height = video.videoHeight;
-          canvas.getContext("2d").drawImage(video, 0, 0);
-          const text = await decodeCanvas(canvas);
-          if (text) { stopCamera(); handleQrText(text); return; }
-        } finally { scanBusy = false; }
-      }
-      camTimer = setTimeout(run, 250);
-    };
-    run();
-  } catch (e) { stopCamera(); showScanMsg("カメラを起動できませんでした。（" + e.name + "）"); }
-}
-
-function stopCamera() {
-  clearTimeout(camTimer); camTimer = 0;
-  if (camStream) camStream.getTracks().forEach((t) => t.stop());
-  camStream = null; const v = $("cam-video"); if (v) v.srcObject = null; $("cam-box").hidden = true;
-}
-
-async function readQrFile(file) {
-  showScanMsg(""); if (!file) return;
-  try {
-    const bmp = await createImageBitmap(file);
-    const canvas = $("scan-canvas"); canvas.width = bmp.width; canvas.height = bmp.height;
-    canvas.getContext("2d").drawImage(bmp, 0, 0); bmp.close && bmp.close();
-    const text = await decodeCanvas(canvas);
-    if (!text) { showScanMsg("画像からQRを見つけられませんでした。"); return; }
-    handleQrText(text);
-  } catch (e) { showScanMsg("画像を読み込めませんでした: " + e.message); }
-}
-
-function checkHashOnLoad() {
-  if (location.hash.indexOf("#slp=") < 0) return false;
-  const text = location.href; history.replaceState(null, "", location.pathname + location.search);
-  handleQrText(text); return true;
-}
-
-/* ===== 患者情報・基準音の保存/読込 ===== */
-async function loadPatient() {
-  try { const row = await DB.get("settings", "patient"); S.patient = row && row.value ? row.value : null; } catch (e) { S.patient = null; }
-}
-async function savePatient(p) { S.patient = p; await DB.put("settings", { key: "patient", value: p, savedAt: Date.now() }); }
-async function loadRef() {
-  try { const row = await DB.get("settings", "ref"); if (row && row.value && typeof row.value.db === "number") S.ref = row.value; } catch (e) {}
-}
-async function saveRef() {
-  if (S.ref) await DB.put("settings", { key: "ref", value: S.ref, savedAt: Date.now() }).catch(() => {});
-}
-function pcmChunksToWavBase64(chunks, sr) {
-  let total = 0; for (const c of chunks) total += c.length;
-  const buf = new ArrayBuffer(44 + total * 2), v = new DataView(buf);
-  const ws = (off, s) => { for (let i = 0; i < s.length; i++) v.setUint8(off + i, s.charCodeAt(i)); };
-  ws(0, "RIFF"); v.setUint32(4, 36 + total * 2, true); ws(8, "WAVE"); ws(12, "fmt "); v.setUint32(16, 16, true);
-  v.setUint16(20, 1, true); v.setUint16(22, 1, true); v.setUint32(24, sr, true); v.setUint32(28, sr * 2, true);
-  v.setUint16(32, 2, true); v.setUint16(34, 16, true); ws(36, "data"); v.setUint32(40, total * 2, true);
-  let off = 44;
-  for (const c of chunks) for (let i = 0; i < c.length; i++) { const s = clamp(c[i], -1, 1); v.setInt16(off, s < 0 ? s * 0x8000 : s * 0x7fff, true); off += 2; }
-  const bytes = new Uint8Array(buf); let bin = "";
-  for (let i = 0; i < bytes.length; i += 8192) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 8192));
-  return btoa(bin);
-}
-let refAudioUrl = null;
-async function playRefAudio() {
-  try {
-    const row = await DB.get("settings", "refAudio");
-    const b64 = row && row.value ? row.value : null; if (!b64) return false;
-    const bin = atob(b64), bytes = new Uint8Array(bin.length);
-    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-    if (refAudioUrl) URL.revokeObjectURL(refAudioUrl);
-    refAudioUrl = URL.createObjectURL(new Blob([bytes], { type: "audio/wav" }));
-    await new Audio(refAudioUrl).play(); return true;
-  } catch (e) { return false; }
-}
-
-/* ===== マイク・体動 ===== */
-const micReady = () => !!(S.stream && S.stream.getAudioTracks().some((t) => t.readyState === "live"));
-const motionValid = () => S.motionAllowed && S.motionAt > 0 && performance.now() - S.motionAt < 1500;
-const motionNow = () => (motionValid() ? S.motionValue : 0);
-
-async function setupMic() {
-  if (!window.isSecureContext || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw new Error("HTTPSで開いてください。");
-  const AC = window.AudioContext || window.webkitAudioContext;
-  if (!AC) throw new Error("Web Audio非対応です。");
-  if (!S.ac || S.ac.state === "closed") S.ac = new AC();
-  const stream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: { ideal: 1 }, echoCancellation: false, noiseSuppression: false, autoGainControl: false }, video: false });
-  if (S.ac.state !== "running") await S.ac.resume();
-  S.stream = stream;
-  S.source = S.ac.createMediaStreamSource(stream);
-  S.analyser = S.ac.createAnalyser(); S.analyser.fftSize = 1024;
-  S.mutedOutput = S.ac.createGain(); S.mutedOutput.gain.value = 0;
-  S.source.connect(S.analyser); S.analyser.connect(S.mutedOutput); S.mutedOutput.connect(S.ac.destination);
-  if (!S.uiTimer) S.uiTimer = setInterval(updateUI, UI_MS);
-}
-
-window.addEventListener("devicemotion", (e) => {
-  if (!S.motionAllowed) return;
-  const now = performance.now(); let x, y, z;
-  const validVec = (a) => a && [a.x, a.y, a.z].every(Number.isFinite);
-  if (validVec(e.acceleration)) { ({ x, y, z } = e.acceleration); S.motionSource = "linear-acceleration"; }
-  else if (validVec(e.accelerationIncludingGravity)) {
-    const a = e.accelerationIncludingGravity;
-    if (!S.gravity || now - S.gravityAt > 2000) S.gravity = { x: a.x, y: a.y, z: a.z };
-    const dt = Math.min(0.2, Math.max(0.001, (now - S.gravityAt) / 1000 || 0.02)), alpha = Math.exp(-dt / 0.5);
-    for (const k of ["x", "y", "z"]) S.gravity[k] = alpha * S.gravity[k] + (1 - alpha) * a[k];
-    x = a.x - S.gravity.x; y = a.y - S.gravity.y; z = a.z - S.gravity.z; S.motionSource = "gravity-removed-estimate";
-  } else return;
-  S.gravityAt = now; S.motionValue = Math.hypot(x, y, z) / 9.80665; S.motionAt = now;
-});
-
-/* ===== 基準音測定（「あ〜」）連続PCM録音 ===== */
-function stopRefProcessor() {
-  if (!S.refProcessor) return;
-  S.refProcessor.onaudioprocess = null;
-  try { S.source.disconnect(S.refProcessor); } catch (_) {}
-  try { S.refProcessor.disconnect(); } catch (_) {}
-  S.refProcessor = null;
-}
-
-function startRefMeasure() {
-  if (!S.ac || !S.source || S.running || S.refColl) return;
-  S.refEnv = null; S.refColl = []; S.refPcm = []; S.dispWin = []; S.dispLv = -100;
-  setButtons();
-  showRefMsg("静かにしてください…（環境音を" + REF_SEC + "秒測ります）");
-
-  stopRefProcessor();
-  const proc = S.ac.createScriptProcessor(2048, 1, 1);
-  proc.onaudioprocess = (e) => {
-    for (let ch = 0; ch < e.outputBuffer.numberOfChannels; ch++) e.outputBuffer.getChannelData(ch).fill(0);
-    if (!S.refColl) return;
-    const ch = e.inputBuffer.getChannelData(0);
-    const mult = Math.pow(10, (S.gainDb + S.calDb) / 20);
-    let sq = 0;
-    const scaled = new Float32Array(ch.length);
-    for (let i = 0; i < ch.length; i++) {
-      const v = clamp(ch[i] * mult, -1, 1);
-      scaled[i] = v;
-      sq += v * v;
-    }
-    const lv = sq > 0 ? Math.max(-100, 10 * Math.log10(sq / ch.length)) : -100;
-    S.refColl.push(lv);
-    if (S.refPcm) S.refPcm.push(scaled);
-  };
-  S.source.connect(proc);
-  proc.connect(S.ac.destination);
-  S.refProcessor = proc;
-
-  setTimeout(() => {
-    const arr = S.refColl || [];
-    if (arr.length < 5) { stopRefProcessor(); S.refColl = null; showRefMsg("音を十分に取れませんでした。", true); setButtons(); return; }
-    S.refEnv = round2(median(arr));
-    S.refColl = []; S.refPcm = [];
-    showRefMsg("「あ〜」と声を出し続けてください…（" + REF_SEC + "秒）");
-    setTimeout(() => {
-      stopRefProcessor();
-      const arr2 = S.refColl || [];
-      if (arr2.length < 5) { S.refColl = null; showRefMsg("音を十分に取れませんでした。", true); setButtons(); return; }
-      const db = Math.max(...arr2);
-      if (db < REF_QUIET_DB || db <= S.refEnv) { S.refColl = null; showRefMsg("声が小さいか環境音と差がありません。音圧調整を上げてください。", true); setButtons(); return; }
-      const rawDb = db - (S.gainDb + S.calDb);
-      const calNew = clamp(REF_TARGET_DB - rawDb, -12, 18);
-      const shift = calNew - S.calDb;
-      S.calDb = calNew;
-      try { localStorage.setItem("somnolog-cal-db", String(S.calDb)); } catch (e) {}
-      S.ref = { db: round2(db + shift), envDb: round2(S.refEnv + shift), at: Date.now() };
-      saveRef();
-      if (S.refPcm && S.refPcm.length) {
-        try { DB.put("settings", { key: "refAudio", value: pcmChunksToWavBase64(S.refPcm, S.ac.sampleRate), savedAt: Date.now() }); } catch (e) {}
-      }
-      S.refColl = null; S.refPcm = null; S.refEnv = null;
-      showRefMsg("基準音圧を設定しました（「あ〜」" + S.ref.db.toFixed(1) + "dB）。「記録開始」を押してください。");
-      setButtons(); updateUI();
-    }, REF_SEC * 1000);
-  }, REF_SEC * 1000);
-}
-
-/* ===== V20 100msエンジン・FFT・PCM16録音 ===== */
-const WIN = new Float64Array(FRAME), COS = new Float64Array(FFT_N / 2), SIN = new Float64Array(FFT_N / 2);
-for (let i = 0; i < FRAME; i++) WIN[i] = 0.5 - 0.5 * Math.cos(2 * Math.PI * i / (FRAME - 1));
-for (let k = 0; k < FFT_N / 2; k++) { COS[k] = Math.cos(-2 * Math.PI * k / FFT_N); SIN[k] = Math.sin(-2 * Math.PI * k / FFT_N); }
-
-function analyzeFrame(x) {
-  const re = new Float64Array(FFT_N), im = new Float64Array(FFT_N);
-  let sq = 0, m = 0;
-  for (let i = 0; i < FRAME; i++) m += x[i]; m /= FRAME;
-  for (let i = 0; i < FRAME; i++) { const v = x[i] - m; sq += v * v; re[i] = v * WIN[i]; }
-  const ms = sq / FRAME, db = ms > 0 ? Math.max(-120, 10 * Math.log10(ms)) : -120;
-  for (let i = 1, j = 0; i < FFT_N; i++) {
-    let bit = FFT_N >> 1; for (; j & bit; bit >>= 1) j ^= bit; j ^= bit;
-    if (i < j) { const t = re[i]; re[i] = re[j]; re[j] = t; }
-  }
-  for (let len = 2; len <= FFT_N; len <<= 1) {
-    const half = len >> 1, step = FFT_N / len;
-    for (let i = 0; i < FFT_N; i += len) for (let k = 0; k < half; k++) {
-      const a = i + k, b = a + half, wr = COS[k * step], wi = SIN[k * step];
-      const tr = re[b] * wr - im[b] * wi, ti = re[b] * wi + im[b] * wr;
-      re[b] = re[a] - tr; im[b] = im[a] - ti; re[a] += tr; im[a] += ti;
-    }
-  }
-  let total = 0, weighted = 0, hf = 0, logSum = 0, n = 0, peak = 0, peakHz = 0;
-  for (let k = 2; k <= FFT_N / 2; k++) {
-    const p = re[k] * re[k] + im[k] * im[k], f = k * RATE / FFT_N;
-    total += p; weighted += f * p; if (f >= HF_HZ) hf += p;
-    logSum += Math.log(Math.max(p, 1e-30)); n++;
-    if (p > peak) { peak = p; peakHz = Math.round(f); }
-  }
-  return { ms, db, centroid: total > 0 ? weighted / total : 0, flat: total > 0 ? Math.exp(logSum / n) / (total / n) : 1, hfRatio: total > 0 ? hf / total : 0, peakHz };
-}
-
-function queueSave(fn) {
-  S.saveChain = S.saveChain.then(fn).catch((e) => {
-    S.saveError = S.saveError || e;
-    if (S.running) setTimeout(() => { if (S.running) stopRec("save-error"); }, 0);
+    q.onsuccess=()=>resolve(q.result); q.onerror=()=>reject(q.error);
+    q.onblocked=()=>msg("保存領域を開けません。他のSomnoLogタブを閉じてください。");
   });
 }
-
-function resample(input) {
-  const ratio = S.ac.sampleRate / RATE, out = [];
-  for (let i = 0; i < input.length; i++) {
-    let rem = 1;
-    while (rem > 1e-9) {
-      const take = Math.min(rem, ratio - S.resampleFill);
-      S.resampleSum += input[i] * take; S.resampleFill += take; rem -= take;
-      if (S.resampleFill >= ratio - 1e-9) { out.push(S.resampleSum / ratio); S.resampleFill = 0; S.resampleSum = 0; }
-    }
-  }
-  return Float32Array.from(out);
+const range = key=>IDBKeyRange.bound([key,0],[key,Number.MAX_SAFE_INTEGER]);
+function read(store,key,index){
+  return new Promise((resolve,reject)=>{
+    const tx=db.transaction(store), s=tx.objectStore(store), src=index?s.index(index):s;
+    const q=src.getAll(key); q.onsuccess=()=>resolve(q.result); q.onerror=()=>reject(q.error);
+  });
 }
-
-function appendRecording(raw) {
-  const mult = Math.pow(10, S.gainDb / 20);
-  for (let i = 0; i < raw.length; i++) {
-    const idx = S.sampleCount + i, k = Math.floor(idx / RATE);
-    if (S.curK !== k || !S.curBlock) {
-      if (S.curBlock) S.blocks.set(S.curK, S.curBlock);
-      S.curK = k; S.curBlock = new Int16Array(RATE);
-    }
-    const v = clamp(raw[i] * mult, -1, 1);
-    S.curBlock[idx - k * RATE] = Math.round(v * (v < 0 ? 32768 : 32767));
-  }
-  S.sampleCount += raw.length;
+function write(stores,fn){
+  return new Promise((resolve,reject)=>{
+    const tx=db.transaction(stores,"readwrite");
+    tx.oncomplete=resolve; tx.onabort=()=>reject(tx.error||Error("保存が中断されました"));
+    try { fn(tx); } catch(e){ try{tx.abort()}catch(_){} reject(e); }
+  });
 }
-
-function onAudioV20(e) {
-  for (let ch = 0; ch < e.outputBuffer.numberOfChannels; ch++) e.outputBuffer.getChannelData(ch).fill(0);
-  if (!S.running) return;
+const put = (s,v)=>write([s],t=>t.objectStore(s).put(v));
+function stored(k){try{return JSON.parse(localStorage.getItem(k)||"null")}catch(_){return null}}
+function saveLocal(k,v){localStorage.setItem(k,JSON.stringify(v))}
+const REF_KEY="somnolog.v130.reference", PERSON_KEY="somnolog.v130.person";
+function parseQR(text){
+  const m=String(text).match(/#slp=([A-Za-z0-9_-]+)(?:[=&]|$)/);
+  if(!m||m[1].length>16000||m[1].length%4===1) throw Error("計測者用QRの形式ではありません。");
+  const x=m[1].replace(/-/g,"+").replace(/_/g,"/");
+  const raw=JSON.parse(new TextDecoder("utf-8",{fatal:true}).decode(Uint8Array.from(atob(x.padEnd(Math.ceil(x.length/4)*4,"=")),c=>c.charCodeAt(0))));
+  if(!raw||typeof raw!=="object"||Array.isArray(raw)) throw Error("QRデータが不正です。");
+  const field=(k,n=100)=>typeof raw[k]==="string"?raw[k].normalize("NFC").trim().slice(0,n):"";
+  const p={clinic:field("clinicName"),name:field("patientName"),chartNo:field("chartNo"),serial:field("serial"),logShareEmail:field("logShareEmail",254)};
+  if(!p.name||!p.chartNo) throw Error("計測者名または番号がありません。");
+  if(p.logShareEmail&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(p.logShareEmail)) throw Error("共有先アドレスが不正です。");
+  return p;
+}
+function qrAccept(text){
+  candidate=parseQR(text);
+  $("identity").textContent=`${LABELS.issuer}：${candidate.clinic||"未記入"} ／ ${LABELS.number}：${candidate.chartNo} ／ ${LABELS.user}：${candidate.name} ／ シリアル：${candidate.serial||"未記入"} ／ 共有先：${candidate.logShareEmail||"未設定"}`;
+  msg(""); show("confirm");
+}
+function stopCamera(){
+  ++cameraGeneration; cameraPending=false; cameraStream?.getTracks().forEach(t=>t.stop()); cameraStream=null;
+  $("video").srcObject=null; $("video").hidden=true; $("cameraStop").hidden=true;
+}
+async function jsQRReady(){
+  if(window.jsQR) return;
+  if(!qrLibrary) qrLibrary=new Promise((resolve,reject)=>{
+    const script=document.createElement("script");
+    const timer=setTimeout(()=>{script.remove();reject(Error("QR読取ライブラリが時間内に取得できませんでした。"))},10000);
+    script.src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js";
+    script.referrerPolicy="no-referrer";
+    script.onload=()=>{clearTimeout(timer);window.jsQR?resolve():reject(Error("QRライブラリを起動できません。"))};
+    script.onerror=()=>{clearTimeout(timer);script.remove();reject(Error("QR画像を読むには通信が必要です。標準カメラからもQRを開けます。"))};
+    document.head.append(script);
+  }).catch(e=>{qrLibrary=null;throw e});
+  return qrLibrary;
+}
+async function scanImage(img,w,h){
+  if(!w||!h) return null;
+  if(window.BarcodeDetector) try{
+    const hits=await new BarcodeDetector({formats:["qr_code"]}).detect(img);
+    if(hits[0]?.rawValue) return hits[0].rawValue;
+  }catch(_){}
+  await jsQRReady();
+  const k=Math.min(1,1400/Math.max(w,h)), c=document.createElement("canvas");
+  c.width=Math.max(1,Math.round(w*k)); c.height=Math.max(1,Math.round(h*k));
+  const g=c.getContext("2d",{willReadFrequently:true});g.drawImage(img,0,0,c.width,c.height);
+  return window.jsQR(g.getImageData(0,0,c.width,c.height).data,c.width,c.height)?.data||null;
+}
+async function startCamera(){
+  if(busy()||cameraPending||cameraStream) return;
+  if(!navigator.mediaDevices?.getUserMedia) throw Error("カメラにはHTTPSが必要です。");
+  const gen=++cameraGeneration;cameraPending=true; $("cameraStop").hidden=false;
   try {
-    if (S.lastAudioTime !== null && Math.abs(e.playbackTime - S.lastAudioTime) > 0.5) { stopRec("audio-gap"); return; }
-    S.lastAudioTime = e.playbackTime + e.inputBuffer.length / S.ac.sampleRate;
-    const raw = resample(e.inputBuffer.getChannelData(0));
-    appendRecording(raw);
-    const all = new Float32Array(S.pendingF.length + raw.length);
-    all.set(S.pendingF); all.set(raw, S.pendingF.length);
-    let p = 0;
-    while (p + FRAME <= all.length) {
-      const t = S.frameIdx * HOP / RATE;
-      onFrame(analyzeFrame(all.subarray(p, p + FRAME)), t);
-      S.frameIdx++; p += HOP;
+    const s=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"}},audio:false});
+    if(gen!==cameraGeneration){s.getTracks().forEach(t=>t.stop());return}
+    cameraStream=s;const v=$("video");v.srcObject=s;v.hidden=false;await v.play();
+    while(gen===cameraGeneration){
+      if(v.videoWidth){
+        const text=await scanImage(v,v.videoWidth,v.videoHeight);
+        if(gen!==cameraGeneration) return;
+        if(text){try{qrAccept(text);return}catch(e){msg(e.message)}}
+      }
+      await new Promise(resolve=>setTimeout(resolve,250));
     }
-    S.pendingF = all.slice(p);
-  } catch (err) { S.saveError = S.saveError || err; stopRec("audio-processing-error"); }
+  }catch(e){if(gen===cameraGeneration){stopCamera();throw e}}
+  finally{if(gen===cameraGeneration)cameraPending=false}
+}
+async function readImage(file){
+  if(!file)return;
+  if(file.size>25*1048576) throw Error("QR画像は25 MiB以下にしてください。");
+  stopCamera(); const gen=cameraGeneration, url=URL.createObjectURL(file);
+  try{
+    const im=new Image(); im.src=url; await im.decode();
+    const text=await scanImage(im,im.naturalWidth,im.naturalHeight);
+    if(gen!==cameraGeneration||page!=="home")return;
+    if(!text)throw Error("QRを検出できませんでした。");
+    qrAccept(text);
+  }finally{URL.revokeObjectURL(url)}
 }
 
-function onFrame(f, t) {
-  S.lastLv = f.db + S.gainDb + S.calDb;
-  if (S.lastLv > S.peakDb) S.peakDb = S.lastLv;
-  S.winPow += f.ms; S.winCount++;
-  S.winMotion = Math.max(S.winMotion, motionNow());
-  S.winMotionValid = S.winMotionValid || motionValid();
-  if (f.ms > S.winPeakPow) { S.winPeakPow = f.ms; S.winPeakHz = f.peakHz; }
-
-  if (S.baseline === null) {
-    if (t < BASELINE_SEC) S.calibration.push(f.db);
-    else { S.baseline = median(S.calibration) ?? -120; S.initialBaseline = S.baseline; S.calibration = []; }
+const WORKLET = `
+class STCapture extends AudioWorkletProcessor {
+  constructor(){
+    super(); this.epoch=0; this.seq=0; this.i=0; this.fill=0; this.sum=0;
+    this.buf=new Float32Array(1600); this.ratio=sampleRate/16000;
+    this.port.onmessage=e=>{
+      if(e.data.flush){
+        if(this.i)this.send(this.buf.slice(0,this.i));
+        this.i=0; this.port.postMessage({done:e.data.flush});
+      }else{
+        this.epoch=e.data.epoch; this.seq=0; this.i=0; this.fill=0; this.sum=0;
+      }
+    };
   }
-  if (S.baseline !== null) {
-    const active = f.db > S.baseline + TRIGGER_DB && f.centroid <= CENTROID_MAX && f.flat <= FLATNESS_MAX && f.hfRatio <= HF_RATIO_MAX;
-    if (active) {
-      if (S.run && t - S.run.last > MERGE_GAP) closeRun();
-      if (!S.run) S.run = { start: t, last: t, peakDb: f.db };
-      S.run.last = t; S.run.peakDb = Math.max(S.run.peakDb, f.db);
-    } else if (S.run && t - S.run.last > MERGE_GAP) closeRun();
-    while (S.decideIdx < S.candQueue.length && S.candQueue[S.decideIdx].start + DECIDE_LAG <= t) decideCandidate(S.candQueue[S.decideIdx++]);
+  send(b){
+    this.port.postMessage({epoch:this.epoch,seq:this.seq++,at:currentTime,pcm:b},[b.buffer]);
   }
-  if (S.winCount === 10) emitLog(round((S.frameIdx + 1) * HOP / RATE, 1));
-  const oldest = Math.floor(t - RING_SEC);
-  for (const k of S.blocks.keys()) if (k < oldest) S.blocks.delete(k);
-}
-
-function closeRun() {
-  if (!S.run) return;
-  const dur = round(S.run.last - S.run.start + FRAME / RATE, 6);
-  if (dur >= MIN_EVENT && dur <= MAX_EVENT) {
-    S.candQueue.push({ id: "cand-" + (++S.candSeq), start: S.run.start, end: S.run.last + FRAME / RATE, peakDb: round(S.run.peakDb, 1), idx: S.candQueue.length });
+  process(inputs){
+    const ch=inputs[0]?.[0]; if(!ch)return true;
+    for(let j=0;j<ch.length;j++){
+      let left=1;
+      while(left>1e-9){
+        const take=Math.min(left,this.ratio-this.fill);
+        this.sum+=ch[j]*take;this.fill+=take;left-=take;
+        if(this.fill>=this.ratio-1e-9){
+          this.buf[this.i++]=this.sum/this.ratio;this.fill=0;this.sum=0;
+          if(this.i===1600){this.send(this.buf);this.buf=new Float32Array(1600);this.i=0}
+        }
+      }
+    }
+    return true;
   }
-  S.run = null;
 }
-
-function periodic(c) {
-  let count = 0;
-  for (let j = c.idx - 1; j >= 0; j--) { const g = c.start - S.candQueue[j].start; if (g > PERIOD_WINDOW) break; if (g >= PERIOD_MIN_GAP) count++; }
-  for (let j = c.idx + 1; j < S.candQueue.length; j++) { const g = S.candQueue[j].start - c.start; if (g > PERIOD_WINDOW) break; if (g >= PERIOD_MIN_GAP) count++; }
-  return count >= PERIOD_MIN_COUNT - 1;
+registerProcessor("st-capture",STCapture);`;
+let audioDone=null;
+function resetCapture(){ tap.port.postMessage({epoch:++captureEpoch}); }
+function flushCapture(){
+  if(!tap||ctx?.state!=="running")return Promise.resolve();
+  return new Promise(resolve=>{
+    const token=id(), timer=setTimeout(()=>{if(audioDone?.token===token)audioDone=null;resolve()},500);
+    audioDone={token,finish:()=>{clearTimeout(timer);audioDone=null;resolve()}};
+    tap.port.postMessage({flush:token});
+  });
 }
-
-function decideCandidate(c) {
-  if (!periodic(c)) return;
-  writeClip(c, Math.max(0, Math.round((c.start - PRE_SEC) * RATE)), Math.min(S.sampleCount, Math.round((c.end + POST_SEC) * RATE)));
-  S.confirmedCount++;
+async function closeMic(){
+  const c=ctx,s=stream;ctx=null;stream=null;
+  for(const n of [source,tap,silencer])try{n?.disconnect()}catch(_){}
+  source=tap=silencer=null;
+  s?.getTracks().forEach(t=>{t.onended=null;t.stop()}); await c?.close().catch(()=>{});
 }
-
-function sliceAudio(a, b) {
-  if (a < 0 || b > S.sampleCount || b <= a) throw new Error("音声切り出し範囲が不正です。");
-  const pieces = [];
-  for (let k = Math.floor(a / RATE); k <= Math.floor((b - 1) / RATE); k++) {
-    const block = S.blocks.get(k) || (k === S.curK ? S.curBlock : null);
-    if (!block) throw new Error("必要な音声がリングバッファにありません。");
-    const lo = Math.max(a, k * RATE) - k * RATE, hi = Math.min(b, (k + 1) * RATE) - k * RATE;
-    const samples = block.subarray(lo, hi), bytes = new Uint8Array(samples.length * 2), view = new DataView(bytes.buffer);
-    for (let i = 0; i < samples.length; i++) view.setInt16(i * 2, samples[i], true);
-    pieces.push(bytes.buffer);
+async function allowMic(){
+  if(busy())return;
+  micBusy=true;controls();msg("");
+  let motionRequest;
+  try{
+    if(typeof window.DeviceMotionEvent?.requestPermission==="function") {
+      try{motionRequest=Promise.resolve(window.DeviceMotionEvent.requestPermission()).catch(()=>"denied")}catch(_){}
+    }else motionAllowed=!!window.DeviceMotionEvent;
+    if(motionRequest) motionRequest.then(v=>{motionAllowed=v==="granted"});
+    if(micReady()){await ctx.resume();return}
+    const AC=window.AudioContext||window.webkitAudioContext;
+    if(!AC||!navigator.mediaDevices?.getUserMedia)throw Error("HTTPSとWeb Audio対応ブラウザーが必要です。");
+    ctx=new AC();const resumed=ctx.resume();resumed.catch(()=>{});
+    stream=await navigator.mediaDevices.getUserMedia({audio:{channelCount:{ideal:1},echoCancellation:{ideal:false},noiseSuppression:{ideal:false},autoGainControl:{ideal:false}},video:false});
+    await resumed;
+    if(!ctx.audioWorklet)throw Error("このブラウザーは AudioWorklet に対応していません。");
+    const url=URL.createObjectURL(new Blob([WORKLET],{type:"text/javascript"}));
+    try{await ctx.audioWorklet.addModule(url)}finally{URL.revokeObjectURL(url)}
+    tap=new AudioWorkletNode(ctx,"st-capture",{numberOfInputs:1,numberOfOutputs:1,outputChannelCount:[1]});
+    source=ctx.createMediaStreamSource(stream);silencer=ctx.createGain();silencer.gain.value=0;
+    tap.port.onmessage=e=>{
+      try { if(audioDone && e.data?.done===audioDone.token){audioDone.finish();return} receive(e.data); }
+      catch(err){msg(err.message);if(current)stopRec("audio-processing-error").catch(e=>msg(e.message))}
+    };
+    tap.onprocessorerror=()=>{msg("音声処理が中断されました。");if(current)stopRec("processor-error").catch(e=>msg(e.message));};
+    source.connect(tap);tap.connect(silencer);silencer.connect(ctx.destination);
+    stream.getAudioTracks()[0].onended=()=>{if(current)stopRec("microphone-ended").catch(e=>msg(e.message));else controls()};
+    const settings=stream.getAudioTracks()[0].getSettings();
+    $("calStatus").textContent=[settings.autoGainControl,settings.noiseSuppression,settings.echoCancellation].some(v=>v===true)
+      ?"端末側の音声補正が有効です。アプリはゲインを加えませんが、端末側の補正は取り除けません。"
+      :"マイク取得済み。必要なら基準音を測り直してください。";
+  }catch(e){await closeMic();throw e}
+  finally{micBusy=false;controls()}
+}
+window.addEventListener("devicemotion",e=>{
+  if(!motionAllowed)return;
+  const vector=a=>a&&[a.x,a.y,a.z].every(finite);
+  const now=performance.now(), a=e.acceleration, g=e.accelerationIncludingGravity;
+  if(vector(a))motionG=Math.hypot(a.x,a.y,a.z)/9.80665;
+  else if(vector(g)){
+    if(!gravity||now-lastMotionTime>1000)gravity={x:g.x,y:g.y,z:g.z};
+    const k=1-Math.exp(-clamp(now-lastMotionTime,1,100)/500);
+    for(const x of ["x","y","z"])gravity[x]+=k*(g[x]-gravity[x]);
+    motionG=Math.hypot(g.x-gravity.x,g.y-gravity.y,g.z-gravity.z)/9.80665;
+  }else return;
+  lastMotionTime=motionAt=now;
+  if(current&&now-current.perf<86400000){
+    const i=Math.max(0,Math.floor((now-current.perf)/100));
+    const old=current.motion.get(i);current.motion.set(i,old==null?motionG:Math.max(old,motionG));
   }
-  return pieces;
+});
+const PCM = x=>{ const b=new Int16Array(x.length); for(let i=0;i<x.length;i++){const v=clamp(x[i],-1,1);b[i]=Math.round(v*(v<0?32768:32767));}return b; };
+function pcmLE(p){
+  const b=new ArrayBuffer(p.length*2),d=new DataView(b);
+  for(let i=0;i<p.length;i++)d.setInt16(i*2,p[i],true);
+  return b;
+}
+function wavHeader(n){
+  if(n*2>0xffffffff-36)throw Error("WAVが大きすぎます。");
+  const d=new DataView(new ArrayBuffer(44)), str=(p,s)=>[...s].forEach((c,i)=>d.setUint8(p+i,c.charCodeAt(0)));
+  str(0,"RIFF");d.setUint32(4,36+n*2,true);str(8,"WAVE");str(12,"fmt ");
+  d.setUint32(16,16,true);d.setUint16(20,1,true);d.setUint16(22,1,true);
+  d.setUint32(24,RATE,true);d.setUint32(28,RATE*2,true);d.setUint16(32,2,true);d.setUint16(34,16,true);
+  str(36,"data");d.setUint32(40,n*2,true);return d.buffer;
+}
+function toBase64(parts){
+  let s="";for(const part of parts){const p=new Uint8Array(part);for(let i=0;i<p.length;i+=8192)s+=String.fromCharCode(...p.subarray(i,i+8192))}
+  return btoa(s);
+}
+function playReference(){
+  if(!ref?.wav)return;
+  if(refUrl)URL.revokeObjectURL(refUrl);
+  refUrl=URL.createObjectURL(new Blob([Uint8Array.from(atob(ref.wav),c=>c.charCodeAt(0))],{type:"audio/wav"}));
+  return new Audio(refUrl).play();
+}
+function beginCal(){
+  if(busy()||!micReady())return;
+  const c={levels:[], voice:[], chunks:[]};
+  calibration=c;resetCapture();controls();$("calStatus").textContent="約2秒、静かにしてください。";
+  setTimeout(()=>{if(calibration===c){calibration=null;controls();$("calStatus").textContent="音を十分に取得できませんでした。もう一度お試しください。"}},8000);
+}
+function feedCal(raw,dbFS){
+  const c=calibration;
+  if(c.levels.length<20){
+    c.levels.push(dbFS);if(c.levels.length===20)$("calStatus").textContent="続けて約2秒、「あ〜」と発声してください。";
+    return;
+  }
+  c.voice.push(dbFS);c.chunks.push(pcmLE(PCM(raw)));
+  if(c.voice.length<20)return;
+  calibration=null;
+  const env=[...c.levels].sort((a,b)=>a-b), base=(env[9]+env[10])/2, ah=Math.max(...c.voice);
+  if(ah<base+6||base+10>=0){
+    $("calStatus").textContent="基準音の差が不足しています。静かな場所で測り直してください。";controls();return;
+  }
+  ref={envDbFS:r(base,1),refDbFS:r(ah,1),wav:toBase64([wavHeader(20*STEP),...c.chunks])};
+  try{saveLocal(REF_KEY,ref);$("calStatus").textContent=`基準音を保存しました。検出閾値 ${r(base+10,1)} dBFS。`}
+  catch(_){$("calStatus").textContent="端末に基準音を保存できませんでした。この画面を開いている間は利用できます。"}
+  controls();
+}
+const NFFT=1024;
+const hann=Float32Array.from({length:NFFT},(_,i)=>.5-.5*Math.cos(2*Math.PI*i/(NFFT-1)));
+function peakHz(raw,dbFS){
+  if(raw.length<NFFT||dbFS<=-115)return null;
+  const re=new Float32Array(NFFT),im=new Float32Array(NFFT);
+  const off=(raw.length-NFFT)>>1;
+  for(let i=0,j=0;i<NFFT;i++){
+    re[j]=raw[off+i]*hann[i];
+    for(let b=NFFT>>1;b;b>>=1){j^=b;if(j&b)break}
+  }
+  for(let n=2;n<=NFFT;n*=2){
+    const half=n/2, a=-2*Math.PI/n;
+    for(let j=0;j<half;j++){
+      const wr=Math.cos(a*j),wi=Math.sin(a*j);
+      for(let i=j;i<NFFT;i+=n){const k=i+half,x=re[k]*wr-im[k]*wi,y=re[k]*wi+im[k]*wr;
+        re[k]=re[i]-x;im[k]=im[i]-y;re[i]+=x;im[i]+=y;}
+    }
+  }
+  let at=0,best=0;
+  for(let i=2;i<NFFT/2;i++){const p=re[i]**2+im[i]**2;if(p>best){best=p;at=i}}
+  return best>1e-10?Math.round(at*RATE/NFFT):null;
 }
 
-function writeClip(c, a, b) {
-  const merge = S.openClip && a <= S.openClip.endSample;
-  const clip = merge ? S.openClip : { id: uid(), sessionId: S.session.id, index: S.clipSeq + 1, startSample: a, endSample: a, nextN: 0, cands: [], peakDb: c.peakDb, saved: false };
-  const begin = merge ? clip.endSample : a;
-  const pieces = b > begin ? sliceAudio(begin, b) : [];
-  const first = clip.nextN;
-  clip.nextN += pieces.length; clip.cands.push(c.id); clip.peakDb = Math.max(clip.peakDb, c.peakDb);
-  const oldEnd = clip.endSample; clip.endSample = Math.max(clip.endSample, b);
-  S.clipSecTotal += (clip.endSample - oldEnd) / RATE;
-  if (!merge) { S.clipSeq++; S.openClip = clip; }
-  const meta = {
-    id: clip.id, sessionId: clip.sessionId, index: clip.index, startSample: clip.startSample, endSample: clip.endSample,
-    startSec: clip.startSample / RATE, endSec: clip.endSample / RATE, peakDb: clip.peakDb, cands: [...clip.cands], chunks: clip.nextN, saved: !!clip.saved
-  };
-  queueSave(() => DB.write(["audioChunks", "clips"], (tx) => {
-    const chunks = tx.objectStore("audioChunks");
-    for (let i = 0; i < pieces.length; i++) chunks.put({ clipId: clip.id, n: first + i, pcm: pieces[i] });
+class Ring{
+  constructor(){this.b=new Int16Array(PRE);this.n=0;this.end=0}
+  push(p,end){
+    if(end-p.length!==this.end)this.n=0;
+    for(let i=0;i<p.length;i++)this.b[(end-p.length+i)%PRE]=p[i];
+    this.n=Math.min(PRE,this.n+p.length);this.end=end;
+  }
+  before(sample){
+    if(sample!==this.end)return new Int16Array(0);
+    return Int16Array.from({length:this.n},(_,i)=>this.b[(sample-this.n+i)%PRE]);
+  }
+}
+function queue(s,fn){
+  s.chain=s.chain.then(fn).catch(e=>{
+    s.error ||= e;
+    if(current===s&&!stopping)setTimeout(()=>stopRec("storage-error").catch(err=>msg(err.message)),0);
+  });
+}
+function snapshot(s,status="recording"){
+  const sec=s.end/RATE;
+  return {...s.meta,status,updatedAt:Date.now(),durationSec:sec,endedAt:status==="recording"?null:s.meta.startedAt+Math.round(sec*1000),
+    clipCount:s.clipCount,logCount:s.next,saveError:s.error?.message??null};
+}
+function saveRows(s){
+  if(!s.rows.length&&!s.profiles.length)return;
+  const rows=s.rows.splice(0),bins=s.profiles.splice(0),meta=snapshot(s);
+  queue(s,()=>write(["sessionLogs","profileBins","sessions"],tx=>{
+    for(const row of rows)tx.objectStore("sessionLogs").put(row);
+    for(const bin of bins)tx.objectStore("profileBins").put(bin);
+    tx.objectStore("sessions").put(meta);
+  }));
+}
+function finishBin(s){
+  const b=s.bin;if(!b)return;s.bin=null;
+  s.profiles.push({sessionId:s.meta.id,bin:b.i,startSec:b.i*30,durationSec:b.n/10,
+    meanDbFS:b.a?r(b.db/b.a,2):null,avgMotion:b.m?r(b.motion/b.m,5):null,maxMotion:b.max});
+}
+function row(s,i,dbFS,hz,n=STEP){
+  const motion=s.motion.get(i), m=motion==null?null:r(motion,5);
+  s.motion.delete(i);
+  s.rows.push({sessionId:s.meta.id,index:i,sec:i/10,sourceDbFS:dbFS,peakHz:hz,motionG:m,partial:n!==STEP});
+  if(!s.bin||s.bin.i!==Math.floor(i/PROFILE)){finishBin(s);s.bin={i:Math.floor(i/PROFILE),n:0,a:0,db:0,m:0,motion:0,max:null}}
+  const b=s.bin;b.n++;
+  if(dbFS!==null){b.a++;b.db+=dbFS}if(m!==null){b.m++;b.motion+=m;b.max=b.max===null?m:Math.max(b.max,m)}
+  s.next=i+1;
+  if(s.rows.length>=50)saveRows(s);
+}
+function clipMeta(s,c){
+  return {id:c.id,sessionId:s.meta.id,startSample:c.start,endSample:c.end,startSec:c.start/RATE,endSec:c.end/RATE,
+    durationSec:(c.end-c.start)/RATE,detectedSec:c.detected/RATE,peakDb:c.peak,category:"unknown",
+    chunks:c.n,saved:false,deleted:false,truncated:c.truncated??null,continuationOf:c.continuationOf??null};
+}
+function flushClip(s,c,final=false){
+  const parts=c.parts.splice(0);
+  if(!parts.length&&!final)return;
+  const first=c.n;c.n+=parts.length;const meta={...clipMeta(s,c),final};
+  queue(s,()=>write(["clips","audioChunks"],tx=>{
+    for(const [j,p] of parts.entries())tx.objectStore("audioChunks").put({clipId:c.id,n:first+j,pcm:pcmLE(p)});
     tx.objectStore("clips").put(meta);
   }));
 }
-
-function snapshot() {
-  return {
-    ...S.session, durationSec: round(S.sampleCount / RATE), stopTimeMs: S.session.startTimeMs + Math.round(S.sampleCount / RATE * 1000),
-    updatedAtMs: Date.now(), logCount: S.logIndex, candidateCount: S.candSeq, confirmedCount: S.confirmedCount, clipCount: S.clipSeq,
-    clipSec: round(S.clipSecTotal, 1), motionSec: round(S.motionSec, 1),
-    baselineDb: S.baseline === null ? null : round(S.baseline, 1),
-    initialBaselineDb: S.initialBaseline === null ? null : round(S.initialBaseline, 1),
-    motionSource: S.motionSource || S.initialMotionSource
-  };
+function endClip(s,why=null){
+  const c=s.event;if(!c)return;
+  c.truncated=why;s.event=null;s.clipCount++;flushClip(s,c,true);
 }
-
-function emitLog(sec, partial = false) {
-  if (!S.winCount) return;
-  const dbValue = S.winPow > 0 ? Math.max(-120, round(10 * Math.log10(S.winPow / S.winCount), 1)) : -120;
-  const dt = S.winCount * HOP / RATE;
-  const m = S.winMotionValid ? round(S.winMotion, 4) : null;
-  S.logBatch.push({ sessionId: S.session.id, index: S.logIndex++, sec, db: dbValue, peakHz: S.winPeakHz, motionG: m, motionValid: S.winMotionValid, partial });
-  if (S.winMotionValid && m >= MOTION_EVENT_G) S.motionSec += dt;
-  if (!partial) {
-    S.recent.push(dbValue); if (S.recent.length > SUSTAIN_LOGS) S.recent.shift();
-    if (S.baseline !== null && S.recent.length === SUSTAIN_LOGS && S.logIndex % 10 === 0) {
-      const lo = Math.min(...S.recent), hi = Math.max(...S.recent);
-      if (lo > S.baseline + TRIGGER_DB && hi - lo <= SUSTAIN_SPREAD_DB) S.baseline = median(S.recent);
-    }
+function pushClip(s,c,p,end){
+  if(p.length)c.parts.push(p);
+  c.end=end;if(c.parts.length>=40)flushClip(s,c);
+}
+function recordPacket(s,p,sourceDbFS,i){
+  const begin=i*STEP,end=begin+p.length;
+  const above=sourceDbFS>s.meta.baselineDbFS+10;
+  let c=s.event;
+  if(!c&&above){
+    const lead=s.ring.before(begin);
+    c=s.event={id:id(),detected:begin,start:begin-lead.length,end:begin,quiet:0,n:0,parts:lead.length?[lead]:[],peak:sourceDbFS};
   }
-  const bin = Math.floor(Math.max(0, sec - 0.000001) / PROFILE_SEC);
-  if (!S.profile || S.profile.bin !== bin) { if (S.profile) flushProfile(S.profile); S.profile = { bin, n: 0, sumDb: 0, sumMotion: 0, maxMotion: 0, valid: 0 }; }
-  S.profile.n++; S.profile.sumDb += dbValue;
-  if (S.winMotionValid) { S.profile.sumMotion += m; S.profile.maxMotion = Math.max(S.profile.maxMotion, m); S.profile.valid++; }
-  S.winPow = 0; S.winCount = 0; S.winPeakHz = 0; S.winPeakPow = -1; S.winMotion = 0; S.winMotionValid = false;
-  if (S.logBatch.length >= LOG_BATCH) flushLogs();
-}
-
-function flushLogs() {
-  if (!S.logBatch.length) return;
-  const batch = S.logBatch; S.logBatch = []; const s = snapshot();
-  queueSave(() => DB.write(["sessionLogs", "sessions"], (tx) => {
-    for (const l of batch) tx.objectStore("sessionLogs").put(l);
-    tx.objectStore("sessions").put(s);
-  }));
-}
-
-function flushProfile(p) {
-  const val = { sessionId: S.session.id, bin: p.bin, n: p.n, meanDb: round(p.sumDb / p.n, 1), meanMotionG: p.valid ? round(p.sumMotion / p.valid, 4) : null, maxMotionG: p.valid ? round(p.maxMotion, 4) : null, motionValidCount: p.valid };
-  queueSave(() => DB.put("profileBins", val));
-}
-
-/* ===== 記録の開始・停止 ===== */
-async function acquireWake() {
-  try {
-    if (!("wakeLock" in navigator)) return;
-    S.wake = await navigator.wakeLock.request("screen");
-    if (S.wake) S.wake.onrelease = () => { S.wake = null; if (S.running && !document.hidden) acquireWake(); };
-  } catch (e) {}
-}
-function releaseWake() { if (S.wake) { S.wake.release().catch(() => {}); S.wake = null; } }
-
-async function startRec() {
-  if (S.running || !S.ac || !micReady()) return;
-  if (!S.patient) { showError("患者情報がありません。"); showPage("start"); return; }
-  if (!S.ref) { showRefMsg("先に「基準音の設定」を押してください。", true); return; }
-  if (S.ac.state !== "running") await S.ac.resume().catch(() => {});
-
-  S.sampleCount = 0; S.frameIdx = 0; S.pendingF = new Float32Array(0);
-  S.resampleFill = 0; S.resampleSum = 0; S.lastAudioTime = null;
-  S.winPow = 0; S.winCount = 0; S.winPeakHz = 0; S.winPeakPow = -1; S.winMotion = 0; S.winMotionValid = false;
-  S.baseline = null; S.initialBaseline = null; S.calibration = []; S.recent = [];
-  S.blocks = new Map(); S.curBlock = null; S.curK = -1; S.run = null; S.candQueue = []; S.candSeq = 0; S.decideIdx = 0;
-  S.clipSeq = 0; S.confirmedCount = 0; S.openClip = null; S.clipSecTotal = 0; S.motionSec = 0;
-  S.logBatch = []; S.logIndex = 0; S.profile = null; S.saveError = null; S.saveChain = Promise.resolve(); S.peakDb = -Infinity;
-
-  S.initialMotionSource = S.motionAllowed ? (S.motionSource || "not-received") : "not-permitted";
-  const ms = Date.now();
-  S.session = {
-    id: uid(), version: VERSION, revision: REVISION, status: "recording",
-    serialNumber: S.patient.serialNumber || String(ms),
-    patient: { clinic: S.patient.clinic, chartNo: S.patient.chartNo, name: S.patient.name },
-    doctorEmail: S.patient.logShareEmail || "",
-    startTimeMs: ms, stopTimeMs: ms, updatedAtMs: ms, durationSec: 0,
-    gainDb: S.gainDb, calDb: S.calDb, refDb: S.ref.db, refEnvDb: S.ref.envDb,
-    inputSampleRate: S.ac.sampleRate, audioSampleRate: RATE,
-    logCount: 0, candidateCount: 0, confirmedCount: 0, clipCount: 0, clipSec: 0, motionSec: 0,
-    baselineDb: null, initialBaselineDb: null, motionSource: S.initialMotionSource
-  };
-  await DB.put("sessions", S.session);
-  S.processor = S.ac.createScriptProcessor(4096, 1, 1);
-  S.processor.onaudioprocess = onAudioV20;
-  S.source.connect(S.processor); S.processor.connect(S.ac.destination);
-  S.running = true;
-  await acquireWake();
-  setButtons(); updateUI();
-}
-
-async function stopRec(reason = "user") {
-  if (!S.running) return;
-  S.running = false;
-  if (S.processor) { S.processor.onaudioprocess = null; try { S.source.disconnect(S.processor); S.processor.disconnect(); } catch (_) {} S.processor = null; }
-  try {
-    closeRun();
-    while (S.decideIdx < S.candQueue.length) decideCandidate(S.candQueue[S.decideIdx++]);
-    if (S.winCount) emitLog(round(S.frameIdx * HOP / RATE, 3), true);
-  } catch (e) { S.saveError = S.saveError || e; }
-  flushLogs();
-  if (S.profile) { flushProfile(S.profile); S.profile = null; }
-  await S.saveChain;
-  S.session = {
-    ...snapshot(),
-    status: S.saveError ? "partial-save" : reason === "user" ? "completed" : "interrupted",
-    stopReason: reason, actualStoppedAtMs: Date.now(), saveError: S.saveError ? S.saveError.message : null
-  };
-  await DB.put("sessions", S.session).catch(console.error);
-  S.blocks.clear(); S.curBlock = null; S.pendingF = new Float32Array(0); S.candQueue = []; S.openClip = null;
-  releaseWake(); exitBlack(); setButtons(); updateUI();
-}
-
-/* ===== UI更新 ===== */
-function scalePos(db, envDb, refDb, topDb) {
-  if (db == null) return 0;
-  if (db <= refDb) return clamp(0.5 * (db - envDb) / Math.max(refDb - envDb, 1), 0, 0.5);
-  return clamp(0.5 + 0.5 * (db - refDb) / Math.max(topDb - refDb, 1), 0.5, 1);
-}
-function wordOf(db, refDb) {
-  if (db == null || refDb == null) return "-";
-  const d = db - refDb;
-  if (d >= REF_WORD_DB) return "大きい音";
-  if (d <= -REF_WORD_DB) return "小さい音";
-  return "基準くらい";
-}
-
-function updateUI() {
-  if (!S.running && S.analyser) {
-    const buf = new Float32Array(S.analyser.fftSize);
-    S.analyser.getFloatTimeDomainData(buf);
-    let sq = 0; for (let i = 0; i < buf.length; i++) sq += buf[i] * buf[i];
-    S.lastLv = (sq > 0 ? Math.max(-100, 10 * Math.log10(sq / buf.length)) : -100) + S.gainDb + S.calDb;
-  }
-  S.dispWin.push(S.lastLv);
-  if (S.dispWin.length > DISP_FRAMES) S.dispWin.shift();
-  const lv = mean(S.dispWin);
-  const bar = $("level-bar");
-  if (S.ref) {
-    const env = S.ref.envDb, ref = S.ref.db, top = Math.max(S.peakDb, ref + 10);
-    bar.style.width = (scalePos(lv, env, ref, top) * 100).toFixed(1) + "%";
-    $("level-text").textContent = "いまの音：" + wordOf(lv, ref);
-    $("g-env").textContent = env.toFixed(1) + " dB";
-    $("g-ah").textContent = ref.toFixed(1) + " dB";
-    $("g-top").textContent = top.toFixed(1) + " dB";
-    $("scale-row").innerHTML = "<span>" + env.toFixed(0) + "</span><span>" + ref.toFixed(0) + "</span><span>" + top.toFixed(0) + "</span>";
-  } else {
-    bar.style.width = clamp((lv + 80) / 80 * 100, 0, 100).toFixed(1) + "%";
-    $("level-text").textContent = "基準音圧が未設定です";
-  }
-  if (!S.running) $("base-text").textContent = "待機中";
-  else if (S.baseline !== null) $("base-text").textContent = "記録中（" + fmtTime(S.sampleCount / RATE * 1000) + "）";
-  else $("base-text").textContent = "環境音を較正中 残り " + Math.max(0, Math.ceil(BASELINE_SEC - S.sampleCount / RATE)) + " 秒";
-
-  const m = motionValid() ? S.motionValue : null;
-  $("motion-text").textContent = m == null ? "-" : m.toFixed(3) + " G";
-  $("motion-bar").style.width = m == null ? "0%" : clamp(m / MOTION_BAR_MAX * 100, 0, 100) + "%";
-}
-
-function setButtons() {
-  $("rec-back").disabled = isBusy();
-  $("mic-btn").disabled = micReady() && S.motionAllowed;
-  $("mic-btn").textContent = micReady() && S.motionAllowed ? "許可済み" : "マイクを許可";
-  const measuring = !!S.refColl;
-  $("ref-btn").disabled = !micReady() || S.running || measuring;
-  $("ref-btn").textContent = measuring ? "測定中…" : (S.ref ? "基準音を測り直す" : "基準音の設定");
-  $("ref-btn").className = S.ref && !measuring ? "sub" : "primary";
-  $("ref-play-btn").hidden = !S.ref;
-  $("start-btn").disabled = S.running || !micReady() || !S.patient || !S.ref;
-  $("stop-btn").disabled = !S.running;
-  $("btn-enter-black").disabled = !S.running;
-  $("gain").disabled = S.running || measuring;
-  $("rec-badge").textContent = S.running ? "記録中" : "待機中";
-  $("rec-badge").className = S.running ? "tag rec" : "tag";
-  updateBackButtons();
-  renderUpdate();
-}
-
-/* ===== 更新の確認（GitHub最新コミット・キャッシュ回避・記録/保存/共有中は適用しない） ===== */
-const upd = { latest: null, sha: null, checking: false, error: null };
-let updateByUser = false;
-
-function fetchNoCache(url) {
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), UPD_TIMEOUT_MS);
-  return fetch(url, { cache: "no-store", signal: ctrl.signal }).finally(() => clearTimeout(timer));
-}
-async function fetchLatestSha() {
-  try {
-    const r = await fetchNoCache("https://api.github.com/repos/" + UPD_REPO + "/commits?sha=" + UPD_BRANCH + "&path=" + UPD_FILE + "&per_page=1&_=" + Date.now());
-    if (!r.ok) return null;
-    const j = await r.json();
-    return Array.isArray(j) && j[0] && j[0].sha ? j[0].sha : null;
-  } catch (e) { return null; }
-}
-async function checkUpdate() {
-  if (upd.checking) return false;
-  upd.checking = true; upd.error = null; renderUpdate();
-  try {
-    const sha = await fetchLatestSha();
-    const url = (sha ? "https://raw.githubusercontent.com/" + UPD_REPO + "/" + sha + "/" + UPD_FILE : "https://raw.githubusercontent.com/" + UPD_REPO + "/" + UPD_BRANCH + "/" + UPD_FILE) + "?_=" + Date.now();
-    const txt = await (await fetchNoCache(url)).text();
-    const m = txt.match(/const\s+APP_VERSION\s*=\s*(\d+)/);
-    if (!m) throw new Error("版番号を読み取れませんでした");
-    upd.latest = Number(m[1]); upd.sha = sha;
-    return true;
-  } catch (e) { upd.error = e.message; return false; }
-  finally { upd.checking = false; renderUpdate(); }
-}
-function renderUpdate() {
-  const busy = isBusy();
-  let msg = "";
-  if (updateByUser) {
-    if (upd.checking) msg = "最新版を確認しています…";
-    else if (upd.error) msg = "確認できませんでした。通信状態を確認してください。";
-    else if (upd.latest > APP_VERSION) msg = "新しい版を確認しました。最新版を取りに行きます…";
-    else if (upd.latest === APP_VERSION) msg = "現在のバージョンは最新版です。";
-  }
-  $("upd-msg").textContent = msg; $("upd-msg").hidden = !msg;
-  $("upd-reload").disabled = busy || upd.checking;
-}
-async function applyLatest() {
-  if (isBusy() || upd.checking) return;
-  const ok = await checkUpdate();
-  if (!ok || upd.latest <= APP_VERSION || isBusy()) return;
-  const url = (upd.sha ? "https://raw.githubusercontent.com/" + UPD_REPO + "/" + upd.sha + "/" + UPD_FILE : "https://raw.githubusercontent.com/" + UPD_REPO + "/" + UPD_BRANCH + "/" + UPD_FILE) + "?_=" + Date.now();
-  try {
-    const html = await (await fetchNoCache(url)).text();
-    if (html.indexOf("</html>") < 0) throw new Error("不完全なHTML");
-    localStorage.setItem("sl_boot_html", html);
-    localStorage.setItem("sl_boot_ver", String(upd.latest));
-    if (isBusy()) return;
-    const u = new URL(location.href); u.hash = ""; u.searchParams.set("v", String(upd.latest)); u.searchParams.set("t", String(Date.now()));
-    location.replace(u.toString());
-  } catch (e) { $("upd-msg").hidden = false; $("upd-msg").textContent = "最新版を取得できませんでした。"; }
-}
-
-/* ===== 黒画面（1.5秒長押しで戻る） ===== */
-function enterBlack() {
-  if (S.blackOn) return;
-  S.blackOn = true;
-  document.documentElement.style.setProperty("background-color", "#000000", "important");
-  document.body.style.setProperty("background-color", "#000000", "important");
-  $("black-screen").hidden = false;
-  const updClock = () => { $("black-clock").textContent = new Date().toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" }); };
-  updClock(); S.blackTimer = setInterval(updClock, 1000);
-  const req = document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen;
-  if (req) try { Promise.resolve(req.call(document.documentElement)).catch(() => {}); } catch (_) {}
-}
-function exitBlack() {
-  if (!S.blackOn) return;
-  S.blackOn = false;
-  if (S.blackTimer) clearInterval(S.blackTimer); S.blackTimer = null;
-  $("black-screen").hidden = true;
-  document.documentElement.style.removeProperty("background-color");
-  document.body.style.removeProperty("background-color");
-  const exit = document.exitFullscreen || document.webkitExitFullscreen;
-  if (exit && (document.fullscreenElement || document.webkitFullscreenElement)) try { Promise.resolve(exit.call(document)).catch(() => {}); } catch (_) {}
-}
-
-/* ===== 記録カレンダー ===== */
-async function refreshCalendar() {
-  const sessions = (await DB.all("sessions")).sort((a, b) => a.startTimeMs - b.startTimeMs);
-  cal.byDay = new Map();
-  for (const s of sessions) {
-    const k = dayKey(s.startTimeMs);
-    if (!cal.byDay.has(k)) cal.byDay.set(k, []);
-    cal.byDay.get(k).push(s);
-  }
-  renderCalendar(); renderDaySummary();
-}
-function renderCalendar() {
-  $("cal-title").textContent = cal.year + "年" + cal.month + "月";
-  $("cal-weekdays").innerHTML = "日月火水木金土".split("").map((w) => '<div class="cal-wk">' + w + "</div>").join("");
-  const first = new Date(cal.year, cal.month - 1, 1).getDay();
-  const days = new Date(cal.year, cal.month, 0).getDate();
-  const today = dayKey(Date.now());
-  let html = "";
-  for (let i = 0; i < first; i++) html += "<div></div>";
-  for (let d = 1; d <= days; d++) {
-    const key = cal.year + "-" + pad(cal.month) + "-" + pad(d);
-    const cls = ["cal-day"];
-    if (cal.byDay.has(key)) cls.push("has");
-    if (key === cal.selected) cls.push("sel");
-    if (key === today) cls.push("today");
-    html += '<button class="' + cls.join(" ") + '" data-key="' + key + '">' + d + "</button>";
-  }
-  const box = $("cal-days"); box.innerHTML = html;
-  box.querySelectorAll("button[data-key]").forEach((b) => {
-    b.onclick = () => {
-      if (cal.selected === b.dataset.key) {
-        const list = cal.byDay.get(b.dataset.key) || [];
-        if (list.length) openDetail(list[Math.min(cal.index, list.length - 1)].id);
-        return;
+  if(c){
+    if(above){c.quiet=0;c.peak=Math.max(c.peak,sourceDbFS)}
+    const take=above?p.length:Math.min(p.length,POST-c.quiet);
+    const cap=MAX_CLIP-(begin-c.start), k=Math.min(take,cap);
+    pushClip(s,c,k===p.length?p:p.slice(0,k),begin+k);
+    if(!above)c.quiet+=k;
+    if(c.quiet>=POST)endClip(s);
+    else if(cap<=take){
+      endClip(s,"size-limit");
+      if(above||k<p.length){
+        const next=s.event={id:id(),detected:c.detected,start:begin+k,end:begin+k,quiet:above?0:c.quiet,n:0,parts:[],peak:sourceDbFS,continuationOf:c.id};
+        if(k<p.length){pushClip(s,next,p.slice(k),end);if(!above)next.quiet+=p.length-k}
       }
-      cal.selected = b.dataset.key; cal.index = 0; renderCalendar(); renderDaySummary();
-    };
+    }
+  }
+  s.ring.push(p,end);s.end=end;
+}
+function receive(pkt){
+  if(!pkt?.pcm||pkt.epoch!==captureEpoch)return;
+  const {pcm,seq}=pkt; let power=0;
+  for(const v of pcm)power+=v*v;
+  const dbFS=r(rmsDb(power,pcm.length),1), muted=!!stream?.getAudioTracks()[0]?.muted;
+  if(page==="prep"){
+    $("meter").value=dbFS;
+    $("level").textContent=muted?"マイク欠測":`${dbFS} dBFS ／ 体動 ${performance.now()-motionAt<500&&motionG!==null?r(motionG,4)+" g":"未取得"}`;
+  }
+  if(calibration){if(!muted)feedCal(pcm,dbFS);return}
+  const s=current;if(!s||s.error||seq<s.next)return;
+  if(seq-s.next>600){stopRec("audio-gap").catch(e=>msg(e.message));return}
+  while(s.next<seq){endClip(s,"input-gap");row(s,s.next,null,null);s.end=s.next*STEP}
+  if(muted){
+    endClip(s,"input-gap");s.ring=new Ring();s.end=seq*STEP+pcm.length;
+    row(s,seq,null,null,pcm.length);
+  }else{
+    recordPacket(s,PCM(pcm),dbFS,seq);
+    row(s,seq,dbFS,peakHz(pcm,dbFS),pcm.length);
+  }
+  if(seq%10===0)$("live").textContent=`記録 ${Math.floor(s.end/RATE)} 秒 ／ 確定 ${s.clipCount} 件 ／ 検出閾値 ${r(s.meta.baselineDbFS+10,1)} dBFS`;
+}
+async function lockRecording(){
+  if(!navigator.locks)return ()=>{};
+  return new Promise((resolve,reject)=>{
+    navigator.locks.request(DB_NAME+".record",{ifAvailable:true},async lock=>{
+      if(!lock){reject(Error("別のタブで記録中です。"));return}
+      await new Promise(release=>resolve(release));
+    }).catch(reject);
   });
 }
-function renderDaySummary() {
-  const box = $("cal-summary");
-  if (!cal.selected) { box.innerHTML = '<p class="muted">日付を選んでください。</p>'; return; }
-  const list = cal.byDay.get(cal.selected) || [];
-  if (!list.length) { box.innerHTML = "<h2>" + esc(dayLabel(cal.selected)) + '</h2><p class="muted">この日の記録はありません。</p>'; return; }
-  if (cal.index >= list.length) cal.index = list.length - 1;
-  const s = list[cal.index];
-  box.innerHTML =
-    '<div class="cal-sum-head"><h2>' + esc(dayLabel(cal.selected)) + '</h2>' +
-    '<div class="pager"><button id="cs-prev" class="sub mini">▲</button><span class="tag">' + (cal.index + 1) + '件目/' + list.length + '件中</span><button id="cs-next" class="sub mini">▼</button></div></div>' +
-    '<div class="kv"><span>開始</span><b>' + esc(fmtClock(s.startTimeMs)) + '</b></div>' +
-    '<div class="kv"><span>睡眠記録時間</span><b>' + esc(fmtHM((s.durationSec || 0) * 1000)) + '</b></div>' +
-    '<div class="kv"><span>いびき候補（通過）</span><b>' + (s.confirmedCount || 0) + '件</b></div>' +
-    '<div class="kv"><span>音声クリップ</span><b>' + (s.clipCount || 0) + '件</b></div>' +
-    '<button id="cs-open" class="primary">詳細を見る</button>';
-  $("cs-prev").onclick = () => { cal.index = Math.max(0, cal.index - 1); renderDaySummary(); };
-  $("cs-next").onclick = () => { cal.index = Math.min(list.length - 1, cal.index + 1); renderDaySummary(); };
-  $("cs-open").onclick = () => openDetail(s.id);
+async function getWake(){
+  if(!current||document.hidden||!navigator.wakeLock||wake)return;
+  try{
+    const s=current, w=await navigator.wakeLock.request("screen");
+    if(current!==s||stopping){await w.release();return}wake=w;
+    w.addEventListener("release",()=>{if(wake===w)wake=null},{once:true});
+  }catch(_){$("live").textContent="画面の自動ロック防止を利用できません。このページを前面に保ってください。"}
+}
+async function startRec(){
+  if(busy()||!micReady()||!person||!finite(ref?.envDbFS)||document.hidden)return;
+  starting=true;controls();msg("");let release,meta;
+  try{
+    release=await lockRecording();await ctx.resume();
+    if(ctx.state!=="running"||document.hidden||!micReady())throw Error("マイクが使える状態でページを前面にしてください。");
+    meta={id:id(),app:APP,version:APP_VERSION,patient:{...person},startedAt:Date.now(),
+      baselineDbFS:ref.envDbFS,referenceDbFS:ref.refDbFS,inputSampleRate:ctx.sampleRate,status:"recording",durationSec:0,clipCount:0,logCount:0};
+    await put("sessions",meta);
+    if(document.hidden){
+      await put("sessions",{...meta,status:"interrupted",stopReason:"background-before-start",endedAt:meta.startedAt});
+      throw Error("記録開始前にページが背面になりました。");
+    }
+    current={meta,perf:performance.now(),next:0,end:0,rows:[],profiles:[],bin:null,ring:new Ring(),event:null,
+      motion:new Map(),clipCount:0,chain:Promise.resolve(),error:null,release};
+    resetCapture();show("record");getWake();
+  }catch(e){release?.();throw e}
+  finally{starting=false;controls()}
+}
+async function stopRec(reason="user"){
+  if(stopping)return stopping;
+  if(!current)return;
+  const s=current;
+  stopping=(async()=>{
+    try{
+      if(reason==="user")await flushCapture();
+      if(reason!=="user"&&reason!=="storage-error"){
+        const elapsed=Math.min(s.next+6000,Math.ceil((performance.now()-s.perf)/100));
+        endClip(s,"interrupted");
+        while(s.next<elapsed){row(s,s.next,null,null);s.end=s.next*STEP;}
+      }
+      current=null;
+      endClip(s,reason==="user"?"stopped-before-tail":reason);
+      finishBin(s);saveRows(s);await s.chain;
+      const meta={...snapshot(s,s.error?"partial-save":reason==="user"?"completed":"interrupted"),stopReason:reason};
+      await put("sessions",meta);
+      $("live").textContent=`${meta.status==="completed"?"保存完了":"途中まで保存"}：${meta.logCount} 点、音声 ${meta.clipCount} 件。`+(s.error?" "+s.error.message:"");
+    }finally{
+      current=null;s.release?.();leaveBlack();
+      const w=wake;wake=null;await w?.release().catch(()=>{});
+      await closeMic();
+    }
+  })();
+  controls();
+  try{await stopping}finally{stopping=null;controls()}
 }
 
-/* ===== 詳細・タイムライン（表示のみ間引き、欠測null維持） ===== */
-let blobUrls = [];
-function revokeUrls() { blobUrls.forEach((u) => URL.revokeObjectURL(u)); blobUrls = []; }
-
-async function openDetail(sid) {
-  S.detailSid = sid; tl.data = null; PLAY.list = []; revokeUrls();
-  $("d-chart").innerHTML = '<p class="muted">読み込み中…</p>';
-  $("tl-tags").innerHTML = ""; $("tl-legend").innerHTML = ""; $("tl-save").disabled = true;
-  showPage("detail");
-
-  const sess = await DB.get("sessions", sid);
-  if (!sess) return;
-  const logs = [];
-  await DB.eachIn("sessionLogs", null, sessionRange(sid), (l) => logs.push(l));
-  const clips = [];
-  await DB.eachIn("clips", "sessionId", IDBKeyRange.only(sid), (c) => clips.push(c));
-  clips.sort((a, b) => a.index - b.index);
-
-  tl.data = { sess, logs, clips };
-  const refDb = (S.ref && S.ref.db != null) ? S.ref.db : (sess.refDb != null ? sess.refDb : -40);
-  const envDb = (S.ref && S.ref.envDb != null) ? S.ref.envDb : (sess.refEnvDb != null ? sess.refEnvDb : refDb - 12);
-  let topDb = refDb;
-  for (const c of clips) if (c.peakDb != null && c.peakDb > topDb) topDb = c.peakDb;
-  tl.scale = { refDb, envDb, topDb };
-  tl.total = Math.max(60, sess.durationSec || (logs.length ? logs[logs.length - 1].sec : 60));
-  tl.zoomSec = 0; tl.winStart = 0; tl.cursor = 0;
-  tl.tags = { snore: true, unknown: false, env: false, speech: false, motion: false };
-  $("tl-zoom").value = "0"; $("tl-msg").textContent = ""; $("tl-audio").innerHTML = "";
-  renderTimeline();
+function hold(el,fire,progress=()=>{}){
+  let start=0, timer=0, who=null;
+  function end(){clearInterval(timer);timer=0;who=null;progress(0)}
+  el.addEventListener("pointerdown",e=>{
+    if(who!==null||!e.isPrimary||e.button!==0||el.disabled)return;
+    e.preventDefault();who=e.pointerId;start=performance.now();
+    try{el.setPointerCapture(who)}catch(_){}
+    timer=setInterval(()=>{
+      const p=(performance.now()-start)/2000;progress(Math.min(1,p));
+      if(p>=1){end();Promise.resolve().then(fire).catch(e=>msg(e.message))}
+    },50);
+  });
+  for(const k of ["pointerup","pointercancel","lostpointercapture"])el.addEventListener(k,e=>{if(e.pointerId===who)end()});
+  el.addEventListener("contextmenu",e=>e.preventDefault());
+  window.addEventListener("blur",end);
 }
+let clockTimer=0, oldOverflow="";
+function clock(){ $("clock").textContent=new Date().toLocaleTimeString("ja-JP",{hour:"2-digit",minute:"2-digit"}); }
+function enterBlack(){
+  if(!current||!$("black").hidden)return;
+  oldOverflow=document.documentElement.style.overflow;document.documentElement.style.overflow="hidden";
+  $("black").hidden=false;clock();clockTimer=setInterval(clock,1000);getWake();
+}
+function leaveBlack(){
+  if($("black").hidden)return;
+  $("black").hidden=true;clearInterval(clockTimer);document.documentElement.style.overflow=oldOverflow;
+}
+hold($("black"),leaveBlack,p=>$("progress").value=p);
+hold($("stop"),()=>stopRec(),p=>$("stop").textContent=p?"押したまま："+Math.floor(p*100)+"%":"停止（2秒長押し）");
+$("stop").addEventListener("keydown",e=>{if((e.key==="Enter"||e.key===" ")&&!e.repeat&&!$("stop").disabled){e.preventDefault();if(confirm("記録を停止しますか？"))stopRec().catch(e=>msg(e.message))}});
+window.addEventListener("keydown",e=>{if(e.key==="Escape")leaveBlack()});
+document.addEventListener("visibilitychange",()=>{
+  if(document.hidden){stopCamera();if(current)stopRec("background-or-screen-lock").catch(e=>msg(e.message));}
+});
+window.addEventListener("pagehide",()=>{stopCamera();if(current)stopRec("pagehide").catch(()=>{});else if(!stopping)closeMic().catch(()=>{})});
+window.addEventListener("beforeunload",e=>{if(current||stopping){e.preventDefault();e.returnValue=""}});
 
-function renderTimeline() {
-  if (!tl.data) return;
-  tl.winLen = tl.zoomSec > 0 ? Math.min(tl.zoomSec, tl.total) : tl.total;
-  tl.winStart = clamp(tl.winStart, 0, Math.max(0, tl.total - tl.winLen));
-  tl.cursor = clamp(tl.cursor, tl.winStart, tl.winStart + tl.winLen);
+function empty(el,text){el.replaceChildren();if(text)el.textContent=text}
+function button(text,fn,cls=""){
+  const b=document.createElement("button");b.textContent=text;b.className=cls;
+  b.onclick=()=>Promise.resolve().then(fn).catch(e=>msg(e.message));return b;
+}
+async function openHistory(from=historyFrom){
+  if(busy())return;
+  historyFrom=from;const gen=++calendarGeneration;
+  const rows=(await read("sessions")).sort((a,b)=>a.startedAt-b.startedAt);
+  if(gen!==calendarGeneration||busy())return;
+  calendarRows=rows;show("history");renderCal();
+}
+function renderCal(){
+  const c=$("calendar"),y=month.getFullYear(),m=month.getMonth(), today=day(Date.now());
+  $("month").textContent=`${y}年${m+1}月`;empty(c);
+  for(const w of "日月火水木金土"){const a=document.createElement("small");a.textContent=w;c.append(a)}
+  for(let j=0;j<new Date(y,m,1).getDay();j++)c.append(document.createElement("span"));
+  const dates=new Set(calendarRows.map(s=>day(s.startedAt)));
+  for(let n=1;n<=new Date(y,m+1,0).getDate();n++){
+    const k=day(new Date(y,m,n).getTime());
+    c.append(button(n,()=>{
+      const prior=k===chosenDay;chosenDay=k;renderCal();
+      const s=calendarRows.find(v=>day(v.startedAt)===k);
+      if(prior&&s)return openDetail(s.id);
+    },[dates.has(k)?"has":"",k===chosenDay?"selected":"",k===today?"today":""].join(" ")));
+  }
+  const box=$("dayRows"), rs=calendarRows.filter(s=>day(s.startedAt)===chosenDay);
+  empty(box,rs.length?"":chosenDay?"この日の記録はありません。":"日付を選んでください。");
+  for(const s of rs)box.append(button(`${new Date(s.startedAt).toLocaleTimeString("ja-JP")} ／ ${Math.floor(s.durationSec||0)}秒 ／ ${s.clipCount||0}件`,()=>openDetail(s.id),"primary"));
+  if(rs.length&&rs.every(s=>s.exportedAt))box.append(button("この日の未保護音声を削除",()=>eraseDay(rs),"danger"));
+}
+const sessionClips = sid=>read("clips",IDBKeyRange.only(sid),"sessionId");
+let detailGeneration=0;
+async function openDetail(sid){
+  if(busy())return;
+  const gen=++detailGeneration;
+  const [[s],rows,clips]=await Promise.all([read("sessions",IDBKeyRange.only(sid)),read("sessionLogs",range(sid)),sessionClips(sid)]);
+  if(gen!==detailGeneration)return;
+  if(!s)throw Error("記録が見つかりません。");
+  if(s.status==="recording"){
+    const tail=rows.at(-1);
+    s.durationSec=Math.max(s.durationSec||0,tail?tail.sec+.1:0,...clips.map(c=>c.endSec));
+  }
+  selectedSession=s;detailRows=rows;detailClips=clips.sort((a,b)=>a.startSec-b.startSec);
+  shift=0;cursor=0;clipID="";plotMode="sound";$("zoom").value="0";refreshClips();show("detail");draw();
+}
+function refreshClips(){
+  const select=$("clipSelect");empty(select);
+  const none=new Option("イベントを選ぶ","");select.add(none);
+  for(const [i,c] of detailClips.entries()){
+    select.add(new Option(`${i+1}. ${c.startSec.toFixed(1)}秒 ／ ${c.durationSec.toFixed(1)}秒${c.saved?" ／ 保存指定":""}${c.deleted?" ／ 音声削除済":""}`,c.id));
+  }
+  select.value=clipID;
+  $("listen").disabled=!detailClips.some(c=>c.id===clipID&&!c.deleted);
+  controls();
+}
+const totalSec=()=>Math.max(60,selectedSession?.durationSec||0,detailRows.at(-1)?.sec||0,detailClips.reduce((m,c)=>Math.max(m,c.endSec),0));
+const widthSec=()=>Math.min(totalSec(),Number($("zoom").value)||totalSec());
+const fmtMMSS=sec=>{const s=Math.max(0,Math.floor(sec));const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),ss=s%60;return h?`${h}:${String(m).padStart(2,"0")}:${String(ss).padStart(2,"0")}`:`${m}:${String(ss).padStart(2,"0")}`};
 
-  const box = $("tl-tags"); box.innerHTML = "";
-  const snBtn = document.createElement("button");
-  snBtn.className = "tagbtn" + (tl.tags.snore ? "" : " off");
-  snBtn.innerHTML = '<i style="background:' + TAG_COLOR.snore + '"></i>いびき <small>' + tl.data.clips.length + '</small>';
-  snBtn.onclick = () => { tl.tags.snore = true; tl.tags.motion = false; renderTimeline(); };
-  box.appendChild(snBtn);
+function draw(){
+  if(page!=="detail"||!selectedSession)return;
+  const total=totalSec(), span=widthSec();
+  shift=clamp(shift,0,Math.max(0,total-span));
+  cursor=clamp(cursor,shift,shift+span);
+  $("pan").max=String(Math.max(0,total-span));$("pan").value=String(shift);
+  $("cursor").min=String(shift);$("cursor").max=String(shift+span);$("cursor").value=String(cursor);
+  $("cursorText").textContent=`黄色い線：記録から ${fmtMMSS(cursor)}（${new Date(selectedSession.startedAt+cursor*1000).toLocaleTimeString("ja-JP",{hour:"2-digit",minute:"2-digit",second:"2-digit"})}）`;
+  $("detailInfo").textContent=`${new Date(selectedSession.startedAt).toLocaleString("ja-JP")} ／ ${detailRows.length} 点 ／ ${detailClips.length} 件`+
+    (selectedSession.status==="recording"?" ／ 最終停止未確認（保存済み部分を表示）":selectedSession.stopReason&&selectedSession.stopReason!=="user"?" ／ 中断記録":"");
 
-  const mBtn = document.createElement("button");
-  mBtn.className = "tagbtn" + (tl.tags.motion ? "" : " off");
-  mBtn.innerHTML = '<i style="background:' + TAG_COLOR.motion + '"></i>体動';
-  mBtn.onclick = () => { tl.tags.snore = false; tl.tags.motion = true; renderTimeline(); };
-  box.appendChild(mBtn);
+  const tags=$("tlTags"); empty(tags);
+  const bSound=document.createElement("button");
+  bSound.className="tagbtn"+(plotMode==="sound"?"":" off");
+  bSound.innerHTML=`<i style="background:#4a90d9"></i>音（イベント）`;
+  bSound.onclick=()=>{plotMode="sound";draw()};
+  const bMot=document.createElement("button");
+  bMot.className="tagbtn"+(plotMode==="motion"?"":" off");
+  bMot.innerHTML=`<i style="background:#e04848"></i>体動`;
+  bMot.onclick=()=>{plotMode="motion";draw()};
+  tags.append(bSound,bMot);
+  $("tmThresh").value=String(motionThresh);
+  $("tmThreshVal").textContent=r(motionThresh,2)+" g";
+  $("tlLegend").innerHTML=plotMode==="motion"?"":`<span><i style="background:#4a90d9"></i>音声イベント</span><span><i style="background:#ffffff"></i>保存指定</span><span><i style="background:#e04848"></i>体動（上から）</span>`;
 
-  $("tl-pos").max = String(Math.round(tl.total - tl.winLen)); $("tl-pos").value = String(Math.round(tl.winStart));
-  $("tl-cur").min = String(Math.round(tl.winStart)); $("tl-cur").max = String(Math.round(tl.winStart + tl.winLen)); $("tl-cur").value = String(Math.round(tl.cursor));
+  const W=480,H=220,PL=62,PR=8,PT=8,PB=22,plotW=W-PL-PR,plotH=H-PT-PB,NB=60;
+  const t0=shift,t1=shift+span,binSec=span/NB,bw=plotW/NB;
+  const X=t=>PL+(t-t0)/span*plotW;
+  let body=`<rect x="${PL}" y="${PT}" width="${plotW}" height="${plotH}" fill="none" stroke="#2a3643"/>`;
 
-  const t0 = tl.winStart, t1 = tl.winStart + tl.winLen;
-  const NB = TL_BINS, binSec = tl.winLen / NB, plotW = TL_W - TL_PL - TL_PR, plotH = TL_H - TL_PT - TL_PB, bw = plotW / NB;
-  let g = '<rect x="' + TL_PL + '" y="' + TL_PT + '" width="' + plotW + '" height="' + plotH + '" fill="none" stroke="#2a3643"/>';
-
-  if (tl.tags.motion) {
-    const mTh = tl.motionThresh, mCeil = Math.max(0.1, mTh * 6);
-    const mBins = new Array(NB).fill(null);
-    for (const l of tl.data.logs) {
-      if (l.motionG == null || l.motionG < mTh || l.sec < t0 || l.sec > t1) continue;
-      const i = Math.min(NB - 1, Math.floor((l.sec - t0) / binSec));
-      if (mBins[i] == null || l.motionG > mBins[i]) mBins[i] = l.motionG;
+  if(plotMode==="motion"){
+    const ceil=Math.max(0.1,motionThresh*6);
+    const bins=new Array(NB).fill(null);
+    let clipped=false,any=false;
+    for(const row of detailRows){
+      if(!finite(row.motionG)||row.motionG<motionThresh||row.sec<t0||row.sec>t1)continue;
+      if(row.motionG>ceil)clipped=true;
+      const i=Math.min(NB-1,Math.floor((row.sec-t0)/binSec));
+      if(bins[i]===null||row.motionG>bins[i])bins[i]=row.motionG;
     }
-    for (let i = 0; i < NB; i++) {
-      if (mBins[i] == null) continue;
-      const h = Math.max(2, Math.min(plotH, mBins[i] / mCeil * plotH));
-      g += '<rect x="' + (TL_PL + i * bw + 0.5).toFixed(1) + '" y="' + (TL_PT + plotH - h).toFixed(1) + '" width="' + Math.max(1, bw - 1).toFixed(1) + '" height="' + h.toFixed(1) + '" fill="' + TAG_COLOR.motion + '"/>';
+    for(let i=0;i<NB;i++){
+      const v=bins[i];if(v===null)continue;any=true;
+      const h=Math.max(2,Math.min(plotH,v/ceil*plotH));
+      body+=`<rect x="${(PL+i*bw+0.5).toFixed(1)}" y="${(PT+plotH-h).toFixed(1)}" width="${Math.max(1,bw-1).toFixed(1)}" height="${h.toFixed(1)}" fill="#e04848"/>`;
     }
-  } else {
-    const bins = new Array(NB).fill(null);
-    for (const c of tl.data.clips) {
-      if (c.startSec < t0 || c.startSec > t1) continue;
-      const i = Math.min(NB - 1, Math.floor((c.startSec - t0) / binSec));
-      if (!bins[i] || c.peakDb > bins[i].db) bins[i] = { db: c.peakDb, saved: !!c.saved };
+    if(motionThresh>0&&motionThresh<ceil){
+      const ty=PT+plotH-motionThresh/ceil*plotH;
+      body+=`<line x1="${PL}" x2="${PL+plotW}" y1="${ty.toFixed(1)}" y2="${ty.toFixed(1)}" stroke="#b6c3d1" stroke-width="1" stroke-dasharray="5 4" opacity="0.7"/>`;
     }
-    for (let i = 0; i < NB; i++) {
-      if (!bins[i]) continue;
-      const pos = scalePos(bins[i].db, tl.scale.envDb, tl.scale.refDb, tl.scale.topDb);
-      const h = Math.max(3, pos * (plotH - 4));
-      g += '<rect x="' + (TL_PL + i * bw + 0.5).toFixed(1) + '" y="' + (TL_PT + plotH - h).toFixed(1) + '" width="' + Math.max(1, bw - 1).toFixed(1) + '" height="' + h.toFixed(1) + '" fill="' + (bins[i].saved ? SAVED_BAR_COLOR : TAG_COLOR.snore) + '"/>';
+    body+=`<text x="${PL+2}" y="${PT+12}" font-size="10" fill="#b6c3d1">${r(ceil,2)}</text>`;
+    body+=`<text x="${PL+2}" y="${PT+plotH-3}" font-size="10" fill="#b6c3d1">0</text>`;
+    body+=`<text x="${PL+30}" y="${PT+12}" font-size="11" fill="#e04848">体動 g（棒内の最大値）</text>`;
+    if(clipped)body+=`<text x="${PL+30}" y="${PT+26}" font-size="11" fill="#e04848">上端を超えた値あり</text>`;
+    if(!any)body+=`<text x="${PL+8}" y="${PT+plotH/2+30}" font-size="12" fill="#b6c3d1">しきい値以上の体動がありません</text>`;
+  }else{
+    const refDb=finite(selectedSession.referenceDbFS)?selectedSession.referenceDbFS:(finite(ref?.refDbFS)?ref.refDbFS:-40);
+    let topDb=refDb;
+    for(const c of detailClips)if(!c.deleted&&finite(c.peakDb)&&c.peakDb>topDb)topDb=c.peakDb;
+    const rTop=Math.pow(2,(topDb-refDb)/10);
+    const LADDER=[1.5,2,2.5,3,4,5,6,8,10,12,16,20,24,32,40,48,64,80,96,128];
+    let ceilR=2;for(const L of LADDER){ceilR=L;if(L>=rTop*1.08)break;}
+    const ahPos=Math.min(0.5,Math.max(0.125,1/ceilR));
+    const posOfR=rv=>rv<=1?ahPos*rv:ahPos+(rv-1)/Math.max(ceilR-1,0.5)*(1-ahPos);
+    const posOf=db=>clamp(posOfR(Math.pow(2,(db-refDb)/10)),0,1);
+    const yOfMult=m=>PT+plotH-posOfR(m)*(plotH-4);
+    const Y=db=>PT+plotH-posOf(db)*(plotH-4);
+    const lineMults=(ceilR<=8?[1,2,3,4,6,8]:[1,2,4,8,16,32,64]).filter(m=>m<=ceilR);
+
+    const ok=new Array(NB).fill(false);
+    for(const row of detailRows){
+      if(!finite(row.sourceDbFS)||row.sec<t0||row.sec>t1)continue;
+      ok[Math.min(NB-1,Math.floor((row.sec-t0)/binSec))]=true;
     }
+    let labeled=false;
+    for(let i=0;i<NB;i++){
+      if(ok[i])continue;
+      body+=`<rect x="${(PL+i*bw).toFixed(1)}" y="${PT}" width="${bw.toFixed(1)}" height="${plotH}" fill="#8a97a5" opacity="0.20"/>`;
+      if(!labeled){labeled=true;body+=`<text x="${(PL+i*bw+3).toFixed(1)}" y="${PT+plotH-16}" font-size="10" fill="#c3ccd4">欠測</text>`;}
+    }
+
+    const mCeil=Math.max(0.1,motionThresh*6),mBins=new Array(NB).fill(null);
+    for(const row of detailRows){
+      if(!finite(row.motionG)||row.motionG<motionThresh||row.sec<t0||row.sec>t1)continue;
+      const i=Math.min(NB-1,Math.floor((row.sec-t0)/binSec));
+      if(mBins[i]===null||row.motionG>mBins[i])mBins[i]=row.motionG;
+    }
+    for(let i=0;i<NB;i++){
+      const v=mBins[i];if(v===null)continue;
+      const h=Math.max(2,Math.min(plotH,v/mCeil*plotH));
+      body+=`<rect x="${(PL+i*bw+0.5).toFixed(1)}" y="${PT}" width="${Math.max(1,bw-1).toFixed(1)}" height="${h.toFixed(1)}" fill="#e04848" opacity="0.85"/>`;
+    }
+
+    for(const m of lineMults){
+      const y=yOfMult(m);
+      body+=`<line x1="${PL}" x2="${PL+plotW}" y1="${y.toFixed(1)}" y2="${y.toFixed(1)}" stroke="#ffd54a" stroke-opacity="0.55" stroke-width="1" stroke-dasharray="5 4"/>`;
+    }
+
+    const lineMode=span<=600;
+    let any=false;
+    if(lineMode){
+      const ranges=detailClips.filter(c=>!c.deleted&&c.endSec>=t0&&c.startSec<=t1).map(c=>[c.startSec,c.endSec]);
+      if(ranges.length){
+        any=true;
+        let d="",prev=null;
+        for(const row of detailRows){
+          if(!finite(row.sourceDbFS)||row.sec<t0||row.sec>t1)continue;
+          if(!ranges.some(([a,b])=>row.sec>=a&&row.sec<=b)){prev=null;continue;}
+          d+=(prev===null||row.sec-prev>0.25?"M":"L")+X(row.sec).toFixed(1)+" "+Y(row.sourceDbFS).toFixed(1);
+          prev=row.sec;
+        }
+        if(d)body+=`<path d="${d}" fill="none" stroke="#4a90d9" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" opacity="0.95"/>`;
+      }
+    }else{
+      const bins=new Array(NB).fill(null);
+      for(const c of detailClips){
+        if(c.deleted||c.startSec<t0||c.startSec>t1||!finite(c.peakDb))continue;
+        const i=Math.min(NB-1,Math.floor((c.startSec-t0)/binSec));
+        if(!bins[i])bins[i]={db:c.peakDb,saved:!!c.saved};
+        else{if(c.peakDb>bins[i].db)bins[i].db=c.peakDb;if(c.saved)bins[i].saved=true;}
+      }
+      for(let i=0;i<NB;i++){
+        const item=bins[i];if(!item)continue;any=true;
+        const h=Math.max(3,posOf(item.db)*(plotH-4));
+        body+=`<rect x="${(PL+i*bw+0.5).toFixed(1)}" y="${(PT+plotH-h).toFixed(1)}" width="${Math.max(1,bw-1).toFixed(1)}" height="${h.toFixed(1)}" fill="${item.saved?"#ffffff":"#4a90d9"}"/>`;
+      }
+    }
+    if(!any)body+=`<text x="${PL+8}" y="${PT+plotH/2+30}" font-size="12" fill="#b6c3d1">この区間に音声イベントはありません</text>`;
+    for(const m of lineMults){
+      const label=m===1?"あ〜の音量":`あ〜の${m}倍`;
+      body+=`<text x="${PL+4}" y="${(yOfMult(m)-3).toFixed(1)}" font-size="9" fill="${m===1?"#f3e7c9":"#e8e4d8"}">${label}</text>`;
+    }
+    body+=`<text x="${PL+4}" y="${PT+plotH-4}" font-size="9" fill="#b6c3d1">室内の環境音</text>`;
+    body+=`<text x="${PL+4}" y="${PT+12}" font-size="11" fill="#4a90d9">${lineMode?"音声イベント（線）":`音声イベント（棒1本＝${r(binSec,1)}秒）`}</text>`;
   }
 
-  const X = (t) => TL_PL + (t - t0) / tl.winLen * plotW;
-  g += '<line x1="' + X(tl.cursor).toFixed(1) + '" x2="' + X(tl.cursor).toFixed(1) + '" y1="' + TL_PT + '" y2="' + (TL_H - TL_PB) + '" stroke="#ffd54a" stroke-width="2"/>';
-  g += '<text x="' + TL_PL + '" y="' + (TL_H - 6) + '" font-size="10" fill="#aebbc9">' + fmtTime(t0 * 1000) + '</text>';
-  g += '<text x="' + (TL_W - TL_PR) + '" y="' + (TL_H - 6) + '" font-size="10" fill="#aebbc9" text-anchor="end">' + fmtTime(t1 * 1000) + '</text>';
-  $("d-chart").innerHTML = '<svg viewBox="0 0 ' + TL_W + ' ' + TL_H + '">' + g + '</svg>';
-  $("tl-info").textContent = "表示：" + fmtTime(t0 * 1000) + " 〜 " + fmtTime(t1 * 1000) + "（終了 " + fmtTime(tl.total * 1000) + "）";
-  $("tl-cur-text").textContent = "黄色い線：" + fmtTime(tl.cursor * 1000) + "（" + fmtClock(tl.data.sess.startTimeMs + tl.cursor * 1000) + "）";
-  $("tl-listen").disabled = !!tl.tags.motion;
+  const cursorLine=`<line x1="${X(cursor).toFixed(1)}" x2="${X(cursor).toFixed(1)}" y1="${PT}" y2="${H-PB}" stroke="#ffd54a" stroke-width="2"/>`;
+  const axisText=`<text x="${PL}" y="${H-6}" font-size="10" fill="#b6c3d1">${fmtMMSS(t0)}</text><text x="${W-PR}" y="${H-6}" font-size="10" fill="#b6c3d1" text-anchor="end">${fmtMMSS(t1)}</text>`;
+  $("plot").innerHTML=`<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">${body}${cursorLine}${axisText}</svg>`;
 }
 
-/* ===== WAV再生・ZIP出力（V20 Schema v35 + README.txt） ===== */
-const enc = new TextEncoder();
-const CRC_TABLE = (() => {
-  const t = new Uint32Array(256);
-  for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = (c & 1) ? 0xedb88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; }
-  return t;
-})();
-function accumulator() {
-  const parts = []; let size = 0, c = 0xffffffff;
-  return { parts, get size() { return size; }, add(bytes) { parts.push(bytes); size += bytes.byteLength; for (let i = 0; i < bytes.length; i++) c = CRC_TABLE[(c ^ bytes[i]) & 255] ^ (c >>> 8); }, crc() { return (c ^ 0xffffffff) >>> 0; } };
+function selectAt(t){
+  cursor=t;
+  const c=detailClips.find(c=>!c.deleted&&t>=c.startSec&&t<c.endSec);
+  if(clipID!==(c?.id||""))clearPlayer();
+  clipID=c?.id||"";refreshClips();draw();
 }
-function wavHeader(frames) {
-  const bytes = frames * 2, h = new Uint8Array(44), v = new DataView(h.buffer), txt = (p, s) => { for (let i = 0; i < s.length; i++) h[p + i] = s.charCodeAt(i); };
-  txt(0, "RIFF"); v.setUint32(4, 36 + bytes, true); txt(8, "WAVE"); txt(12, "fmt "); v.setUint32(16, 16, true);
-  v.setUint16(20, 1, true); v.setUint16(22, 1, true); v.setUint32(24, RATE, true); v.setUint32(28, RATE * 2, true);
-  v.setUint16(32, 2, true); v.setUint16(34, 16, true); txt(36, "data"); v.setUint32(40, bytes, true);
-  return h;
+let playbackGeneration=0;
+function clearPlayer(){
+  ++playbackGeneration;
+  const a=$("audio");a.pause();a.removeAttribute("src");a.hidden=true;
+  if(playerUrl)URL.revokeObjectURL(playerUrl);playerUrl="";
 }
-async function clipWav(clip) {
-  const parts = []; let frames = 0;
-  await DB.eachIn("audioChunks", null, sessionRange(clip.id), (c) => { parts.push(c.pcm); frames += c.pcm.byteLength / 2; });
-  const a = accumulator(); a.add(wavHeader(frames)); for (const p of parts) a.add(new Uint8Array(p));
-  return { acc: a, frames };
-}
-async function listenAtCursor() {
-  if (!tl.data || tl.tags.motion) return;
-  const binSec = tl.winLen / TL_BINS, idx = clamp(Math.floor((tl.cursor - tl.winStart) / binSec), 0, TL_BINS - 1);
-  const b0 = tl.winStart + idx * binSec, b1 = b0 + binSec;
-  const list = tl.data.clips.filter((c) => c.startSec >= b0 && c.startSec < b1);
-  if (!list.length) { $("tl-msg").textContent = "この棒には音声がありません。"; return; }
-  revokeUrls(); $("tl-audio").innerHTML = "";
-  const wav = await clipWav(list[0]);
-  const url = URL.createObjectURL(new Blob(wav.acc.parts, { type: "audio/wav" }));
-  blobUrls.push(url);
-  const au = document.createElement("audio"); au.controls = true; au.src = url; $("tl-audio").appendChild(au); au.play().catch(() => {});
-  PLAY.list = list; $("tl-save").disabled = !list.some((c) => !c.saved);
-  $("tl-msg").textContent = "音声を再生します（" + list.length + "件）。";
-}
-
-function zipEntries(entries) {
-  const u16 = (n) => { const b = new Uint8Array(2); new DataView(b.buffer).setUint16(0, n, true); return b; };
-  const u32 = (n) => { const b = new Uint8Array(4); new DataView(b.buffer).setUint32(0, n, true); return b; };
-  const concat = (parts) => { const out = new Uint8Array(parts.reduce((s, p) => s + p.length, 0)); let pos = 0; for (const p of parts) { out.set(p, pos); pos += p.length; } return out; };
-  const local = [], central = []; let offset = 0;
-  for (const f of entries) {
-    const name = enc.encode(f.name);
-    const h = concat([u32(0x04034b50), u16(20), u16(0x0808), u16(0), u16(0), u16(33), u32(0), u32(0), u32(0), u16(name.length), u16(0), name]);
-    const desc = concat([u32(0x08074b50), u32(f.crc), u32(f.size), u32(f.size)]);
-    local.push(h, ...f.parts, desc);
-    central.push(concat([u32(0x02014b50), u16(20), u16(20), u16(0x0808), u16(0), u16(0), u16(33), u32(f.crc), u32(f.size), u32(f.size), u16(name.length), u16(0), u16(0), u16(0), u16(0), u32(0), u32(offset), name]));
-    offset += h.length + f.size + desc.length;
+async function clipParts(c){
+  const parts=await read("audioChunks",range(c.id));
+  let frames=0;
+  for(const [i,p] of parts.entries()){
+    if(p.n!==i||!(p.pcm instanceof ArrayBuffer)||(p.pcm.byteLength&1))throw Error("音声チャンクが破損しています。");
+    frames+=p.pcm.byteLength/2;
   }
-  const cSize = central.reduce((s, p) => s + p.length, 0);
-  return new Blob([...local, ...central, concat([u32(0x06054b50), u16(0), u16(0), u16(entries.length), u16(entries.length), u32(cSize), u32(offset), u16(0)])], { type: "application/zip" });
+  if(parts.length!==c.chunks||!frames||frames!==c.endSample-c.startSample)throw Error("音声に欠落があります。");
+  return [wavHeader(frames),...parts.map(p=>p.pcm)];
+}
+const CONVERSATION_SCORE=.5;
+const CONVERSATION_WINDOW=RATE*10;
+const CONVERSATION_HOP=RATE*5;
+let classifierPromise=null, reviewQueue=Promise.resolve();
+
+function conversationClassifier(){
+  if(!classifierPromise){
+    classifierPromise=(async()=>{
+      if(navigator.onLine===false)throw Error("このアプリはオフラインでは使えません。");
+      const {AutoProcessor,AutoModelForAudioClassification,env}=await import(
+        "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.5.2"
+      );
+      env.allowLocalModels=false;
+      const name="Xenova/ast-finetuned-audioset-10-10-0.4593";
+      const processor=await AutoProcessor.from_pretrained(name);
+      if(processor.feature_extractor?.config?.sampling_rate!==RATE)
+        throw Error("会話判定器のサンプルレートを確認できません。");
+      const model=await AutoModelForAudioClassification.from_pretrained(
+        name,{device:"wasm",dtype:"q8"}
+      );
+      const matches=Object.entries(model.config.id2label||{})
+        .filter(([,label])=>String(label).trim().toLowerCase()==="conversation");
+      if(matches.length!==1)throw Error("モデルに会話クラスがありません。");
+      const index=Number(matches[0][0]);
+      if(!Number.isSafeInteger(index)||index<0)throw Error("会話クラス番号が不正です。");
+      return {processor,model,index};
+    })().catch(e=>{classifierPromise=null;throw e});
+  }
+  return classifierPromise;
 }
 
-async function makeZip() {
-  if (S.saving || !SH.sid) return;
-  S.saving = true; setButtons();
-  const msg = $("sh-msg"); msg.hidden = false; msg.className = "warn"; msg.textContent = "ZIPを作成しています…";
-  try {
-    const s = await DB.get("sessions", SH.sid);
-    const clips = []; await DB.eachIn("clips", "sessionId", IDBKeyRange.only(SH.sid), (c) => clips.push(c));
-    clips.sort((a, b) => a.index - b.index);
-    const audio = [], metadata = [];
-    for (const c of clips) {
-      const file = "audio/clip_" + String(c.index).padStart(3, "0") + ".wav";
-      const wav = await clipWav(c);
-      audio.push({ name: file, parts: wav.acc.parts, size: wav.acc.size, crc: wav.acc.crc() });
-      metadata.push({ file, id: c.id, startSec: c.startSec, endSec: c.endSec, sampleCount: wav.frames, peakDb: c.peakDb, candidateIds: c.cands || [] });
+async function scanConversation(parts){
+  const chunks=parts.slice(1);
+  const frames=chunks.reduce((n,b)=>n+b.byteLength/2,0);
+  if(!Number.isSafeInteger(frames)||frames<=0)throw Error("判定対象の音声がありません。");
+  const {processor,model,index}=await conversationClassifier();
+  const window=new Float32Array(CONVERSATION_WINDOW);
+  let chunkIndex=0, byteOffset=0, consumed=0;
+  let view=new DataView(chunks[0]);
+  function fill(start,end){
+    for(let j=start;j<end&&consumed<frames;j++,consumed++){
+      while(byteOffset===view.byteLength){
+        view=new DataView(chunks[++chunkIndex]);byteOffset=0;
+      }
+      window[j]=view.getInt16(byteOffset,true)/32768;
+      byteOffset+=2;
     }
-    const logAcc = accumulator();
-    logAcc.add(enc.encode('{"format":"zip-store-v1","periodSec":0.1,"fields":["sec","db","peakHz","motionG","motionValid","partial"],"rows":['));
-    let rows = [], first = true, logCount = 0;
-    await DB.eachIn("sessionLogs", null, sessionRange(SH.sid), (l) => {
-      rows.push(JSON.stringify([l.sec, l.db, l.peakHz, l.motionG, l.motionValid ?? null, !!l.partial]));
-      logCount++;
-      if (rows.length >= 1000) { logAcc.add(enc.encode((first ? "" : ",") + rows.join(","))); first = false; rows = []; }
+  }
+  fill(0,window.length);
+  for(;;){
+    const inputs=await processor(window);
+    const {logits}=await model(inputs);
+    const values=logits?.data;
+    if(logits?.dims?.length!==2||logits.dims[0]!==1||!values||!finite(values[index]))
+      throw Error("会話判定器の出力が不正です。");
+    const score=1/(1+Math.exp(-values[index]));
+    if(score>=CONVERSATION_SCORE)return "conversation";
+    if(consumed===frames)return "no-conversation-detected";
+    window.copyWithin(0,CONVERSATION_HOP);
+    const retained=window.length-CONVERSATION_HOP;
+    window.fill(0,retained);
+    fill(retained,window.length);
+    await new Promise(resolve=>setTimeout(resolve,0));
+  }
+}
+
+function reviewAudio(c){
+  const job=reviewQueue.then(async()=>{
+    try{
+      const parts=await clipParts(c);
+      const result=await scanConversation(parts);
+      return result==="no-conversation-detected"?{result,parts}:{result};
+    }catch(e){
+      console.warn("会話判定を完了できませんでした",e);
+      return {result:"unverified"};
+    }
+  });
+  reviewQueue=job.then(()=>undefined,()=>undefined);
+  return job;
+}
+
+async function listen(){
+  if(busy())return;
+  const c=detailClips.find(c=>c.id===clipID&&!c.deleted);if(!c)return;
+  clearPlayer();
+  const generation=playbackGeneration, sid=selectedSession?.id;
+  const b=$("listen");
+  b.disabled=true;
+  b.textContent="会話を確認中…";
+  try{
+    const checked=await reviewAudio(c);
+    if(generation!==playbackGeneration||page!=="detail"||
+        selectedSession?.id!==sid||clipID!==c.id)return;
+    if(checked.result!=="no-conversation-detected"){
+      msg(checked.result==="conversation"
+        ?"会話を検出したため再生しません。"
+        :"会話の有無を確認できなかったため再生しません。");
+      return;
+    }
+    const a=$("audio");a.hidden=false;
+    a.src=playerUrl=URL.createObjectURL(new Blob(checked.parts,{type:"audio/wav"}));
+    await a.play().catch(()=>{});
+  }finally{
+    b.textContent="選択したイベントの音声を聴く";
+    b.disabled=!detailClips.some(item=>item.id===clipID&&!item.deleted);
+  }
+}
+async function keep(){
+  if(busy())return;const c=detailClips.find(c=>c.id===clipID&&!c.deleted);if(!c)return;
+  await put("clips",{...c,saved:true});c.saved=true;refreshClips();draw();
+}
+async function eraseAudio(s){
+  const clips=(await sessionClips(s.id)).filter(c=>!c.saved&&!c.deleted);
+  if(!clips.length)return 0;
+  await write(["clips","audioChunks"],tx=>{
+    for(const c of clips){tx.objectStore("audioChunks").delete(range(c.id));tx.objectStore("clips").put({...c,deleted:true,chunks:0});}
+  });
+  return clips.length;
+}
+async function eraseDay(rows){
+  if(busy()||!rows.every(s=>s.exportedAt))return;
+  if(!confirm("ZIPが保存されていることを確認してください。この日の未保護音声をすべて削除します。数値ログは残ります。続けますか？"))return;
+  changing=true;controls();try{for(const s of rows)await eraseAudio(s)}finally{changing=false;controls()}
+  await openHistory();
+}
+async function eraseSession(){
+  if(busy()||!selectedSession||!confirm("このセッションの音声と数値ログを削除します。元に戻せません。続けますか？"))return;
+  const sid=selectedSession.id;
+  changing=true;controls();
+  try{
+    const clips=await sessionClips(sid);
+    await write(["sessions","sessionLogs","profileBins","clips","audioChunks"],tx=>{
+      for(const c of clips){tx.objectStore("audioChunks").delete(range(c.id));tx.objectStore("clips").delete(c.id)}
+      tx.objectStore("sessionLogs").delete(range(sid));tx.objectStore("profileBins").delete(range(sid));tx.objectStore("sessions").delete(sid);
     });
-    if (rows.length) logAcc.add(enc.encode((first ? "" : ",") + rows.join(",")));
-    logAcc.add(enc.encode("]}"));
-
-    const meta = {
-      format: "zip-store-v1", schemaVersion: 35, app: "SomnoLog", version: VERSION, revision: REVISION,
-      sessionId: s.id, serialNumber: s.serialNumber, patient: s.patient, recipientEmail: s.doctorEmail || "",
-      startedAt: new Date(s.startTimeMs).toISOString(), endedAt: new Date(s.stopTimeMs || s.startTimeMs).toISOString(),
-      durationSec: s.durationSec || 0, status: s.status, stopReason: s.stopReason || null,
-      audioSampleRate: RATE, audioChannels: 1, audioBitDepth: 16, gainDb: s.gainDb || 0,
-      baselineDb: s.baselineDb ?? null, logFile: "log.json", logPeriodSec: 0.1, actualExportedLogCount: logCount, clips: metadata
-    };
-    const readme = [
-      VERSION + " " + REVISION,
-      "宛先：" + (s.doctorEmail || "未設定"),
-      "ZIPは無圧縮・非暗号化です。患者情報と実音声を含みます。",
-      "log.json: 100ms周期。motionValid=false時はmotionG=null。",
-      "audio/: 先行3秒・追尾5秒を含むPCM16 WAV。"
-    ].join("\r\n") + "\r\n";
-
-    const textEntry = (name, text) => { const a = accumulator(); a.add(enc.encode(text)); return { name, parts: a.parts, size: a.size, crc: a.crc() }; };
-    const blob = zipEntries([textEntry("session.json", JSON.stringify(meta, null, 2)), { name: "log.json", parts: logAcc.parts, size: logAcc.size, crc: logAcc.crc() }, ...audio, textEntry("README.txt", readme)]);
-    SH.zipName = zipName(s);
-    const a = document.createElement("a"); const url = URL.createObjectURL(blob);
-    a.href = url; a.download = SH.zipName; document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 60000);
-    SH.zipDone = true;
-    msg.textContent = "ダウンロードを開始しました：" + SH.zipName + "（音声 " + clips.length + "件）";
-  } catch (e) { msg.className = "err"; msg.textContent = "ZIP作成失敗：" + e.message; }
-  finally { S.saving = false; setButtons(); }
+    selectedSession=null;
+  }finally{changing=false;controls()}
+  await openHistory();
 }
 
-/* ===== イベント接続 ===== */
-const on = (id, ev, fn) => $(id).addEventListener(ev, fn);
-["usage", "rec-usage", "prep-usage", "cal-usage", "det-usage", "sh-usage"].forEach((k) => {
-  const b = $(k === "sh-usage" ? "sh-usage" : k + "-btn");
-  if (b) b.addEventListener("click", () => { $(k + "-box").hidden = !$(k + "-box").hidden; });
+const enc=new TextEncoder();
+const crcTable=Uint32Array.from({length:256},(_,n)=>{
+  for(let j=0;j<8;j++)n=n&1?(n>>>1)^0xedb88320:n>>>1;return n>>>0;
 });
-on("errbox", "click", clearError);
-on("cam-btn", "click", startCamera);
-on("cam-stop", "click", stopCamera);
-on("qr-file-btn", "click", () => $("qr-file").click());
-on("qr-file", "change", (e) => { const f = e.target.files && e.target.files[0]; e.target.value = ""; readQrFile(f); });
-on("back-rec-start", "click", goRecord);
-on("back-rec-confirm", "click", goRecord);
-on("cf-ok", "click", async () => { if (!S_PATIENT_PENDING.value) { showPage("start"); return; } await savePatient(S_PATIENT_PENDING.value); S_PATIENT_PENDING.value = null; goRecord(); });
-on("cf-ng", "click", () => { S_PATIENT_PENDING.value = null; showScanMsg("診療所にご連絡ください。"); showPage("start"); });
-on("upd-reload", "click", async () => { updateByUser = true; renderUpdate(); await applyLatest(); renderUpdate(); });
-on("rec-back", "click", () => { if (!isBusy()) { showPage("start"); updateBackButtons(); } });
-
-on("mic-btn", "click", async () => {
-  let mp = null;
-  if (!S.motionAllowed && typeof DeviceMotionEvent !== "undefined" && typeof DeviceMotionEvent.requestPermission === "function") {
-    try { mp = DeviceMotionEvent.requestPermission(); } catch (_) {}
+class ZIP{
+  constructor(){this.parts=[];this.dir=[];this.off=0}
+  add(name,parts){
+    if(this.dir.length>=65534)throw Error("非ZIP64形式の件数上限です。");
+    let crc=0xffffffff,size=0;
+    const bytes=parts.map(p=>p instanceof Uint8Array?p:new Uint8Array(p));
+    for(const p of bytes){size+=p.length;for(const b of p)crc=crcTable[(crc^b)&255]^(crc>>>8)}
+    crc=(crc^0xffffffff)>>>0;
+    if(size>268435456)throw Error("V41の1ファイル上限を超えました："+name);
+    const nm=enc.encode(name),l=new Uint8Array(30+nm.length),c=new Uint8Array(46+nm.length);
+    const a=new DataView(l.buffer),b=new DataView(c.buffer);
+    const u=(v,o,n)=>v.setUint16(o,n,true),d=(v,o,n)=>v.setUint32(o,n,true);
+    d(a,0,0x04034b50);u(a,4,20);u(a,6,0x0800);u(a,12,33);d(a,14,crc);d(a,18,size);d(a,22,size);u(a,26,nm.length);l.set(nm,30);
+    d(b,0,0x02014b50);u(b,4,20);u(b,6,20);u(b,8,0x0800);u(b,14,33);d(b,16,crc);d(b,20,size);d(b,24,size);u(b,28,nm.length);d(b,42,this.off);c.set(nm,46);
+    this.off+=l.length+size;if(this.off>=0xffffffff)throw Error("ZIP64非対応のため容量上限を超えました。");
+    this.parts.push(l,new Blob(bytes));this.dir.push(c);
   }
-  try { await setupMic(); $("mic-state").textContent = "許可済み"; showMicMsg(""); } catch (e) { showMicMsg(e.message); }
-  try {
-    if (mp && (await mp) !== "granted") throw new Error("体動センサーが許可されませんでした");
-    S.motionAllowed = true;
-  } catch (e) { showMicMsg(e.message); }
-  setButtons(); updateUI();
+  json(name,obj){this.add(name,[enc.encode(JSON.stringify(obj))])}
+  finish(){
+    const size=this.dir.reduce((n,p)=>n+p.length,0);
+    if(this.off+size+22>=0xffffffff)throw Error("ZIPの容量上限を超えました。");
+    const d=new DataView(new ArrayBuffer(22));d.setUint32(0,0x06054b50,true);
+    d.setUint16(8,this.dir.length,true);d.setUint16(10,this.dir.length,true);
+    d.setUint32(12,size,true);d.setUint32(16,this.off,true);
+    return new Blob([...this.parts,...this.dir,d.buffer],{type:"application/zip"});
+  }
+}
+function shareStatus(text){$("shareStatus").textContent=text}
+function openShare(){
+  if(!selectedSession||busy())return;
+  $("address").textContent=selectedSession.patient?.logShareEmail||"宛先未設定";shareStatus("");show("share");
+}
+async function exportZip(){
+  if(busy()||!selectedSession)return;
+  exporting=true;controls();const s=selectedSession;
+  try{
+    shareStatus("ログを読み込んでいます…");
+    const [logs,bins,clips]=await Promise.all([read("sessionLogs",range(s.id)),read("profileBins",range(s.id)),sessionClips(s.id)]);
+    const zip=new ZIP(), info=[];
+    const excludedAudio={conversation:0,unverified:0};
+    const list=clips.filter(c=>!c.deleted).sort((a,b)=>a.startSample-b.startSample);
+    for(const [i,c] of list.entries()){
+      const path=`audio/clip_${String(i+1).padStart(4,"0")}.wav`;
+      shareStatus(`会話を確認中：${i+1} / ${list.length} 件`);
+      const checked=await reviewAudio(c);
+      if(checked.result!=="no-conversation-detected"){
+        excludedAudio[checked.result]++;
+        continue;
+      }
+      zip.add(path,checked.parts);
+      info.push({id:c.id,file:path,audioFile:path,startSec:c.startSec,endSec:c.endSec,durationSec:c.durationSec,
+        detectedSec:c.detectedSec,category:c.category,peakDb:c.peakDb,sampleCount:c.endSample-c.startSample,
+        truncated:c.truncated||(!c.final?"interrupted":null),continuationOf:c.continuationOf||null});
+      shareStatus(`音声 ${i+1} / ${list.length} 件`);
+      await new Promise(resolve=>setTimeout(resolve,0));
+    }
+    const timeSeriesLogs=logs.map(a=>({sec:a.sec,db:a.sourceDbFS,peakHz:a.peakHz,motionG:a.motionG}));
+    const durationSec=Math.max(s.durationSec||0,logs.at(-1)?logs.at(-1).sec+.1:0,...info.map(c=>c.endSec));
+    zip.json("session.json",{format:"zip-store-v1",schemaVersion:35,app:"SomnoLog",version:APP_VERSION,
+      compatibility:"V41-code-reviewed-device-test-pending",sessionId:s.id,patient:s.patient,startedAt:new Date(s.startedAt).toISOString(),
+      endedAt:s.endedAt?new Date(s.endedAt).toISOString():null,durationSec,status:s.status,stopReason:s.stopReason??null,
+      baselineDbFS:s.baselineDbFS,triggerDbOverBaseline:10,preSec:3,postSec:5,
+      audioSampleRate:RATE,audioChannels:1,audioBitDepth:16,gainDb:0,logFile:"log.json",logPeriodSec:.1,
+      clips:info,excludedAudio,timeSeriesLogs,profileBins:bins.filter(b=>b.avgMotion!==null)});
+    zip.json("log.json",{format:"zip-store-v1",periodSec:.1,fields:["sec","db","peakHz","motionG","motionValid","partial"],
+      rows:logs.map(a=>[a.sec,a.sourceDbFS,a.peakHz,a.motionG,a.motionG!==null,a.partial])});
+    zip.add("README.txt",[enc.encode(`${APP}\r\n無圧縮・非暗号化ZIPです。計測者情報を含みます。会話を検出した音声と判定不能の音声は収録しません。自動判定には見逃しがあります。\r\ndbは未校正の生音圧dBFS、motionGは端末の加速度です。欠測はnullです。\r\nstartSecはWAV先頭、detectedSecは検知時刻です。停止・入力断・サイズ上限による打切りはtruncatedに記録します。\r\n本アプリは診断を行いません。V41実機互換性は未検証です。\r\n`)]);
+    const url=URL.createObjectURL(zip.finish()),a=document.createElement("a");
+    a.href=url;a.download=`SomnoLog_${day(s.startedAt)}_${s.id.slice(0,8)}.zip`;document.body.append(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),60000);
+    const next={...s,exportedAt:Date.now()};await put("sessions",next);selectedSession=next;
+    shareStatus(`ダウンロードを開始しました。音声収録 ${info.length} 件、`+
+      `会話で除外 ${excludedAudio.conversation} 件、判定不能で除外 ${excludedAudio.unverified} 件。`+
+      "削除する前に、ZIPが保存され開けることを確認してください。");
+  }catch(e){shareStatus("ZIP処理："+e.message)}
+  finally{exporting=false;controls()}
+}
+
+const UPDATE_KEY="somnolog.commit-package.v1";
+const REPO="matsuodentalassociation/ST-SCOPE";
+async function update(){
+  if(busy()||cameraStream||cameraPending){$("updateStatus").textContent="先に記録やカメラを停止してください。";return}
+  if(location.origin!=="https://matsuodentalassociation.github.io"||!location.pathname.startsWith("/ST-SCOPE/")){
+    $("updateStatus").textContent="更新は指定のGitHub Pages上でのみ有効です。";return;
+  }
+  updating=true;controls();const controller=new AbortController();
+  const timer=setTimeout(()=>controller.abort(),20000);
+  const opt={cache:"no-store",credentials:"omit",referrerPolicy:"no-referrer",redirect:"error",signal:controller.signal};
+  try{
+    $("updateStatus").textContent="mainの最新コミットを確認中…";
+    const a=await fetch(`https://api.github.com/repos/${REPO}/commits/main?_=${Date.now()}`,opt);
+    if(!a.ok)throw Error("GitHub API HTTP "+a.status);
+    const {sha}=await a.json();
+    if(!/^[a-f0-9]{40}$/.test(sha||""))throw Error("コミット識別子が不正です。");
+    const b=await fetch(`https://raw.githubusercontent.com/${REPO}/${sha}/index.html?_=${Date.now()}`,opt);
+    if(!b.ok)throw Error("HTML HTTP "+b.status);
+    const html=await b.text();
+    if(html.length>2000000||!/^<!doctype html>/i.test(html.trimStart())||!/<\/html>\s*$/i.test(html))throw Error("HTML形式を確認できません。");
+    const d=new DOMParser().parseFromString(html,"text/html"),version=Number(d.querySelector('meta[name="somnolog-version"]')?.content);
+    if(d.querySelector('meta[name="somnolog-app"]')?.content!=="ST-SCOPE-SomnoLog"||!Number.isSafeInteger(version)||version<1)throw Error("更新可能なSomnoLog形式ではありません。");
+    if(version<=APP_VERSION){$("updateStatus").textContent=version===APP_VERSION?"現在の版が最新です。":"GitHubの版は現在より古いため適用しません。";return}
+    if(!confirm(`GitHubの V${version}（${sha.slice(0,12)}）を適用しますか？`)){$("updateStatus").textContent="更新を見送りました。";return}
+    saveLocal(UPDATE_KEY,{version,sha,html});
+    const u=new URL(location.href);u.searchParams.delete("safe");u.searchParams.set("commit",sha);u.searchParams.set("v",version);u.searchParams.set("_",Date.now());u.hash="";
+    location.replace(u);
+  }catch(e){$("updateStatus").textContent="更新できませんでした。現在の版を維持します。"+(e.name==="AbortError"?"（タイムアウト）":"（"+e.message+"）")}
+  finally{clearTimeout(timer);updating=false;controls()}
+}
+
+action("camera",startCamera);action("cameraStop",stopCamera);
+action("imagePick",()=>$("image").click());action("image",e=>{const f=e.target.files[0];e.target.value="";return readImage(f)},"change");
+action("accept",()=>{if(!candidate)return;person=candidate;candidate=null;try{saveLocal(PERSON_KEY,person)}catch(_){msg("計測者情報を次回用に保存できませんでした。")}show("record")});
+action("reject",()=>{candidate=null;show("home")});action("homeRecord",()=>show("record"));
+action("update",update);action("recordBack",()=>show("home"));action("prepOpen",()=>show("prep"));
+action("prepBack",()=>show("record"));action("mic",allowMic);action("calibrate",beginCal);
+action("referencePlay",playReference);action("detailReference",playReference);action("start",startRec);action("blackOpen",enterBlack);
+action("homeHistory",()=>openHistory("home"));action("recordHistory",()=>openHistory("record"));
+action("historyBack",()=>{++detailGeneration;show(historyFrom)});
+action("prevMonth",()=>{month=new Date(month.getFullYear(),month.getMonth()-1,1);renderCal()});
+action("nextMonth",()=>{month=new Date(month.getFullYear(),month.getMonth()+1,1);renderCal()});
+action("detailBack",()=>openHistory());
+action("zoom",()=>{shift=cursor-widthSec()/2;draw()},"change");
+action("tmThresh",e=>{motionThresh=Number(e.target.value);try{localStorage.setItem("somnolog-motion-thresh-g",String(motionThresh))}catch(_){}draw()},"input");
+action("pan",e=>{shift=Number(e.target.value);draw()},"input");action("cursor",e=>selectAt(Number(e.target.value)),"input");
+function plotPointer(e){
+  const rect=$("plot").getBoundingClientRect();
+  const k=rect.width/480, plotW=410;
+  selectAt(shift+clamp((e.clientX-rect.left-62*k)/(plotW*k),0,1)*widthSec());
+}
+$("plot").addEventListener("pointerdown",e=>{try{$("plot").setPointerCapture(e.pointerId)}catch(_){}plotPointer(e)});
+$("plot").addEventListener("pointermove",e=>{if($("plot").hasPointerCapture(e.pointerId))plotPointer(e)});
+window.addEventListener("resize",draw);
+action("clipSelect",e=>{clearPlayer();clipID=e.target.value;const c=detailClips.find(c=>c.id===clipID);if(c){cursor=c.startSec;if(cursor<shift||cursor>shift+widthSec())shift=cursor-widthSec()/2;}refreshClips();draw()},"change");
+action("listen",listen);action("keep",keep);action("shareOpen",openShare);action("deleteSession",eraseSession);
+action("shareBack",()=>openDetail(selectedSession.id));action("download",exportZip);
+action("copy",async()=>{
+  const s=selectedSession?.patient?.logShareEmail;if(!s)throw Error("宛先が未設定です。");
+  try{await navigator.clipboard.writeText(s);shareStatus("宛先をコピーしました。")}catch(_){shareStatus("コピーできません。表示中の宛先を手動でコピーしてください。")}
 });
-
-on("gain", "input", (e) => { S.gainDb = Number(e.target.value); updateUI(); });
-on("ref-btn", "click", startRefMeasure);
-on("ref-play-btn", "click", playRefAudio);
-on("tl-ref-play", "click", playRefAudio);
-on("prep-btn", "click", () => showPage("prep"));
-on("prep-back", "click", () => { setButtons(); showPage("record"); });
-on("prep-back2", "click", () => { setButtons(); showPage("record"); });
-on("start-btn", "click", startRec);
-on("btn-enter-black", "click", enterBlack);
-
-/* 停止ボタン（2秒長押し） */
-(() => {
-  const btn = $("stop-btn"); let iv = null, startAt = 0, pid = null, fired = false;
-  const reset = () => { if (iv) clearInterval(iv); iv = null; pid = null; btn.style.background = ""; btn.textContent = "停止"; };
-  btn.addEventListener("pointerdown", (e) => {
-    if (btn.disabled || iv) return; e.preventDefault(); pid = e.pointerId; fired = false; startAt = Date.now(); btn.textContent = "そのまま押し続けると停止";
-    iv = setInterval(() => {
-      const p = (Date.now() - startAt) / 2000;
-      if (p >= 1) { fired = true; reset(); stopRec("user"); return; }
-      btn.style.background = "linear-gradient(90deg, #7a4b48 " + Math.round(p * 100) + "%, #3a2a2a " + Math.round(p * 100) + "%)";
-    }, 100);
-  });
-  const end = (e) => { if (pid !== null && e.pointerId === pid && !fired) reset(); };
-  btn.addEventListener("pointerup", end); btn.addEventListener("pointercancel", end);
-})();
-
-/* 黒画面（1.5秒長押しで戻る） */
-(() => {
-  const el = $("black-screen"), hint = el.querySelector(".muted"), bar = $("black-progress-bar");
-  let iv = null, startAt = 0, pid = null, fired = false;
-  const reset = () => { if (iv) clearInterval(iv); iv = null; pid = null; bar.style.width = "0%"; hint.textContent = "1.5秒長押しで戻る"; };
-  el.addEventListener("pointerdown", (e) => {
-    if (iv) return; e.preventDefault(); pid = e.pointerId; fired = false; startAt = Date.now(); hint.textContent = "そのまま押し続けて…";
-    iv = setInterval(() => {
-      const p = (Date.now() - startAt) / 1500;
-      if (p >= 1) { fired = true; reset(); exitBlack(); return; }
-      bar.style.width = Math.round(p * 100) + "%";
-    }, 50);
-  });
-  const end = (e) => { if (pid !== null && e.pointerId === pid && !fired) reset(); };
-  el.addEventListener("pointerup", end); el.addEventListener("pointercancel", end);
-})();
-
-on("history-btn", "click", async () => { const now = new Date(); cal.year = now.getFullYear(); cal.month = now.getMonth() + 1; cal.selected = null; showPage("calendar"); await refreshCalendar(); });
-on("cal-back", "click", () => showPage("record"));
-on("cal-prev", "click", () => { cal.month--; if (cal.month < 1) { cal.month = 12; cal.year--; } renderCalendar(); });
-on("cal-next", "click", () => { cal.month++; if (cal.month > 12) { cal.month = 1; cal.year++; } renderCalendar(); });
-on("detail-back", "click", async () => { revokeUrls(); tl.data = null; S.detailSid = null; showPage("calendar"); await refreshCalendar(); });
-on("tl-zoom", "change", (e) => { tl.zoomSec = Number(e.target.value); renderTimeline(); });
-on("tl-pos", "input", (e) => { tl.winStart = Number(e.target.value); renderTimeline(); });
-on("tl-cur", "input", (e) => { tl.cursor = Number(e.target.value); renderTimeline(); });
-on("tl-listen", "click", listenAtCursor);
-on("tl-go-share", "click", () => { SH.sid = S.detailSid; SH.zipDone = false; $("sh-addr").textContent = (S.patient && S.patient.logShareEmail) || "（未記入）"; $("sh-msg").hidden = true; showPage("share"); });
-on("sh-all", "click", makeZip);
-on("sh-copy", "click", () => { const a = (S.patient && S.patient.logShareEmail) || ""; if (a) navigator.clipboard.writeText(a); });
-on("sh-pick", "click", () => $("sh-file").click());
-on("sh-file", "change", async (e) => { const f = e.target.files && e.target.files[0]; if (f && navigator.share) await navigator.share({ files: [f], title: f.name }).catch(() => {}); });
-on("sh-back", "click", () => { showPage("record"); updateBackButtons(); });
-
-document.addEventListener("visibilitychange", () => { if (document.hidden && S.running) stopRec("background-or-screen-lock"); });
-
-/* ===== 起動 ===== */
-(async function boot() {
-  document.querySelectorAll(".app-name").forEach((el) => { el.textContent = "SomnoLog V" + APP_VERSION; });
-  await loadPatient();
-  if (!checkHashOnLoad()) showPage("start");
-  await loadRef();
-  updateBackButtons(); setButtons(); updateUI();
-  if (S.ref) showRefMsg("基準音圧は設定済みです（「あ〜」" + S.ref.db.toFixed(1) + "dB）。");
-  checkUpdate().catch(() => {});
-  setInterval(() => { if (!isBusy()) checkUpdate().catch(() => {}); }, UPDATE_EVERY_MS);
-})();
+action("pick",()=>$("shareFile").click());
+action("shareFile",async e=>{
+  const f=e.target.files[0];e.target.value="";if(!f)return;
+  if(!navigator.canShare?.({files:[f]})){shareStatus("この端末ではZIPの共有画面を開けません。メールに手動で添付してください。");return}
+  try{await navigator.share({files:[f],title:"SomnoLog セッションログ"});shareStatus("端末の共有操作が終了しました。送付・受領は確認していません。")}
+  catch(err){if(err.name!=="AbortError")throw err}
+},"change");
+action("deleteAudio",async()=>{
+  if(busy()||!selectedSession)return;
+  if(!selectedSession.exportedAt){shareStatus("先にZIPを保存してください。");return}
+  if(!confirm("ZIPが開けることを確認しましたか？ 未保護の音声だけを削除し、数値ログは残します。"))return;
+  changing=true;controls();try{
+    const n=await eraseAudio(selectedSession);shareStatus(`${n} 件の未保護音声を削除しました。`);
+  }finally{changing=false;controls()}
+});
+$("notice").addEventListener("click",()=>msg(""));
+(async()=>{
+  ref=stored(REF_KEY);person=stored(PERSON_KEY);controls();
+  if(finite(ref?.envDbFS))$("calStatus").textContent=`保存済みの基準：${ref.envDbFS} dBFS ／ 閾値：${r(ref.envDbFS+10,1)} dBFS`;
+  try{db=await database()}catch(e){msg("保存領域を開けません："+e.message)}
+  if(db)db.onversionchange=()=>{if(current)stopRec("database-version-change").catch(e=>msg(e.message));db.close();db=null;controls()};
+  if(location.hash.startsWith("#slp=")){
+    const text=location.href; history.replaceState(null,"",location.pathname+location.search);
+    try{qrAccept(text)}catch(e){msg(e.message)}
+  }
+  controls();
+})().catch(e=>msg(e.message));
 </script>
 </body>
 </html>
