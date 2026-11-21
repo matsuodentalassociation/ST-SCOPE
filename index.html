@@ -2,11 +2,12 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#000000">
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
-  <title>ST-SCOPE v2_5 — 睡眠音響・無呼吸モニター＆人声除去記録</title>
+  <title>ST-SCOPE v2_6 — 睡眠音響・無呼吸モニター＆人声除去記録</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -75,13 +76,32 @@
     .sm-step.is-silence { background: var(--amber-tint); border-color: var(--data-3); color: var(--data-3); }
     .sm-step.is-apnea { background: var(--coral-tint); border-color: var(--data-4); color: var(--data-4); }
     .log-box { font-family: var(--font-label); font-size: 0.75rem; color: var(--on-surface-variant); background: var(--background); border: var(--hairline); border-radius: var(--rounded); padding: 0.75rem; max-height: 110px; overflow-y: auto; }
-    .rescue-list { display: flex; flex-direction: column; gap: 0.5rem; max-height: 240px; overflow-y: auto; }
-    .rescue-row { display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; padding: 0.6rem 0.85rem; background: var(--background); border: var(--hairline); border-radius: var(--rounded); font-size: 0.82rem; }
-    #nightstandOverlay { display: none; position: fixed; inset: 0; background: #000; z-index: 9999; flex-direction: column; justify-content: center; align-items: center; user-select: none; -webkit-user-select: none; touch-action: none; }
+    .clip-list { display: flex; flex-direction: column; gap: 0.5rem; max-height: 260px; overflow-y: auto; }
+    .clip-row { display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; padding: 0.6rem 0.85rem; background: var(--background); border: var(--hairline); border-radius: var(--rounded); font-size: 0.82rem; flex-wrap: wrap; }
+
+    /* 完全黒色化オーバーレイ */
+    #nightstandOverlay {
+      display: none;
+      background-color: #000000 !important;
+      width: 100vw;
+      height: 100dvh;
+      min-height: 100vh;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      margin: 0;
+      padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom) 0;
+      z-index: 99999;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: none;
+    }
     .night-time { font-family: var(--font-label); font-size: 3rem; font-weight: 300; color: #334155; }
     .night-rec { display: flex; align-items: center; gap: 8px; margin-top: 16px; font-size: 0.85rem; color: #7f1d1d; }
     .night-dot { width: 8px; height: 8px; border-radius: 50%; background: #991b1b; animation: pulse 2s infinite; }
-    .night-hint { position: absolute; bottom: 32px; font-size: 0.8rem; color: #475569; text-align: center; }
+    .night-hint { position: absolute; bottom: calc(32px + env(safe-area-inset-bottom)); font-size: 0.8rem; color: #475569; text-align: center; }
     @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
     @media (max-width: 900px) { .monitor-layout { grid-template-columns: 1fr; } }
   </style>
@@ -90,8 +110,8 @@
   <main class="page-grid">
     <header class="app-header">
       <div>
-        <h1 class="app-title">ST-SCOPE<span class="app-title-code">v2_5</span></h1>
-        <p class="app-lede">Silero VAD人声除去・スペクトル解析・先行3秒/追尾5秒リングバッファ・IndexedDB逐次保存・Schema v35 ZIP</p>
+        <h1 class="app-title">ST-SCOPE<span class="app-title-code">v2_6</span></h1>
+        <p class="app-lede">Silero VAD人声除去・完全黒色おやすみモード・記録後アプリ内音声再生・Schema v35 ZIP</p>
       </div>
       <div style="display:flex; gap:0.5rem; align-items:center;">
         <span id="vadStatusBadge" class="status-chip chip-amber">VAD 初期化中...</span>
@@ -179,9 +199,19 @@
       </div>
     </section>
 
+    <!-- 記録済み音声プレイヤー＆人声救済パネル -->
     <section class="panel">
-      <div class="section-head"><h2 class="section-title">人声除外クリップ（誤判定の手動救済）</h2><span class="section-note">いびきが人声と誤判定された場合のみ「救済」をONにしてZIPに含めます</span></div>
-      <div id="rescueList" class="rescue-list"><div style="color:var(--on-surface-variant); font-size:0.85rem;">現在、人声として自動除外されたクリップはありません。</div></div>
+      <div class="section-head">
+        <h2 class="section-title">記録済み音声プレイヤー &amp; 人声除外クリップ救済</h2>
+        <span class="section-note">記録したすべての音声をアプリ内で再生・確認できます</span>
+      </div>
+      <div id="audioPlayerBar" class="well" style="margin-bottom:0.75rem; display:none; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:0.5rem;">
+        <span id="nowPlayingLabel" style="font-size:0.85rem; color:var(--primary);">再生中: --</span>
+        <audio id="clipAudioPlayer" controls style="height:36px; max-width:100%;"></audio>
+      </div>
+      <div id="clipList" class="clip-list">
+        <div style="color:var(--on-surface-variant); font-size:0.85rem;">まだ記録された音声クリップはありません。</div>
+      </div>
     </section>
   </main>
 
@@ -192,7 +222,7 @@
   </div>
 
   <script>
-    const APP_VERSION = "v2_5";
+    const APP_VERSION = "v2_6";
     const RAW_INDEX_URL = "https://raw.githubusercontent.com/matsuodentalassociation/ST-SCOPE/main/index.html";
 
     function addLog(msg) {
@@ -220,16 +250,39 @@
       const u = new URL(window.location.href); u.searchParams.set("v", Date.now()); window.location.replace(u.toString());
     };
 
-    // 2秒長押しで黒画面から復帰
+    // 完全黒色化＆2秒長押し復帰
     const nightOverlay = document.getElementById("nightstandOverlay");
     const nightHint = document.getElementById("nightHint");
     let nightHoldTimer = null;
-    function startNightHold(e) {
+
+    function enterNightMode(useFullscreen = false) {
+      document.documentElement.style.setProperty("background-color", "#000000", "important");
+      document.body.style.setProperty("background-color", "#000000", "important");
+      document.documentElement.style.overflow = "hidden";
+      document.body.style.overflow = "hidden";
+      nightOverlay.style.display = "flex";
+      if (useFullscreen && document.documentElement.requestFullscreen) {
+        document.documentElement.requestFullscreen().catch(() => {});
+      }
+    }
+
+    function exitNightMode() {
+      nightOverlay.style.display = "none";
+      document.documentElement.style.removeProperty("background-color");
+      document.body.style.removeProperty("background-color");
+      document.documentElement.style.overflow = "";
+      document.body.style.overflow = "";
+      nightHint.textContent = "画面のどこかを2秒間長押しするとモニターに戻ります";
+      if (document.fullscreenElement && document.exitFullscreen) {
+        document.exitFullscreen().catch(() => {});
+      }
+    }
+
+    function startNightHold() {
       if (nightHoldTimer) return;
       nightHint.textContent = "そのまま2秒間押し続けてください...";
       nightHoldTimer = setTimeout(() => {
-        nightOverlay.style.display = "none";
-        nightHint.textContent = "画面のどこかを2秒間長押しするとモニターに戻ります";
+        exitNightMode();
         nightHoldTimer = null;
       }, 2000);
     }
@@ -308,7 +361,13 @@
       return { isSpeech: vadAvailable ? (vadRatio > 0.25 || (vadRatio > 0.1 && spec.isSpeech)) : spec.isSpeech };
     }
 
-    window.addEventListener("load", () => { addLog(`ST-SCOPE ${APP_VERSION} 起動。`); checkGitHubUpdate(false); initSileroVAD(); drawLive(); });
+    window.addEventListener("load", async () => {
+      addLog(`ST-SCOPE ${APP_VERSION} 起動。`);
+      checkGitHubUpdate(false);
+      initSileroVAD();
+      drawLive();
+      try { await initDB(); renderClipList(); } catch (e) {}
+    });
 
     // IndexedDB
     let db = null;
@@ -383,30 +442,45 @@
     }
     const fmtTime = (sec) => [Math.floor(sec/3600), Math.floor((sec%3600)/60), sec%60].map(v => String(v).padStart(2, "0")).join(":");
 
-    async function renderRescueList() {
-      const listEl = document.getElementById("rescueList");
-      const excluded = (await getAllStore("clips")).filter(c => c.isSpeech);
-      if (excluded.length === 0) {
-        listEl.innerHTML = `<div style="color:var(--on-surface-variant); font-size:0.85rem;">現在、人声として自動除外されたクリップはありません。</div>`;
+    async function renderClipList() {
+      if (!db) return;
+      const listEl = document.getElementById("clipList");
+      const all = (await getAllStore("clips")).sort((a,b)=>a.id-b.id);
+      if (all.length === 0) {
+        listEl.innerHTML = `<div style="color:var(--on-surface-variant); font-size:0.85rem;">まだ記録された音声クリップはありません。</div>`;
         return;
       }
-      listEl.innerHTML = excluded.map(c => `
-        <div class="rescue-row">
-          <div><strong>${c.file}</strong> (${c.durationSec}秒 / 開始 ${fmtTime(c.startSec)})<div style="font-size:0.75rem; color:var(--data-3);">人声判定: ${c.rescued ? "手動救済済み（ZIPに含める）" : "自動除外（ZIPから破棄）"}</div></div>
+      listEl.innerHTML = all.map(c => `
+        <div class="clip-row">
+          <div>
+            <strong>${c.file}</strong> (${c.durationSec}秒 / 開始 ${fmtTime(c.startSec)})
+            <div style="font-size:0.75rem; color:${c.isSpeech ? 'var(--data-3)' : 'var(--tertiary)'};">
+              ${c.isSpeech ? (c.rescued ? "人声判定 → 手動救済済み（ZIPに含める）" : "人声判定 → 自動除外（ZIPから破棄）") : "いびき・イベント（ZIPに含める）"}
+            </div>
+          </div>
           <div style="display:flex; gap:0.5rem; align-items:center;">
-            <button type="button" class="btn btn-sm" onclick="playClipById(${c.id})">試聴</button>
-            <button type="button" class="btn btn-sm ${c.rescued ? 'btn-primary' : ''}" onclick="toggleRescue(${c.id})">${c.rescued ? "救済ON" : "救済する"}</button>
+            <button type="button" class="btn btn-sm btn-primary" onclick="playClipById(${c.id})">再生</button>
+            ${c.isSpeech ? `<button type="button" class="btn btn-sm ${c.rescued ? 'btn-primary' : ''}" onclick="toggleRescue(${c.id})">${c.rescued ? "救済ON" : "救済する"}</button>` : ""}
           </div>
         </div>
       `).join("");
     }
+
     window.playClipById = async (id) => {
       const target = (await getAllStore("clips")).find(c => c.id === id);
-      if (target && target.blob) new Audio(URL.createObjectURL(target.blob)).play();
+      if (target && target.blob) {
+        const bar = document.getElementById("audioPlayerBar");
+        const player = document.getElementById("clipAudioPlayer");
+        const lbl = document.getElementById("nowPlayingLabel");
+        bar.style.display = "flex";
+        lbl.textContent = `再生中: ${target.file} (${target.durationSec}秒)`;
+        player.src = URL.createObjectURL(target.blob);
+        player.play().catch(()=>{});
+      }
     };
     window.toggleRescue = async (id) => {
       const target = (await getAllStore("clips")).find(c => c.id === id);
-      if (target) { target.rescued = !target.rescued; await saveStore("clips", target); renderRescueList(); }
+      if (target) { target.rescued = !target.rescued; await saveStore("clips", target); renderClipList(); }
     };
 
     document.getElementById("btn-calib").onclick = async () => {
@@ -455,7 +529,7 @@
       document.getElementById("status-text").textContent = "計測中（人声除去VAD＋IndexedDB逐次保存）";
       document.getElementById("kpi-clips").textContent = "0";
       document.getElementById("kpi-speech-excluded").textContent = "人声除外 0件";
-      renderRescueList();
+      renderClipList();
 
       const src = audioCtx.createMediaStreamSource(mediaStream);
       scriptNode = audioCtx.createScriptProcessor(2048, 1, 1);
@@ -513,27 +587,27 @@
             if (vadRes.isSpeech) {
               speechExcludedCount++;
               document.getElementById("kpi-speech-excluded").textContent = `人声除外 ${speechExcludedCount}件`;
-              addLog(`人声除外: ${fileName} (救済リストへ一時保持)`);
+              addLog(`人声除外: ${fileName} (試聴・救済可)`);
             } else addLog(`保存: ${fileName} (${dur}秒)`);
             await saveStore("clips", {
               id, startSec: clipStartSec, durationSec: dur, category: vadRes.isSpeech ? "speech_excluded" : "snore_or_event",
               isSpeech: vadRes.isSpeech, rescued: false, file: fileName, blob: encodeWAV(merged, audioCtx.sampleRate)
             });
             document.getElementById("kpi-clips").textContent = clipCounter - speechExcludedCount;
-            renderRescueList();
+            renderClipList();
           }
         }
       };
       src.connect(scriptNode); scriptNode.connect(audioCtx.destination);
       addLog("計測を開始しました。45秒後に自動暗転します。");
-      nightTimer = setTimeout(() => { if (isRecording) nightOverlay.style.display = "flex"; }, 45000);
+      nightTimer = setTimeout(() => { if (isRecording) enterNightMode(false); }, 45000);
     };
 
-    document.getElementById("btn-night").onclick = () => nightOverlay.style.display = "flex";
+    document.getElementById("btn-night").onclick = () => enterNightMode(true);
 
     document.getElementById("btn-stop").onclick = async () => {
       isRecording = false; clearTimeout(nightTimer); if (scriptNode) scriptNode.disconnect();
-      nightOverlay.style.display = "none";
+      exitNightMode();
       const stopBtn = document.getElementById("btn-stop"); stopBtn.disabled = true; stopBtn.textContent = "ZIP生成中...";
       try {
         const zip = new JSZip();
@@ -553,7 +627,8 @@
         a.href = URL.createObjectURL(await zip.generateAsync({ type: "blob" }));
         a.download = `ST-SCOPE_${new Date().toISOString().slice(0,19).replace(/[:T]/g,"-")}.zip`; a.click();
         addLog(`ZIP保存完了（有効クリップ ${validClips.length}件 / 人声破棄 ${clips.length - validClips.length}件）`);
-        document.getElementById("status-text").textContent = "ZIP保存完了！";
+        document.getElementById("status-text").textContent = "ZIP保存完了！下のプレイヤーで音声を再生できます。";
+        renderClipList();
       } catch (e) { addLog("ZIPエラー: " + e.message); }
       finally {
         document.getElementById("btn-start").style.display = "inline-flex"; stopBtn.style.display = "none";
