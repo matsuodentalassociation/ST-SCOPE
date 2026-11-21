@@ -7,7 +7,7 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
-  <title>ST-SCOPE v2_9 — 音響解析・波形モニタリング＆カレンダー</title>
+  <title>ST-SCOPE v2_10 — 音響解析・波形モニタリング＆カレンダー</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -79,7 +79,6 @@
     .clip-list { display: flex; flex-direction: column; gap: 0.5rem; max-height: 240px; overflow-y: auto; }
     .clip-row { display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; padding: 0.6rem 0.85rem; background: var(--background); border: var(--hairline); border-radius: var(--rounded); font-size: 0.82rem; flex-wrap: wrap; }
 
-    /* カレンダー */
     .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; text-align: center; margin-top: 0.5rem; }
     .cal-head { font-family: var(--font-label); font-size: 0.72rem; color: var(--on-surface-variant); padding: 4px 0; }
     .cal-day { padding: 8px 4px; border-radius: var(--rounded); border: var(--hairline); background: var(--background); font-size: 0.85rem; cursor: pointer; position: relative; }
@@ -107,7 +106,7 @@
   <main class="page-grid">
     <header class="app-header">
       <div>
-        <h1 class="app-title">ST-SCOPE<span class="app-title-code">v2_9</span></h1>
+        <h1 class="app-title">ST-SCOPE<span class="app-title-code">v2_10</span></h1>
         <p class="app-lede" id="lbl-app-lede"></p>
       </div>
       <div style="display:flex; gap:0.5rem; align-items:center;">
@@ -196,7 +195,6 @@
       </div>
     </section>
 
-    <!-- 記録カレンダー＆タイムライン再生パネル -->
     <section class="panel">
       <div class="section-head">
         <h2 class="section-title">記録カレンダー &amp; タイムライン再生</h2>
@@ -258,7 +256,7 @@
   </div>
 
   <script>
-    const APP_VERSION = "v2_9";
+    const APP_VERSION = "v2_10";
     const RAW_INDEX_URL = "https://raw.githubusercontent.com/matsuodentalassociation/ST-SCOPE/main/index.html";
 
     const LABELS = {
@@ -302,9 +300,19 @@
 
     const nightOverlay = document.getElementById("nightstandOverlay");
     const nightHint = document.getElementById("nightHint");
-    let nightHoldTimer = null;
+    let nightHoldTimer = null, wakeLock = null;
+
+    async function requestWakeLock() {
+      if ("wakeLock" in navigator) {
+        try { wakeLock = await navigator.wakeLock.request("screen"); } catch (e) {}
+      }
+    }
+    function releaseWakeLock() {
+      if (wakeLock) { wakeLock.release().catch(() => {}); wakeLock = null; }
+    }
 
     function enterNightMode(useFullscreen = false) {
+      requestWakeLock();
       document.documentElement.style.setProperty("background-color", "#000000", "important");
       document.body.style.setProperty("background-color", "#000000", "important");
       document.documentElement.style.overflow = "hidden";
@@ -316,6 +324,7 @@
     }
 
     function exitNightMode() {
+      releaseWakeLock();
       nightOverlay.style.display = "none";
       document.documentElement.style.removeProperty("background-color");
       document.body.style.removeProperty("background-color");
@@ -376,14 +385,16 @@
           totalE += s * s;
           const diff = s - prev; highE += diff * diff;
         }
+        const rms = Math.sqrt(totalE / frameLen);
         const estCentroidHz = (zeroCrossings / 2) * (sampleRate / frameLen);
         const highRatio = totalE > 1e-9 ? Math.min(1, (highE / (totalE * 2))) : 0;
-        consecutivePass.push((estCentroidHz > 1200 || highRatio > 0.35) ? 1 : 0);
+        const isVoiceFrame = rms > 0.01 && (estCentroidHz > 450 || highRatio > 0.15);
+        consecutivePass.push(isVoiceFrame ? 1 : 0);
         if (consecutivePass.length > 3) consecutivePass.shift();
         if (consecutivePass.reduce((a, b) => a + b, 0) >= 2) voiceFrames++;
       }
       const ratio = totalFrames > 0 ? (voiceFrames / totalFrames) : 0;
-      return { isSpeech: ratio > 0.45, ratio };
+      return { isSpeech: ratio > 0.25, ratio };
     }
 
     async function evaluateClipSpeech(samples, sampleRate = 16000) {
@@ -391,21 +402,20 @@
       if (vadAvailable && vadSession) {
         const win = 512, srTensor = new ort.Tensor("int64", BigInt64Array.from([BigInt(sampleRate)]), [1]);
         for (let i = 0; i + win <= samples.length; i += win) {
-          vadTotalFrames++;
           const inputTensor = new ort.Tensor("float32", samples.subarray(i, i + win), [1, win]);
           try {
             const out = await vadSession.run({ input: inputTensor, sr: srTensor, h: vadStateH, c: vadStateC });
             vadStateH = out.hn; vadStateC = out.cn;
+            vadTotalFrames++;
             if (out.output.data[0] > 0.3) vadSpeechFrames++;
           } catch (e) { break; }
         }
       }
       const spec = analyzeSpectralVoice(samples, sampleRate);
       const vadRatio = vadTotalFrames > 0 ? (vadSpeechFrames / vadTotalFrames) : 0;
-      return { isSpeech: vadAvailable ? (vadRatio > 0.25 || (vadRatio > 0.1 && spec.isSpeech)) : spec.isSpeech };
+      return { isSpeech: vadTotalFrames > 0 ? (vadRatio > 0.25 || (vadRatio > 0.1 && spec.isSpeech)) : spec.isSpeech };
     }
 
-    // IndexedDB (v2: sessionsストア追加)
     let db = null;
     function initDB() {
       return new Promise((resolve, reject) => {
@@ -458,6 +468,13 @@
     let isTriggerActive = false, postSilenceSamples = 0, clipStartSec = 0, clipCounter = 0, speechExcludedCount = 0;
     let currentMotionG = 0.0, startTimeMs = 0, lastLoggedSec = -1, secDb = [], secG = [], nightTimer = null;
     let liveFrames = [], eventCount = 0, silenceStartSec = null, smState = "NORMAL";
+
+    function connectSilent(node) {
+      const silentGain = audioCtx.createGain();
+      silentGain.gain.value = 0;
+      node.connect(silentGain);
+      silentGain.connect(audioCtx.destination);
+    }
 
     async function requestMotion() {
       if (typeof DeviceMotionEvent !== "undefined" && typeof DeviceMotionEvent.requestPermission === "function") {
@@ -553,7 +570,6 @@
       }
     };
 
-    // カレンダー＆タイムライン再生ロジック
     let calDate = new Date(), selectedDateStr = new Date().toISOString().slice(0, 10);
     let activeSession = null, timelinePlayTimer = null, timelinePlaySec = 0, isTimelinePlaying = false;
 
@@ -576,10 +592,7 @@
       renderDaySessions(selectedDateStr, sessions);
     }
 
-    window.selectCalDate = async (dStr) => {
-      selectedDateStr = dStr;
-      await renderCalendar();
-    };
+    window.selectCalDate = async (dStr) => { selectedDateStr = dStr; await renderCalendar(); };
 
     function renderDaySessions(dStr, allSessions) {
       document.getElementById("selectedDateLabel").textContent = `${dStr} の記録`;
@@ -613,8 +626,7 @@
       isTimelinePlaying = false;
       clearInterval(timelinePlayTimer);
       document.getElementById("btn-play-timeline").textContent = "▶ タイムラインを再生";
-      const player = document.getElementById("clipAudioPlayer");
-      player.pause();
+      document.getElementById("clipAudioPlayer").pause();
     }
 
     document.getElementById("btn-play-timeline").onclick = () => {
@@ -638,11 +650,7 @@
 
     document.getElementById("btn-cal-prev").onclick = () => { calDate.setMonth(calDate.getMonth() - 1); renderCalendar(); };
     document.getElementById("btn-cal-next").onclick = () => { calDate.setMonth(calDate.getMonth() + 1); renderCalendar(); };
-
-    document.getElementById("btn-export-zip").onclick = async () => {
-      if (!activeSession) return;
-      await exportSessionZip(activeSession);
-    };
+    document.getElementById("btn-export-zip").onclick = async () => { if (activeSession) await exportSessionZip(activeSession); };
 
     async function exportSessionZip(sess) {
       const zip = new JSZip();
@@ -684,7 +692,6 @@
       ctx.beginPath(); ctx.strokeStyle = "#87d69b"; ctx.lineWidth = 1.5;
       logs.forEach((f, i) => { const x = padL + (f.sec / maxSec) * pw, y = padT + ph * (1 - Math.min(1, f.motionG / 0.5)); i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y); }); ctx.stroke();
 
-      // 再生ライン（プレイヘッド）
       const px = padL + Math.min(1, timelinePlaySec / maxSec) * pw;
       ctx.strokeStyle = "#f27474"; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.moveTo(px, padT); ctx.lineTo(px, h - padB); ctx.stroke();
@@ -705,7 +712,7 @@
         btn.disabled = true; btn.textContent = "録音中...「あ〜」"; isCalibrating = true;
         const chunks = [], src = audioCtx.createMediaStreamSource(mediaStream), proc = audioCtx.createScriptProcessor(2048, 1, 1);
         proc.onaudioprocess = (e) => { if (isCalibrating) chunks.push(new Float32Array(e.inputBuffer.getChannelData(0))); };
-        src.connect(proc); proc.connect(audioCtx.destination);
+        src.connect(proc); connectSilent(proc);
         setTimeout(async () => {
           isCalibrating = false; proc.disconnect(); src.disconnect();
           const merged = new Float32Array(chunks.reduce((a, b) => a + b.length, 0));
@@ -730,6 +737,7 @@
         await initDB();
         await clearCurrentWorkingDB();
         await initAudio();
+        requestWakeLock();
       } catch (err) { addLog("開始エラー: " + err.message); return; }
 
       activeSession = null;
@@ -797,7 +805,7 @@
           }
         }
       };
-      src.connect(scriptNode); scriptNode.connect(audioCtx.destination);
+      src.connect(scriptNode); connectSilent(scriptNode);
       addLog("計測を開始しました。45秒後に自動暗転します。");
       nightTimer = setTimeout(() => { if (isRecording) enterNightMode(false); }, 45000);
     };
