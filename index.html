@@ -3,58 +3,60 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
-<meta name="theme-color" content="#000000">
+<meta name="theme-color" content="#0b0f14">
 <meta http-equiv="Cache-Control" content="no-cache">
 <title>SomnoLog V20</title>
 <script src="./ort.min.js"></script>
 <style>
-:root{color-scheme:dark}
+:root{color-scheme:dark;--bg:#0b0f14;--card:#151c24;--line:#2a3644;--blue:#3b7dd8;--blue-hi:#4d90eb;--orange:#e8832a;--muted:#9fb0c2;--text:#f0eee6}
 *{box-sizing:border-box}
-body{margin:0;background:#0d1117;color:#f0eee6;font-family:-apple-system,BlinkMacSystemFont,"Noto Sans JP",sans-serif}
+body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Noto Sans JP",sans-serif;-webkit-tap-highlight-color:transparent}
 [hidden]{display:none!important}
-button,input{font:inherit}
-button{min-height:48px;padding:12px 14px;border-radius:10px;border:1px solid #3c4f63;background:#223649;color:#e5f1fb;font-size:15px;font-weight:600;width:100%;cursor:pointer}
-button.primary{background:#84b9cf;border-color:#84b9cf;color:#10202a}
-button.danger{background:#3a2a2a;border-color:#7a4b48;color:#f2d2cf}
-button.sub{background:#171f29;border-color:#34424f;color:#d3dde7}
-button.warnbtn{background:#353024;border-color:#6d6240;color:#f3e7c9}
+button,input,textarea{font:inherit}
+button{min-height:48px;padding:12px 14px;border-radius:10px;border:1px solid #3c4f63;background:var(--blue);color:#fff;font-size:15px;font-weight:600;width:100%;cursor:pointer;transition:opacity .15s}
+button:active{opacity:.8}
+button.sub{background:#1b2430;border-color:#344252;color:#d6e1ec}
+button.dark{background:#11171f;border-color:#263240;color:var(--muted)}
+button.warnbtn{background:#3a3120;border-color:#78653b;color:#f3e7c9}
+button.danger{background:#472323;border-color:#8a4343;color:#ffd6d3}
+button.orange-frame{border:2px solid var(--orange)}
+button.small{min-height:36px;padding:6px 12px;font-size:13px;width:auto}
 button:disabled{opacity:.4;cursor:not-allowed}
-.page{max-width:480px;margin:0 auto;padding:20px 16px 40px;display:flex;flex-direction:column;gap:14px}
-.sticky-bar{position:sticky;top:0;z-index:10;background:#0d1117;padding:8px 0;display:grid;grid-template-columns:1fr 1.4fr;gap:10px}
+.page{max-width:480px;margin:0 auto;padding:16px 16px 40px;display:flex;flex-direction:column;gap:14px}
 .head{display:flex;justify-content:space-between;align-items:center;gap:10px}
-h1{margin:0;font-size:22px}
-h2{margin:0;font-size:17px}
-.card{background:#161d26;border:1px solid #2a3643;border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:10px}
-.muted{color:#aebbc9;font-size:12px;line-height:1.7;margin:0}
-.boot{color:#9fd8b5;font-size:12px;margin:0}
-.warn{background:#3a2f1a;border:1px solid #7a6a3a;color:#f3e7c9;padding:10px 12px;border-radius:10px;font-size:13px;line-height:1.6}
+.head h1{margin:0;font-size:20px;font-weight:700}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:10px}
+.muted{color:var(--muted);font-size:12px;line-height:1.6;margin:0}
 .err{background:#4a1f1f;border:1px solid #9a4a4a;color:#ffd9d6;padding:10px 12px;border-radius:10px;font-size:13px;line-height:1.6;white-space:pre-wrap;word-break:break-all}
-.tag{font-size:11px;padding:4px 9px;border-radius:999px;background:#263b38;color:#bfdbd1;white-space:nowrap}
-.tag.rec{background:#7a2e2e;color:#ffd9d6}
-.tag.env{background:#343129;color:#f3e7c9}
-.tag.rej{background:#3a2a2a;color:#f2d2cf}
-.kv{display:flex;justify-content:space-between;gap:8px;font-size:14px;padding:4px 0;border-bottom:1px solid #2a3643}
-.kv b{color:#f3e7c9;font-weight:600;text-align:right;word-break:break-all}
-.field{background:#0d1117;border:1px solid #2a3643;border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:4px}
-.field span{font-size:11px;color:#8fa0b3}
-.field b{font-size:16px;font-weight:600;word-break:break-all}
-.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.meter{height:10px;background:#111820;border-radius:6px;overflow:hidden}
-.meter i{display:block;height:100%;width:0;background:#84b9cf}
+.warn{background:#3a2f1a;border:1px solid #7a6a3a;color:#f3e7c9;padding:10px 12px;border-radius:10px;font-size:12px;line-height:1.6}
+.field{background:#0f151c;border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:3px}
+.field span{font-size:11px;color:var(--muted)}
+.field b{font-size:15px;font-weight:600;word-break:break-all}
+.meter-box{display:flex;flex-direction:column;gap:6px}
+.meter-label{display:flex;justify-content:space-between;font-size:12px;color:var(--muted)}
+.meter-bar{position:relative;height:14px;background:#0b1016;border:1px solid #2b3847;border-radius:7px;overflow:hidden}
+.meter-fill{height:100%;width:0%;transition:width .08s linear}
+.meter-fill.mic{background:#3b7dd8}
+.meter-fill.mot{background:#d94b4b}
+.meter-tick{position:absolute;top:0;bottom:0;left:60%;width:2px;background:#fff;opacity:.8}
 input[type=range]{width:100%;accent-color:#84b9cf}
-input[type=checkbox]{width:18px;height:18px;accent-color:#84b9cf;vertical-align:middle}
-.chart{background:#101923;border:1px solid #2a3643;border-radius:10px;padding:6px}
-.chart svg{width:100%;height:auto;display:block}
-.event{border-top:1px solid #2a3643;padding-top:10px;display:flex;flex-direction:column;gap:8px}
-.labels{display:grid;grid-template-columns:repeat(2,1fr);gap:6px}
-.labels button{min-height:38px;font-size:13px}
-.labels button.on{background:#84b9cf;color:#10202a;border-color:#84b9cf}
-audio{width:100%}
-.listitem{text-align:left;min-height:auto;display:flex;flex-direction:column;gap:4px}
-.list{display:flex;flex-direction:column;gap:10px}
+textarea{width:100%;min-height:90px;background:#0f151c;border:1px solid var(--line);border-radius:8px;color:var(--text);padding:10px;font-size:13px}
 video{width:100%;border-radius:10px;background:#000}
-ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
-#black-screen{background-color:#000000 !important;width:100vw;height:100dvh;min-height:100vh;position:fixed;top:0;left:0;right:0;bottom:0;margin:0;padding:0;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;color:#756f61;touch-action:none;overflow:hidden}
+.cal-head{display:flex;justify-content:space-between;align-items:center}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center}
+.cal-dow{font-size:11px;color:var(--muted);padding:4px 0}
+.cal-day{min-height:42px;padding:4px 0;border-radius:8px;border:1px solid transparent;background:transparent;color:var(--text);font-size:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+.cal-day.sel{background:var(--blue);color:#fff;font-weight:700}
+.cal-day.today{border-color:#6a7f96}
+.cal-dot{width:5px;height:5px;border-radius:50%;background:#84b9cf}
+.cal-day.sel .cal-dot{background:#fff}
+.chart{background:#0b1016;border:1px solid var(--line);border-radius:10px;padding:6px}
+.chart svg{width:100%;height:auto;display:block}
+dialog{width:calc(100% - 28px);max-width:420px;border:1px solid #3c4f63;border-radius:16px;background:#1a222d;color:var(--text);padding:18px}
+dialog::backdrop{background:rgba(0,0,0,.78)}
+dialog h2{margin:0 0 12px;font-size:18px}
+dialog .stack{display:flex;flex-direction:column;gap:10px}
+#black-screen{position:fixed;inset:0;background:#000!important;z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;color:#756f61;touch-action:none;user-select:none;-webkit-user-select:none}
 #black-clock{font-size:64px;font-variant-numeric:tabular-nums}
 </style>
 </head>
@@ -62,208 +64,255 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 
 <div id="errbox" class="err" hidden></div>
 
-<!-- 1-1 起動・QR読み取り -->
-<main id="page-start" class="page" hidden>
+<!-- 流れ1-1 登録の入口 -->
+<main id="page-start" class="page">
   <header class="head">
-    <h1>SomnoLog V20</h1>
-    <span class="tag">患者情報確認</span>
+    <h1>SomnoLog</h1>
+    <button class="small sub orange-frame" data-usage>使い方</button>
   </header>
-  <p id="boot-start" class="boot">起動中…</p>
-  <p class="muted">②が発行した患者用QRを読み取ってください。</p>
+  <button id="btn-upd-open" class="dark">アプリの更新</button>
+  <button id="btn-qr-mode" class="orange-frame">① 二次元コードを読む</button>
+  <button id="btn-mail-mode">② メール文面を読み込む</button>
+  <p class="muted">
+    ・スマートフォンのカメラで二次元コードを撮るとアプリが起動します。<br>
+    ・カメラを使用できない場合はメールの青い文字や「②メール文面を読み込む」から登録できます。<br>
+    ・すでに登録済みの場合は「②メール文面を読み込む」から登録情報をクリックして起動できます。
+  </p>
 
-  <div id="scan-msg" class="err" hidden></div>
-
-  <section class="card">
-    <button id="cam-btn">カメラを起動</button>
-    <button id="qr-file-btn">QR画像を選択</button>
-    <input id="qr-file" type="file" accept="image/*" hidden>
-    <button id="usage-btn" class="warnbtn">使い方を見る</button>
-    <button id="start-back" class="sub" hidden>患者情報を変えずに戻る</button>
-  </section>
-
-  <section id="cam-box" class="card" hidden>
+  <section id="qr-box" class="card" hidden>
     <video id="cam-video" playsinline muted></video>
-    <p class="muted">QRを枠内に収めてください。読み取れると自動で次に進みます。</p>
-    <button id="cam-stop" class="sub">カメラを止める</button>
+    <p class="muted" id="qr-status">患者情報入力用二次元コードにかざしてください</p>
+    <button id="btn-qr-file" class="sub">QR画像ファイルから読む</button>
+    <input id="qr-file" type="file" accept="image/*" hidden>
+    <button id="btn-qr-stop" class="dark">カメラを閉じる</button>
   </section>
 
-  <section id="usage-box" class="card" hidden>
-    <h2>使い方</h2>
-    <ol class="steps">
-      <li>診療所の画面に表示されたQRを読み取ります。</li>
-      <li>標準のカメラアプリでQRを読むと、この画面が自動で開きます。</li>
-      <li>患者情報（診療所名・患者名など）が正しいか確認します。</li>
-      <li>正しければ「始める」を押すと、記録の画面に進みます。</li>
-      <li>違う場合は「情報が間違っています」を押してください。診療所にご連絡ください。</li>
-    </ol>
-    <p class="muted">本アプリは診断を行うものではありません。医師の判断の参考資料です。</p>
+  <section id="mail-box" class="card" hidden>
+    <div id="saved-patient-card" hidden>
+      <div class="field"><span>登録情報</span><b id="saved-clinic">-</b></div>
+      <div class="field" style="margin-top:8px"><span>表示名</span><b id="saved-name">-</b></div>
+      <button id="btn-auth-saved" class="orange-frame" style="margin-top:10px">この情報をクリック（認証する）</button>
+    </div>
+    <p class="muted">添付されたメモ帳ファイル（.txt/.json）またはメール文面から読み込むこともできます。</p>
+    <button id="btn-mail-file" class="sub">添付ファイルから読み込む</button>
+    <input id="mail-file" type="file" accept=".txt,.json,text/plain,application/json" hidden>
+    <textarea id="mail-text" placeholder="メール内のリンク（#slp=...）や患者情報テキストを貼り付け"></textarea>
+    <button id="btn-mail-parse" class="sub">貼り付けた文面を読み込む</button>
   </section>
   <canvas id="scan-canvas" hidden></canvas>
 </main>
 
-<!-- 1-2 患者情報の確認 -->
+<!-- 流れ1-2 情報の確認と、セッティング① -->
 <main id="page-confirm" class="page" hidden>
   <header class="head">
-    <h1>患者情報の確認</h1>
+    <h1>SomnoLog</h1>
+    <button class="small sub orange-frame" data-usage>使い方</button>
   </header>
   <section class="card">
-    <div class="field"><span>診療所名</span><b id="cf-clinic"></b></div>
-    <div class="field"><span>カルテNo</span><b id="cf-chart"></b></div>
-    <div class="field"><span>患者名</span><b id="cf-name"></b></div>
-    <div class="field"><span>シリアルNo</span><b id="cf-serial"></b></div>
-    <div class="field"><span>ログ共有通知先（宛先）</span><b id="cf-email"></b></div>
-    <button id="cf-ok" class="primary">始める</button>
-    <button id="cf-ng" class="warnbtn">情報が間違っています</button>
+    <div class="field"><span>診療所名</span><b id="cf-clinic">-</b></div>
+    <div class="field"><span>登録番号2</span><b id="cf-chart">-</b></div>
+    <div class="field"><span>表示名</span><b id="cf-name">-</b></div>
+    <div class="field"><span>登録番号1</span><b id="cf-serial">-</b></div>
+    <div class="field"><span>ログ共有通知先（宛先）</span><b id="cf-email">-</b></div>
+    <button id="cf-ok" class="orange-frame">③ 情報は合っている（1-3に進む）</button>
+    <button id="cf-ng">④ 情報が間違っている（1-1に戻る）</button>
   </section>
-  <p class="muted">患者情報が違う場合は「始める」を押さず、診療所に確認してください。</p>
+  <p class="muted">＊診療所名／カルテナンバー／お名前はプライバシー保護のため、仮のものが発行される場合があります。</p>
 </main>
 
-<!-- 記録画面（上から順に、音・体動・環境音の設定 → 記録の開始/停止 → 履歴・更新） -->
+<main id="page-setting1" class="page" hidden>
+  <header class="head">
+    <h1>SomnoLog</h1>
+    <button class="small sub orange-frame" data-usage>使い方</button>
+  </header>
+  <button class="warnbtn" data-usage>使い方を見る</button>
+  <button id="btn-perm-all" class="orange-frame">セッティング① ⑤いびきの録音を許可する（マイクとモーションセンサーの許可を取る）</button>
+  <p id="perm-status" class="muted">いびきを記録するために、スマートフォンのマイクとジャイロセンサーの許可を取ります。許可していただくとセッティング②に進みます。</p>
+  <div id="mic-msg" class="err" hidden></div>
+</main>
+
+<!-- 流れ1-3 セッティング②（基準音を録る） -->
+<main id="page-setting2" class="page" hidden>
+  <header class="head">
+    <h1>SomnoLog</h1>
+    <button class="small sub orange-frame" data-usage>使い方</button>
+  </header>
+  <section class="card">
+    <div class="meter-box">
+      <div class="meter-label"><span>マイク</span><span id="s2-mic-db">-</span></div>
+      <div class="meter-bar"><div id="s2-mic-fill" class="meter-fill mic"></div><div class="meter-tick"></div></div>
+    </div>
+    <div class="meter-box">
+      <div class="meter-label"><span>体動</span><span id="s2-mot-val">-</span></div>
+      <div class="meter-bar"><div id="s2-mot-fill" class="meter-fill mot"></div><div class="meter-tick"></div></div>
+    </div>
+    <p class="muted">声や振動でスマートフォンが動くことを確認してください。</p>
+    <button id="btn-ref-rec" class="orange-frame">⑥ 基準音を録る</button>
+    <button id="btn-ref-play">⑦ 基準音を聞く</button>
+    <div class="meter-box">
+      <div class="meter-label"><span>⑧ 音圧調整（基準音が小さい場合にマイク感度を上げます）</span><b id="gain-out">0dB</b></div>
+      <input id="gain" type="range" min="-9" max="9" step="1" value="0">
+      <p class="muted">調整をした後、基準音を測り直してください。</p>
+    </div>
+    <button id="btn-s2-done">⑨ 完了（2-1 記録開始画面に進む）</button>
+    <button id="btn-s2-back" class="sub">スタート画面に戻る</button>
+  </section>
+</main>
+
+<!-- 流れ2-1 記録する（開始・黒画面・停止） -->
 <main id="page-record" class="page" hidden>
   <header class="head">
-    <h1>SomnoLog V20</h1>
-    <span id="rec-badge" class="tag">待機中</span>
+    <h1>SomnoLog</h1>
+    <button class="small sub orange-frame" data-usage>使い方</button>
   </header>
-  <p id="boot" class="boot">スクリプト読込中…</p>
-  <p class="muted">就寝中の音とセンサーを記録します。本アプリは診断を行うものではありません。医師の判断の参考資料です。</p>
-  <p class="muted">患者：<b id="pt-line" style="color:#f3e7c9">-</b></p>
-
-  <div id="mic-msg" class="err" hidden></div>
-
   <div id="vad-warn" class="warn" hidden>
-    寝言除外（VAD）が無効です。onnxruntime（ort.min.js）またはモデル（silero_vad.onnx）が読み込めていません。このため、いびき候補は寝言の区別なしで保存されます。寝言が混ざる可能性があります。このHTMLと同じ場所に ort.min.js・ort-wasm-simd.wasm・ort-wasm.wasm・silero_vad.onnx を置き、再読み込みしてください。マイクの許可には影響しません。
+    寝言除外（VAD）が無効です。同じフォルダに ort.min.js / ort-wasm-simd.wasm / ort-wasm.wasm / silero_vad.onnx がないため、人声除外なしで動作します。
   </div>
-
-  <!-- 音声 -->
   <section class="card">
-    <div class="kv"><span>寝言除外（VAD）</span><b id="vad-state">読込中</b></div>
-    <div class="kv"><span>マイク</span><b id="mic-state">未許可</b></div>
-    <button id="mic-btn">マイクを許可</button>
-    <div class="meter"><i id="level-bar"></i></div>
-    <div class="kv"><span id="level-text">-</span><span id="base-text">待機中</span></div>
-    <div class="kv"><span>音声（音圧）</span><b id="live-lv-text">-</b></div>
-    <div class="chart"><div id="live-audio"></div></div>
-    <div class="kv"><span>音量調整</span><output id="gain-out">0dB</output></div>
-    <input id="gain" type="range" min="-9" max="9" step="1" value="0">
-    <p class="muted">iPhoneはマイクのdB表示と録音音圧に差があるため調整します。記録中は固定されます。</p>
+    <div class="meter-box">
+      <div class="meter-label"><span>マイク</span><span id="rec-mic-db">-</span></div>
+      <div class="meter-bar"><div id="rec-mic-fill" class="meter-fill mic"></div><div class="meter-tick"></div></div>
+    </div>
+    <div class="meter-box">
+      <div class="meter-label"><span>体動</span><span id="rec-mot-val">-</span></div>
+      <div class="meter-bar"><div id="rec-mot-fill" class="meter-fill mot"></div><div class="meter-tick"></div></div>
+    </div>
+    <p class="muted" id="rec-status-text">声や振動でスマートフォンが動くことを確認してください。</p>
   </section>
 
-  <!-- 体動 -->
-  <section class="card">
-    <button id="motion-btn">モーションセンサーを許可</button>
-    <div class="kv"><span>体動（重力除去）</span><b id="motion-text">-</b></div>
-    <div class="chart"><div id="live-motion"></div></div>
-  </section>
-
-  <!-- 環境音 -->
-  <section class="card">
-    <label class="muted"><input type="checkbox" id="env-save"> 環境音も記録する（既定はOFF）</label>
-    <p class="muted">ONにすると、環境音の変化の前後60秒を保存します。話し声が入る場合があります。数値の記録は常に残ります。</p>
-    <button id="env-del" class="sub">保存済みの環境音の音声を削除</button>
-  </section>
-
-  <!-- 記録の開始・停止 -->
-  <div class="row">
-    <button id="start-btn" class="primary" disabled>記録開始</button>
-    <button id="stop-btn" class="danger" disabled>停止</button>
-  </div>
-  <button id="btn-enter-black" class="sub" disabled>黒画面に切り替え</button>
-  <button id="history-btn" class="sub">履歴を見る</button>
-
-  <!-- 患者情報 -->
-  <section class="card">
-    <button id="pt-change" class="sub">患者情報を読み直す</button>
-  </section>
-
-  <!-- GitHub更新 -->
-  <section class="card">
-    <h2>GitHub更新</h2>
-    <p class="muted">matsuodentalassociation/ST-SCOPE / main / index.html</p>
-    <div class="kv"><span>現在</span><b id="upd-cur">SomnoLog V20</b></div>
-    <div class="kv"><span>最新</span><b id="upd-latest">未確認</b></div>
-    <p id="upd-msg" class="muted">起動時にGitHubの更新を確認します。</p>
-    <button id="upd-check" class="sub">更新を確認</button>
-    <button id="upd-apply" class="sub" disabled>更新を適用</button>
-    <button id="upd-reload" class="sub">キャッシュ回避で再読み込み</button>
-    <p class="muted">起動時と10分ごとに確認します。取得時はキャッシュを回避します。記録・保存・共有中は適用・再読み込みできません。適用すると画面を開き直します。再読み込み後の版は GitHub Pages への反映状況に依存します。</p>
-  </section>
-
-  <section class="card">
-    <div class="kv"><span>バージョン</span><b id="ver-text">V20</b></div>
-    <p class="muted">この版は自動で書き換わりません。新しい版を使うときは、新しいファイルを開くか、上の「更新を適用」を使ってください。</p>
-  </section>
+  <button id="start-btn" class="orange-frame">⑩ 記録開始</button>
+  <button id="btn-enter-black" hidden>⑪ 黒画面に切り替える（黒画面の解除は画面を2秒以上長押ししてください）</button>
+  <button id="stop-btn" class="danger" hidden>⑫ 停止（記録停止はこのボタンを2秒以上長押ししてください）</button>
+  <button id="history-btn">⑬ 記録カレンダーを見る</button>
+  <p class="muted" id="rec-timer-text"></p>
 </main>
 
-<!-- 履歴画面 -->
-<main id="page-history" class="page" hidden>
+<!-- 流れ3-1 見返す（カレンダー） -->
+<main id="page-calendar" class="page" hidden>
   <header class="head">
-    <h1>記録履歴</h1>
-    <button id="history-back" class="sub" style="width:auto;min-height:40px">戻る</button>
+    <h1>SomnoLog</h1>
+    <button class="small sub orange-frame" data-usage>使い方</button>
   </header>
-  <div id="session-list" class="list"></div>
+  <section class="card">
+    <div class="cal-head">
+      <b id="cal-title">2026年11月</b>
+      <div style="display:flex;gap:8px">
+        <button id="cal-prev" class="small sub">‹</button>
+        <button id="cal-next" class="small sub">›</button>
+      </div>
+    </div>
+    <div class="cal-grid">
+      <span class="cal-dow">日</span><span class="cal-dow">月</span><span class="cal-dow">火</span>
+      <span class="cal-dow">水</span><span class="cal-dow">木</span><span class="cal-dow">金</span><span class="cal-dow">土</span>
+    </div>
+    <div id="cal-days" class="cal-grid"></div>
+    <div class="field" style="margin-top:6px">
+      <span id="cal-sel-date">-</span>
+      <b id="cal-sel-count">記録 0件</b>
+    </div>
+    <div id="cal-list" style="display:flex;flex-direction:column;gap:8px"></div>
+  </section>
+  <button id="cal-back" class="sub">記録画面に戻る</button>
 </main>
 
-<!-- 詳細画面 -->
+<!-- 流れ3-1・4-1・4-2 詳細と共有 -->
 <main id="page-detail" class="page" hidden>
-  <div class="sticky-bar">
-    <button id="detail-back" class="sub">履歴に戻る</button>
-    <button id="d-share" class="primary">医師と共有（ZIP）</button>
-  </div>
+  <header class="head">
+    <h1>SomnoLog</h1>
+    <button class="small sub orange-frame" data-usage>使い方</button>
+  </header>
   <section class="card">
-    <h2 id="d-title"></h2>
-    <div id="d-summary"></div>
-  </section>
-  <section class="card">
-    <h2>タイムライン</h2>
     <div id="d-chart" class="chart"></div>
-    <p class="muted">線：音圧（ゲイン適用値・1秒平均）／ 点線：基準値／ 緑の点：いびき（保存）／ 赤の点：寝言・話し声の疑い（除外）／ 灰の点：判定不能／ 黄の破線：環境音の変化／ 白い線：体動</p>
+    <div class="meter-box">
+      <div class="meter-label"><span>体動のしきい値</span><b id="mot-th-val">0.20 m/s²</b></div>
+      <input id="mot-th" type="range" min="0.05" max="1.0" step="0.05" value="0.20">
+    </div>
+    <button id="d-play-timeline">タイムラインの音を聴く</button>
+    <button id="d-share">共有する</button>
+    <button id="d-play-ref" class="dark">基準の「あ〜」を聴く</button>
+    <button id="d-save-zip" class="dark">この音声を保存する（残す）</button>
+    <button id="d-del-rec" class="dark">この記録を削除する</button>
   </section>
+  <button id="detail-back" class="sub">カレンダーに戻る</button>
+</main>
+
+<!-- 流れ4-1 送信完了画面 -->
+<main id="page-sent" class="page" hidden>
+  <header class="head">
+    <h1>SomnoLog</h1>
+    <button class="small sub orange-frame" data-usage>使い方</button>
+  </header>
   <section class="card">
-    <h2>検知区間</h2>
-    <p class="muted">各区間に医師が判定を付けられます（学習データとして使います）。</p>
-    <div id="d-events" class="list"></div>
+    <div class="field"><span>送り先アドレス</span><b id="sent-email">-</b></div>
+    <div class="field"><b>送信しました</b></div>
+    <button id="btn-del-audio" class="dark">このタイムラインから音声を削除</button>
   </section>
-  <p class="muted">本アプリは診断を行うものではありません。医師の判断の参考資料です。</p>
+  <button id="sent-back" class="sub">詳細に戻る</button>
 </main>
 
 <!-- 黒画面 -->
 <div id="black-screen" hidden>
-  <span id="black-clock"></span>
-  <span class="muted">タップで戻る</span>
+  <span id="black-clock">00:00</span>
+  <span class="muted" id="black-help">画面を2秒以上長押しすると戻ります</span>
 </div>
+
+<!-- モーダル：基準音録音中 -->
+<dialog id="dlg-ref-rec">
+  <h2>「あ〜」と声を出してください</h2>
+  <p class="muted">スマートフォンを顔から少し離して、3秒間「あ〜」と発声してください。</p>
+</dialog>
+
+<!-- モーダル：人声の確認（窓）（流れ4-2） -->
+<dialog id="dlg-speech">
+  <h2>人声の確認（窓）</h2>
+  <div class="stack">
+    <p class="muted">人声とされた音がある記録です。送信の前に聴いて確かめてください。</p>
+    <button id="btn-speech-play">人声を聴く</button>
+    <button id="btn-speech-ok" class="sub">確認した、送信へ進む</button>
+    <button id="btn-speech-close" class="dark">閉じる</button>
+  </div>
+</dialog>
+
+<!-- モーダル：アプリの更新 -->
+<dialog id="dlg-update">
+  <h2>アプリの更新</h2>
+  <div class="stack">
+    <p class="muted" id="upd-msg">確認中…</p>
+    <button id="upd-check" class="sub">更新を確認</button>
+    <button id="upd-apply" disabled>更新を適用</button>
+    <button id="upd-close" class="dark">閉じる</button>
+  </div>
+</dialog>
+
+<!-- モーダル：使い方 -->
+<dialog id="dlg-usage">
+  <h2>使い方</h2>
+  <div class="stack">
+    <p class="muted">
+      1. 二次元コードまたはメールから患者情報を読み込みます。<br>
+      2. マイクとモーションセンサーを許可し、基準音「あ〜」を録音します。<br>
+      3. 「記録開始」を押し、必要なら「黒画面に切り替える」を押します（解除は2秒長押し）。<br>
+      4. 停止は「停止」ボタンを2秒以上長押しします。<br>
+      5. 「記録カレンダーを見る」からグラフ確認や医師への共有（ZIP）ができます。
+    </p>
+    <p class="warn">本アプリは診断を行うものではありません。医師の判断の参考資料です。</p>
+    <button class="dark" onclick="this.closest('dialog').close()">閉じる</button>
+  </div>
+</dialog>
 
 <script>
 "use strict";
-
-/* ===== バージョン ===== */
-// 修正のたびに数字を1つ増やす。GitHub更新の確認はこの数字を比べる
 const APP_VERSION = 20;
 const APP = "SomnoLogV" + APP_VERSION;
-
-/* ===== GitHub更新の取得元 ===== */
-// 取得元のHTML。この中の「const APP_VERSION = 数字」を読んで、新しい版かどうかを判断する
 const UPDATE_SRC = "https://raw.githubusercontent.com/matsuodentalassociation/ST-SCOPE/main/index.html";
-const UPDATE_EVERY_MS = 10 * 60 * 1000;
-
-/* ===== 設定 ===== */
-const SR = 16000, FRAME = 512;
-const RING_SEC = 130;          // 環境音の保存（前後60秒）に必要な長さ。V20で62→130
-const G_ACC = 9.80665;
+const SR = 16000, FRAME = 512, RING_SEC = 130, G_ACC = 9.80665;
 const VAD_CTX = 64, VAD_URL = "./silero_vad.onnx?v=" + APP_VERSION, VAD_TH = 0.3;
 const LOUD_DB = 6, SEG_MIN = 0.5, SEG_MAX = 4, QUIET_FRAMES = 5;
-const PRE_MS = 3000, POST_MS = 1000;
-const CALIB_SEC = 300, BASE_EVERY = 600, POOL_MAX = 600, POOL_MIN = 60;
-const ENV_RUN_SEC = 10, ENV_DB = 6, ENV_COOLDOWN = 300, ENV_CLIP_SEC = 60; // 環境音の前後保存：60秒
+const PRE_MS = 3000, POST_MS = 1000, CALIB_SEC = 10, BASE_EVERY = 600, POOL_MAX = 600, POOL_MIN = 60;
+const ENV_RUN_SEC = 10, ENV_DB = 6, ENV_COOLDOWN = 300;
 const FLUSH_SEC = 60, MAX_QUEUE = 40;
-const UI_MS = 250, LIVE_N = 240;
-const DB_NAME = "somnolog-v3"; // V3以降のデータを引き継ぐため名前は据え置き
-const DB_VERSION = 2;          // V10で settings を追加（V20でも変更なし）
-const DB_WAIT_MS = 4000;       // 保存領域の読み込みを待つ上限（これを超えたら待たずに先へ進む）
-const DISCLAIMER = "本アプリは診断を行うものではありません。医師の判断の参考資料です。";
-const LABELS = { snore: "いびき", speech: "寝言・話し声", env: "環境音", unknown: "判定不能", short: "短い音" };
-const LABEL_KEYS = ["snore", "speech", "env", "unknown"];
+const DB_NAME = "somnolog-v3", DB_VERSION = 2;
 
-/* ===== 補助関数 ===== */
 const $ = (id) => document.getElementById(id);
 const pad = (n) => String(n).padStart(2, "0");
 const uid = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now() + "-" + Math.random().toString(16).slice(2));
@@ -273,141 +322,29 @@ const round2 = (v) => Math.round(v * 100) / 100;
 const round3 = (v) => Math.round(v * 1000) / 1000;
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 const mean = (a) => (a.length ? a.reduce((s, v) => s + v, 0) / a.length : 0);
-const lowerMean = (arr) => {
-  if (!arr.length) return null;
-  const s = arr.slice().sort((a, b) => a - b);
-  return mean(s.slice(0, Math.max(1, Math.ceil(s.length / 2))));
-};
-const minOf = (a) => a.reduce((m, v) => Math.min(m, v), Infinity);
+const lowerMean = (arr) => { if (!arr.length) return null; const s = arr.slice().sort((a,b)=>a-b); return mean(s.slice(0, Math.max(1, Math.ceil(s.length/2)))); };
 const maxOf = (a) => a.reduce((m, v) => Math.max(m, v), -Infinity);
-const fmtTime = (ms) => {
-  const s = Math.max(0, Math.floor(ms / 1000));
-  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
-  return h ? h + ":" + pad(m) + ":" + pad(sec) : m + ":" + pad(sec);
-};
-const fmtClock = (ms) => new Date(ms).toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
-const fmtDate = (ms) => new Date(ms).toLocaleString("ja-JP", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" });
+const dayKey = (ms) => { const d = new Date(ms); return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); };
 const isoOf = (ms) => new Date(ms).toISOString();
-const esc = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const newCounts = () => ({ snore: 0, speech: 0, env: 0, unknown: 0, short: 0 });
-
-function showError(msg) {
-  const b = $("errbox");
-  b.hidden = false;
-  b.textContent = "エラー: " + msg;
-}
+function showError(msg) { const b = $("errbox"); b.hidden = false; b.textContent = "エラー: " + msg; }
 window.addEventListener("error", (e) => showError(e.message));
-window.addEventListener("unhandledrejection", (e) => showError((e.reason && e.reason.message) || String(e.reason)));
-
-function showMicMsg(text) {
-  const b = $("mic-msg");
-  b.hidden = !text;
-  b.textContent = text || "";
-}
-
-/* ===== 患者情報（QR） ===== */
-// QRの中身：https://<③の公開URL>/#slp=<Base64URL化したJSON>
-const S_PATIENT_PENDING = { value: null };
-
-class PatientError extends Error {}
-
-// Base64URL → UTF-8文字列 → JSON（日本語の文字化けを防ぐためTextDecoderを使う）
-function decodeSlp(payload) {
-  let s = String(payload).trim().replace(/[^A-Za-z0-9\-_]/g, "");
-  if (!s) throw new PatientError("QRの中身が空です。");
-  s = s.replace(/-/g, "+").replace(/_/g, "/");
-  while (s.length % 4) s += "=";
-  const bin = atob(s);
-  const bytes = Uint8Array.from(bin, (c) => c.charCodeAt(0));
-  const json = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
-  return JSON.parse(json);
-}
-
-// 読み取った文字列（URL全体、またはハッシュ部分）から患者情報を作る
-function patientFromText(text) {
-  const str = String(text || "");
-  const idx = str.indexOf("#slp=");
-  if (idx < 0) throw new PatientError("患者用QRではありません。②が発行したQRを読み取ってください。");
-  let obj;
-  try { obj = decodeSlp(str.slice(idx + 5)); }
-  catch (e) { throw new PatientError("QRの中身を読み取れませんでした。QRを再発行してもらってください。"); }
-  if (!obj || typeof obj !== "object" || Array.isArray(obj)) throw new PatientError("QRの中身の形式が正しくありません。");
-  return normalizePatient(obj);
-}
-
-function normalizePatient(o) {
-  const s = (v) => (typeof v === "string" ? v.normalize("NFC").trim() : "");
-  const p = {
-    clinic: s(o.clinicName),
-    chartNo: s(o.chartNo),
-    name: s(o.patientName),
-    serialNumber: s(o.serial),
-    issuedOn: s(o.issuedOn),
-    logShareEmail: s(o.logShareEmail),
-    issueId: s(o.issueId),
-  };
-  if (!p.name) throw new PatientError("患者名がありません。このQRは利用できません。QRを再発行してもらってください。");
-  if (!p.chartNo) throw new PatientError("カルテNoがありません。QRを再発行してもらってください。");
-  return p;
-}
-
-// ファイル名用の安全な文字列（禁止記号・制御文字を _ に置換、NFC正規化）
-function sanitize(v, max = 40) {
-  const s = String(v ?? "").normalize("NFC")
-    .replace(/[\\/:*?"<>|\u0000-\u001f\u007f]/g, "_")
-    .replace(/\s+/g, "_")
-    .replace(/_+/g, "_")
-    .replace(/^[_.]+|[_.]+$/g, "")
-    .slice(0, max);
-  return s || "未設定";
-}
-
-// ZIPの名前（人が見て分かる形）：日付_時刻_診療所_カルテNo_患者名.zip
-// 例：20261027_1915_サンプル中央クリニック_123456_山田太郎.zip
-// 時刻は記録開始の時・分（24時間表記）。シリアルNoはファイル名には入れず、中身（session.json）に残す
-function zipName(sess) {
-  const p = sess.patient || {};
-  const d = new Date(sess.startedAt);
-  const day = d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate());
-  const time = pad(d.getHours()) + pad(d.getMinutes());
-  return [day, time, sanitize(p.clinic, 30), sanitize(p.chartNo, 20), sanitize(p.name, 20)].join("_") + ".zip";
-}
-
-/* ===== リングバッファ（直近130秒・16kHz・調整前の生音） ===== */
-class Ring {
-  constructor(sec) { this.len = SR * sec; this.buf = new Float32Array(this.len); this.total = 0; }
-  push(arr) {
-    for (let i = 0; i < arr.length; i++) this.buf[(this.total + i) % this.len] = arr[i];
-    this.total += arr.length;
-  }
-  get(a, b) {
-    a = Math.max(a, 0, this.total - this.len);
-    b = Math.min(b, this.total);
-    const n = Math.max(0, b - a);
-    const out = new Float32Array(n);
-    for (let i = 0; i < n; i++) out[i] = this.buf[(a + i) % this.len];
-    return out;
-  }
-}
 
 /* ===== IndexedDB ===== */
 const DB = (() => {
   let p = null;
   const open = () => p || (p = new Promise((res, rej) => {
-    if (!window.indexedDB) { rej(new Error("この端末では保存機能（IndexedDB）を使えません")); return; }
     const r = indexedDB.open(DB_NAME, DB_VERSION);
     r.onupgradeneeded = () => {
       const d = r.result;
-      const names = d.objectStoreNames;
-      if (!names.contains("sessions")) d.createObjectStore("sessions", { keyPath: "id" });
-      if (!names.contains("secs")) d.createObjectStore("secs", { keyPath: "key" }).createIndex("sid", "sid");
-      if (!names.contains("events")) d.createObjectStore("events", { keyPath: "id" }).createIndex("sid", "sid");
-      if (!names.contains("clips")) d.createObjectStore("clips", { keyPath: "id" }).createIndex("sid", "sid");
-      if (!names.contains("settings")) d.createObjectStore("settings", { keyPath: "key" });
+      if (!d.objectStoreNames.contains("sessions")) d.createObjectStore("sessions", { keyPath: "id" });
+      if (!d.objectStoreNames.contains("secs")) d.createObjectStore("secs", { keyPath: "key" }).createIndex("sid", "sid");
+      if (!d.objectStoreNames.contains("events")) d.createObjectStore("events", { keyPath: "id" }).createIndex("sid", "sid");
+      if (!d.objectStoreNames.contains("clips")) d.createObjectStore("clips", { keyPath: "id" }).createIndex("sid", "sid");
+      if (!d.objectStoreNames.contains("settings")) d.createObjectStore("settings", { keyPath: "key" });
     };
     r.onsuccess = () => res(r.result);
-    r.onerror = () => { p = null; rej(r.error || new Error("保存領域を開けませんでした")); };
-    r.onblocked = () => { p = null; rej(new Error("保存領域が他のタブで使用中です。他のSomnoLogの画面を閉じてから開き直してください")); };
+    r.onerror = () => rej(r.error);
   }));
   const run = async (store, mode, fn) => {
     const d = await open();
@@ -416,418 +353,201 @@ const DB = (() => {
       const req = fn(t.objectStore(store));
       t.oncomplete = () => res(req ? req.result : undefined);
       t.onerror = () => rej(t.error);
-      t.onabort = () => rej(t.error);
     });
   };
   return {
-    put: (store, obj) => run(store, "readwrite", (s) => s.put(obj)),
-    putMany: (store, arr) => run(store, "readwrite", (s) => { arr.forEach((o) => s.put(o)); return null; }),
-    get: (store, key) => run(store, "readonly", (s) => s.get(key)),
-    all: (store) => run(store, "readonly", (s) => s.getAll()),
-    byIndex: (store, idx, key) => run(store, "readonly", (s) => s.index(idx).getAll(IDBKeyRange.only(key))),
-    del: (store, key) => run(store, "readwrite", (s) => s.delete(key)),
+    put: (s, o) => run(s, "readwrite", (st) => st.put(o)),
+    putMany: (s, arr) => run(s, "readwrite", (st) => { arr.forEach((o) => st.put(o)); return null; }),
+    get: (s, k) => run(s, "readonly", (st) => st.get(k)),
+    all: (s) => run(s, "readonly", (st) => st.getAll()),
+    byIndex: (s, idx, k) => run(s, "readonly", (st) => st.index(idx).getAll(IDBKeyRange.only(k))),
+    del: (s, k) => run(s, "readwrite", (st) => st.delete(k)),
   };
 })();
 
-/* ===== 状態 ===== */
+class Ring {
+  constructor(sec) { this.len = SR * sec; this.buf = new Float32Array(this.len); this.total = 0; }
+  push(arr) { for (let i = 0; i < arr.length; i++) this.buf[(this.total + i) % this.len] = arr[i]; this.total += arr.length; }
+  get(a, b) {
+    a = Math.max(a, 0, this.total - this.len); b = Math.min(b, this.total);
+    const n = Math.max(0, b - a), out = new Float32Array(n);
+    for (let i = 0; i < n; i++) out[i] = this.buf[(a + i) % this.len];
+    return out;
+  }
+}
+
 const S = {
-  ctx: null, pendingCtx: null, stream: null, tap: null, micMode: "",
-  vad: null, vadOk: false, vadState: null, vadCtx: new Float32Array(VAD_CTX),
-  gainDb: 0, envSave: false,
-  patient: null,
-  running: false, saving: false, epoch: 0, sid: null, sess: null, counts: newCounts(),
-  wake: null, timers: [], uiTimer: null, blackOn: false, savedStyle: null, detailSid: null,
-  blackTimer: null,
-  ring: new Ring(RING_SEC), recv: 0, queue: [], busy: false, dropped: 0,
-  nowMs: 0, lastLv: -100, motionNow: null, grav: null, live: [],
+  ctx: null, stream: null, tap: null, vad: null, vadOk: false, vadState: null, vadCtx: new Float32Array(VAD_CTX),
+  gainDb: 0, patient: null, pendingPatient: null, refAudio: null,
+  running: false, epoch: 0, sid: null, sess: null, counts: newCounts(), wake: null, timers: [],
+  ring: new Ring(RING_SEC), recv: 0, queue: [], busy: false, nowMs: 0, lastLv: -100, motionNow: 0, grav: null,
   calibrated: false, calibVals: [], base: null, pool: [], lastBaseSec: 0,
-  cand: null, pHist: [], pendingCands: [], pendingEnv: [],
-  bucket: null, secBuf: [], envRun: 0, lastEnvMs: -1e9,
+  cand: null, pHist: [], pendingCands: [], bucket: null, secBuf: [],
+  calMonth: new Date(new Date().getFullYear(), new Date().getMonth(), 1), calSel: dayKey(Date.now()),
+  detailSid: null, motTh: 0.20, audioPlayer: null, blackOn: false, blackTimer: null
 };
 
-// 記録中・保存中・共有中は、更新の適用や再読み込みをさせない
-function isBusy() { return S.running || S.saving; }
-
-/* ===== 画面切り替え ===== */
 function showPage(name) {
-  ["start", "confirm", "record", "history", "detail"].forEach((n) => { $("page-" + n).hidden = n !== name; });
+  ["start", "confirm", "setting1", "setting2", "record", "calendar", "detail", "sent"].forEach((n) => {
+    $("page-" + n).hidden = n !== name;
+  });
   window.scrollTo(0, 0);
 }
 
-function renderPatientCard() {
-  const p = S.patient;
-  $("pt-line").textContent = p
-    ? [p.name, "カルテNo " + (p.chartNo || "-"), p.clinic].filter(Boolean).join("　")
-    : "-";
-  $("pt-change").disabled = S.running;
+/* ===== 患者情報デコード ===== */
+function decodeSlp(payload) {
+  let s = String(payload).trim().replace(/[^A-Za-z0-9\-_]/g, "").replace(/-/g, "+").replace(/_/g, "/");
+  while (s.length % 4) s += "=";
+  const bin = atob(s);
+  const bytes = Uint8Array.from(bin, (c) => c.charCodeAt(0));
+  return JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
 }
-
-/* ===== QR読み取り（カメラ・画像） ===== */
-let camStream = null, camTimer = 0, detector = null, scanBusy = false;
-
-function showScanMsg(text) {
-  const b = $("scan-msg");
-  b.hidden = !text;
-  b.textContent = text || "";
-}
-
-// 読み取った文字列を確認する（OKなら1-2へ、NGなら1-1に留まる）
-function handleQrText(text) {
-  try {
-    const p = patientFromText(text);
-    showScanMsg("");
-    S_PATIENT_PENDING.value = p;
-    showConfirm(p);
-  } catch (e) {
-    showScanMsg(e instanceof PatientError ? e.message : "QRを読み取れませんでした: " + e.message);
+function parsePatientInput(text) {
+  const str = String(text || "");
+  const idx = str.indexOf("#slp=");
+  if (idx >= 0) {
+    const o = decodeSlp(str.slice(idx + 5));
+    return {
+      clinic: (o.clinicName || "").trim(), chartNo: (o.chartNo || "").trim(),
+      name: (o.patientName || "").trim(), serialNumber: (o.serial || "").trim(),
+      logShareEmail: (o.logShareEmail || "").trim()
+    };
   }
+  const o = JSON.parse(str);
+  return {
+    clinic: (o.clinicName || o.clinic || "").trim(), chartNo: (o.chartNo || "").trim(),
+    name: (o.patientName || o.name || "").trim(), serialNumber: (o.serial || o.serialNumber || "").trim(),
+    logShareEmail: (o.logShareEmail || o.doctorEmail || "").trim()
+  };
 }
-
-function showConfirm(p) {
-  $("cf-clinic").textContent = p.clinic || "（未記入）";
-  $("cf-chart").textContent = p.chartNo || "（未記入）";
+function openConfirm(p) {
+  if (!p || !p.name) { showError("患者名が含まれていません。"); return; }
+  S.pendingPatient = p;
+  $("cf-clinic").textContent = p.clinic || "-";
+  $("cf-chart").textContent = p.chartNo || "-";
   $("cf-name").textContent = p.name;
-  $("cf-serial").textContent = p.serialNumber || "（未記入）";
-  $("cf-email").textContent = p.logShareEmail || "（未記入）";
+  $("cf-serial").textContent = p.serialNumber || "-";
+  $("cf-email").textContent = p.logShareEmail || "-";
   showPage("confirm");
 }
 
-// 1枚の画像・映像から QR の文字列を探す（BarcodeDetector → jsQR の順）
-async function decodeCanvas(canvas) {
-  if (window.BarcodeDetector) {
-    try {
-      if (!detector) detector = new BarcodeDetector({ formats: ["qr_code"] });
-      const r = await detector.detect(canvas);
-      if (r.length && r[0].rawValue) return r[0].rawValue;
-    } catch (e) { console.warn(e); }
-  }
-  if (typeof window.jsQR === "function") {
-    const c = canvas.getContext("2d");
-    const img = c.getImageData(0, 0, canvas.width, canvas.height);
-    const code = window.jsQR(img.data, img.width, img.height);
-    if (code && code.data) return code.data;
-  }
-  return null;
-}
-
-function canDecode() {
-  return !!window.BarcodeDetector || typeof window.jsQR === "function";
-}
-
-async function startCamera() {
-  showScanMsg("");
-  if (!window.isSecureContext || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-    showScanMsg("カメラを使うには https:// で開いてください。");
-    return;
-  }
-  if (!canDecode()) {
-    showScanMsg("この端末ではアプリ内でQRを読み取れません。標準のカメラアプリでQRを読むと、この画面が自動で開きます。");
-    return;
-  }
+/* ===== QRカメラ ===== */
+let camStream = null, camTimer = 0, detector = null;
+async function startQrCam() {
+  $("qr-box").hidden = false;
   try {
     camStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" } }, audio: false });
-    const video = $("cam-video");
-    video.srcObject = camStream;
-    await video.play();
-    $("cam-box").hidden = false;
-    scanLoop();
-  } catch (e) {
-    stopCamera();
-    showScanMsg("カメラを起動できませんでした。カメラの許可を確認してください。（" + e.name + "）");
-  }
-}
-
-function stopCamera() {
-  clearTimeout(camTimer);
-  camTimer = 0;
-  if (camStream) camStream.getTracks().forEach((t) => t.stop());
-  camStream = null;
-  const v = $("cam-video");
-  if (v) v.srcObject = null;
-  $("cam-box").hidden = true;
-}
-
-function scanLoop() {
-  if (!camStream) return;
-  const video = $("cam-video");
-  const run = async () => {
-    if (!camStream) return;
-    if (!scanBusy && video.readyState >= 2 && video.videoWidth) {
-      scanBusy = true;
-      try {
-        const canvas = $("scan-canvas");
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        canvas.getContext("2d").drawImage(video, 0, 0);
-        const text = await decodeCanvas(canvas);
-        if (text) {
-          stopCamera();
-          handleQrText(text);
-          return;
+    const v = $("cam-video"); v.srcObject = camStream; await v.play();
+    const loop = async () => {
+      if (!camStream) return;
+      if (v.readyState >= 2 && v.videoWidth) {
+        const c = $("scan-canvas"); c.width = v.videoWidth; c.height = v.videoHeight;
+        c.getContext("2d").drawImage(v, 0, 0);
+        let val = null;
+        if (window.BarcodeDetector) {
+          if (!detector) detector = new BarcodeDetector({ formats: ["qr_code"] });
+          const r = await detector.detect(c).catch(() => []);
+          if (r.length) val = r[0].rawValue;
+        } else if (typeof window.jsQR === "function") {
+          const img = c.getContext("2d").getImageData(0, 0, c.width, c.height);
+          const code = window.jsQR(img.data, img.width, img.height);
+          if (code) val = code.data;
         }
-      } finally { scanBusy = false; }
-    }
-    camTimer = setTimeout(run, 250);
-  };
-  run();
+        if (val) { stopQrCam(); openConfirm(parsePatientInput(val)); return; }
+      }
+      camTimer = setTimeout(loop, 250);
+    };
+    loop();
+  } catch (e) { $("qr-status").textContent = "カメラを起動できませんでした: " + e.message; }
+}
+function stopQrCam() {
+  clearTimeout(camTimer);
+  if (camStream) camStream.getTracks().forEach((t) => t.stop());
+  camStream = null; $("qr-box").hidden = true;
 }
 
-async function readQrFile(file) {
-  showScanMsg("");
-  if (!file) return;
-  if (!canDecode()) {
-    showScanMsg("この端末では画像からQRを読み取れません。標準のカメラアプリでQRを読むと、この画面が自動で開きます。");
-    return;
-  }
+/* ===== マイク・体動・VAD ===== */
+const WORKLET = `class Tap extends AudioWorkletProcessor{constructor(){super();this.ratio=sampleRate/16000;this.pos=0;this.prev=0;this.acc=[]}process(inputs){const ch=inputs[0]&&inputs[0][0];if(!ch||!ch.length)return true;const n=ch.length;let t=this.pos;while(t<n){const i=Math.floor(t),f=t-i,a=i===0?this.prev:ch[i-1],b=ch[i];this.acc.push(a*(1-f)+b*f);t+=this.ratio}this.pos=t-n;this.prev=ch[n-1];while(this.acc.length>=512){const out=Float32Array.from(this.acc.splice(0,512));this.port.postMessage(out,[out.buffer])}return true}}registerProcessor("tap",Tap);`;
+async function initMicAndMotion() {
+  const AC = window.AudioContext || window.webkitAudioContext;
+  const ctx = new AC();
+  const stream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
+  if (ctx.state !== "running") await ctx.resume();
+  const src = ctx.createMediaStreamSource(stream);
+  const mute = ctx.createGain(); mute.gain.value = 0; mute.connect(ctx.destination);
+  let tap;
   try {
-    const bmp = await createImageBitmap(file);
-    const canvas = $("scan-canvas");
-    canvas.width = bmp.width;
-    canvas.height = bmp.height;
-    canvas.getContext("2d").drawImage(bmp, 0, 0);
-    bmp.close && bmp.close();
-    const text = await decodeCanvas(canvas);
-    if (!text) {
-      showScanMsg("画像からQRを見つけられませんでした。QRがはっきり写った画像を選んでください。");
-      return;
-    }
-    handleQrText(text);
-  } catch (e) {
-    showScanMsg("画像を読み込めませんでした: " + e.message);
+    const url = URL.createObjectURL(new Blob([WORKLET], { type: "application/javascript" }));
+    await ctx.audioWorklet.addModule(url); URL.revokeObjectURL(url);
+    tap = new AudioWorkletNode(ctx, "tap");
+    tap.port.onmessage = (e) => onAudio(e.data);
+  } catch {
+    tap = ctx.createScriptProcessor(2048, 1, 1);
+    const ratio = ctx.sampleRate / SR; let pos = 0, prev = 0, acc = [];
+    tap.onaudioprocess = (e) => {
+      const ch = e.inputBuffer.getChannelData(0), n = ch.length; let t = pos;
+      while (t < n) { const i = Math.floor(t), f = t - i; acc.push((i===0?prev:ch[i-1])*(1-f)+ch[i]*f); t += ratio; }
+      pos = t - n; prev = ch[n - 1];
+      while (acc.length >= FRAME) onAudio(Float32Array.from(acc.splice(0, FRAME)));
+    };
   }
-}
-
-// 標準カメラで開いた時（#slp=付きURL）は、自動で1-2へ進む
-function checkHashOnLoad() {
-  if (location.hash.indexOf("#slp=") < 0) return false;
-  const text = location.href;
-  // 読み取った後はURLからハッシュを消し、再読み込みで二重に扱わないようにする
-  history.replaceState(null, "", location.pathname + location.search);
-  handleQrText(text);
-  return true;
-}
-
-/* ===== 患者情報の保存・読み込み ===== */
-// 保存領域の読み込みが止まっても、DB_WAIT_MS で打ち切って先へ進む
-function withTimeout(promise, ms, label) {
-  let timer;
-  const timeout = new Promise((_, rej) => {
-    timer = setTimeout(() => rej(new Error(label + "が時間内に終わりませんでした")), ms);
-  });
-  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
-}
-
-async function loadPatient() {
-  try {
-    const row = await withTimeout(DB.get("settings", "patient"), DB_WAIT_MS, "患者情報の読み込み");
-    S.patient = row && row.value ? row.value : null;
-  } catch (e) {
-    console.warn(e);
-    S.patient = null;
-    showError("保存済みの患者情報を読めませんでした（" + e.message + "）。QRを読み直してください。");
-  }
-}
-
-async function savePatient(p) {
-  S.patient = p;
-  await DB.put("settings", { key: "patient", value: p, savedAt: Date.now() });
-}
-
-/* ===== 音声取得（16kHzへ変換して512サンプルずつ onAudio に渡す） ===== */
-const WORKLET = `
-class Tap extends AudioWorkletProcessor {
-  constructor() {
-    super();
-    this.ratio = sampleRate / 16000;
-    this.pos = 0;
-    this.prev = 0;
-    this.acc = [];
-  }
-  process(inputs) {
-    const ch = inputs[0] && inputs[0][0];
-    if (!ch || !ch.length) return true;
-    const n = ch.length;
-    let t = this.pos;
-    while (t < n) {
-      const i = Math.floor(t), f = t - i;
-      const a = i === 0 ? this.prev : ch[i - 1];
-      const b = ch[i];
-      this.acc.push(a * (1 - f) + b * f);
-      t += this.ratio;
-    }
-    this.pos = t - n;
-    this.prev = ch[n - 1];
-    while (this.acc.length >= 512) {
-      const out = Float32Array.from(this.acc.splice(0, 512));
-      this.port.postMessage(out, [out.buffer]);
-    }
-    return true;
-  }
-}
-registerProcessor("tap", Tap);
-`;
-
-function micError(name, message, stage) {
-  const e = new Error(message || name);
-  e.name = name;
-  e.stage = stage || "";
-  return e;
-}
-
-async function getMicStream() {
-  const constraints = { channelCount: 1, echoCancellation: false, noiseSuppression: false, autoGainControl: false };
-  try {
-    return await navigator.mediaDevices.getUserMedia({ audio: constraints });
-  } catch (e) {
-    if (e.name !== "AbortError" && e.name !== "OverconstrainedError") throw e;
-    await new Promise((r) => setTimeout(r, 500));
-    return await navigator.mediaDevices.getUserMedia({ audio: true });
-  }
-}
-
-function makeScriptTap(ctx) {
-  const node = ctx.createScriptProcessor(2048, 1, 1);
-  const ratio = ctx.sampleRate / SR;
-  let pos = 0, prev = 0;
-  const acc = [];
-  node.onaudioprocess = (e) => {
-    const ch = e.inputBuffer.getChannelData(0);
-    const n = ch.length;
-    let t = pos;
-    while (t < n) {
-      const i = Math.floor(t), f = t - i;
-      const a = i === 0 ? prev : ch[i - 1];
-      const b = ch[i];
-      acc.push(a * (1 - f) + b * f);
-      t += ratio;
-    }
-    pos = t - n;
-    prev = ch[n - 1];
-    while (acc.length >= FRAME) onAudio(Float32Array.from(acc.splice(0, FRAME)));
-  };
-  return node;
-}
-
-async function setupMic(ctx) {
-  if (!window.isSecureContext || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-    throw micError("InsecureContext", "secure context required", "接続の確認");
-  }
-  if (!ctx) throw micError("NotSupportedError", "AudioContext is not available", "音声処理の作成");
-  if (S.ctx) return;
-
-  let stream;
-  try {
-    stream = await getMicStream();
-  } catch (e) {
-    e.stage = "マイクの許可";
-    throw e;
-  }
+  src.connect(tap); tap.connect(mute);
+  S.ctx = ctx; S.stream = stream; S.tap = tap;
 
   try {
-    if (ctx.state !== "running") await ctx.resume();
-    const src = ctx.createMediaStreamSource(stream);
-    const mute = ctx.createGain();
-    mute.gain.value = 0;
-    mute.connect(ctx.destination);
-
-    let tap, mode;
-    try {
-      const url = URL.createObjectURL(new Blob([WORKLET], { type: "application/javascript" }));
-      try { await ctx.audioWorklet.addModule(url); }
-      finally { URL.revokeObjectURL(url); }
-      tap = new AudioWorkletNode(ctx, "tap");
-      tap.port.onmessage = (e) => onAudio(e.data);
-      mode = "worklet";
-    } catch (e) {
-      console.warn("AudioWorklet unavailable, using ScriptProcessor", e);
-      tap = makeScriptTap(ctx);
-      mode = "script";
+    if (typeof DeviceMotionEvent !== "undefined" && typeof DeviceMotionEvent.requestPermission === "function") {
+      await DeviceMotionEvent.requestPermission();
     }
-    src.connect(tap);
-    tap.connect(mute);
-
-    S.ctx = ctx; S.stream = stream; S.tap = tap; S.micMode = mode; S.pendingCtx = null;
-    startUiLoop();
-  } catch (e) {
-    stream.getTracks().forEach((t) => t.stop());
-    if (!e.stage) e.stage = "音声処理の開始";
-    throw e;
-  }
+    window.addEventListener("devicemotion", (e) => {
+      const a = e.accelerationIncludingGravity;
+      if (!a || a.x == null) return;
+      if (!S.grav) S.grav = { x: a.x, y: a.y, z: a.z };
+      S.grav = { x: 0.8*S.grav.x+0.2*a.x, y: 0.8*S.grav.y+0.2*a.y, z: 0.8*S.grav.z+0.2*a.z };
+      S.motionNow = Math.hypot(a.x - S.grav.x, a.y - S.grav.y, a.z - S.grav.z);
+      if (S.bucket) S.bucket.mot.push(S.motionNow);
+    });
+  } catch (e) { console.warn("motion skipped", e); }
 }
 
-function micErrorMessage(e) {
-  const n = (e && e.name) || "不明";
-  const stage = (e && e.stage) ? e.stage : "不明";
-  const detail = "（段階：" + stage + "／エラー名：" + n + (e && e.message ? "／" + e.message : "") + "）";
-  if (n === "InsecureContext") return "HTTPSで開いていないため、マイクを使えません。https:// から始まるURL（GitHub Pages）で開いてください。" + detail;
-  if (n === "NotAllowedError" || n === "SecurityError") return "マイクの許可が得られませんでした。iPhoneでは「設定」→「Safari」（またはこのサイト）→「マイク」を「許可」に変更し、ページを開き直してください。" + detail;
-  if (n === "NotFoundError") return "マイクが見つかりません。機器の接続を確認してください。" + detail;
-  if (n === "NotReadableError") return "マイクが他のアプリで使用中の可能性があります。通話や録音のアプリを閉じて、再度お試しください。" + detail;
-  if (n === "AbortError") return "マイクの起動が中断されました。ボタンを一度だけ押し、許可の表示が出たら「許可」を選んでください。改善しない場合はページを開き直してください。" + detail;
-  return "マイクを開始できませんでした。" + detail;
-}
-
+let refRecBuf = null;
 function onAudio(data) {
-  if (!S.running) {
-    let ss = 0;
-    for (let i = 0; i < data.length; i++) ss += data[i] * data[i];
-    S.lastLv = toDb(Math.sqrt(ss / data.length)) + S.gainDb;
+  let ss = 0; for (let i = 0; i < data.length; i++) ss += data[i] * data[i];
+  S.lastLv = toDb(Math.sqrt(ss / data.length)) + S.gainDb;
+  if (refRecBuf) {
+    const mult = Math.pow(10, S.gainDb / 20);
+    for (let i = 0; i < data.length && refRecBuf.pos < refRecBuf.buf.length; i++) {
+      refRecBuf.buf[refRecBuf.pos++] = clamp(Math.round(data[i] * mult * 32767), -32768, 32767);
+    }
     return;
   }
+  if (!S.running) return;
   const t = S.recv / SR * 1000;
   S.recv += FRAME;
   S.ring.push(data);
-  if (S.queue.length >= MAX_QUEUE) { S.queue.shift(); S.dropped++; }
+  if (S.queue.length >= MAX_QUEUE) S.queue.shift();
   S.queue.push({ data, t, ep: S.epoch });
   pump();
 }
 
-/* ===== Silero VAD（寝言除外の第1段） ===== */
 async function loadVad() {
-  if (typeof ort === "undefined") {
-    S.vad = null; S.vadOk = false;
-    setVadState("ort未読込");
-    $("vad-warn").hidden = false;
-    return;
-  }
-  let buf;
+  if (typeof ort === "undefined") { $("vad-warn").hidden = false; return; }
   try {
     const r = await fetch(VAD_URL, { cache: "no-store" });
     if (!r.ok) throw new Error("HTTP " + r.status);
-    buf = await r.arrayBuffer();
-  } catch (e) {
-    console.warn(e);
-    S.vad = null; S.vadOk = false;
-    setVadState("モデル未配置");
-    $("vad-warn").hidden = false;
-    return;
-  }
-  try {
-    ort.env.wasm.numThreads = 1;
-    ort.env.wasm.wasmPaths = "./";
+    const buf = await r.arrayBuffer();
+    ort.env.wasm.numThreads = 1; ort.env.wasm.wasmPaths = "./";
     S.vad = await ort.InferenceSession.create(buf, { executionProviders: ["wasm"] });
-    setVadState("有効");
-    $("vad-warn").hidden = true;
-  } catch (e) {
-    console.warn(e);
-    S.vad = null;
-    setVadState("読込失敗");
-    $("vad-warn").hidden = false;
-  }
-  S.vadOk = !!S.vad;
+    S.vadOk = true;
+  } catch { $("vad-warn").hidden = false; }
 }
-
-function setVadState(text) { $("vad-state").textContent = text; }
 
 async function vadProb(frame) {
   const inp = new Float32Array(VAD_CTX + FRAME);
-  inp.set(S.vadCtx, 0);
-  inp.set(frame, VAD_CTX);
+  inp.set(S.vadCtx, 0); inp.set(frame, VAD_CTX);
   S.vadCtx = inp.slice(inp.length - VAD_CTX);
   const out = await S.vad.run({
     input: new ort.Tensor("float32", inp, [1, VAD_CTX + FRAME]),
-    state: S.vadState,
-    sr: new ort.Tensor("int64", BigInt64Array.from([BigInt(SR)]), [])
+    state: S.vadState, sr: new ort.Tensor("int64", BigInt64Array.from([BigInt(SR)]), [])
   });
   S.vadState = out.stateN;
   return out.output.data[0];
@@ -841,1126 +561,393 @@ async function pump() {
       const f = S.queue.shift();
       if (f.ep !== S.epoch) continue;
       let p = 0;
-      if (S.vadOk) {
-        try { p = await vadProb(f.data); }
-        catch (e) {
-          console.error(e);
-          S.vadOk = false;
-          setVadState("エラー");
-          showError("VADの実行に失敗しました。寝言除外は無効になり、以後のいびき候補は寝言の区別なしで保存されます。");
-        }
-      }
+      if (S.vadOk) { try { p = await vadProb(f.data); } catch { S.vadOk = false; } }
       if (!S.running || f.ep !== S.epoch) break;
       processFrame(f, p);
     }
   } finally { S.busy = false; }
 }
 
-/* ===== 1フレーム（32ms）の処理 ===== */
 function processFrame(f, p) {
-  const t = f.t;
-  let ss = 0;
-  const d = f.data;
-  for (let i = 0; i < d.length; i++) ss += d[i] * d[i];
-  const srcDb = toDb(Math.sqrt(ss / d.length));
-  const lv = srcDb + S.gainDb;
-  S.lastLv = lv;
+  const t = f.t, d = f.data;
+  let ss = 0; for (let i = 0; i < d.length; i++) ss += d[i] * d[i];
+  const lv = toDb(Math.sqrt(ss / d.length)) + S.gainDb;
   S.nowMs = t + FRAME / SR * 1000;
-
   S.pHist.push({ t, p });
   while (S.pHist.length && S.pHist[0].t < t - 10000) S.pHist.shift();
 
   if (!S.calibrated) {
     S.calibVals.push(lv);
     if (S.nowMs >= CALIB_SEC * 1000) {
-      S.base = lowerMean(S.calibVals);
-      S.calibrated = true;
-      S.calibVals = [];
-      S.lastBaseSec = Math.floor(S.nowMs / 1000);
-      S.sess.base = round1(S.base);
+      S.base = lowerMean(S.calibVals); S.calibrated = true; S.calibVals = [];
+      S.lastBaseSec = Math.floor(S.nowMs / 1000); S.sess.base = round1(S.base);
     }
   }
-
   const sec = Math.floor(t / 1000);
   if (!S.bucket || S.bucket.sec !== sec) {
     if (S.bucket) finishSecond(S.bucket);
     S.bucket = { sec, lv: [], p: [], mot: [] };
   }
-  S.bucket.lv.push(lv);
-  S.bucket.p.push(p);
+  S.bucket.lv.push(lv); S.bucket.p.push(p);
 
   if (S.calibrated) {
     if (lv > S.base + LOUD_DB) {
       if (!S.cand) S.cand = { startMs: t, lastMs: t, quiet: 0, peakDb: -100, sumDb: 0, n: 0 };
-      const c = S.cand;
-      c.lastMs = t;
-      c.quiet = 0;
-      c.peakDb = Math.max(c.peakDb, lv);
-      c.sumDb += lv;
-      c.n++;
+      const c = S.cand; c.lastMs = t; c.quiet = 0; c.peakDb = Math.max(c.peakDb, lv); c.sumDb += lv; c.n++;
       if (t - c.startMs > SEG_MAX * 1000) { closeCand(c); S.cand = null; }
     } else if (S.cand) {
       S.cand.quiet++;
       if (S.cand.quiet >= QUIET_FRAMES) { closeCand(S.cand); S.cand = null; }
     }
   }
-
-  tickPending(S.nowMs);
+  while (S.pendingCands.length && S.pendingCands[0].due <= S.nowMs) decideCand(S.pendingCands.shift());
 }
 
-/* ===== 候補区間の確定と判定 ===== */
 function closeCand(c) {
-  const endMs = c.lastMs + FRAME / SR * 1000;
-  const durMs = endMs - c.startMs;
+  const endMs = c.lastMs + FRAME / SR * 1000, durMs = endMs - c.startMs;
   if (durMs < SEG_MIN * 1000) { S.counts.short++; return; }
   S.pendingCands.push({ c, endMs, durMs, due: endMs + POST_MS });
 }
-
-function maxP(from, to) {
-  let m = 0;
-  for (const h of S.pHist) if (h.t >= from && h.t <= to && h.p > m) m = h.p;
-  return m;
-}
-
+function maxP(from, to) { let m = 0; for (const h of S.pHist) if (h.t >= from && h.t <= to && h.p > m) m = h.p; return m; }
 function decideCand(it) {
   const { c, endMs, durMs } = it;
-  const vadOn = S.vadOk;
-  const inside = vadOn ? maxP(c.startMs, endMs) : 0;
-  const near = vadOn ? maxP(c.startMs - 1000, endMs + 1000) : 0;
-  let type;
-  if (durMs > SEG_MAX * 1000) type = "unknown";
-  else if (vadOn && (inside > VAD_TH || near > VAD_TH)) type = "speech";
-  else type = "snore";
-
+  const inside = S.vadOk ? maxP(c.startMs, endMs) : 0;
+  const near = S.vadOk ? maxP(c.startMs - 1000, endMs + 1000) : 0;
+  let type = durMs > SEG_MAX * 1000 ? "unknown" : (S.vadOk && (inside > VAD_TH || near > VAD_TH)) ? "speech" : "snore";
   const ev = {
-    id: uid(), sid: S.sid, type,
-    startMs: round1(c.startMs), endMs: round1(endMs), durMs: round1(durMs),
+    id: uid(), sid: S.sid, type, startMs: round1(c.startMs), endMs: round1(endMs), durMs: round1(durMs),
     peakSourceDb: round1(c.peakDb - S.gainDb), peakAppliedDb: round1(c.peakDb),
     meanSourceDb: round1(c.sumDb / c.n - S.gainDb), meanAppliedDb: round1(c.sumDb / c.n),
-    vadMax: vadOn ? round2(inside) : null, vadNear: vadOn ? round2(near) : null,
-    gainDb: S.gainDb, label: null, clipId: null
+    vadMax: S.vadOk ? round2(inside) : null, vadNear: S.vadOk ? round2(near) : null, gainDb: S.gainDb, clipId: null
   };
-  if (type === "snore") ev.clipId = saveClip(c.startMs - PRE_MS, endMs + POST_MS, ev.id, "snore");
+  if (type === "snore" || type === "speech") {
+    const a = Math.round((c.startMs - PRE_MS) / 1000 * SR), b = Math.round((endMs + POST_MS) / 1000 * SR);
+    const f = S.ring.get(a, b);
+    if (f.length) {
+      const i16 = new Int16Array(f.length);
+      for (let i = 0; i < f.length; i++) i16[i] = clamp(Math.round(f[i] * 32767), -32768, 32767);
+      const cid = uid(); ev.clipId = cid;
+      DB.put("clips", { id: cid, sid: S.sid, eventId: ev.id, kind: type, sr: SR, codec: "pcm16", samples: i16.length, startMs: round1(Math.max(a, 0) / SR * 1000), gainDb: S.gainDb, data: i16 }).catch(console.error);
+    }
+  }
   S.counts[type]++;
   DB.put("events", ev).catch(console.error);
 }
 
-/* ===== 環境音の変化 ===== */
-function tickPending(now) {
-  while (S.pendingCands.length && S.pendingCands[0].due <= now) decideCand(S.pendingCands.shift());
-  while (S.pendingEnv.length && S.pendingEnv[0].due <= now) {
-    const it = S.pendingEnv.shift();
-    it.ev.clipId = saveClip(it.from, it.to, it.ev.id, "env");
-    DB.put("events", it.ev).catch(console.error);
-  }
-}
-
-// fromMs / toMs は記録開始からの時間（ミリ秒）。clips.json の startSec はここから作る
-// V13以降：音声は 4bit IMA ADPCM（WAV形式）で保存する（約1/4）。ZIPに書き出す時だけ PCM16 に戻す（V19）
-function saveClip(fromMs, toMs, eventId, kind) {
-  const a = Math.round(fromMs / 1000 * SR), b = Math.round(toMs / 1000 * SR);
-  const actualA = Math.max(a, 0, S.ring.total - S.ring.len);
-  const f = S.ring.get(a, b);
-  if (!f.length) return null;
-  const i16 = new Int16Array(f.length);
-  for (let i = 0; i < f.length; i++) i16[i] = Math.max(-32768, Math.min(32767, Math.round(f[i] * 32767)));
-  const id = uid();
-  DB.put("clips", {
-    id, sid: S.sid, eventId, kind, sr: SR,
-    codec: "ima-adpcm", samples: i16.length,
-    startMs: round1(actualA / SR * 1000),
-    dataIsSource: true, gainDb: S.gainDb, data: encodeImaWav(i16, SR)
-  }).catch(console.error);
-  return id;
-}
-
-/* ===== 1秒の集計 ===== */
 function finishSecond(b) {
   if (!b.lv.length) return;
-  const mLv = mean(b.lv), qLv = lowerMean(b.lv), mP = mean(b.p);
-  const mot = b.mot.length ? mean(b.mot) : null;
-  S.secBuf.push({
-    key: S.sid + ":" + b.sec, sid: S.sid, sec: b.sec,
-    dbApplied: round1(mLv), dbSource: round1(mLv - S.gainDb),
-    peakApplied: round1(maxOf(b.lv)), vadMean: round2(mP),
-    motion: mot == null ? null : round2(mot)
-  });
-  if (!S.calibrated) return;
-
-  const envCond = qLv > S.base + ENV_DB && mP < VAD_TH && !S.cand;
-  S.envRun = envCond ? S.envRun + 1 : 0;
-  if (S.envRun >= ENV_RUN_SEC && S.nowMs - S.lastEnvMs > ENV_COOLDOWN * 1000) {
-    S.lastEnvMs = S.nowMs;
-    S.envRun = 0;
-    const startMs = (b.sec - ENV_RUN_SEC + 1) * 1000;
-    const ev = {
-      id: uid(), sid: S.sid, type: "env", startMs, endMs: startMs + ENV_RUN_SEC * 1000,
-      durMs: ENV_RUN_SEC * 1000, peakSourceDb: null, peakAppliedDb: null,
-      meanSourceDb: round1(qLv - S.gainDb), meanAppliedDb: round1(qLv),
-      vadMax: round2(mP), vadNear: null, gainDb: S.gainDb, label: null, clipId: null
-    };
-    S.counts.env++;
-    DB.put("events", ev).catch(console.error);
-    if (S.envSave) {
-      S.pendingEnv.push({
-        ev, from: startMs - ENV_CLIP_SEC * 1000, to: startMs + ENV_CLIP_SEC * 1000,
-        due: startMs + ENV_CLIP_SEC * 1000
-      });
-    }
-  }
-
-  if (!envCond && mP < VAD_TH && qLv < S.base + ENV_DB) {
-    S.pool.push(qLv);
-    if (S.pool.length > POOL_MAX) S.pool.shift();
-  }
-  if (b.sec - S.lastBaseSec >= BASE_EVERY && S.pool.length >= POOL_MIN) {
-    S.base = mean(S.pool);
-    S.lastBaseSec = b.sec;
-    S.sess.base = round1(S.base);
-  }
+  const mLv = mean(b.lv), mot = b.mot.length ? mean(b.mot) : null;
+  S.secBuf.push({ key: S.sid + ":" + b.sec, sid: S.sid, sec: b.sec, dbApplied: round1(mLv), dbSource: round1(mLv - S.gainDb), peakApplied: round1(maxOf(b.lv)), vadMean: round2(mean(b.p)), motion: mot == null ? null : round2(mot) });
 }
-
 async function flushSecs() {
   if (!S.sess) return;
   const rows = S.secBuf.splice(0);
-  try {
-    if (rows.length) await DB.putMany("secs", rows);
-    S.sess.counts = { ...S.counts };
-    await DB.put("sessions", S.sess);
-  } catch (e) {
-    console.error(e);
-    S.secBuf.unshift(...rows);
-    showError("保存に失敗しました: " + e.message);
-  }
+  if (rows.length) await DB.putMany("secs", rows);
+  S.sess.counts = { ...S.counts };
+  await DB.put("sessions", S.sess);
 }
 
-/* ===== 体動（重力成分を除去） ===== */
-function onMotion(e) {
-  const a = e.accelerationIncludingGravity;
-  if (!a || a.x == null) return;
-  if (!S.grav) S.grav = { x: a.x, y: a.y, z: a.z };
-  const k = 0.8;
-  S.grav = { x: k * S.grav.x + (1 - k) * a.x, y: k * S.grav.y + (1 - k) * a.y, z: k * S.grav.z + (1 - k) * a.z };
-  const m = Math.hypot(a.x - S.grav.x, a.y - S.grav.y, a.z - S.grav.z);
-  S.motionNow = m;
-  if (S.bucket) S.bucket.mot.push(m);
-}
-
-/* ===== 記録の開始・停止 ===== */
-async function acquireWake() {
-  try { if ("wakeLock" in navigator) S.wake = await navigator.wakeLock.request("screen"); }
-  catch (e) { console.warn(e); }
-}
-function releaseWake() {
-  if (S.wake) { S.wake.release().catch(() => {}); S.wake = null; }
-}
-
+/* ===== 記録開始・停止 ===== */
 async function startRec() {
   if (S.running || !S.ctx) return;
-  if (!S.patient) { showError("患者情報がありません。最初からQRを読み取ってください。"); showPage("start"); return; }
   if (S.ctx.state !== "running") await S.ctx.resume().catch(() => {});
-  S.epoch++;
-  S.sid = uid();
-  S.recv = 0; S.nowMs = 0; S.ring = new Ring(RING_SEC); S.queue = []; S.dropped = 0;
-  S.calibrated = false; S.calibVals = []; S.base = null; S.pool = []; S.lastBaseSec = 0;
-  S.cand = null; S.pHist = []; S.pendingCands = []; S.pendingEnv = [];
-  S.bucket = null; S.secBuf = []; S.envRun = 0; S.lastEnvMs = -1e9;
-  S.counts = newCounts();
-  S.vadOk = !!S.vad;
+  S.epoch++; S.sid = uid(); S.recv = 0; S.nowMs = 0; S.ring = new Ring(RING_SEC); S.queue = [];
+  S.calibrated = false; S.calibVals = []; S.base = null; S.cand = null; S.pHist = []; S.pendingCands = []; S.bucket = null; S.secBuf = []; S.counts = newCounts();
   S.vadCtx = new Float32Array(VAD_CTX);
   S.vadState = S.vad ? new ort.Tensor("float32", new Float32Array(2 * 128), [2, 1, 128]) : null;
-  S.sess = {
-    id: S.sid, startedAt: Date.now(), endedAt: null, gainDb: S.gainDb, vadOk: S.vadOk,
-    base: null, counts: newCounts(), app: APP, ua: navigator.userAgent, micMode: S.micMode,
-    patient: { ...S.patient }
-  };
+  S.sess = { id: S.sid, startedAt: Date.now(), endedAt: null, gainDb: S.gainDb, vadOk: S.vadOk, base: null, counts: newCounts(), app: APP, patient: { ...S.patient } };
   await DB.put("sessions", S.sess);
   S.running = true;
-  await acquireWake();
+  try { if ("wakeLock" in navigator) S.wake = await navigator.wakeLock.request("screen"); } catch {}
   S.timers.push(setInterval(flushSecs, FLUSH_SEC * 1000));
-  setButtons();
-  updateUI();
+  $("start-btn").hidden = true; $("btn-enter-black").hidden = false; $("stop-btn").hidden = false;
+  $("rec-status-text").textContent = "記録中…（最初の10秒は環境音を測定します）";
 }
-
 async function stopRec() {
   if (!S.running) return;
-  S.running = false;
-  S.epoch++;
-  S.timers.forEach(clearInterval);
-  S.timers = [];
-  S.queue = [];
+  S.running = false; S.epoch++; S.timers.forEach(clearInterval); S.timers = []; S.queue = [];
   if (S.cand) { closeCand(S.cand); S.cand = null; }
   if (S.bucket) { finishSecond(S.bucket); S.bucket = null; }
-  tickPending(Infinity);
+  while (S.pendingCands.length) decideCand(S.pendingCands.shift());
   await flushSecs();
-  S.sess.endedAt = Date.now();
-  S.sess.counts = { ...S.counts };
-  await DB.put("sessions", S.sess).catch(console.error);
-  releaseWake();
+  S.sess.endedAt = Date.now(); S.sess.counts = { ...S.counts };
+  await DB.put("sessions", S.sess);
+  if (S.wake) { S.wake.release().catch(() => {}); S.wake = null; }
   exitBlack();
-  setButtons();
-  updateUI();
+  $("start-btn").hidden = false; $("btn-enter-black").hidden = true; $("stop-btn").hidden = true;
+  $("rec-status-text").textContent = "記録を保存しました。"; $("rec-timer-text").textContent = "";
 }
 
-/* ===== 画面更新 ===== */
-function startUiLoop() {
-  if (S.uiTimer) return;
-  S.uiTimer = setInterval(updateUI, UI_MS);
-}
-
-function updateUI() {
-  const lv = S.lastLv;
-  S.live.push({ lv: Math.max(-90, lv), mot: S.motionNow });
-  if (S.live.length > LIVE_N) S.live.shift();
-
-  $("level-bar").style.width = clamp((lv + 80) / 80 * 100, 0, 100) + "%";
-  $("level-text").textContent = round1(lv) + " dB";
-  if (!S.running) {
-    $("base-text").textContent = "待機中";
-  } else if (S.calibrated) {
-    $("base-text").textContent = "基準 " + round1(S.base) + " dB";
-  } else {
-    $("base-text").textContent = "基準計測中 残り " + Math.max(0, Math.ceil(CALIB_SEC - S.nowMs / 1000)) + " 秒";
-  }
-  $("motion-text").textContent = S.motionNow == null ? "-" : S.motionNow.toFixed(2) + " m/s²";
-  $("live-lv-text").textContent = S.ctx ? round1(lv) + " dB" : "-";
-  drawSpark("live-audio", S.live.map((x) => x.lv), -90, 0, "#84b9cf");
-  drawSpark("live-motion", S.live.map((x) => x.mot), 0, 1, "#ffffff");
-}
-
-function drawSpark(id, arr, min, max, color) {
-  const box = $(id);
-  if (!box) return;
-  const W = 480, H = 110, PT = 6, PB = 6;
-  const pad0 = LIVE_N - arr.length;
-  const pts = [];
-  arr.forEach((v, i) => {
-    if (v == null) return;
-    const x = (i + pad0) / (LIVE_N - 1) * W;
-    const r = clamp((v - min) / (max - min), 0, 1);
-    const y = H - PB - r * (H - PT - PB);
-    pts.push(x.toFixed(1) + "," + y.toFixed(1));
-  });
-  box.innerHTML = '<svg viewBox="0 0 ' + W + " " + H + '" xmlns="http://www.w3.org/2000/svg">' +
-    '<rect x="0" y="0" width="' + W + '" height="' + H + '" fill="none" stroke="#2a3643"/>' +
-    '<polyline points="' + pts.join(" ") + '" fill="none" stroke="' + color + '" stroke-width="1.5"/>' +
-    '<text x="4" y="12" font-size="10" fill="#aebbc9">' + max + "</text>" +
-    '<text x="4" y="' + (H - 3) + '" font-size="10" fill="#aebbc9">' + min + "</text>" +
-    "</svg>";
-}
-
-function setButtons() {
-  $("mic-btn").disabled = !!S.ctx;
-  $("mic-btn").textContent = S.ctx ? "マイク許可済み" : "マイクを許可";
-  $("start-btn").disabled = S.running || !S.ctx || !S.patient;
-  $("stop-btn").disabled = !S.running;
-  $("btn-enter-black").disabled = !S.running;
-  $("gain").disabled = S.running;
-  $("rec-badge").textContent = S.running ? "記録中" : "待機中";
-  $("rec-badge").className = S.running ? "tag rec" : "tag";
-  renderPatientCard();
-  renderUpdate();
-}
-
-/* ===== GitHub更新 ===== */
-const upd = { latest: null, checkedAt: null, error: null, checking: false };
-
-function renderUpdate() {
-  const busy = isBusy();
-  const newer = upd.latest != null && upd.latest > APP_VERSION;
-  $("upd-cur").textContent = "SomnoLog V" + APP_VERSION;
-  $("upd-latest").textContent = upd.latest == null ? "未確認" : "V" + upd.latest;
-
-  let msg;
-  if (upd.checking) msg = "確認中…";
-  else if (upd.error) msg = "確認できませんでした（" + upd.error + "）";
-  else if (upd.latest == null) msg = "起動時にGitHubの更新を確認します。";
-  else if (newer) msg = "新しい版があります（V" + upd.latest + "）。" + (busy ? "記録・保存・共有が終わってから適用してください。" : "");
-  else if (upd.latest === APP_VERSION) msg = "最新です。";
-  else msg = "取得した版（V" + upd.latest + "）は現在より古いため、適用しません。";
-  if (!upd.checking && upd.checkedAt) msg += "（" + fmtClock(upd.checkedAt.getTime()) + " 確認）";
-  $("upd-msg").textContent = msg;
-
-  $("upd-check").disabled = upd.checking;
-  $("upd-apply").disabled = busy || !newer;
-  $("upd-reload").disabled = busy;
-}
-
-// GitHubの版を確認する（画面は変えない）
-async function checkUpdate() {
-  if (upd.checking) return;
-  upd.checking = true;
-  renderUpdate();
-  try {
-    const r = await fetch(UPDATE_SRC + "?t=" + Date.now(), { cache: "no-store" });
-    if (!r.ok) throw new Error("HTTP " + r.status);
-    const txt = await r.text();
-    const m = txt.match(/const\s+APP_VERSION\s*=\s*(\d+)/);
-    if (!m) throw new Error("版番号を読み取れませんでした");
-    upd.latest = Number(m[1]);
-    upd.error = null;
-  } catch (e) {
-    upd.error = e.message;
-  } finally {
-    upd.checking = false;
-    upd.checkedAt = new Date();
-    renderUpdate();
-  }
-}
-
-// キャッシュを避けて、同じページを開き直す
-function reloadNoCache() {
-  if (isBusy()) return;
-  const u = new URL(location.href);
-  u.hash = "";
-  u.searchParams.set("v", String(Date.now()));
-  location.replace(u.toString());
-}
-
-function applyUpdate() {
-  if (isBusy() || !(upd.latest > APP_VERSION)) return;
-  if (!confirm("新しい版（V" + upd.latest + "）を開きます。よろしいですか？")) return;
-  reloadNoCache();
+/* ===== 2秒長押しヘルパー ===== */
+function bindLongPress(el, ms, onDone) {
+  let t = null;
+  const cancel = () => { clearTimeout(t); t = null; };
+  el.addEventListener("pointerdown", () => { cancel(); t = setTimeout(() => { t = null; onDone(); }, ms); });
+  el.addEventListener("pointerup", cancel);
+  el.addEventListener("pointercancel", cancel);
+  el.addEventListener("pointerleave", cancel);
 }
 
 /* ===== 黒画面 ===== */
-function setRootBlack(on) {
-  const h = document.documentElement, b = document.body;
-  if (on) {
-    S.savedStyle = { h: h.getAttribute("style"), b: b.getAttribute("style") };
-    h.style.setProperty("background-color", "#000000", "important");
-    b.style.setProperty("background-color", "#000000", "important");
-    h.style.setProperty("overflow", "hidden");
-    b.style.setProperty("overflow", "hidden");
-  } else {
-    if (S.savedStyle) {
-      if (S.savedStyle.h == null) h.removeAttribute("style"); else h.setAttribute("style", S.savedStyle.h);
-      if (S.savedStyle.b == null) b.removeAttribute("style"); else b.setAttribute("style", S.savedStyle.b);
-    }
-    S.savedStyle = null;
-  }
-}
-
-function requestFs() {
-  const el = document.documentElement;
-  const req = el.requestFullscreen || el.webkitRequestFullscreen;
-  if (!req) return;
-  try {
-    const r = req.call(el);
-    if (r && r.catch) r.catch(() => {});
-  } catch (e) { console.warn(e); }
-}
-
-function exitFs() {
-  const doc = document;
-  const isFs = doc.fullscreenElement || doc.webkitFullscreenElement;
-  if (!isFs) return;
-  const exit = doc.exitFullscreen || doc.webkitExitFullscreen;
-  if (exit) {
-    try {
-      const r = exit.call(doc);
-      if (r && r.catch) r.catch(() => {});
-    } catch (e) { console.warn(e); }
-  }
-}
-
-function updateBlack() {
-  $("black-clock").textContent = new Date().toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" });
-}
-
 function enterBlack() {
-  if (S.blackOn) return;
-  S.blackOn = true;
-  setRootBlack(true);
-  $("black-screen").hidden = false;
-  updateBlack();
-  S.blackTimer = setInterval(updateBlack, 1000);
-  requestFs();
+  S.blackOn = true; $("black-screen").hidden = false;
+  const upd = () => { $("black-clock").textContent = new Date().toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" }); };
+  upd(); S.blackTimer = setInterval(upd, 1000);
+  document.documentElement.requestFullscreen?.().catch(() => {});
 }
-
 function exitBlack() {
   if (!S.blackOn) return;
-  S.blackOn = false;
-  if (S.blackTimer) clearInterval(S.blackTimer);
-  S.blackTimer = null;
-  $("black-screen").hidden = true;
-  setRootBlack(false);
-  exitFs();
+  S.blackOn = false; clearInterval(S.blackTimer); $("black-screen").hidden = true;
+  if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
 }
+bindLongPress($("black-screen"), 2000, exitBlack);
 
-/* ===== 履歴・詳細 ===== */
-async function renderHistory() {
-  const list = $("session-list");
-  list.innerHTML = "";
+/* ===== カレンダー・詳細 ===== */
+async function renderCalendar() {
+  const y = S.calMonth.getFullYear(), m = S.calMonth.getMonth();
+  $("cal-title").textContent = y + "年" + (m + 1) + "月";
   const sessions = (await DB.all("sessions")).sort((a, b) => b.startedAt - a.startedAt);
-  if (!sessions.length) { list.innerHTML = '<p class="muted">まだ記録がありません。</p>'; return; }
-  for (const s of sessions) {
+  const hasRec = new Set(sessions.map((s) => dayKey(s.startedAt)));
+  const grid = $("cal-days"); grid.innerHTML = "";
+  const firstDow = new Date(y, m, 1).getDay(), lastDay = new Date(y, m + 1, 0).getDate();
+  for (let i = 0; i < firstDow; i++) grid.appendChild(document.createElement("span"));
+  for (let d = 1; d <= lastDay; d++) {
+    const k = y + "-" + pad(m + 1) + "-" + pad(d);
     const b = document.createElement("button");
-    b.className = "listitem sub";
-    const c = s.counts || {};
-    const dur = s.endedAt ? fmtTime(s.endedAt - s.startedAt) : "記録中または中断";
-    const who = s.patient && s.patient.name ? s.patient.name + "・" : "";
-    b.innerHTML = "<b>" + esc(fmtDate(s.startedAt)) + "</b>" +
-      '<span class="muted">' + esc(who) + "記録 " + dur + "／いびき " + (c.snore || 0) + "・寝言の疑い " + (c.speech || 0) + "・環境音 " + (c.env || 0) + "</span>";
-    b.onclick = () => openDetail(s.id).catch((err) => showError(err.message));
-    list.appendChild(b);
+    b.className = "cal-day" + (k === S.calSel ? " sel" : "") + (k === dayKey(Date.now()) ? " today" : "");
+    b.innerHTML = "<span>" + d + "</span>" + (hasRec.has(k) ? '<span class="cal-dot"></span>' : '<span class="cal-dot" style="opacity:0"></span>');
+    b.onclick = () => { S.calSel = k; renderCalendar(); };
+    grid.appendChild(b);
   }
+  const dayRecs = sessions.filter((s) => dayKey(s.startedAt) === S.calSel);
+  $("cal-sel-date").textContent = S.calSel;
+  $("cal-sel-count").textContent = "記録 " + dayRecs.length + "件";
+  const list = $("cal-list"); list.innerHTML = "";
+  dayRecs.forEach((s) => {
+    const b = document.createElement("button");
+    b.textContent = "記録を選ぶ（" + new Date(s.startedAt).toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" }) + "〜）";
+    b.onclick = () => openDetail(s.id);
+    list.appendChild(b);
+  });
 }
-
-let blobUrls = [];
-function revokeUrls() { blobUrls.forEach((u) => URL.revokeObjectURL(u)); blobUrls = []; }
 
 async function openDetail(sid) {
   S.detailSid = sid;
-  const sess = await DB.get("sessions", sid);
-  if (!sess) return;
-  const secs = (await DB.byIndex("secs", "sid", sid)).sort((a, b) => a.sec - b.sec);
-  const evs = (await DB.byIndex("events", "sid", sid)).sort((a, b) => a.startMs - b.startMs);
-  $("d-title").textContent = fmtDate(sess.startedAt) + " の記録";
-  renderSummary(sess, secs);
-  drawChart(sess, secs, evs);
-  await renderEvents(sess, evs);
+  await drawDetailChart();
   showPage("detail");
 }
-
-function renderSummary(sess, secs) {
-  const c = sess.counts || {};
-  const p = sess.patient || {};
-  const motions = secs.filter((s) => s.motion != null).map((s) => s.motion);
-  const last = secs.length ? secs[secs.length - 1].sec : 0;
-  $("d-summary").innerHTML =
-    '<div class="kv"><span>患者名</span><b>' + esc(p.name || "-") + "</b></div>" +
-    '<div class="kv"><span>カルテNo</span><b>' + esc(p.chartNo || "-") + "</b></div>" +
-    '<div class="kv"><span>開始</span><b>' + esc(fmtDate(sess.startedAt)) + "</b></div>" +
-    '<div class="kv"><span>記録時間</span><b>' + fmtTime(last * 1000) + "</b></div>" +
-    '<div class="kv"><span>基準値（生音）</span><b>' + (sess.base == null ? "-" : round1(sess.base) + " dB") + "</b></div>" +
-    '<div class="kv"><span>いびき（保存）</span><b>' + (c.snore || 0) + "</b></div>" +
-    '<div class="kv"><span>寝言・話し声の疑い（除外）</span><b>' + (c.speech || 0) + "</b></div>" +
-    '<div class="kv"><span>判定不能（保存なし）</span><b>' + (c.unknown || 0) + "</b></div>" +
-    '<div class="kv"><span>環境音の変化</span><b>' + (c.env || 0) + "</b></div>" +
-    '<div class="kv"><span>短い音（除外）</span><b>' + (c.short || 0) + "</b></div>" +
-    '<div class="kv"><span>寝言除外（VAD）</span><b>' + (sess.vadOk ? "有効" : "無効（寝言の区別なし。候補はいびきとして保存）") + "</b></div>" +
-    '<div class="kv"><span>体動（平均）</span><b>' + mean(motions).toFixed(2) + "</b></div>";
-}
-
-function drawChart(sess, secs, evs) {
+async function drawDetailChart() {
+  const secs = (await DB.byIndex("secs", "sid", S.detailSid)).sort((a, b) => a.sec - b.sec);
   const box = $("d-chart");
-  if (!secs.length) { box.innerHTML = '<p class="muted">データがありません。</p>'; return; }
-  const W = 480, H = 220, PL = 36, PR = 8, PT = 8, PB = 22;
-  const maxT = Math.max(60, secs[secs.length - 1].sec + 1);
-  const vals = secs.map((s) => s.dbApplied);
-  if (sess.base != null) vals.push(sess.base);
-  const ymin = Math.floor(minOf(vals) / 5) * 5 - 5;
-  const ymax = Math.ceil(maxOf(vals) / 5) * 5 + 5;
-  const X = (t) => PL + (t / maxT) * (W - PL - PR);
-  const Y = (db) => PT + ((ymax - db) / (ymax - ymin)) * (H - PT - PB);
-
-  const step = Math.max(1, Math.ceil(secs.length / 900));
-  const pts = secs.filter((_, i) => i % step === 0)
-    .map((s) => X(s.sec).toFixed(1) + "," + Y(s.dbApplied).toFixed(1)).join(" ");
-
-  const mot = secs.filter((s) => s.motion != null);
-  const mMax = mot.reduce((a, s) => Math.max(a, s.motion), 0.5);
-  const motPts = mot.filter((_, i) => i % step === 0)
-    .map((s) => X(s.sec).toFixed(1) + "," + (H - PB - Math.min(1, s.motion / mMax) * 18).toFixed(1)).join(" ");
-
-  const marks = evs.map((e) => {
-    const x = X(e.startMs / 1000).toFixed(1);
-    if (e.type === "env") {
-      return '<line x1="' + x + '" x2="' + x + '" y1="' + PT + '" y2="' + (H - PB) + '" stroke="#f3e7c9" stroke-dasharray="4 3"/>';
+  if (!secs.length) { box.innerHTML = '<p class="muted">データがありません</p>'; return; }
+  const W = 400, H = 160, N = 40, step = Math.max(1, Math.ceil(secs.length / N));
+  let bars = "";
+  for (let i = 0; i < N; i++) {
+    const slice = secs.slice(i * step, (i + 1) * step);
+    const x = i * (W / N) + 2, bw = (W / N) - 4;
+    if (!slice.length) {
+      bars += `<rect x="${x}" y="10" width="${bw}" height="${H-20}" fill="#2b313a"/>`;
+      continue;
     }
-    const db = e.peakAppliedDb != null ? e.peakAppliedDb : (e.meanAppliedDb != null ? e.meanAppliedDb : ymin);
-    const color = e.type === "snore" ? "#7fd6a0" : e.type === "speech" ? "#e07b74" : "#9aa5b1";
-    return '<circle cx="' + x + '" cy="' + Y(db).toFixed(1) + '" r="3.5" fill="' + color + '"/>';
-  }).join("");
-
-  const baseLine = sess.base == null ? "" :
-    '<line x1="' + PL + '" x2="' + (W - PR) + '" y1="' + Y(sess.base).toFixed(1) + '" y2="' + Y(sess.base).toFixed(1) + '" stroke="#84b9cf" stroke-dasharray="4 3"/>';
-
-  box.innerHTML = '<svg viewBox="0 0 ' + W + " " + H + '" xmlns="http://www.w3.org/2000/svg">' +
-    '<rect x="' + PL + '" y="' + PT + '" width="' + (W - PL - PR) + '" height="' + (H - PT - PB) + '" fill="none" stroke="#2a3643"/>' +
-    baseLine + marks +
-    '<polyline points="' + pts + '" fill="none" stroke="#84b9cf" stroke-width="1.2"/>' +
-    '<polyline points="' + motPts + '" fill="none" stroke="#ffffff" stroke-width="1" opacity=".7"/>' +
-    '<text x="2" y="' + (Y(ymax) + 8) + '" font-size="10" fill="#aebbc9">' + ymax + "</text>" +
-    '<text x="2" y="' + Y(ymin) + '" font-size="10" fill="#aebbc9">' + ymin + "</text>" +
-    '<text x="' + PL + '" y="' + (H - 6) + '" font-size="10" fill="#aebbc9">0分</text>' +
-    '<text x="' + (W - PR) + '" y="' + (H - 6) + '" font-size="10" fill="#aebbc9" text-anchor="end">' + Math.round(maxT / 60) + "分</text>" +
-    "</svg>";
-}
-
-async function renderEvents(sess, evs) {
-  revokeUrls();
-  const box = $("d-events");
-  box.innerHTML = "";
-  if (!evs.length) { box.innerHTML = '<p class="muted">検知区間はありません。</p>'; return; }
-  for (const e of evs) {
-    const row = document.createElement("div");
-    row.className = "event";
-    const tagCls = e.type === "speech" ? "rej" : e.type === "env" ? "env" : "";
-    const level = e.peakSourceDb != null
-      ? "最大 " + e.peakSourceDb + " dB（生音）"
-      : "平均 " + (e.meanSourceDb != null ? e.meanSourceDb : "-") + " dB（生音）";
-    row.innerHTML =
-      '<div class="kv"><span>' + esc(fmtClock(sess.startedAt + e.startMs)) + "（記録から " + fmtTime(e.startMs) + '）</span><span class="tag ' + tagCls + '">' + esc(LABELS[e.type] || e.type) + "</span></div>" +
-      '<div class="kv"><span>長さ ' + round1(e.durMs / 1000) + "秒</span><b>" + level + "</b></div>" +
-      '<div class="kv"><span>音声確率（区間内の最大／前後1秒）</span><b>' + (e.vadMax == null ? "-" : e.vadMax) + " ／ " + (e.vadNear == null ? "-" : e.vadNear) + "</b></div>";
-
-    const lab = document.createElement("div");
-    lab.className = "labels";
-    LABEL_KEYS.forEach((k) => {
-      const b = document.createElement("button");
-      b.textContent = LABELS[k];
-      if (e.label === k) b.classList.add("on");
-      b.onclick = async () => {
-        e.label = k;
-        await DB.put("events", e);
-        lab.querySelectorAll("button").forEach((x) => x.classList.remove("on"));
-        b.classList.add("on");
-      };
-      lab.appendChild(b);
-    });
-    row.appendChild(lab);
-
-    if (e.clipId) {
-      const clip = await DB.get("clips", e.clipId);
-      if (clip) {
-        const url = URL.createObjectURL(wavBlob(clipPcm(clip), clip.sr));
-        blobUrls.push(url);
-        const au = document.createElement("audio");
-        au.controls = true; au.preload = "none"; au.src = url;
-        row.appendChild(au);
-      }
-    } else if (e.type === "env") {
-      row.insertAdjacentHTML("beforeend", '<p class="muted">環境音の音声は保存されていません。</p>');
+    const db = mean(slice.map((s) => s.dbApplied));
+    const h = clamp((db + 80) / 70, 0.08, 1) * (H - 30);
+    bars += `<rect x="${x}" y="${H - 10 - h}" width="${bw}" height="${h}" fill="#4d90eb"/>`;
+    const mot = maxOf(slice.map((s) => s.motion || 0));
+    if (mot >= S.motTh) {
+      const mh = clamp(mot / 1.5, 0.15, 0.6) * (H - 30);
+      bars += `<rect x="${x}" y="6" width="${bw}" height="${mh}" fill="#d94b4b"/>`;
     }
-    box.appendChild(row);
   }
+  box.innerHTML = `<svg viewBox="0 0 ${W} ${H}">${bars}</svg>`;
 }
 
-/* ===== WAV・ZIP（共有用） ===== */
+/* ===== WAV・ZIP ===== */
 function wavBytes(i16, sr) {
-  const buf = new ArrayBuffer(44 + i16.length * 2);
-  const v = new DataView(buf);
+  const buf = new ArrayBuffer(44 + i16.length * 2), v = new DataView(buf);
   const str = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
-  str(0, "RIFF"); v.setUint32(4, 36 + i16.length * 2, true); str(8, "WAVE");
-  str(12, "fmt "); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
-  v.setUint32(24, sr, true); v.setUint32(28, sr * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true);
-  str(36, "data"); v.setUint32(40, i16.length * 2, true);
+  str(0,"RIFF"); v.setUint32(4,36+i16.length*2,true); str(8,"WAVE"); str(12,"fmt "); v.setUint32(16,16,true);
+  v.setUint16(20,1,true); v.setUint16(22,1,true); v.setUint32(24,sr,true); v.setUint32(28,sr*2,true);
+  v.setUint16(32,2,true); v.setUint16(34,16,true); str(36,"data"); v.setUint32(40,i16.length*2,true);
   new Int16Array(buf, 44).set(i16);
   return new Uint8Array(buf);
 }
-const wavBlob = (i16, sr) => new Blob([wavBytes(i16, sr)], { type: "audio/wav" });
-
-/* ===== 4bit IMA ADPCM（V13で追加） =====
-   ・1サンプル16bit → 4bit に圧縮（約1/4）
-   ・保存用の形式。ブラウザ内の再生と、ZIP書き出し時の復号に使う
-   ・1ブロック256バイト（先頭4バイトは予測値と段階番号）
-   ・旧版（V12以前）の音声は PCM16 のまま。clips の codec で判別する */
-const IMA_STEP = [7,8,9,10,11,12,13,14,16,17,19,21,23,25,28,31,34,37,41,45,50,55,60,66,73,80,88,97,107,118,130,143,157,173,190,209,230,253,279,307,337,371,408,449,494,544,598,658,724,796,876,963,1060,1166,1282,1411,1552,1707,1878,2066,2272,2499,2749,3024,3327,3660,4026,4428,4871,5358,5894,6484,7132,7845,8630,9493,10442,11487,12635,13899,15289,16818,18500,20350,22385,24623,27086,29794,32767];
-const IMA_IDX = [-1, -1, -1, -1, 2, 4, 6, 8];
-const IMA_BLOCK = 256, IMA_SPB = 505; // 1ブロックのバイト数／1ブロックのサンプル数
-
-// 状態（st.pred=予測値, st.idx=段階番号）を、4bitの符号 code で更新する（符号化・復号で共通）
-function imaApply(code, st) {
-  const step = IMA_STEP[st.idx];
-  let dq = step >> 3;
-  if (code & 4) dq += step;
-  if (code & 2) dq += step >> 1;
-  if (code & 1) dq += step >> 2;
-  st.pred += (code & 8) ? -dq : dq;
-  st.pred = Math.max(-32768, Math.min(32767, st.pred));
-  st.idx = Math.max(0, Math.min(88, st.idx + IMA_IDX[code & 7]));
+function playPcm(i16) {
+  if (S.audioPlayer) { S.audioPlayer.pause(); S.audioPlayer = null; }
+  const url = URL.createObjectURL(new Blob([wavBytes(i16, SR)], { type: "audio/wav" }));
+  const a = new Audio(url); S.audioPlayer = a; a.play().catch(() => {});
 }
 
-// 1サンプルを 4bit の符号に変換し、状態を更新する
-function imaEncodeSample(s, st) {
-  const step = IMA_STEP[st.idx];
-  let diff = s - st.pred;
-  let code = 0;
-  if (diff < 0) { code = 8; diff = -diff; }
-  let tmp = step;
-  if (diff >= tmp) { code |= 4; diff -= tmp; }
-  tmp >>= 1;
-  if (diff >= tmp) { code |= 2; diff -= tmp; }
-  tmp >>= 1;
-  if (diff >= tmp) { code |= 1; }
-  imaApply(code, st);
-  return code;
-}
-
-// Int16Array → IMA ADPCM の WAV（バイト列）
-function encodeImaWav(i16, sr) {
-  const n = i16.length;
-  const blocks = Math.max(1, Math.ceil(n / IMA_SPB));
-  const dataLen = blocks * IMA_BLOCK;
-  const buf = new ArrayBuffer(60 + dataLen);
-  const u8 = new Uint8Array(buf);
-  const v = new DataView(buf);
-  const put = (o, s) => { for (let i = 0; i < 4; i++) u8[o + i] = s.charCodeAt(i); };
-  put(0, "RIFF"); v.setUint32(4, buf.byteLength - 8, true); put(8, "WAVE");
-  put(12, "fmt "); v.setUint32(16, 20, true);
-  v.setUint16(20, 17, true);                              // 形式：IMA ADPCM
-  v.setUint16(22, 1, true);                               // モノラル
-  v.setUint32(24, sr, true);
-  v.setUint32(28, Math.round(sr * IMA_BLOCK / IMA_SPB), true);
-  v.setUint16(32, IMA_BLOCK, true);
-  v.setUint16(34, 4, true);                               // 4bit
-  v.setUint16(36, 2, true);                               // 追加情報の長さ
-  v.setUint16(38, IMA_SPB, true);                         // 1ブロックのサンプル数
-  put(40, "fact"); v.setUint32(44, 4, true); v.setUint32(48, n, true);
-  put(52, "data"); v.setUint32(56, dataLen, true);
-  const sampleAt = (i) => (i < n ? i16[i] : 0);
-  const st = { pred: 0, idx: 0 };
-  for (let b = 0; b < blocks; b++) {
-    const start = b * IMA_SPB, o = 60 + b * IMA_BLOCK;
-    st.pred = sampleAt(start);
-    st.idx = 0;
-    v.setInt16(o, st.pred, true);
-    u8[o + 2] = st.idx;
-    u8[o + 3] = 0;
-    let p = o + 4;
-    for (let j = 1; j < IMA_SPB; j += 2) {
-      const lo = imaEncodeSample(sampleAt(start + j), st);
-      const hi = imaEncodeSample(sampleAt(start + j + 1), st);
-      u8[p++] = lo | (hi << 4);
-    }
-  }
-  return u8;
-}
-
-// IMA ADPCM の WAV（バイト列）→ Int16Array（再生・確認用に復号する）
-function decodeImaWav(u8) {
-  const v = new DataView(u8.buffer, u8.byteOffset, u8.byteLength);
-  const tag = (o) => String.fromCharCode(u8[o], u8[o + 1], u8[o + 2], u8[o + 3]);
-  let off = 12, blockAlign = IMA_BLOCK, spb = IMA_SPB, total = 0, dataOff = -1, dataLen = 0;
-  while (off + 8 <= u8.length) {
-    const id = tag(off), size = v.getUint32(off + 4, true), body = off + 8;
-    if (id === "fmt ") { blockAlign = v.getUint16(body + 12, true); spb = v.getUint16(body + 18, true); }
-    else if (id === "fact") { total = v.getUint32(body, true); }
-    else if (id === "data") { dataOff = body; dataLen = size; break; }
-    off = body + size + (size & 1);
-  }
-  if (dataOff < 0) throw new Error("音声データが見つかりません");
-  const out = new Int16Array(total || Math.floor(dataLen / blockAlign) * spb);
-  const st = { pred: 0, idx: 0 };
-  let pos = 0;
-  for (let b = dataOff; b < dataOff + dataLen && pos < out.length; b += blockAlign) {
-    st.pred = v.getInt16(b, true);
-    st.idx = Math.max(0, Math.min(88, u8[b + 2]));
-    out[pos++] = st.pred;
-    let left = spb - 1;
-    const end = Math.min(b + blockAlign, dataOff + dataLen);
-    for (let p = b + 4; p < end && left > 0 && pos < out.length; p++) {
-      const byte = u8[p];
-      for (let k = 0; k < 2 && left > 0 && pos < out.length; k++) {
-        imaApply(k === 0 ? (byte & 15) : (byte >> 4), st);
-        out[pos++] = st.pred;
-        left--;
-      }
-    }
-  }
-  return out;
-}
-
-// 保存された音声（V13以降のADPCM、V12以前のPCM16の両方）をPCM16として取り出す
-function clipPcm(c) {
-  return c.codec === "ima-adpcm" ? decodeImaWav(c.data) : c.data;
-}
-// 共有用（ZIP）の音声：どの端末でも再生できるよう、必ず PCM16 のWAVにする（V19）
-// ADPCMで保存された分は、ここで復号してから書き出す
-function clipBytes(c) {
-  return wavBytes(clipPcm(c), c.sr);
-}
-// 音声のサンプル数
-function clipSamples(c) {
-  return c.codec === "ima-adpcm" ? c.samples : c.data.length;
-}
-
-const CRC_TABLE = (() => {
-  const t = new Uint32Array(256);
-  for (let n = 0; n < 256; n++) {
-    let c = n;
-    for (let k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
-    t[n] = c >>> 0;
-  }
-  return t;
-})();
-function crc32(u8) {
-  let c = 0xFFFFFFFF;
-  for (let i = 0; i < u8.length; i++) c = CRC_TABLE[(c ^ u8[i]) & 255] ^ (c >>> 8);
-  return (c ^ 0xFFFFFFFF) >>> 0;
-}
-
-// deflate（ZIP内のraw deflate）で圧縮する。ブラウザが対応していない場合は null を返す（無圧縮で保存する）
-async function deflateRaw(u8) {
-  if (typeof CompressionStream === "undefined") return null;
-  try {
-    const stream = new Blob([u8]).stream().pipeThrough(new CompressionStream("deflate-raw"));
-    return new Uint8Array(await new Response(stream).arrayBuffer());
-  } catch (e) {
-    console.warn(e);
-    return null;
-  }
-}
-
-// ZIP作成。compress:true のファイルだけ圧縮する（音声は無圧縮のまま）
-async function makeZip(files) {
-  const parts = [], cd = [];
-  let off = 0;
+const CRC_TABLE = (() => { const t = new Uint32Array(256); for (let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=(c&1)?(0xEDB88320^(c>>>1)):(c>>>1);t[n]=c>>>0} return t; })();
+function crc32(u8) { let c = 0xFFFFFFFF; for (let i=0;i<u8.length;i++) c = CRC_TABLE[(c^u8[i])&255]^(c>>>8); return (c^0xFFFFFFFF)>>>0; }
+function makeZip(files) {
+  const parts = [], cd = []; let off = 0;
   for (const f of files) {
-    const name = f.nameBytes, raw = f.data, crc = crc32(raw);
-    let data = raw, method = 0;
-    if (f.compress) {
-      const z = await deflateRaw(raw);
-      if (z && z.length < raw.length) { data = z; method = 8; }
-    }
+    const name = new TextEncoder().encode(f.name), raw = f.data, crc = crc32(raw);
     const h = new DataView(new ArrayBuffer(30));
-    h.setUint32(0, 0x04034b50, true); h.setUint16(4, 20, true); h.setUint16(6, 0x0800, true);
-    h.setUint16(8, method, true); h.setUint16(10, 0, true); h.setUint16(12, 0x21, true);
-    h.setUint32(14, crc, true); h.setUint32(18, data.length, true); h.setUint32(22, raw.length, true);
-    h.setUint16(26, name.length, true); h.setUint16(28, 0, true);
-    parts.push(h, name, data);
-
+    h.setUint32(0,0x04034b50,true); h.setUint16(4,20,true); h.setUint16(6,0x0800,true); h.setUint16(12,0x21,true);
+    h.setUint32(14,crc,true); h.setUint32(18,raw.length,true); h.setUint32(22,raw.length,true); h.setUint16(26,name.length,true);
+    parts.push(h, name, raw);
     const c = new DataView(new ArrayBuffer(46));
-    c.setUint32(0, 0x02014b50, true); c.setUint16(4, 20, true); c.setUint16(6, 20, true); c.setUint16(8, 0x0800, true);
-    c.setUint16(10, method, true); c.setUint16(12, 0, true); c.setUint16(14, 0x21, true);
-    c.setUint32(16, crc, true); c.setUint32(20, data.length, true); c.setUint32(24, raw.length, true);
-    c.setUint16(28, name.length, true); c.setUint32(42, off, true);
-    cd.push(c, name);
-    off += 30 + name.length + data.length;
+    c.setUint32(0,0x02014b50,true); c.setUint16(4,20,true); c.setUint16(6,20,true); c.setUint16(8,0x0800,true); c.setUint16(12,0x21,true);
+    c.setUint32(16,crc,true); c.setUint32(20,raw.length,true); c.setUint32(24,raw.length,true); c.setUint16(28,name.length,true); c.setUint32(42,off,true);
+    cd.push(c, name); off += 30 + name.length + raw.length;
   }
-  const cdSize = cd.reduce((s, x) => s + x.byteLength, 0);
+  const cdSize = cd.reduce((s,x)=>s+x.byteLength,0);
   const e = new DataView(new ArrayBuffer(22));
-  e.setUint32(0, 0x06054b50, true); e.setUint16(8, files.length, true); e.setUint16(10, files.length, true);
-  e.setUint32(12, cdSize, true); e.setUint32(16, off, true);
+  e.setUint32(0,0x06054b50,true); e.setUint16(8,files.length,true); e.setUint16(10,files.length,true);
+  e.setUint32(12,cdSize,true); e.setUint32(16,off,true);
   return new Blob([...parts, ...cd, e], { type: "application/zip" });
 }
 
-// ZIPの中身
-// ・session.json：patient（患者情報）と session.timeSeriesLogs（1秒ごとのデータ）
-// ・clips.json：音声ファイルの一覧（startSec＝記録開始からの秒数、codec＝音声の方式）
-// ・summary.json / seconds.csv / events.csv / README.txt：人が確認する用（圧縮して保存）
-// ・clips/*.wav：音声（PCM16 WAV。無圧縮のまま）
-async function shareSession(sid) {
-  if (!sid) return;
-  const sess = await DB.get("sessions", sid);
-  if (!sess) return;
-  const secs = (await DB.byIndex("secs", "sid", sid)).sort((a, b) => a.sec - b.sec);
-  const evs = (await DB.byIndex("events", "sid", sid)).sort((a, b) => a.startMs - b.startMs);
-  const clips = (await DB.byIndex("clips", "sid", sid)).sort((a, b) => a.startMs - b.startMs);
-  const clipById = new Map(clips.map((c) => [c.id, c]));
-  const evById = new Map(evs.map((e) => [e.id, e]));
+async function buildAndShareZip(downloadOnly = false) {
+  const sess = await DB.get("sessions", S.detailSid);
+  const secs = (await DB.byIndex("secs", "sid", S.detailSid)).sort((a,b)=>a.sec-b.sec);
+  const clips = (await DB.byIndex("clips", "sid", S.detailSid)).filter((c) => c.kind !== "speech");
   const enc = new TextEncoder();
-  const files = [];
-  const recordedSec = secs.length ? secs[secs.length - 1].sec : 0;
-  const clipFile = (c) => "clips/" + c.id + ".wav";
-  const txt = (name, str) => ({ name, nameBytes: enc.encode(name), data: enc.encode(str), compress: true });
-  const patient = {
-    clinic: (sess.patient && sess.patient.clinic) || "",
-    chartNo: (sess.patient && sess.patient.chartNo) || "",
-    name: (sess.patient && sess.patient.name) || "",
-    serialNumber: (sess.patient && sess.patient.serialNumber) || "",
-    logShareEmail: (sess.patient && sess.patient.logShareEmail) || "",
-  };
-
-  for (const c of clips) {
-    const name = clipFile(c);
-    files.push({ name, nameBytes: enc.encode(name), data: clipBytes(c) });
-  }
-
-  const evOut = evs.map((e) => {
-    const clip = e.clipId ? clipById.get(e.clipId) : null;
-    return {
-      id: e.id, type: e.type, label: e.label,
-      startSec: round1(e.startMs / 1000),
-      startTime: isoOf(sess.startedAt + e.startMs),
-      durationSec: round1(e.durMs / 1000),
-      peakSourceDb: e.peakSourceDb, peakAppliedDb: e.peakAppliedDb,
-      meanSourceDb: e.meanSourceDb, meanAppliedDb: e.meanAppliedDb,
-      vadMax: e.vadMax, vadNear: e.vadNear, gainDb: e.gainDb,
-      clip: clip ? clipFile(clip) : null,
-      clipStartTime: clip ? isoOf(sess.startedAt + clip.startMs) : null
-    };
-  });
-
-  const session = {
-    exporter: APP,
-    disclaimer: DISCLAIMER,
-    patient,
-    session: {
-      id: sess.id,
-      startedAt: isoOf(sess.startedAt),
-      endedAt: sess.endedAt ? isoOf(sess.endedAt) : null,
-      durationSec: recordedSec,
-      gainDb: sess.gainDb,
-      vadEnabled: sess.vadOk,
-      micMode: sess.micMode || "",
-      baselineDbApplied: sess.base,
-      counts: sess.counts,
-      timeSeriesLogs: secs.map((s) => ({
-        sec: s.sec,
-        db: s.dbApplied,
-        dbSource: s.dbSource,
-        peakDb: s.peakApplied,
-        vadMean: s.vadMean,
-        motionMs2: s.motion,
-        motionG: s.motion == null ? null : round3(s.motion / G_ACC)
-      }))
-    }
-  };
-
-  const clipsJson = {
-    exporter: APP,
-    patient,
-    clips: clips.map((c) => {
-      const ev = c.eventId ? evById.get(c.eventId) : null;
-      return {
-        id: c.id,
-        eventId: c.eventId,
-        audioFile: clipFile(c),
-        codec: "pcm16",
-        category: c.kind,
-        type: ev ? ev.type : c.kind,
-        label: ev ? ev.label : null,
-        startSec: round2(c.startMs / 1000),
-        durationSec: round2(clipSamples(c) / c.sr),
-        sampleRate: c.sr,
-        gainDb: c.gainDb,
-        dataIsSource: true
-      };
-    })
-  };
-
-  const summary = {
-    app: APP, disclaimer: DISCLAIMER, sessionId: sess.id, patient,
-    startedAt: isoOf(sess.startedAt), endedAt: sess.endedAt ? isoOf(sess.endedAt) : null,
-    recordedSec,
-    vadEnabled: sess.vadOk, micMode: sess.micMode || "", baselineDbApplied: sess.base, gainDb: sess.gainDb,
-    counts: sess.counts, events: evOut
-  };
-
-  const csvSecs = "sec,time,dbApplied,dbSource,peakApplied,vadMean,motionMs2,motionG\n" +
-    secs.map((s) => [
-      s.sec, isoOf(sess.startedAt + s.sec * 1000), s.dbApplied, s.dbSource, s.peakApplied, s.vadMean,
-      s.motion ?? "", s.motion == null ? "" : round3(s.motion / G_ACC)
-    ].join(",")).join("\n");
-  const csvEvs = "id,type,label,startTime,durationSec,peakSourceDb,peakAppliedDb,meanSourceDb,vadMax,vadNear,gainDb,clip\n" +
-    evOut.map((e) => [e.id, e.type, e.label ?? "", e.startTime, e.durationSec, e.peakSourceDb ?? "", e.peakAppliedDb ?? "", e.meanSourceDb ?? "", e.vadMax ?? "", e.vadNear ?? "", e.gainDb, e.clip ?? ""].join(",")).join("\n");
-  const readme = DISCLAIMER + "\n\n" +
-    "- session.json: 患者情報（patient）と1秒ごとのデータ（session.timeSeriesLogs）\n" +
-    "- clips.json: 音声ファイルの一覧（startSec＝記録開始からの秒数、codec＝音声の方式）\n" +
-    "- summary.json: 記録の概要と検知区間\n" +
-    "- seconds.csv: 1秒ごとの音圧（dbApplied=ゲイン適用値、dbSource=調整前の生音）、音声確率、体動（motionMs2=m/s²、motionG=G）\n" +
-    "- events.csv: 検知区間の一覧\n" +
-    "- clips/*.wav: 音声（PCM16 WAV、16kHz・モノラル、調整前の生音。ゲイン値はclips.jsonのgainDbを参照）\n";
-
-  files.unshift(
-    txt("README.txt", readme),
-    txt("session.json", JSON.stringify(session)),
-    txt("clips.json", JSON.stringify(clipsJson, null, 2)),
-    txt("summary.json", JSON.stringify(summary, null, 2)),
-    txt("seconds.csv", csvSecs),
-    txt("events.csv", csvEvs)
-  );
-
-  const blob = await makeZip(files);
-  const fname = zipName(sess);
+  const files = [
+    { name: "session.json", data: enc.encode(JSON.stringify({ exporter: APP, patient: sess.patient, session: { id: sess.id, startedAt: isoOf(sess.startedAt), timeSeriesLogs: secs } })) }
+  ];
+  clips.forEach((c) => files.push({ name: "clips/" + c.id + ".wav", data: wavBytes(c.data, c.sr) }));
+  const blob = makeZip(files), fname = "SomnoLog_" + dayKey(sess.startedAt) + ".zip";
   const file = new File([blob], fname, { type: "application/zip" });
-  if (navigator.canShare && navigator.canShare({ files: [file] })) {
-    try { await navigator.share({ files: [file], title: fname }); return; }
-    catch (e) { if (e.name === "AbortError") return; }
-  }
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = fname;
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(a.href), 10000);
-}
-
-/* ===== 環境音の音声削除 ===== */
-async function deleteEnvClips() {
-  if (!confirm("保存済みの環境音の音声をすべて削除します。数値の記録は残ります。よろしいですか？")) return;
-  const clips = (await DB.all("clips")).filter((c) => c.kind === "env");
-  const ids = new Set(clips.map((c) => c.id));
-  const evs = (await DB.all("events")).filter((e) => e.clipId && ids.has(e.clipId));
-  for (const c of clips) await DB.del("clips", c.id);
-  for (const e of evs) { e.clipId = null; await DB.put("events", e); }
-  alert(clips.length + "件の環境音の音声を削除しました。");
-}
-
-/* ===== ボタン・入力の接続 ===== */
-// 1-1
-$("cam-btn").onclick = () => startCamera();
-$("cam-stop").onclick = () => stopCamera();
-$("qr-file-btn").onclick = () => $("qr-file").click();
-$("qr-file").addEventListener("change", (e) => {
-  readQrFile(e.target.files && e.target.files[0]).catch((err) => showScanMsg(err.message));
-  e.target.value = "";
-});
-$("usage-btn").onclick = () => { $("usage-box").hidden = !$("usage-box").hidden; };
-$("start-back").onclick = () => { stopCamera(); showScanMsg(""); showPage("record"); };
-
-// 1-2
-$("cf-ok").onclick = async () => {
-  const p = S_PATIENT_PENDING.value;
-  if (!p) { showPage("start"); return; }
-  try {
-    await savePatient(p);
-    S_PATIENT_PENDING.value = null;
-    renderPatientCard();
-    setButtons();
-    showPage("record");
-  } catch (e) {
-    showError("患者情報を保存できませんでした: " + e.message);
-  }
-};
-$("cf-ng").onclick = () => {
-  S_PATIENT_PENDING.value = null;
-  showScanMsg("");
-  showPage("start");
-};
-
-// 記録画面
-$("pt-change").onclick = () => {
-  if (isBusy()) return;
-  stopCamera();
-  showScanMsg("");
-  showPage("start");
-  $("start-back").hidden = !S.patient;
-};
-
-$("mic-btn").onclick = () => {
-  if (S.ctx) return;
-  $("mic-btn").disabled = true;
-  $("mic-state").textContent = "確認中…";
-  showMicMsg("");
-  let ctx = null;
-  try {
-    const AC = window.AudioContext || window.webkitAudioContext;
-    ctx = S.pendingCtx || new AC();
-    S.pendingCtx = ctx;
-    ctx.resume().catch(() => {});
-  } catch (e) {
-    console.error(e);
-  }
-  setupMic(ctx)
-    .then(() => {
-      $("mic-state").textContent = "許可済み（" + (S.micMode === "worklet" ? "標準" : "予備") + "方式）";
-      showMicMsg("");
-    })
-    .catch((e) => {
-      console.error(e);
-      $("mic-state").textContent = "未許可";
-      showMicMsg(micErrorMessage(e));
-    })
-    .finally(() => setButtons());
-};
-
-$("gain").addEventListener("input", (e) => {
-  S.gainDb = Number(e.target.value);
-  $("gain-out").textContent = (S.gainDb > 0 ? "+" : "") + S.gainDb + "dB";
-});
-
-$("env-save").addEventListener("change", (e) => { S.envSave = e.target.checked; });
-$("env-del").onclick = () => deleteEnvClips().catch((err) => showError(err.message));
-
-$("motion-btn").onclick = async () => {
-  try {
-    if (typeof DeviceMotionEvent !== "undefined" && typeof DeviceMotionEvent.requestPermission === "function") {
-      const r = await DeviceMotionEvent.requestPermission();
-      if (r !== "granted") throw new Error("許可されませんでした");
-    }
-    window.addEventListener("devicemotion", onMotion);
-    $("motion-btn").textContent = "モーションセンサー許可済み";
-    $("motion-btn").disabled = true;
-  } catch (e) {
-    alert("モーションセンサーを許可できませんでした: " + e.message);
-  }
-};
-
-$("start-btn").onclick = () => startRec().catch((e) => { showError(e.message); setButtons(); });
-$("stop-btn").onclick = () => {
-  S.saving = true;
-  renderUpdate();
-  stopRec()
-    .catch((e) => showError(e.message))
-    .finally(() => { S.saving = false; setButtons(); });
-};
-$("btn-enter-black").onclick = enterBlack;
-$("black-screen").onclick = exitBlack;
-$("history-btn").onclick = async () => {
-  try { await renderHistory(); showPage("history"); }
-  catch (e) { showError("履歴を読めませんでした: " + e.message); }
-};
-$("history-back").onclick = () => showPage("record");
-$("detail-back").onclick = () => showPage("history");
-$("d-share").onclick = async () => {
-  S.saving = true;
-  renderUpdate();
-  try { await shareSession(S.detailSid); }
-  catch (e) { showError(e.message); }
-  finally { S.saving = false; renderUpdate(); }
-};
-
-// GitHub更新
-$("upd-check").onclick = () => checkUpdate();
-$("upd-apply").onclick = () => applyUpdate();
-$("upd-reload").onclick = () => {
-  if (!confirm("キャッシュを避けて、画面を開き直します。よろしいですか？")) return;
-  reloadNoCache();
-};
-
-// 別のQRをハッシュで開いた時も確認画面へ
-window.addEventListener("hashchange", () => { checkHashOnLoad(); });
-
-document.addEventListener("visibilitychange", async () => {
-  if (document.visibilityState !== "visible") return;
-  if (S.running) {
-    if (!S.wake) await acquireWake();
-    if (S.ctx && S.ctx.state !== "running") S.ctx.resume().catch(() => {});
-  }
-});
-
-/* ===== 起動 ===== */
-async function init() {
-  // 1. まず画面を出す（保存領域の読み込みを待たない）
-  $("ver-text").textContent = "V" + APP_VERSION;
-  $("boot").textContent = "スクリプト読込OK（V" + APP_VERSION + "・" + new Date().toLocaleTimeString("ja-JP") + "）";
-  $("boot-start").textContent = "V" + APP_VERSION + " 起動OK（" + new Date().toLocaleTimeString("ja-JP") + "）";
-  $("start-back").hidden = true;
-  showPage("start");
-
-  // 2. 任意：jsQRが同じフォルダにあれば、アプリ内の読み取りに使う（無くても動く）
-  const jq = document.createElement("script");
-  jq.src = "./jsqr.min.js";
-  document.head.appendChild(jq);
-
-  if (!window.isSecureContext) {
-    showMicMsg(micErrorMessage({ name: "InsecureContext", stage: "接続の確認" }));
-  }
-
-  // 3. 画面を出した後で、保存済みの患者情報を読む（失敗しても止まらない）
-  startUiLoop();
-  setButtons();
-  updateUI();
-  loadVad().then(() => setButtons());
-  checkUpdate();                                   // 起動時にGitHubの版を確認（表示のみ）
-  setInterval(checkUpdate, UPDATE_EVERY_MS);       // 10分ごとに確認
-  await loadPatient();
-
-  // 4. 読み込みの結果に応じて画面を切り替える
-  if (checkHashOnLoad()) return;          // 標準カメラで開いた場合は1-2へ
-  if (S.patient) {
-    $("start-back").hidden = false;
-    showPage("record");
+  if (!downloadOnly && navigator.canShare && navigator.canShare({ files: [file] })) {
+    try { await navigator.share({ files: [file], title: fname }); } catch (e) { if (e.name === "AbortError") return; }
   } else {
-    $("start-back").hidden = true;
-    showPage("start");
+    const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = fname; a.click();
+  }
+  if (!downloadOnly) {
+    $("sent-email").textContent = (sess.patient && sess.patient.logShareEmail) || "（未設定）";
+    showPage("sent");
   }
 }
 
-init().catch((e) => showError("起動に失敗しました: " + e.message));
+/* ===== イベント接続 ===== */
+document.querySelectorAll("[data-usage]").forEach((b) => { b.onclick = () => $("dlg-usage").showModal(); });
+$("btn-qr-mode").onclick = () => { $("mail-box").hidden = true; startQrCam(); };
+$("btn-qr-stop").onclick = stopQrCam;
+$("btn-qr-file").onclick = () => $("qr-file").click();
+$("qr-file").onchange = async (e) => {
+  const f = e.target.files[0]; if (!f) return;
+  const bmp = await createImageBitmap(f), c = $("scan-canvas"); c.width = bmp.width; c.height = bmp.height;
+  c.getContext("2d").drawImage(bmp, 0, 0);
+  if (typeof window.jsQR === "function") {
+    const img = c.getContext("2d").getImageData(0,0,c.width,c.height);
+    const code = window.jsQR(img.data, img.width, img.height);
+    if (code) { stopQrCam(); openConfirm(parsePatientInput(code.data)); }
+  }
+};
+$("btn-mail-mode").onclick = async () => {
+  stopQrCam(); $("mail-box").hidden = !$("mail-box").hidden;
+  const saved = await DB.get("settings", "patient").catch(() => null);
+  if (saved && saved.value) {
+    $("saved-patient-card").hidden = false;
+    $("saved-clinic").textContent = saved.value.clinic || "-";
+    $("saved-name").textContent = saved.value.name || "-";
+    $("btn-auth-saved").onclick = () => openConfirm(saved.value);
+  }
+};
+$("btn-mail-file").onclick = () => $("mail-file").click();
+$("mail-file").onchange = async (e) => { const f = e.target.files[0]; if (f) openConfirm(parsePatientInput(await f.text())); };
+$("btn-mail-parse").onclick = () => openConfirm(parsePatientInput($("mail-text").value));
+
+$("cf-ok").onclick = async () => {
+  S.patient = S.pendingPatient;
+  await DB.put("settings", { key: "patient", value: S.patient, savedAt: Date.now() });
+  showPage("setting1");
+};
+$("cf-ng").onclick = () => showPage("start");
+
+$("btn-perm-all").onclick = async () => {
+  try { await initMicAndMotion(); showPage("setting2"); }
+  catch (e) { $("mic-msg").hidden = false; $("mic-msg").textContent = "許可に失敗しました: " + e.message; }
+};
+
+$("btn-ref-rec").onclick = () => {
+  $("dlg-ref-rec").showModal();
+  refRecBuf = { buf: new Int16Array(SR * 3), pos: 0 };
+  setTimeout(() => { S.refAudio = refRecBuf.buf; refRecBuf = null; $("dlg-ref-rec").close(); }, 3000);
+};
+$("btn-ref-play").onclick = () => { if (S.refAudio) playPcm(S.refAudio); else alert("先に基準音を録ってください。"); };
+$("gain").oninput = (e) => { S.gainDb = Number(e.target.value); $("gain-out").textContent = (S.gainDb > 0 ? "+" : "") + S.gainDb + "dB"; };
+$("btn-s2-done").onclick = () => showPage("record");
+$("btn-s2-back").onclick = () => showPage("start");
+
+$("start-btn").onclick = startRec;
+$("btn-enter-black").onclick = enterBlack;
+bindLongPress($("stop-btn"), 2000, stopRec);
+$("history-btn").onclick = async () => { await renderCalendar(); showPage("calendar"); };
+$("cal-prev").onclick = () => { S.calMonth = new Date(S.calMonth.getFullYear(), S.calMonth.getMonth()-1, 1); renderCalendar(); };
+$("cal-next").onclick = () => { S.calMonth = new Date(S.calMonth.getFullYear(), S.calMonth.getMonth()+1, 1); renderCalendar(); };
+$("cal-back").onclick = () => showPage("record");
+$("detail-back").onclick = async () => { await renderCalendar(); showPage("calendar"); };
+
+$("mot-th").oninput = (e) => { S.motTh = Number(e.target.value); $("mot-th-val").textContent = S.motTh.toFixed(2) + " m/s²"; drawDetailChart(); };
+$("d-play-timeline").onclick = async () => {
+  const clips = (await DB.byIndex("clips", "sid", S.detailSid)).filter((c) => c.kind !== "speech");
+  if (!clips.length) { alert("再生できる音声がありません。"); return; }
+  playPcm(clips[0].data);
+};
+$("d-play-ref").onclick = () => { if (S.refAudio) playPcm(S.refAudio); else alert("基準音がありません。"); };
+$("d-save-zip").onclick = () => buildAndShareZip(true);
+$("d-del-rec").onclick = async () => {
+  if (!confirm("この記録を削除しますか？")) return;
+  await DB.del("sessions", S.detailSid);
+  await renderCalendar(); showPage("calendar");
+};
+
+let speechClips = [];
+$("d-share").onclick = async () => {
+  const clips = await DB.byIndex("clips", "sid", S.detailSid);
+  speechClips = clips.filter((c) => c.kind === "speech");
+  if (speechClips.length) $("dlg-speech").showModal();
+  else buildAndShareZip(false);
+};
+$("btn-speech-play").onclick = () => { if (speechClips.length) playPcm(speechClips[0].data); };
+$("btn-speech-ok").onclick = () => { $("dlg-speech").close(); buildAndShareZip(false); };
+$("btn-speech-close").onclick = () => $("dlg-speech").close();
+
+$("btn-del-audio").onclick = async () => {
+  if (!confirm("この記録の音声データをすべて削除しますか？")) return;
+  const clips = await DB.byIndex("clips", "sid", S.detailSid);
+  for (const c of clips) await DB.del("clips", c.id);
+  alert("音声を削除しました。");
+};
+$("sent-back").onclick = () => showPage("detail");
+
+$("btn-upd-open").onclick = () => { $("dlg-update").showModal(); checkUpdate(); };
+$("upd-close").onclick = () => $("dlg-update").close();
+$("upd-check").onclick = checkUpdate;
+async function checkUpdate() {
+  $("upd-msg").textContent = "確認中…";
+  try {
+    const r = await fetch(UPDATE_SRC + "?t=" + Date.now(), { cache: "no-store" });
+    const m = (await r.text()).match(/const\s+APP_VERSION\s*=\s*(\d+)/);
+    const latest = m ? Number(m[1]) : APP_VERSION;
+    $("upd-msg").textContent = latest > APP_VERSION ? `新しい版（V${latest}）があります` : `最新です（V${APP_VERSION}）`;
+    $("upd-apply").disabled = latest <= APP_VERSION;
+  } catch (e) { $("upd-msg").textContent = "確認できませんでした: " + e.message; }
+}
+$("upd-apply").onclick = () => location.reload();
+
+setInterval(() => {
+  const micPct = clamp((S.lastLv + 80) / 70 * 100, 0, 100);
+  const motPct = clamp(S.motionNow / 1.5 * 100, 0, 100);
+  $("s2-mic-fill").style.width = micPct + "%"; $("s2-mic-db").textContent = round1(S.lastLv) + " dB";
+  $("s2-mot-fill").style.width = motPct + "%"; $("s2-mot-val").textContent = S.motionNow.toFixed(2);
+  $("rec-mic-fill").style.width = micPct + "%"; $("rec-mic-db").textContent = round1(S.lastLv) + " dB";
+  $("rec-mot-fill").style.width = motPct + "%"; $("rec-mot-val").textContent = S.motionNow.toFixed(2);
+  if (S.running) $("rec-timer-text").textContent = "経過時間: " + Math.floor(S.nowMs / 1000) + "秒";
+}, 150);
+
+(function init() {
+  const jq = document.createElement("script"); jq.src = "./jsqr.min.js"; document.head.appendChild(jq);
+  loadVad();
+  if (location.hash.indexOf("#slp=") >= 0) {
+    const text = location.href;
+    history.replaceState(null, "", location.pathname + location.search);
+    openConfirm(parsePatientInput(text));
+  }
+})();
 </script>
 </body>
 </html>
