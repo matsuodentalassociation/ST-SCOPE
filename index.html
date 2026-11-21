@@ -6,7 +6,7 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
-  <title>ST-SCOPE v2_4 — 睡眠音響・無呼吸モニター＆人声除去記録</title>
+  <title>ST-SCOPE v2_5 — 睡眠音響・無呼吸モニター＆人声除去記録</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -15,116 +15,50 @@
   <style>
     :root {
       color-scheme: dark;
-      --background: #0c1214;
-      --surface-container-low: #111a1e;
-      --surface-container: #152024;
-      --surface-container-high: #1c2a30;
-      --on-surface: #edf3f5;
-      --on-surface-variant: #94a8b0;
-      --outline: #38515c;
-      --outline-variant: #213138;
-      --primary: #63c7d6;
-      --on-primary: #081214;
-      --on-primary-container: #c7f0f7;
-      --tertiary: #87d69b;
-      --error: #f27474;
-      --data-1: #63c7d6;
-      --data-2: #87d69b;
-      --data-3: #e8b954;
-      --data-4: #f08c70;
-      --font-body: 'Noto Sans JP', sans-serif;
-      --font-label: 'Geist Mono', 'Noto Sans JP', monospace;
-      --rounded: 0.5rem;
-      --rounded-lg: 0.75rem;
-      --hairline: 1px solid var(--outline-variant);
-      --hairline-strong: 1px solid var(--outline);
+      --background: #0c1214; --surface-container: #152024; --surface-container-high: #1c2a30;
+      --on-surface: #edf3f5; --on-surface-variant: #94a8b0; --outline: #38515c; --outline-variant: #213138;
+      --primary: #63c7d6; --on-primary: #081214; --on-primary-container: #c7f0f7;
+      --tertiary: #87d69b; --error: #f27474; --data-1: #63c7d6; --data-2: #87d69b; --data-3: #e8b954; --data-4: #f08c70;
+      --font-body: 'Noto Sans JP', sans-serif; --font-label: 'Geist Mono', 'Noto Sans JP', monospace;
+      --rounded: 0.5rem; --rounded-lg: 0.75rem; --hairline: 1px solid var(--outline-variant); --hairline-strong: 1px solid var(--outline);
       --panel-gradient: linear-gradient(180deg, #162226 0%, #111a1e 100%);
-      --sage-tint: rgba(135, 214, 155, 0.13);
-      --cyan-tint: rgba(99, 199, 214, 0.13);
-      --amber-tint: rgba(232, 185, 84, 0.14);
-      --coral-tint: rgba(240, 140, 112, 0.15);
-      --error-tint: rgba(242, 116, 116, 0.14);
+      --sage-tint: rgba(135, 214, 155, 0.13); --cyan-tint: rgba(99, 199, 214, 0.13);
+      --amber-tint: rgba(232, 185, 84, 0.14); --coral-tint: rgba(240, 140, 112, 0.15); --error-tint: rgba(242, 116, 116, 0.14);
     }
     *, *::before, *::after { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-    html, body {
-      margin: 0; padding: 0; background-color: var(--background); color: var(--on-surface);
-      font-family: var(--font-body); font-size: 15px; line-height: 1.55; -webkit-font-smoothing: antialiased;
-    }
-    .page-grid {
-      display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.25rem;
-      padding: 1.25rem; max-width: 1120px; margin: 0 auto;
-    }
-    .app-header {
-      display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center;
-      gap: 1rem; padding-bottom: 1rem; border-bottom: var(--hairline);
-    }
+    html, body { margin: 0; padding: 0; background: var(--background); color: var(--on-surface); font-family: var(--font-body); font-size: 15px; line-height: 1.55; }
+    .page-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.25rem; padding: 1.25rem; max-width: 1120px; margin: 0 auto; }
+    .app-header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 1rem; padding-bottom: 1rem; border-bottom: var(--hairline); }
     .app-title { margin: 0; font-size: clamp(1.5rem, 1.2rem + 1vw, 2rem); font-weight: 600; }
     .app-title-code { font-family: var(--font-label); color: var(--primary); font-size: 0.75em; margin-left: 0.5rem; }
     .app-lede { margin: 4px 0 0; color: var(--on-surface-variant); font-size: 0.875rem; }
-    .panel {
-      background: var(--panel-gradient); border: var(--hairline); border-radius: var(--rounded-lg); padding: 1.25rem;
-    }
-    .well {
-      background: var(--background); border: var(--hairline); border-radius: var(--rounded); padding: 1rem;
-    }
-    .section-head {
-      display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between;
-      gap: 0.5rem; margin-bottom: 1rem;
-    }
+    .panel { background: var(--panel-gradient); border: var(--hairline); border-radius: var(--rounded-lg); padding: 1.25rem; }
+    .well { background: var(--background); border: var(--hairline); border-radius: var(--rounded); padding: 1rem; }
+    .section-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 0.5rem; margin-bottom: 1rem; }
     .section-title { margin: 0; font-size: 1.15rem; font-weight: 600; }
     .section-note { font-family: var(--font-label); font-size: 0.75rem; color: var(--on-surface-variant); }
-    .data-label {
-      display: block; font-family: var(--font-label); font-size: 0.75rem;
-      color: var(--on-surface-variant); margin-bottom: 0.25rem;
-    }
-    .btn {
-      display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem;
-      min-height: 44px; padding: 0.5rem 1rem; border-radius: var(--rounded);
-      border: var(--hairline-strong); background: var(--surface-container); color: var(--on-surface);
-      font-weight: 600; font-size: 0.875rem; cursor: pointer; transition: 0.15s; white-space: nowrap;
-    }
+    .data-label { display: block; font-family: var(--font-label); font-size: 0.75rem; color: var(--on-surface-variant); margin-bottom: 0.25rem; }
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem; min-height: 44px; padding: 0.5rem 1rem; border-radius: var(--rounded); border: var(--hairline-strong); background: var(--surface-container); color: var(--on-surface); font-weight: 600; font-size: 0.875rem; cursor: pointer; white-space: nowrap; }
     .btn:hover:not(:disabled) { background: var(--surface-container-high); }
     .btn:disabled { opacity: 0.45; cursor: not-allowed; }
     .btn-primary { background: var(--primary); color: var(--on-primary); border-color: var(--primary); }
-    .btn-primary:hover:not(:disabled) { background: var(--on-primary-container); }
     .btn-danger { background: var(--error-tint); color: var(--error); border-color: rgba(242,116,116,0.45); }
     .btn-sm { min-height: 36px; padding: 0.25rem 0.75rem; font-size: 0.75rem; }
-    .update-banner {
-      display: none; background: var(--amber-tint); border: 1px solid var(--data-3);
-      color: var(--data-3); padding: 0.75rem 1rem; border-radius: var(--rounded);
-      justify-content: space-between; align-items: center; gap: 1rem; font-size: 0.875rem;
-    }
-    .wizard-grid {
-      display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 0.75rem;
-    }
-    .wizard-step {
-      background: var(--background); border: var(--hairline); border-radius: var(--rounded);
-      padding: 0.85rem; display: flex; flex-direction: column; justify-content: space-between; gap: 0.5rem;
-    }
+    .update-banner { display: none; background: var(--amber-tint); border: 1px solid var(--data-3); color: var(--data-3); padding: 0.75rem 1rem; border-radius: var(--rounded); justify-content: space-between; align-items: center; gap: 1rem; font-size: 0.875rem; }
+    .wizard-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 0.75rem; }
+    .wizard-step { background: var(--background); border: var(--hairline); border-radius: var(--rounded); padding: 0.85rem; display: flex; flex-direction: column; justify-content: space-between; gap: 0.5rem; }
     .wizard-step.active { border-color: var(--primary); }
     .wizard-step.done { border-color: var(--tertiary); }
-    .inline-status {
-      margin-top: 1rem; padding: 0.65rem 1rem; border-radius: var(--rounded);
-      border: var(--hairline); background: var(--background); font-size: 0.85rem;
-      color: var(--on-surface-variant); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;
-    }
+    .inline-status { margin-top: 1rem; padding: 0.65rem 1rem; border-radius: var(--rounded); border: var(--hairline); background: var(--background); font-size: 0.85rem; color: var(--on-surface-variant); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem; }
     .inline-status.is-active { border-color: rgba(99,199,214,0.45); background: var(--cyan-tint); color: var(--on-surface); }
-    .kpi-grid {
-      display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;
-    }
-    .kpi-card {
-      background: var(--panel-gradient); border: var(--hairline); border-radius: var(--rounded-lg);
-      padding: 1rem 1.25rem; display: flex; flex-direction: column; gap: 0.25rem;
-    }
+    .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; }
+    .kpi-card { background: var(--panel-gradient); border: var(--hairline); border-radius: var(--rounded-lg); padding: 1rem 1.25rem; display: flex; flex-direction: column; gap: 0.25rem; }
     .kpi-card.kpi-hero { border-color: rgba(99,199,214,0.4); }
     .kpi-value-row { display: flex; align-items: baseline; justify-content: space-between; gap: 0.5rem; }
     .metric-value { font-size: clamp(1.6rem, 1.3rem + 1vw, 2.1rem); font-weight: 600; font-variant-numeric: tabular-nums; }
     .metric-unit { font-family: var(--font-label); font-size: 0.75rem; color: var(--on-surface-variant); margin-left: 4px; }
     .metric-delta { font-family: var(--font-label); font-size: 0.75rem; color: var(--on-surface-variant); }
-    .status-chip {
-      display: inline-flex; align-items: center; border-radius: var(--rounded);
-      padding: 2px 8px; font-family: var(--font-label); font-size: 0.75rem; font-weight: 500;
-    }
+    .status-chip { display: inline-flex; align-items: center; border-radius: var(--rounded); padding: 2px 8px; font-family: var(--font-label); font-size: 0.75rem; font-weight: 500; }
     .chip-sage { background: var(--sage-tint); color: var(--tertiary); border: 1px solid rgba(135,214,155,0.35); }
     .chip-cyan { background: var(--cyan-tint); color: var(--primary); border: 1px solid rgba(99,199,214,0.35); }
     .chip-amber { background: var(--amber-tint); color: var(--data-3); border: 1px solid rgba(232,185,84,0.35); }
@@ -136,32 +70,18 @@
     .legend-item { display: inline-flex; align-items: center; gap: 6px; }
     .legend-swatch { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
     .sm-steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.35rem; margin-bottom: 0.75rem; }
-    .sm-step {
-      padding: 0.5rem 0.25rem; border-radius: var(--rounded); border: var(--hairline);
-      background: var(--background); text-align: center; font-family: var(--font-label); font-size: 0.72rem; color: var(--on-surface-variant);
-    }
+    .sm-step { padding: 0.5rem 0.25rem; border-radius: var(--rounded); border: var(--hairline); background: var(--background); text-align: center; font-family: var(--font-label); font-size: 0.72rem; color: var(--on-surface-variant); }
     .sm-step.is-normal { background: var(--sage-tint); border-color: var(--tertiary); color: var(--tertiary); }
     .sm-step.is-silence { background: var(--amber-tint); border-color: var(--data-3); color: var(--data-3); }
     .sm-step.is-apnea { background: var(--coral-tint); border-color: var(--data-4); color: var(--data-4); }
-    .log-box {
-      font-family: var(--font-label); font-size: 0.75rem; color: var(--on-surface-variant);
-      background: var(--background); border: var(--hairline); border-radius: var(--rounded);
-      padding: 0.75rem; max-height: 110px; overflow-y: auto;
-    }
+    .log-box { font-family: var(--font-label); font-size: 0.75rem; color: var(--on-surface-variant); background: var(--background); border: var(--hairline); border-radius: var(--rounded); padding: 0.75rem; max-height: 110px; overflow-y: auto; }
     .rescue-list { display: flex; flex-direction: column; gap: 0.5rem; max-height: 240px; overflow-y: auto; }
-    .rescue-row {
-      display: flex; justify-content: space-between; align-items: center; gap: 0.75rem;
-      padding: 0.6rem 0.85rem; background: var(--background); border: var(--hairline); border-radius: var(--rounded);
-      font-size: 0.82rem;
-    }
-    #nightstandOverlay {
-      display: none; position: fixed; inset: 0; background: #000; z-index: 9999;
-      flex-direction: column; justify-content: center; align-items: center; user-select: none;
-    }
+    .rescue-row { display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; padding: 0.6rem 0.85rem; background: var(--background); border: var(--hairline); border-radius: var(--rounded); font-size: 0.82rem; }
+    #nightstandOverlay { display: none; position: fixed; inset: 0; background: #000; z-index: 9999; flex-direction: column; justify-content: center; align-items: center; user-select: none; -webkit-user-select: none; touch-action: none; }
     .night-time { font-family: var(--font-label); font-size: 3rem; font-weight: 300; color: #334155; }
     .night-rec { display: flex; align-items: center; gap: 8px; margin-top: 16px; font-size: 0.85rem; color: #7f1d1d; }
     .night-dot { width: 8px; height: 8px; border-radius: 50%; background: #991b1b; animation: pulse 2s infinite; }
-    .night-hint { position: absolute; bottom: 32px; font-size: 0.75rem; color: #1e293b; }
+    .night-hint { position: absolute; bottom: 32px; font-size: 0.8rem; color: #475569; text-align: center; }
     @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
     @media (max-width: 900px) { .monitor-layout { grid-template-columns: 1fr; } }
   </style>
@@ -170,7 +90,7 @@
   <main class="page-grid">
     <header class="app-header">
       <div>
-        <h1 class="app-title">ST-SCOPE<span class="app-title-code">v2_4</span></h1>
+        <h1 class="app-title">ST-SCOPE<span class="app-title-code">v2_5</span></h1>
         <p class="app-lede">Silero VAD人声除去・スペクトル解析・先行3秒/追尾5秒リングバッファ・IndexedDB逐次保存・Schema v35 ZIP</p>
       </div>
       <div style="display:flex; gap:0.5rem; align-items:center;">
@@ -184,37 +104,21 @@
       <button type="button" id="btn-apply-update" class="btn btn-sm btn-primary">最新版を適用</button>
     </div>
 
-    <!-- 計測準備ウィザード & コントロール -->
     <section class="panel">
       <div class="section-head">
         <h2 class="section-title">計測準備ウィザード &amp; セッション制御</h2>
         <span id="calibStatusText" class="status-chip chip-amber">基準音 未録音</span>
       </div>
-
       <div class="wizard-grid">
         <div class="wizard-step active" id="step1">
-          <div>
-            <span class="data-label">STEP 1</span>
-            <strong>スマホを枕元に置く</strong>
-            <p style="margin:4px 0 0; font-size:0.8rem; color:var(--on-surface-variant);">マイクが口元の方を向くように安定して置いてください。</p>
-          </div>
+          <div><span class="data-label">STEP 1</span><strong>スマホを枕元に置く</strong><p style="margin:4px 0 0; font-size:0.8rem; color:var(--on-surface-variant);">マイクが口元の方を向くように安定して置いてください。</p></div>
         </div>
-
         <div class="wizard-step" id="step2">
-          <div>
-            <span class="data-label">STEP 2 (基準音: <span id="refDbBadge">-- dBFS</span>)</span>
-            <strong>基準音「あ〜」を3秒録音</strong>
-            <p style="margin:4px 0 0; font-size:0.8rem; color:var(--on-surface-variant);">普段の声で3秒間発声し、トリガー閾値を自動設定します。</p>
-          </div>
+          <div><span class="data-label">STEP 2 (基準音: <span id="refDbBadge">-- dBFS</span>)</span><strong>基準音「あ〜」を3秒録音</strong><p style="margin:4px 0 0; font-size:0.8rem; color:var(--on-surface-variant);">普段の声で3秒間発声し、トリガー閾値を自動設定します。</p></div>
           <button type="button" id="btn-calib" class="btn btn-primary btn-sm">基準音を録音する (3秒)</button>
         </div>
-
         <div class="wizard-step" id="step3">
-          <div>
-            <span class="data-label">STEP 3</span>
-            <strong>計測スタート（自動暗転）</strong>
-            <p style="margin:4px 0 0; font-size:0.8rem; color:var(--on-surface-variant);">開始45秒後におやすみモードへ移行します。</p>
-          </div>
+          <div><span class="data-label">STEP 3</span><strong>計測スタート（自動暗転）</strong><p style="margin:4px 0 0; font-size:0.8rem; color:var(--on-surface-variant);">開始45秒後におやすみモードへ移行します。</p></div>
           <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
             <button type="button" id="btn-start" class="btn btn-primary" style="flex:1;">測定を開始</button>
             <button type="button" id="btn-stop" class="btn btn-danger" style="display:none; flex:1;">終了・ZIP保存</button>
@@ -222,70 +126,46 @@
           </div>
         </div>
       </div>
-
       <div id="status-bar" class="inline-status">
         <span id="status-text">待機中：基準音を録音してから「測定を開始」を押してください。</span>
         <span id="status-duration" class="section-note">経過 00:00:00</span>
       </div>
     </section>
 
-    <!-- KPI Strip -->
     <section class="kpi-grid">
       <article class="kpi-card kpi-hero">
         <span class="data-label">簡易AHI目安（無呼吸疑い）</span>
-        <div class="kpi-value-row">
-          <div><span id="kpi-ahi" class="metric-value">0.0</span><span class="metric-unit">回/時</span></div>
-          <span id="kpi-ahi-badge" class="status-chip chip-sage">正常目安 (&lt;5)</span>
-        </div>
+        <div class="kpi-value-row"><div><span id="kpi-ahi" class="metric-value">0.0</span><span class="metric-unit">回/時</span></div><span id="kpi-ahi-badge" class="status-chip chip-sage">正常目安 (&lt;5)</span></div>
         <span id="kpi-apnea-sub" class="metric-delta">検知 0回</span>
       </article>
-
       <article class="kpi-card">
         <span class="data-label">音圧レベル (dBFS)</span>
-        <div class="kpi-value-row">
-          <div><span id="kpi-db" class="metric-value">--.-</span><span class="metric-unit">dBFS</span></div>
-          <span id="kpi-db-state" class="status-chip chip-sage">待機中</span>
-        </div>
+        <div class="kpi-value-row"><div><span id="kpi-db" class="metric-value">--.-</span><span class="metric-unit">dBFS</span></div><span id="kpi-db-state" class="status-chip chip-sage">待機中</span></div>
         <span id="kpi-db-sub" class="metric-delta">トリガー閾値: -42.0 dBFS</span>
       </article>
-
       <article class="kpi-card">
         <span class="data-label">体動加速度 (G)</span>
-        <div class="kpi-value-row">
-          <div><span id="kpi-g" class="metric-value">0.00</span><span class="metric-unit">G</span></div>
-          <span class="status-chip chip-cyan">センサー連動</span>
-        </div>
+        <div class="kpi-value-row"><div><span id="kpi-g" class="metric-value">0.00</span><span class="metric-unit">G</span></div><span class="status-chip chip-cyan">センサー連動</span></div>
         <span class="metric-delta">DeviceMotionEvent 同期記録</span>
       </article>
-
       <article class="kpi-card">
         <span class="data-label">保存クリップ / 人声除外</span>
-        <div class="kpi-value-row">
-          <div><span id="kpi-clips" class="metric-value">0</span><span class="metric-unit">件</span></div>
-          <span id="kpi-speech-excluded" class="status-chip chip-amber">人声除外 0件</span>
-        </div>
+        <div class="kpi-value-row"><div><span id="kpi-clips" class="metric-value">0</span><span class="metric-unit">件</span></div><span id="kpi-speech-excluded" class="status-chip chip-amber">人声除外 0件</span></div>
         <span class="metric-delta">プライバシー保護（ローカルVAD処理）</span>
       </article>
     </section>
 
-    <!-- リアルタイムモニター -->
     <section class="panel">
-      <div class="section-head">
-        <h2 class="section-title">リアルタイム音圧・体動モニター</h2>
-        <span class="section-note">直近60秒ウィンドウ</span>
-      </div>
+      <div class="section-head"><h2 class="section-title">リアルタイム音圧・体動モニター</h2><span class="section-note">直近60秒ウィンドウ</span></div>
       <div class="monitor-layout">
         <div>
-          <div class="canvas-well">
-            <canvas id="live-canvas" class="chart-canvas"></canvas>
-          </div>
+          <div class="canvas-well"><canvas id="live-canvas" class="chart-canvas"></canvas></div>
           <div class="legend-row">
             <span class="legend-item"><span class="legend-swatch" style="background:var(--data-1);"></span>音圧 (dBFS)</span>
             <span class="legend-item"><span class="legend-swatch" style="background:var(--data-2);"></span>体動 (G)</span>
             <span class="legend-item"><span class="legend-swatch" style="background:var(--data-3);"></span>トリガー閾値</span>
           </div>
         </div>
-
         <div class="well">
           <span class="data-label">無呼吸検知ステートマシン</span>
           <div class="sm-steps">
@@ -299,27 +179,20 @@
       </div>
     </section>
 
-    <!-- 人声除外クリップ 手動救済パネル -->
     <section class="panel">
-      <div class="section-head">
-        <h2 class="section-title">人声除外クリップ（誤判定の手動救済）</h2>
-        <span class="section-note">いびきが人声と誤判定された場合のみ「救済」をONにしてZIPに含めます</span>
-      </div>
-      <div id="rescueList" class="rescue-list">
-        <div style="color:var(--on-surface-variant); font-size:0.85rem;">現在、人声として自動除外されたクリップはありません。</div>
-      </div>
+      <div class="section-head"><h2 class="section-title">人声除外クリップ（誤判定の手動救済）</h2><span class="section-note">いびきが人声と誤判定された場合のみ「救済」をONにしてZIPに含めます</span></div>
+      <div id="rescueList" class="rescue-list"><div style="color:var(--on-surface-variant); font-size:0.85rem;">現在、人声として自動除外されたクリップはありません。</div></div>
     </section>
   </main>
 
-  <!-- おやすみモード -->
   <div id="nightstandOverlay">
     <div class="night-time" id="nightElapsed">00:00:00</div>
     <div class="night-rec"><span class="night-dot"></span><span>SLEEP RECORDING (VAD Privacy Safe)</span></div>
-    <div class="night-hint">画面をタップするとモニターに戻ります</div>
+    <div class="night-hint" id="nightHint">画面のどこかを2秒間長押しするとモニターに戻ります</div>
   </div>
 
   <script>
-    const APP_VERSION = "v2_4";
+    const APP_VERSION = "v2_5";
     const RAW_INDEX_URL = "https://raw.githubusercontent.com/matsuodentalassociation/ST-SCOPE/main/index.html";
 
     function addLog(msg) {
@@ -337,33 +210,47 @@
         if (m && m[1] && m[1] !== APP_VERSION) {
           document.getElementById("updateBanner").style.display = "flex";
           addLog(`新バージョン (${m[1]}) を検出しました。`);
-        } else if (manual) {
-          addLog(`現在のバージョン (${APP_VERSION}) は最新です。`);
-        }
+        } else if (manual) addLog(`現在のバージョン (${APP_VERSION}) は最新です。`);
       } catch (e) {
         if (manual) addLog("更新確認に失敗（オフラインまたはローカル環境）。");
       }
     }
     document.getElementById("btn-check-update").onclick = () => checkGitHubUpdate(true);
     document.getElementById("btn-apply-update").onclick = () => {
-      const u = new URL(window.location.href);
-      u.searchParams.set("v", Date.now());
-      window.location.replace(u.toString());
+      const u = new URL(window.location.href); u.searchParams.set("v", Date.now()); window.location.replace(u.toString());
     };
 
-    // ==========================================
-    // Silero VAD (ONNX Runtime Web) + スペクトル特徴量解析
-    // ==========================================
-    let vadSession = null;
-    let vadStateH = null;
-    let vadStateC = null;
-    let vadAvailable = false;
+    // 2秒長押しで黒画面から復帰
+    const nightOverlay = document.getElementById("nightstandOverlay");
+    const nightHint = document.getElementById("nightHint");
+    let nightHoldTimer = null;
+    function startNightHold(e) {
+      if (nightHoldTimer) return;
+      nightHint.textContent = "そのまま2秒間押し続けてください...";
+      nightHoldTimer = setTimeout(() => {
+        nightOverlay.style.display = "none";
+        nightHint.textContent = "画面のどこかを2秒間長押しするとモニターに戻ります";
+        nightHoldTimer = null;
+      }, 2000);
+    }
+    function cancelNightHold() {
+      if (nightHoldTimer) {
+        clearTimeout(nightHoldTimer);
+        nightHoldTimer = null;
+        nightHint.textContent = "画面のどこかを2秒間長押しするとモニターに戻ります";
+      }
+    }
+    nightOverlay.addEventListener("pointerdown", startNightHold);
+    nightOverlay.addEventListener("pointerup", cancelNightHold);
+    nightOverlay.addEventListener("pointercancel", cancelNightHold);
+    nightOverlay.addEventListener("pointerleave", cancelNightHold);
 
+    // Silero VAD + スペクトル解析
+    let vadSession = null, vadStateH = null, vadStateC = null, vadAvailable = false;
     async function initSileroVAD() {
       const badge = document.getElementById("vadStatusBadge");
       if (window.ortLoadFailed || typeof ort === "undefined") {
-        badge.textContent = "スペクトル解析モード";
-        badge.className = "status-chip chip-cyan";
+        badge.textContent = "スペクトル解析モード"; badge.className = "status-chip chip-cyan";
         addLog("ort.min.js 未検出のため、スペクトル特徴量人声除外モードで動作します。");
         return;
       }
@@ -372,107 +259,58 @@
         vadSession = await ort.InferenceSession.create("./silero_vad.onnx", { executionProviders: ["wasm"] });
         vadStateH = new ort.Tensor("float32", new Float32Array(2 * 1 * 64).fill(0), [2, 1, 64]);
         vadStateC = new ort.Tensor("float32", new Float32Array(2 * 1 * 64).fill(0), [2, 1, 64]);
-        vadAvailable = true;
-        badge.textContent = "Silero VAD 有効";
-        badge.className = "status-chip chip-sage";
+        vadAvailable = true; badge.textContent = "Silero VAD 有効"; badge.className = "status-chip chip-sage";
         addLog("Silero VAD (silero_vad.onnx) 読み込み完了。");
       } catch (e) {
-        badge.textContent = "スペクトル解析モード";
-        badge.className = "status-chip chip-cyan";
+        badge.textContent = "スペクトル解析モード"; badge.className = "status-chip chip-cyan";
         addLog("Silero VAD 読込スキップ（スペクトル特徴量モードで動作）: " + e.message);
       }
     }
 
-    // スペクトル特徴量による人声判定 (16kHz, 400サンプル=25ms, ホップ160=10ms)
     function analyzeSpectralVoice(samples, sampleRate = 16000) {
-      const frameLen = 400;
-      const hop = 160;
-      let voiceFrames = 0;
-      let totalFrames = 0;
-      let consecutivePass = [];
-
+      const frameLen = 400, hop = 160;
+      let voiceFrames = 0, totalFrames = 0, consecutivePass = [];
       for (let start = 0; start + frameLen <= samples.length; start += hop) {
         totalFrames++;
-        // 簡易DFT/帯域エネルギー近似 (低域<1kHz vs 高域1kHz-8kHz)
-        let lowE = 0, highE = 0, weightedFreq = 0, totalE = 0;
-        let zeroCrossings = 0;
+        let highE = 0, totalE = 0, zeroCrossings = 0;
         for (let i = 1; i < frameLen; i++) {
-          const s = samples[start + i];
-          const prev = samples[start + i - 1];
+          const s = samples[start + i], prev = samples[start + i - 1];
           if ((s >= 0 && prev < 0) || (s < 0 && prev >= 0)) zeroCrossings++;
-          const e = s * s;
-          totalE += e;
+          totalE += s * s;
+          const diff = s - prev; highE += diff * diff;
         }
-        // ゼロ交差率から推定重心周波数を算出 (16kHz基準)
         const estCentroidHz = (zeroCrossings / 2) * (sampleRate / frameLen);
-        // 高域比の近似
-        for (let i = 1; i < frameLen; i++) {
-          const diff = samples[start + i] - samples[start + i - 1];
-          highE += diff * diff;
-        }
         const highRatio = totalE > 1e-9 ? Math.min(1, (highE / (totalE * 2))) : 0;
-
-        // いびき基準: 重心 <= 1200Hz かつ 高域比 <= 0.35 (これを超えると人声/雑音候補)
-        const isVoiceLike = (estCentroidHz > 1200 || highRatio > 0.35);
-        consecutivePass.push(isVoiceLike ? 1 : 0);
+        consecutivePass.push((estCentroidHz > 1200 || highRatio > 0.35) ? 1 : 0);
         if (consecutivePass.length > 3) consecutivePass.shift();
-        const sum3 = consecutivePass.reduce((a, b) => a + b, 0);
-        if (sum3 >= 2) voiceFrames++;
+        if (consecutivePass.reduce((a, b) => a + b, 0) >= 2) voiceFrames++;
       }
       const ratio = totalFrames > 0 ? (voiceFrames / totalFrames) : 0;
       return { isSpeech: ratio > 0.45, ratio };
     }
 
-    // クリップ全体の人声判定（Silero VAD + スペクトル特徴量）& 部分無音化
     async function evaluateClipSpeech(samples, sampleRate = 16000) {
-      let vadSpeechFrames = 0;
-      let vadTotalFrames = 0;
-      const voiceMask = new Uint8Array(samples.length); // 1なら無音化対象
-
+      let vadSpeechFrames = 0, vadTotalFrames = 0;
       if (vadAvailable && vadSession) {
-        const win = 512; // 32ms at 16kHz
-        const srTensor = new ort.Tensor("int64", BigInt64Array.from([BigInt(sampleRate)]), [1]);
+        const win = 512, srTensor = new ort.Tensor("int64", BigInt64Array.from([BigInt(sampleRate)]), [1]);
         for (let i = 0; i + win <= samples.length; i += win) {
           vadTotalFrames++;
-          const chunk = samples.subarray(i, i + win);
-          const inputTensor = new ort.Tensor("float32", chunk, [1, win]);
+          const inputTensor = new ort.Tensor("float32", samples.subarray(i, i + win), [1, win]);
           try {
-            const out = await vadSession.run({
-              input: inputTensor,
-              sr: srTensor,
-              h: vadStateH,
-              c: vadStateC
-            });
-            vadStateH = out.hn;
-            vadStateC = out.cn;
-            const prob = out.output.data[0];
-            if (prob > 0.3) {
-              vadSpeechFrames++;
-              voiceMask.fill(1, i, i + win);
-            }
-          } catch (e) {
-            break;
-          }
+            const out = await vadSession.run({ input: inputTensor, sr: srTensor, h: vadStateH, c: vadStateC });
+            vadStateH = out.hn; vadStateC = out.cn;
+            if (out.output.data[0] > 0.3) vadSpeechFrames++;
+          } catch (e) { break; }
         }
       }
-
       const spec = analyzeSpectralVoice(samples, sampleRate);
       const vadRatio = vadTotalFrames > 0 ? (vadSpeechFrames / vadTotalFrames) : 0;
-      const isSpeech = vadAvailable ? (vadRatio > 0.25 || (vadRatio > 0.1 && spec.isSpeech)) : spec.isSpeech;
-
-      return { isSpeech, vadRatio, specRatio: spec.ratio, voiceMask };
+      return { isSpeech: vadAvailable ? (vadRatio > 0.25 || (vadRatio > 0.1 && spec.isSpeech)) : spec.isSpeech };
     }
 
-    window.addEventListener("load", () => {
-      addLog(`ST-SCOPE ${APP_VERSION} 起動。`);
-      checkGitHubUpdate(false);
-      initSileroVAD();
-      drawLive();
-    });
+    window.addEventListener("load", () => { addLog(`ST-SCOPE ${APP_VERSION} 起動。`); checkGitHubUpdate(false); initSileroVAD(); drawLive(); });
 
-    // ==========================================
     // IndexedDB
-    // ==========================================
     let db = null;
     function initDB() {
       return new Promise((resolve, reject) => {
@@ -483,52 +321,40 @@
           if (!d.objectStoreNames.contains("logs")) d.createObjectStore("logs", { keyPath: "sec" });
           if (!d.objectStoreNames.contains("meta")) d.createObjectStore("meta", { keyPath: "key" });
         };
-        req.onsuccess = (e) => { db = e.target.result; resolve(db); };
-        req.onerror = reject;
+        req.onsuccess = (e) => { db = e.target.result; resolve(db); }; req.onerror = reject;
       });
     }
     function clearDB() {
       return new Promise((resolve) => {
         const tx = db.transaction(["clips", "logs", "meta"], "readwrite");
-        ["clips", "logs", "meta"].forEach(s => tx.objectStore(s).clear());
-        tx.oncomplete = resolve;
+        ["clips", "logs", "meta"].forEach(s => tx.objectStore(s).clear()); tx.oncomplete = resolve;
       });
     }
     function saveStore(store, data) {
       return new Promise((resolve, reject) => {
-        const tx = db.transaction(store, "readwrite");
-        tx.objectStore(store).put(data);
-        tx.oncomplete = resolve; tx.onerror = reject;
+        const tx = db.transaction(store, "readwrite"); tx.objectStore(store).put(data); tx.oncomplete = resolve; tx.onerror = reject;
       });
     }
     function getAllStore(store) {
       return new Promise((resolve) => {
-        const tx = db.transaction(store, "readonly");
-        const req = tx.objectStore(store).getAll();
-        req.onsuccess = () => resolve(req.result || []);
+        const tx = db.transaction(store, "readonly"); const req = tx.objectStore(store).getAll(); req.onsuccess = () => resolve(req.result || []);
       });
     }
-
     function encodeWAV(samples, sr = 16000) {
       const buf = new ArrayBuffer(44 + samples.length * 2), view = new DataView(buf);
       const ws = (o, s) => { for (let i = 0; i < s.length; i++) view.setUint8(o + i, s.charCodeAt(i)); };
       ws(0, "RIFF"); view.setUint32(4, 36 + samples.length * 2, true); ws(8, "WAVE"); ws(12, "fmt ");
       view.setUint32(16, 16, true); view.setUint16(20, 1, true); view.setUint16(22, 1, true);
-      view.setUint32(24, sr, true); view.setUint32(28, sr * 2, true);
-      view.setUint16(32, 2, true); view.setUint16(34, 16, true); ws(36, "data");
-      view.setUint32(40, samples.length * 2, true);
+      view.setUint32(24, sr, true); view.setUint32(28, sr * 2, true); view.setUint16(32, 2, true); view.setUint16(34, 16, true);
+      ws(36, "data"); view.setUint32(40, samples.length * 2, true);
       let off = 44;
       for (let i = 0; i < samples.length; i++) {
         const s = Math.max(-1, Math.min(1, samples[i]));
-        view.setInt16(off, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
-        off += 2;
+        view.setInt16(off, s < 0 ? s * 0x8000 : s * 0x7FFF, true); off += 2;
       }
       return new Blob([view], { type: "audio/wav" });
     }
 
-    // ==========================================
-    // 録音・リングバッファ・救済リスト制御
-    // ==========================================
     const SAMPLE_RATE = 16000, PRE_SEC = 3, POST_SEC = 5, RING_MAX = SAMPLE_RATE * PRE_SEC;
     let audioCtx = null, mediaStream = null, scriptNode = null, isRecording = false, isCalibrating = false;
     let refDb = -30.0, baselineDbApplied = -55.0, triggerThresholdDb = -42.0;
@@ -553,25 +379,20 @@
     }
     function calcDb(s) {
       let sum = 0; for (let i = 0; i < s.length; i++) sum += s[i] * s[i];
-      const rms = Math.sqrt(sum / s.length);
-      return rms > 1e-6 ? 20 * Math.log10(rms) : -100;
+      const rms = Math.sqrt(sum / s.length); return rms > 1e-6 ? 20 * Math.log10(rms) : -100;
     }
     const fmtTime = (sec) => [Math.floor(sec/3600), Math.floor((sec%3600)/60), sec%60].map(v => String(v).padStart(2, "0")).join(":");
 
     async function renderRescueList() {
       const listEl = document.getElementById("rescueList");
-      const allClips = await getAllStore("clips");
-      const excluded = allClips.filter(c => c.isSpeech);
+      const excluded = (await getAllStore("clips")).filter(c => c.isSpeech);
       if (excluded.length === 0) {
         listEl.innerHTML = `<div style="color:var(--on-surface-variant); font-size:0.85rem;">現在、人声として自動除外されたクリップはありません。</div>`;
         return;
       }
       listEl.innerHTML = excluded.map(c => `
         <div class="rescue-row">
-          <div>
-            <strong>${c.file}</strong> (${c.durationSec}秒 / 開始 ${fmtTime(c.startSec)})
-            <div style="font-size:0.75rem; color:var(--data-3);">人声判定: ${c.rescued ? "手動救済済み（ZIPに含める）" : "自動除外（ZIPから破棄）"}</div>
-          </div>
+          <div><strong>${c.file}</strong> (${c.durationSec}秒 / 開始 ${fmtTime(c.startSec)})<div style="font-size:0.75rem; color:var(--data-3);">人声判定: ${c.rescued ? "手動救済済み（ZIPに含める）" : "自動除外（ZIPから破棄）"}</div></div>
           <div style="display:flex; gap:0.5rem; align-items:center;">
             <button type="button" class="btn btn-sm" onclick="playClipById(${c.id})">試聴</button>
             <button type="button" class="btn btn-sm ${c.rescued ? 'btn-primary' : ''}" onclick="toggleRescue(${c.id})">${c.rescued ? "救済ON" : "救済する"}</button>
@@ -579,27 +400,15 @@
         </div>
       `).join("");
     }
-
     window.playClipById = async (id) => {
-      const clips = await getAllStore("clips");
-      const target = clips.find(c => c.id === id);
-      if (target && target.blob) {
-        const audio = new Audio(URL.createObjectURL(target.blob));
-        audio.play();
-      }
+      const target = (await getAllStore("clips")).find(c => c.id === id);
+      if (target && target.blob) new Audio(URL.createObjectURL(target.blob)).play();
     };
-
     window.toggleRescue = async (id) => {
-      const clips = await getAllStore("clips");
-      const target = clips.find(c => c.id === id);
-      if (target) {
-        target.rescued = !target.rescued;
-        await saveStore("clips", target);
-        renderRescueList();
-      }
+      const target = (await getAllStore("clips")).find(c => c.id === id);
+      if (target) { target.rescued = !target.rescued; await saveStore("clips", target); renderRescueList(); }
     };
 
-    // 基準音録音
     document.getElementById("btn-calib").onclick = async () => {
       try {
         await initDB(); await requestMotion(); await initAudio();
@@ -612,16 +421,12 @@
           isCalibrating = false; proc.disconnect(); src.disconnect();
           const merged = new Float32Array(chunks.reduce((a, b) => a + b.length, 0));
           let off = 0; for (const c of chunks) { merged.set(c, off); off += c.length; }
-          refDb = Number(calcDb(merged).toFixed(2));
-          triggerThresholdDb = Math.max(-55, refDb - 15);
+          refDb = Number(calcDb(merged).toFixed(2)); triggerThresholdDb = Math.max(-55, refDb - 15);
           await saveStore("meta", { key: "reference_wav", blob: encodeWAV(merged, audioCtx.sampleRate) });
           document.getElementById("refDbBadge").textContent = `${refDb} dBFS`;
           document.getElementById("kpi-db-sub").textContent = `トリガー閾値: ${triggerThresholdDb.toFixed(1)} dBFS`;
-          document.getElementById("calibStatusText").textContent = "基準音 完了";
-          document.getElementById("calibStatusText").className = "status-chip chip-sage";
-          document.getElementById("step1").classList.add("done");
-          document.getElementById("step2").classList.add("done");
-          document.getElementById("step3").classList.add("active");
+          document.getElementById("calibStatusText").textContent = "基準音 完了"; document.getElementById("calibStatusText").className = "status-chip chip-sage";
+          document.getElementById("step1").classList.add("done"); document.getElementById("step2").classList.add("done"); document.getElementById("step3").classList.add("active");
           btn.textContent = "再録音する"; btn.disabled = false;
           addLog(`基準音完了: ${refDb} dBFS (閾値: ${triggerThresholdDb.toFixed(1)} dBFS)`);
         }, 3000);
@@ -631,13 +436,11 @@
       }
     };
 
-    // 測定開始
     document.getElementById("btn-start").onclick = async () => {
       try {
         await initDB();
         const refObj = (await getAllStore("meta")).find(x => x.key === "reference_wav");
-        await clearDB();
-        if (refObj) await saveStore("meta", refObj);
+        await clearDB(); if (refObj) await saveStore("meta", refObj);
         await initAudio();
       } catch (err) { addLog("開始エラー: " + err.message); return; }
 
@@ -679,17 +482,14 @@
             if (smState === "SILENCE" && silenceStartSec !== null && (elapsedSec - silenceStartSec) >= 10 && avgDb >= triggerThresholdDb) {
               smState = "APNEA"; apneaCount++;
               document.getElementById("kpi-apnea-sub").textContent = `検知 ${apneaCount}回`;
-              const ahi = elapsedSec >= 60 ? (apneaCount / (elapsedSec / 3600)) : 0;
-              document.getElementById("kpi-ahi").textContent = ahi.toFixed(1);
-            } else { smState = "NORMAL"; }
+              document.getElementById("kpi-ahi").textContent = (elapsedSec >= 60 ? (apneaCount / (elapsedSec / 3600)) : 0).toFixed(1);
+            } else smState = "NORMAL";
             silenceStartSec = null;
           }
           document.getElementById("sm-normal").className = "sm-step" + (smState === "NORMAL" ? " is-normal" : "");
           document.getElementById("sm-silence").className = "sm-step" + (smState === "SILENCE" ? " is-silence" : "");
           document.getElementById("sm-apnea").className = "sm-step" + (smState === "APNEA" ? " is-apnea" : "");
-
-          drawLive();
-          secDb = []; secG = []; lastLoggedSec = elapsedSec;
+          drawLive(); secDb = []; secG = []; lastLoggedSec = elapsedSec;
         }
 
         for (let i = 0; i < input.length; i++) { ringBuffer[ringWritePos] = input[i]; ringWritePos = (ringWritePos + 1) % RING_MAX; }
@@ -708,24 +508,16 @@
             const id = clipCounter, len = activeClipSamples.reduce((a,b)=>a+b.length,0), merged = new Float32Array(len);
             let off = 0; for (const c of activeClipSamples) { merged.set(c, off); off += c.length; }
             activeClipSamples = [];
-
-            // 人声判定（Silero VAD + スペクトル特徴量）
             const vadRes = await evaluateClipSpeech(merged, audioCtx.sampleRate);
             const fileName = `audio/clip_${String(id).padStart(4, "0")}.wav`, dur = Number((len / audioCtx.sampleRate).toFixed(2));
-
             if (vadRes.isSpeech) {
               speechExcludedCount++;
               document.getElementById("kpi-speech-excluded").textContent = `人声除外 ${speechExcludedCount}件`;
               addLog(`人声除外: ${fileName} (救済リストへ一時保持)`);
-            } else {
-              addLog(`保存: ${fileName} (${dur}秒)`);
-            }
-
+            } else addLog(`保存: ${fileName} (${dur}秒)`);
             await saveStore("clips", {
-              id, startSec: clipStartSec, durationSec: dur,
-              category: vadRes.isSpeech ? "speech_excluded" : "snore_or_event",
-              isSpeech: vadRes.isSpeech, rescued: false, file: fileName,
-              blob: encodeWAV(merged, audioCtx.sampleRate)
+              id, startSec: clipStartSec, durationSec: dur, category: vadRes.isSpeech ? "speech_excluded" : "snore_or_event",
+              isSpeech: vadRes.isSpeech, rescued: false, file: fileName, blob: encodeWAV(merged, audioCtx.sampleRate)
             });
             document.getElementById("kpi-clips").textContent = clipCounter - speechExcludedCount;
             renderRescueList();
@@ -734,95 +526,59 @@
       };
       src.connect(scriptNode); scriptNode.connect(audioCtx.destination);
       addLog("計測を開始しました。45秒後に自動暗転します。");
-      nightTimer = setTimeout(() => { if (isRecording) document.getElementById("nightstandOverlay").style.display = "flex"; }, 45000);
+      nightTimer = setTimeout(() => { if (isRecording) nightOverlay.style.display = "flex"; }, 45000);
     };
 
-    document.getElementById("btn-night").onclick = () => document.getElementById("nightstandOverlay").style.display = "flex";
-    document.getElementById("nightstandOverlay").onclick = () => document.getElementById("nightstandOverlay").style.display = "none";
+    document.getElementById("btn-night").onclick = () => nightOverlay.style.display = "flex";
 
-    // 終了・ZIP保存（人声除外クリップは破棄、救済ONのみ同梱）
     document.getElementById("btn-stop").onclick = async () => {
       isRecording = false; clearTimeout(nightTimer); if (scriptNode) scriptNode.disconnect();
-      document.getElementById("nightstandOverlay").style.display = "none";
-      const stopBtn = document.getElementById("btn-stop");
-      stopBtn.disabled = true; stopBtn.textContent = "ZIP生成中...";
+      nightOverlay.style.display = "none";
+      const stopBtn = document.getElementById("btn-stop"); stopBtn.disabled = true; stopBtn.textContent = "ZIP生成中...";
       try {
         const zip = new JSZip();
         const logs = (await getAllStore("logs")).sort((a,b)=>a.sec-b.sec);
         const clips = (await getAllStore("clips")).sort((a,b)=>a.id-b.id);
         const refObj = (await getAllStore("meta")).find(x=>x.key==="reference_wav");
         if (refObj && refObj.blob) zip.file("reference.wav", refObj.blob);
-
         const validClips = clips.filter(c => !c.isSpeech || c.rescued);
-        const clipMeta = validClips.map(c => {
-          zip.file(c.file, c.blob);
-          return { id: c.id, startSec: c.startSec, durationSec: c.durationSec, category: c.rescued ? "rescued_snore" : c.category, file: c.file };
-        });
-
+        const clipMeta = validClips.map(c => { zip.file(c.file, c.blob); return { id: c.id, startSec: c.startSec, durationSec: c.durationSec, category: c.rescued ? "rescued_snore" : c.category, file: c.file }; });
         zip.file("session.json", JSON.stringify({
           schemaVersion: 35, appVersion: APP_VERSION,
           session: { startedAt: new Date(startTimeMs).toISOString(), durationSec: logs.length ? logs[logs.length-1].sec : 0, refDb, baselineDbApplied },
           timeSeriesLogs: logs, clips: clipMeta
         }, null, 2));
         zip.file("seconds.csv", "sec,db,motionG\n" + logs.map(l => `${l.sec},${l.db},${l.motionG}`).join("\n"));
-
         const a = document.createElement("a");
         a.href = URL.createObjectURL(await zip.generateAsync({ type: "blob" }));
-        a.download = `ST-SCOPE_${new Date().toISOString().slice(0,19).replace(/[:T]/g,"-")}.zip`;
-        a.click();
+        a.download = `ST-SCOPE_${new Date().toISOString().slice(0,19).replace(/[:T]/g,"-")}.zip`; a.click();
         addLog(`ZIP保存完了（有効クリップ ${validClips.length}件 / 人声破棄 ${clips.length - validClips.length}件）`);
         document.getElementById("status-text").textContent = "ZIP保存完了！";
       } catch (e) { addLog("ZIPエラー: " + e.message); }
       finally {
-        document.getElementById("btn-start").style.display = "inline-flex";
-        stopBtn.style.display = "none";
-        document.getElementById("btn-night").style.display = "none";
-        stopBtn.disabled = false; stopBtn.textContent = "終了・ZIP保存";
+        document.getElementById("btn-start").style.display = "inline-flex"; stopBtn.style.display = "none";
+        document.getElementById("btn-night").style.display = "none"; stopBtn.disabled = false; stopBtn.textContent = "終了・ZIP保存";
         document.getElementById("status-bar").classList.remove("is-active");
       }
     };
 
     function drawLive() {
-      const c = document.getElementById("live-canvas");
-      const dpr = window.devicePixelRatio || 1;
-      const rect = c.getBoundingClientRect();
+      const c = document.getElementById("live-canvas"), dpr = window.devicePixelRatio || 1, rect = c.getBoundingClientRect();
       const w = Math.max(300, Math.round(rect.width)), h = 240;
       if (c.width !== w * dpr || c.height !== h * dpr) { c.width = w * dpr; c.height = h * dpr; }
-      const ctx = c.getContext("2d");
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      const ctx = c.getContext("2d"); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.fillStyle = "#0c1214"; ctx.fillRect(0, 0, w, h);
-
       const padL = 44, padR = 14, padT = 14, padB = 22, pw = w - padL - padR, ph = h - padT - padB;
       const yDb = (db) => padT + ph * (1 - Math.max(0, Math.min(1, (db + 80) / 80)));
-
       ctx.strokeStyle = "#213138"; ctx.lineWidth = 1; ctx.font = "11px monospace"; ctx.fillStyle = "#94a8b0";
-      [-60, -40, -20, 0].forEach(d => {
-        const y = yDb(d); ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(w - padR, y); ctx.stroke();
-        ctx.fillText(`${d}dB`, 4, y + 4);
-      });
-
+      [-60, -40, -20, 0].forEach(d => { const y = yDb(d); ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(w - padR, y); ctx.stroke(); ctx.fillText(`${d}dB`, 4, y + 4); });
       ctx.save(); ctx.setLineDash([5, 5]); ctx.strokeStyle = "#e8b954";
-      const yt = yDb(triggerThresholdDb); ctx.beginPath(); ctx.moveTo(padL, yt); ctx.lineTo(w - padR, yt); ctx.stroke();
-      ctx.restore();
-
-      if (liveFrames.length < 2) {
-        ctx.fillStyle = "#94a8b0"; ctx.fillText("測定を開始するとリアルタイム波形が描画されます", padL + 16, padT + ph / 2);
-        return;
-      }
-
+      const yt = yDb(triggerThresholdDb); ctx.beginPath(); ctx.moveTo(padL, yt); ctx.lineTo(w - padR, yt); ctx.stroke(); ctx.restore();
+      if (liveFrames.length < 2) { ctx.fillStyle = "#94a8b0"; ctx.fillText("測定を開始するとリアルタイム波形が描画されます", padL + 16, padT + ph / 2); return; }
       ctx.beginPath(); ctx.strokeStyle = "#63c7d6"; ctx.lineWidth = 2;
-      liveFrames.forEach((f, i) => {
-        const x = padL + (i / 59) * pw, y = yDb(f.db);
-        i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-      });
-      ctx.stroke();
-
+      liveFrames.forEach((f, i) => { const x = padL + (i / 59) * pw, y = yDb(f.db); i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y); }); ctx.stroke();
       ctx.beginPath(); ctx.strokeStyle = "#87d69b"; ctx.lineWidth = 1.6;
-      liveFrames.forEach((f, i) => {
-        const x = padL + (i / 59) * pw, y = padT + ph * (1 - Math.min(1, f.g / 0.5));
-        i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-      });
-      ctx.stroke();
+      liveFrames.forEach((f, i) => { const x = padL + (i / 59) * pw, y = padT + ph * (1 - Math.min(1, f.g / 0.5)); i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y); }); ctx.stroke();
     }
     window.addEventListener("resize", drawLive);
   </script>
