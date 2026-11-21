@@ -5,9 +5,9 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
 <meta name="theme-color" content="#000000">
 <meta name="somnolog-app" content="ST-SCOPE-SomnoLog">
-<meta name="somnolog-version" content="134">
+<meta name="somnolog-version" content="135">
 <meta http-equiv="Cache-Control" content="no-cache">
-<title>③SomnoLog_V134</title>
+<title>③SomnoLog_V135</title>
 <script>
 (() => {
   const key = "somnolog.commit-package.v1";
@@ -107,7 +107,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 1-1 起動・QR読み取り -->
 <main id="page-start" class="page" hidden>
   <header class="head">
-    <h1 class="app-name">③SomnoLog_V134</h1>
+    <h1 class="app-name">③SomnoLog_V135</h1>
     <span class="tag">患者情報確認</span>
   </header>
   <div id="scan-msg" class="err" hidden></div>
@@ -158,7 +158,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 記録画面 -->
 <main id="page-record" class="page" hidden>
   <header class="head">
-    <h1 class="app-name">③SomnoLog_V134</h1>
+    <h1 class="app-name">③SomnoLog_V135</h1>
     <div style="display:flex;align-items:center;gap:10px">
       <button id="rec-back" class="sub mini" type="button">戻る</button>
       <span id="rec-badge" class="tag">待機中</span>
@@ -187,7 +187,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 記録の準備 -->
 <main id="page-prep" class="page" hidden>
   <header class="head">
-    <h1 class="app-name">③SomnoLog_V134</h1>
+    <h1 class="app-name">③SomnoLog_V135</h1>
     <button id="prep-back" class="sub mini" type="button">戻る</button>
   </header>
   <button id="prep-usage-btn" class="warnbtn">使い方を見る</button>
@@ -315,8 +315,8 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 
 <script>
 "use strict";
-const APP_VERSION = 134;
-const APP = "③SomnoLog_V134", RATE = 16000, STEP = 1600, PRE = RATE * 3, POST = RATE * 5;
+const APP_VERSION = 135;
+const APP = "③SomnoLog_V135", RATE = 16000, STEP = 1600, PRE = RATE * 3, POST = RATE * 5;
 const DB_NAME = "SomnoLog.v130", PROFILE = 300, MAX_CLIP = RATE * 3600;
 const REPO = "matsuodentalassociation/ST-SCOPE", UPDATE_KEY = "somnolog.commit-package.v1";
 const REF_KEY = "somnolog.v130.reference", PERSON_KEY = "somnolog.v130.person";
@@ -949,6 +949,10 @@ function conversationClassifier() {
       if (navigator.onLine === false) throw Error("このアプリはオフラインでは使えません。");
       const { AutoProcessor, AutoModelForAudioClassification, env } = await import("https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.5.2");
       env.allowLocalModels = false;
+      if (env.backends?.onnx?.wasm) {
+        env.backends.onnx.wasm.numThreads = 1;
+        env.backends.onnx.wasm.proxy = false;
+      }
       const name = "Xenova/ast-finetuned-audioset-10-10-0.4593";
       const processor = await AutoProcessor.from_pretrained(name);
       if (processor.feature_extractor?.config?.sampling_rate !== RATE) throw Error("会話判定器のサンプルレートを確認できません。");
@@ -988,7 +992,7 @@ async function scanConversation(parts) {
     if (1 / (1 + Math.exp(-values[index])) >= CONVERSATION_SCORE) return "conversation";
     if (consumed === frames) return "no-conversation-detected";
     win.copyWithin(0, CONVERSATION_HOP); const ret = win.length - CONVERSATION_HOP; win.fill(0, ret); fill(ret, win.length);
-    await new Promise((res) => setTimeout(res, 0));
+    await new Promise((res) => setTimeout(res, 50));
   }
 }
 function reviewAudio(c) {
@@ -1205,4 +1209,3 @@ if (chart) {
 </script>
 </body>
 </html>
-
