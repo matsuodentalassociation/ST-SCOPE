@@ -7,7 +7,7 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
-  <title>ST-SCOPE v2_7 — 音響解析・波形モニタリング＆イベント検出</title>
+  <title>ST-SCOPE v2_9 — 音響解析・波形モニタリング＆カレンダー</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -66,7 +66,7 @@
     .chip-coral { background: var(--coral-tint); color: var(--data-4); border: 1px solid rgba(240,140,112,0.4); }
     .monitor-layout { display: grid; grid-template-columns: minmax(0, 1.75fr) minmax(260px, 1fr); gap: 1.25rem; align-items: start; }
     .canvas-well { background: var(--background); border: var(--hairline); border-radius: var(--rounded); padding: 0.5rem; }
-    .chart-canvas { display: block; width: 100%; height: 240px; }
+    .chart-canvas { display: block; width: 100%; height: 220px; }
     .legend-row { display: flex; flex-wrap: wrap; gap: 1rem; margin-top: 0.5rem; font-family: var(--font-label); font-size: 0.75rem; color: var(--on-surface-variant); }
     .legend-item { display: inline-flex; align-items: center; gap: 6px; }
     .legend-swatch { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
@@ -76,12 +76,21 @@
     .sm-step.is-silence { background: var(--amber-tint); border-color: var(--data-3); color: var(--data-3); }
     .sm-step.is-apnea { background: var(--coral-tint); border-color: var(--data-4); color: var(--data-4); }
     .log-box { font-family: var(--font-label); font-size: 0.75rem; color: var(--on-surface-variant); background: var(--background); border: var(--hairline); border-radius: var(--rounded); padding: 0.75rem; max-height: 110px; overflow-y: auto; }
-    .clip-list { display: flex; flex-direction: column; gap: 0.5rem; max-height: 260px; overflow-y: auto; }
+    .clip-list { display: flex; flex-direction: column; gap: 0.5rem; max-height: 240px; overflow-y: auto; }
     .clip-row { display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; padding: 0.6rem 0.85rem; background: var(--background); border: var(--hairline); border-radius: var(--rounded); font-size: 0.82rem; flex-wrap: wrap; }
 
+    /* カレンダー */
+    .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; text-align: center; margin-top: 0.5rem; }
+    .cal-head { font-family: var(--font-label); font-size: 0.72rem; color: var(--on-surface-variant); padding: 4px 0; }
+    .cal-day { padding: 8px 4px; border-radius: var(--rounded); border: var(--hairline); background: var(--background); font-size: 0.85rem; cursor: pointer; position: relative; }
+    .cal-day:hover { background: var(--surface-container-high); }
+    .cal-day.is-selected { border-color: var(--primary); background: var(--cyan-tint); color: var(--primary); font-weight: 700; }
+    .cal-day.has-data::after { content: ""; position: absolute; bottom: 3px; left: 50%; transform: translateX(-50%); width: 5px; height: 5px; border-radius: 50%; background: var(--primary); }
+    .cal-day.is-empty { border-color: transparent; background: transparent; cursor: default; }
+
     #nightstandOverlay {
-      display: none; background-color: #000000 !important; width: 100vw; height: 100dvh; min-height: 100vh;
-      position: fixed; top: 0; left: 0; right: 0; bottom: 0; margin: 0;
+      display: none; background-color: #000000 !important; width: 100vw; height: 100lvh; min-height: 100vh;
+      position: fixed; inset: 0; margin: 0;
       padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom) 0; z-index: 99999;
       flex-direction: column; justify-content: center; align-items: center;
       user-select: none; -webkit-user-select: none; touch-action: none;
@@ -98,7 +107,7 @@
   <main class="page-grid">
     <header class="app-header">
       <div>
-        <h1 class="app-title">ST-SCOPE<span class="app-title-code">v2_7</span></h1>
+        <h1 class="app-title">ST-SCOPE<span class="app-title-code">v2_9</span></h1>
         <p class="app-lede" id="lbl-app-lede"></p>
       </div>
       <div style="display:flex; gap:0.5rem; align-items:center;">
@@ -126,10 +135,10 @@
           <button type="button" id="btn-calib" class="btn btn-primary btn-sm">基準音を録音する (3秒)</button>
         </div>
         <div class="wizard-step" id="step3">
-          <div><span class="data-label">STEP 3</span><strong>計測スタート（自動暗転）</strong><p style="margin:4px 0 0; font-size:0.8rem; color:var(--on-surface-variant);">開始45秒後に省電力暗転モードへ移行します。</p></div>
+          <div><span class="data-label">STEP 3</span><strong>計測スタート（自動暗転）</strong><p style="margin:4px 0 0; font-size:0.8rem; color:var(--on-surface-variant);">開始45秒後に暗転します（完全全画面は「暗転」ボタン）。</p></div>
           <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
             <button type="button" id="btn-start" class="btn btn-primary" style="flex:1;">測定を開始</button>
-            <button type="button" id="btn-stop" class="btn btn-danger" style="display:none; flex:1;">終了・ZIP保存</button>
+            <button type="button" id="btn-stop" class="btn btn-danger" style="display:none; flex:1;">終了・保存</button>
             <button type="button" id="btn-night" class="btn btn-sm" style="display:none;">暗転</button>
           </div>
         </div>
@@ -187,9 +196,49 @@
       </div>
     </section>
 
+    <!-- 記録カレンダー＆タイムライン再生パネル -->
     <section class="panel">
       <div class="section-head">
-        <h2 class="section-title">記録済み音声プレイヤー &amp; 人声除外クリップ救済</h2>
+        <h2 class="section-title">記録カレンダー &amp; タイムライン再生</h2>
+        <div style="display:flex; gap:0.5rem; align-items:center;">
+          <button type="button" id="btn-cal-prev" class="btn btn-sm">&lt;</button>
+          <span id="calMonthLabel" class="section-note" style="font-size:0.9rem; color:var(--on-surface);">2026年11月</span>
+          <button type="button" id="btn-cal-next" class="btn btn-sm">&gt;</button>
+        </div>
+      </div>
+      <div class="monitor-layout">
+        <div class="well">
+          <div class="cal-grid" id="calHeader">
+            <div class="cal-head">日</div><div class="cal-head">月</div><div class="cal-head">火</div><div class="cal-head">水</div><div class="cal-head">木</div><div class="cal-head">金</div><div class="cal-head">土</div>
+          </div>
+          <div class="cal-grid" id="calGrid"></div>
+        </div>
+        <div class="well">
+          <span class="data-label" id="selectedDateLabel">日付を選択してください</span>
+          <div id="daySessionsList" class="clip-list" style="max-height:180px;"></div>
+        </div>
+      </div>
+
+      <div id="timelineSection" style="margin-top:1.25rem; display:none;">
+        <div class="section-head" style="margin-bottom:0.5rem;">
+          <span id="timelineTitle" class="data-label" style="font-size:0.85rem; color:var(--primary);">タイムライン波形</span>
+          <div style="display:flex; gap:0.5rem; align-items:center;">
+            <button type="button" id="btn-play-timeline" class="btn btn-sm btn-primary">▶ タイムラインを再生</button>
+            <button type="button" id="btn-export-zip" class="btn btn-sm">ZIP出力</button>
+          </div>
+        </div>
+        <div class="canvas-well"><canvas id="timeline-canvas" class="chart-canvas"></canvas></div>
+        <div class="legend-row">
+          <span class="legend-item"><span class="legend-swatch" style="background:var(--data-1);"></span>音圧 (dBFS)</span>
+          <span class="legend-item"><span class="legend-swatch" style="background:var(--data-2);"></span>振動 (G)</span>
+          <span class="legend-item"><span class="legend-swatch" style="background:var(--error);"></span>再生ライン</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="section-head">
+        <h2 class="section-title">記録済み音声クリップ &amp; 人声除外クリップ救済</h2>
         <span class="section-note" id="lbl-rescue-note"></span>
       </div>
       <div id="audioPlayerBar" class="well" style="margin-bottom:0.75rem; display:none; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:0.5rem;">
@@ -209,12 +258,11 @@
   </div>
 
   <script>
-    const APP_VERSION = "v2_7";
+    const APP_VERSION = "v2_9";
     const RAW_INDEX_URL = "https://raw.githubusercontent.com/matsuodentalassociation/ST-SCOPE/main/index.html";
 
-    // 一括置換マップ（公開前に実務用語へ差し替え可能）
     const LABELS = {
-      appLede: "音響解析・波形モニタリング・イベント検出・IndexedDB逐次保存・Schema v35 ZIP",
+      appLede: "音響解析・波形モニタリング・イベント検出・カレンダー履歴・タイムライン再生",
       kpiEventTitle: "無音後イベント頻度（簡易指標）",
       smTitle: "イベント検出ステートマシン",
       rescueNote: "環境音が人声と誤判定された場合のみ「救済」をONにしてセッションログに含めます",
@@ -357,31 +405,25 @@
       return { isSpeech: vadAvailable ? (vadRatio > 0.25 || (vadRatio > 0.1 && spec.isSpeech)) : spec.isSpeech };
     }
 
-    window.addEventListener("load", async () => {
-      addLog(`ST-SCOPE ${APP_VERSION} 起動。`);
-      checkGitHubUpdate(false);
-      initSileroVAD();
-      drawLive();
-      try { await initDB(); renderClipList(); } catch (e) {}
-    });
-
+    // IndexedDB (v2: sessionsストア追加)
     let db = null;
     function initDB() {
       return new Promise((resolve, reject) => {
-        const req = indexedDB.open("ST_SCOPE_DB", 1);
+        const req = indexedDB.open("ST_SCOPE_DB", 2);
         req.onupgradeneeded = (e) => {
           const d = e.target.result;
           if (!d.objectStoreNames.contains("clips")) d.createObjectStore("clips", { keyPath: "id" });
           if (!d.objectStoreNames.contains("logs")) d.createObjectStore("logs", { keyPath: "sec" });
           if (!d.objectStoreNames.contains("meta")) d.createObjectStore("meta", { keyPath: "key" });
+          if (!d.objectStoreNames.contains("sessions")) d.createObjectStore("sessions", { keyPath: "sessionId" });
         };
         req.onsuccess = (e) => { db = e.target.result; resolve(db); }; req.onerror = reject;
       });
     }
-    function clearDB() {
+    function clearCurrentWorkingDB() {
       return new Promise((resolve) => {
-        const tx = db.transaction(["clips", "logs", "meta"], "readwrite");
-        ["clips", "logs", "meta"].forEach(s => tx.objectStore(s).clear()); tx.oncomplete = resolve;
+        const tx = db.transaction(["clips", "logs"], "readwrite");
+        ["clips", "logs"].forEach(s => tx.objectStore(s).clear()); tx.oncomplete = resolve;
       });
     }
     function saveStore(store, data) {
@@ -437,10 +479,38 @@
     }
     const fmtTime = (sec) => [Math.floor(sec/3600), Math.floor((sec%3600)/60), sec%60].map(v => String(v).padStart(2, "0")).join(":");
 
-    async function renderClipList() {
+    async function finalizeActiveClip() {
+      if (!isTriggerActive || activeClipSamples.length === 0) return;
+      isTriggerActive = false;
+      clipCounter++;
+      const id = clipCounter;
+      const len = activeClipSamples.reduce((a, b) => a + b.length, 0);
+      const merged = new Float32Array(len);
+      let off = 0; for (const c of activeClipSamples) { merged.set(c, off); off += c.length; }
+      activeClipSamples = [];
+      const sr = audioCtx ? audioCtx.sampleRate : SAMPLE_RATE;
+      const vadRes = await evaluateClipSpeech(merged, sr);
+      const fileName = `audio/clip_${String(id).padStart(4, "0")}.wav`;
+      const dur = Number((len / sr).toFixed(2));
+      if (vadRes.isSpeech) {
+        speechExcludedCount++;
+        document.getElementById("kpi-speech-excluded").textContent = `人声除外 ${speechExcludedCount}件`;
+        addLog(`人声除外: ${fileName} (試聴・救済可)`);
+      } else {
+        addLog(`保存: ${fileName} (${dur}秒)`);
+      }
+      await saveStore("clips", {
+        id, startSec: clipStartSec, durationSec: dur, category: vadRes.isSpeech ? "speech_excluded" : "audio_event",
+        isSpeech: vadRes.isSpeech, rescued: false, file: fileName, blob: encodeWAV(merged, sr)
+      });
+      document.getElementById("kpi-clips").textContent = clipCounter - speechExcludedCount;
+      await renderClipList();
+    }
+
+    async function renderClipList(targetClips = null) {
       if (!db) return;
       const listEl = document.getElementById("clipList");
-      const all = (await getAllStore("clips")).sort((a,b)=>a.id-b.id);
+      const all = targetClips || (await getAllStore("clips")).sort((a,b)=>a.id-b.id);
       if (all.length === 0) {
         listEl.innerHTML = `<div style="color:var(--on-surface-variant); font-size:0.85rem;">まだ記録された音声クリップはありません。</div>`;
         return;
@@ -454,7 +524,7 @@
             </div>
           </div>
           <div style="display:flex; gap:0.5rem; align-items:center;">
-            <button type="button" class="btn btn-sm btn-primary" onclick="playClipById(${c.id})">再生</button>
+            <button type="button" class="btn btn-sm btn-primary" onclick="playClipById(${c.id})">▶ 再生</button>
             ${c.isSpeech ? `<button type="button" class="btn btn-sm ${c.rescued ? 'btn-primary' : ''}" onclick="toggleRescue(${c.id})">${c.rescued ? "救済ON" : "救済する"}</button>` : ""}
           </div>
         </div>
@@ -462,7 +532,7 @@
     }
 
     window.playClipById = async (id) => {
-      const target = (await getAllStore("clips")).find(c => c.id === id);
+      let target = (activeSession ? activeSession.clips : await getAllStore("clips")).find(c => c.id === id);
       if (target && target.blob) {
         const bar = document.getElementById("audioPlayerBar");
         const player = document.getElementById("clipAudioPlayer");
@@ -474,9 +544,159 @@
       }
     };
     window.toggleRescue = async (id) => {
-      const target = (await getAllStore("clips")).find(c => c.id === id);
-      if (target) { target.rescued = !target.rescued; await saveStore("clips", target); renderClipList(); }
+      if (activeSession) {
+        const t = activeSession.clips.find(c => c.id === id);
+        if (t) { t.rescued = !t.rescued; await saveStore("sessions", activeSession); renderClipList(activeSession.clips); }
+      } else {
+        const target = (await getAllStore("clips")).find(c => c.id === id);
+        if (target) { target.rescued = !target.rescued; await saveStore("clips", target); renderClipList(); }
+      }
     };
+
+    // カレンダー＆タイムライン再生ロジック
+    let calDate = new Date(), selectedDateStr = new Date().toISOString().slice(0, 10);
+    let activeSession = null, timelinePlayTimer = null, timelinePlaySec = 0, isTimelinePlaying = false;
+
+    async function renderCalendar() {
+      if (!db) return;
+      const sessions = await getAllStore("sessions");
+      const datesWithData = new Set(sessions.map(s => s.dateStr));
+      const y = calDate.getFullYear(), m = calDate.getMonth();
+      document.getElementById("calMonthLabel").textContent = `${y}年${m + 1}月`;
+      const firstDay = new Date(y, m, 1).getDay();
+      const daysInMonth = new Date(y, m + 1, 0).getDate();
+      let html = "";
+      for (let i = 0; i < firstDay; i++) html += `<div class="cal-day is-empty"></div>`;
+      for (let d = 1; d <= daysInMonth; d++) {
+        const dStr = `${y}-${String(m + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+        const cls = ["cal-day", datesWithData.has(dStr) ? "has-data" : "", dStr === selectedDateStr ? "is-selected" : ""].join(" ");
+        html += `<div class="${cls}" onclick="selectCalDate('${dStr}')">${d}</div>`;
+      }
+      document.getElementById("calGrid").innerHTML = html;
+      renderDaySessions(selectedDateStr, sessions);
+    }
+
+    window.selectCalDate = async (dStr) => {
+      selectedDateStr = dStr;
+      await renderCalendar();
+    };
+
+    function renderDaySessions(dStr, allSessions) {
+      document.getElementById("selectedDateLabel").textContent = `${dStr} の記録`;
+      const list = allSessions.filter(s => s.dateStr === dStr).sort((a,b) => b.startedAtMs - a.startedAtMs);
+      const el = document.getElementById("daySessionsList");
+      if (list.length === 0) {
+        el.innerHTML = `<div style="color:var(--on-surface-variant); font-size:0.85rem;">この日の記録はありません。</div>`;
+        return;
+      }
+      el.innerHTML = list.map(s => `
+        <div class="clip-row">
+          <div><strong>${new Date(s.startedAtMs).toLocaleTimeString("ja-JP", {hour12:false})}</strong> (${fmtTime(s.durationSec)} / クリップ ${s.clips.length}件)</div>
+          <button type="button" class="btn btn-sm btn-primary" onclick="loadSessionToTimeline('${s.sessionId}')">開く</button>
+        </div>
+      `).join("");
+    }
+
+    window.loadSessionToTimeline = async (sessionId) => {
+      const sessions = await getAllStore("sessions");
+      activeSession = sessions.find(s => s.sessionId === sessionId);
+      if (!activeSession) return;
+      stopTimelinePlay();
+      timelinePlaySec = 0;
+      document.getElementById("timelineSection").style.display = "block";
+      document.getElementById("timelineTitle").textContent = `タイムライン波形 (${activeSession.dateStr} ${new Date(activeSession.startedAtMs).toLocaleTimeString("ja-JP", {hour12:false})})`;
+      renderClipList(activeSession.clips);
+      drawTimeline();
+    };
+
+    function stopTimelinePlay() {
+      isTimelinePlaying = false;
+      clearInterval(timelinePlayTimer);
+      document.getElementById("btn-play-timeline").textContent = "▶ タイムラインを再生";
+      const player = document.getElementById("clipAudioPlayer");
+      player.pause();
+    }
+
+    document.getElementById("btn-play-timeline").onclick = () => {
+      if (!activeSession || activeSession.logs.length === 0) return;
+      if (isTimelinePlaying) { stopTimelinePlay(); return; }
+      isTimelinePlaying = true;
+      document.getElementById("btn-play-timeline").textContent = "■ 停止";
+      const maxSec = activeSession.logs[activeSession.logs.length - 1].sec || 1;
+      let lastPlayedClipId = null;
+      timelinePlayTimer = setInterval(() => {
+        timelinePlaySec += 0.2;
+        if (timelinePlaySec > maxSec) { stopTimelinePlay(); timelinePlaySec = 0; drawTimeline(); return; }
+        const clip = activeSession.clips.find(c => timelinePlaySec >= c.startSec && timelinePlaySec <= c.startSec + c.durationSec);
+        if (clip && clip.id !== lastPlayedClipId) {
+          lastPlayedClipId = clip.id;
+          window.playClipById(clip.id);
+        }
+        drawTimeline();
+      }, 200);
+    };
+
+    document.getElementById("btn-cal-prev").onclick = () => { calDate.setMonth(calDate.getMonth() - 1); renderCalendar(); };
+    document.getElementById("btn-cal-next").onclick = () => { calDate.setMonth(calDate.getMonth() + 1); renderCalendar(); };
+
+    document.getElementById("btn-export-zip").onclick = async () => {
+      if (!activeSession) return;
+      await exportSessionZip(activeSession);
+    };
+
+    async function exportSessionZip(sess) {
+      const zip = new JSZip();
+      const refObj = (await getAllStore("meta")).find(x=>x.key==="reference_wav");
+      if (refObj && refObj.blob) zip.file("reference.wav", refObj.blob);
+      const validClips = sess.clips.filter(c => !c.isSpeech || c.rescued);
+      const clipMeta = validClips.map(c => { zip.file(c.file, c.blob); return { id: c.id, startSec: c.startSec, durationSec: c.durationSec, category: c.rescued ? LABELS.rescuedCategoryName : c.category, file: c.file }; });
+      zip.file("session.json", JSON.stringify({
+        schemaVersion: 35, appVersion: APP_VERSION,
+        session: { startedAt: new Date(sess.startedAtMs).toISOString(), durationSec: sess.durationSec, refDb: sess.refDb, baselineDbApplied },
+        timeSeriesLogs: sess.logs, clips: clipMeta
+      }, null, 2));
+      zip.file("seconds.csv", "sec,db,motionG\n" + sess.logs.map(l => `${l.sec},${l.db},${l.motionG}`).join("\n"));
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(await zip.generateAsync({ type: "blob" }));
+      a.download = `ST-SCOPE_${sess.dateStr}.zip`; a.click();
+      addLog(`ZIP出力完了（有効クリップ ${validClips.length}件）`);
+    }
+
+    function drawTimeline() {
+      if (!activeSession) return;
+      const c = document.getElementById("timeline-canvas"), dpr = window.devicePixelRatio || 1, rect = c.getBoundingClientRect();
+      const w = Math.max(300, Math.round(rect.width)), h = 220;
+      if (c.width !== w * dpr || c.height !== h * dpr) { c.width = w * dpr; c.height = h * dpr; }
+      const ctx = c.getContext("2d"); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.fillStyle = "#0c1214"; ctx.fillRect(0, 0, w, h);
+      const padL = 44, padR = 14, padT = 14, padB = 22, pw = w - padL - padR, ph = h - padT - padB;
+      const logs = activeSession.logs;
+      if (logs.length < 2) { ctx.fillStyle = "#94a8b0"; ctx.fillText("データ不足のため波形を描画できません", padL + 16, padT + ph / 2); return; }
+      const maxSec = logs[logs.length - 1].sec || 1;
+      const yDb = (db) => padT + ph * (1 - Math.max(0, Math.min(1, (db + 80) / 80)));
+
+      ctx.strokeStyle = "#213138"; ctx.lineWidth = 1; ctx.font = "11px monospace"; ctx.fillStyle = "#94a8b0";
+      [-60, -40, -20, 0].forEach(d => { const y = yDb(d); ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(w - padR, y); ctx.stroke(); ctx.fillText(`${d}dB`, 4, y + 4); });
+
+      ctx.beginPath(); ctx.strokeStyle = "#63c7d6"; ctx.lineWidth = 2;
+      logs.forEach((f, i) => { const x = padL + (f.sec / maxSec) * pw, y = yDb(f.db); i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y); }); ctx.stroke();
+
+      ctx.beginPath(); ctx.strokeStyle = "#87d69b"; ctx.lineWidth = 1.5;
+      logs.forEach((f, i) => { const x = padL + (f.sec / maxSec) * pw, y = padT + ph * (1 - Math.min(1, f.motionG / 0.5)); i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y); }); ctx.stroke();
+
+      // 再生ライン（プレイヘッド）
+      const px = padL + Math.min(1, timelinePlaySec / maxSec) * pw;
+      ctx.strokeStyle = "#f27474"; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(px, padT); ctx.lineTo(px, h - padB); ctx.stroke();
+    }
+
+    window.addEventListener("load", async () => {
+      addLog(`ST-SCOPE ${APP_VERSION} 起動。`);
+      checkGitHubUpdate(false);
+      initSileroVAD();
+      drawLive();
+      try { await initDB(); renderCalendar(); renderClipList(); } catch (e) {}
+    });
 
     document.getElementById("btn-calib").onclick = async () => {
       try {
@@ -508,11 +728,11 @@
     document.getElementById("btn-start").onclick = async () => {
       try {
         await initDB();
-        const refObj = (await getAllStore("meta")).find(x => x.key === "reference_wav");
-        await clearDB(); if (refObj) await saveStore("meta", refObj);
+        await clearCurrentWorkingDB();
         await initAudio();
       } catch (err) { addLog("開始エラー: " + err.message); return; }
 
+      activeSession = null;
       isRecording = true; startTimeMs = Date.now(); lastLoggedSec = -1; clipCounter = 0; speechExcludedCount = 0;
       eventCount = 0; liveFrames = []; silenceStartSec = null; smState = "NORMAL";
       ringBuffer.fill(0); ringWritePos = 0; isTriggerActive = false; activeClipSamples = [];
@@ -573,23 +793,7 @@
         } else if (isTriggerActive) {
           activeClipSamples.push(new Float32Array(input)); postSilenceSamples += input.length;
           if (postSilenceSamples >= audioCtx.sampleRate * POST_SEC) {
-            isTriggerActive = false; clipCounter++;
-            const id = clipCounter, len = activeClipSamples.reduce((a,b)=>a+b.length,0), merged = new Float32Array(len);
-            let off = 0; for (const c of activeClipSamples) { merged.set(c, off); off += c.length; }
-            activeClipSamples = [];
-            const vadRes = await evaluateClipSpeech(merged, audioCtx.sampleRate);
-            const fileName = `audio/clip_${String(id).padStart(4, "0")}.wav`, dur = Number((len / audioCtx.sampleRate).toFixed(2));
-            if (vadRes.isSpeech) {
-              speechExcludedCount++;
-              document.getElementById("kpi-speech-excluded").textContent = `人声除外 ${speechExcludedCount}件`;
-              addLog(`人声除外: ${fileName} (試聴・救済可)`);
-            } else addLog(`保存: ${fileName} (${dur}秒)`);
-            await saveStore("clips", {
-              id, startSec: clipStartSec, durationSec: dur, category: vadRes.isSpeech ? "speech_excluded" : "audio_event",
-              isSpeech: vadRes.isSpeech, rescued: false, file: fileName, blob: encodeWAV(merged, audioCtx.sampleRate)
-            });
-            document.getElementById("kpi-clips").textContent = clipCounter - speechExcludedCount;
-            renderClipList();
+            await finalizeActiveClip();
           }
         }
       };
@@ -603,38 +807,38 @@
     document.getElementById("btn-stop").onclick = async () => {
       isRecording = false; clearTimeout(nightTimer); if (scriptNode) scriptNode.disconnect();
       exitNightMode();
-      const stopBtn = document.getElementById("btn-stop"); stopBtn.disabled = true; stopBtn.textContent = "ZIP生成中...";
+      const stopBtn = document.getElementById("btn-stop"); stopBtn.disabled = true; stopBtn.textContent = "保存中...";
       try {
-        const zip = new JSZip();
+        await finalizeActiveClip();
         const logs = (await getAllStore("logs")).sort((a,b)=>a.sec-b.sec);
         const clips = (await getAllStore("clips")).sort((a,b)=>a.id-b.id);
-        const refObj = (await getAllStore("meta")).find(x=>x.key==="reference_wav");
-        if (refObj && refObj.blob) zip.file("reference.wav", refObj.blob);
-        const validClips = clips.filter(c => !c.isSpeech || c.rescued);
-        const clipMeta = validClips.map(c => { zip.file(c.file, c.blob); return { id: c.id, startSec: c.startSec, durationSec: c.durationSec, category: c.rescued ? LABELS.rescuedCategoryName : c.category, file: c.file }; });
-        zip.file("session.json", JSON.stringify({
-          schemaVersion: 35, appVersion: APP_VERSION,
-          session: { startedAt: new Date(startTimeMs).toISOString(), durationSec: logs.length ? logs[logs.length-1].sec : 0, refDb, baselineDbApplied },
-          timeSeriesLogs: logs, clips: clipMeta
-        }, null, 2));
-        zip.file("seconds.csv", "sec,db,motionG\n" + logs.map(l => `${l.sec},${l.db},${l.motionG}`).join("\n"));
-        const a = document.createElement("a");
-        a.href = URL.createObjectURL(await zip.generateAsync({ type: "blob" }));
-        a.download = `ST-SCOPE_${new Date().toISOString().slice(0,19).replace(/[:T]/g,"-")}.zip`; a.click();
-        addLog(`ZIP保存完了（有効クリップ ${validClips.length}件 / 人声破棄 ${clips.length - validClips.length}件）`);
-        document.getElementById("status-text").textContent = "ZIP保存完了！下のプレイヤーで音声を再生できます。";
-        renderClipList();
-      } catch (e) { addLog("ZIPエラー: " + e.message); }
+        const dateStr = new Date(startTimeMs).toISOString().slice(0, 10);
+        const sessObj = {
+          sessionId: "sess_" + startTimeMs,
+          dateStr,
+          startedAtMs: startTimeMs,
+          durationSec: logs.length ? logs[logs.length - 1].sec : 0,
+          refDb,
+          logs,
+          clips
+        };
+        await saveStore("sessions", sessObj);
+        selectedDateStr = dateStr;
+        await renderCalendar();
+        await loadSessionToTimeline(sessObj.sessionId);
+        addLog(`セッション保存完了（クリップ ${clips.length}件）。カレンダーとタイムラインから再生できます。`);
+        document.getElementById("status-text").textContent = "保存完了！カレンダー・タイムラインから再生やZIP出力ができます。";
+      } catch (e) { addLog("保存エラー: " + e.message); }
       finally {
         document.getElementById("btn-start").style.display = "inline-flex"; stopBtn.style.display = "none";
-        document.getElementById("btn-night").style.display = "none"; stopBtn.disabled = false; stopBtn.textContent = "終了・ZIP保存";
+        document.getElementById("btn-night").style.display = "none"; stopBtn.disabled = false; stopBtn.textContent = "終了・保存";
         document.getElementById("status-bar").classList.remove("is-active");
       }
     };
 
     function drawLive() {
       const c = document.getElementById("live-canvas"), dpr = window.devicePixelRatio || 1, rect = c.getBoundingClientRect();
-      const w = Math.max(300, Math.round(rect.width)), h = 240;
+      const w = Math.max(300, Math.round(rect.width)), h = 220;
       if (c.width !== w * dpr || c.height !== h * dpr) { c.width = w * dpr; c.height = h * dpr; }
       const ctx = c.getContext("2d"); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.fillStyle = "#0c1214"; ctx.fillRect(0, 0, w, h);
@@ -650,7 +854,7 @@
       ctx.beginPath(); ctx.strokeStyle = "#87d69b"; ctx.lineWidth = 1.6;
       liveFrames.forEach((f, i) => { const x = padL + (i / 59) * pw, y = padT + ph * (1 - Math.min(1, f.g / 0.5)); i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y); }); ctx.stroke();
     }
-    window.addEventListener("resize", drawLive);
+    window.addEventListener("resize", () => { drawLive(); drawTimeline(); });
   </script>
 </body>
 </html>
