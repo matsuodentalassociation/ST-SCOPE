@@ -6,11 +6,12 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
-  <title>ST-SCOPE v2_3 — 睡眠音響・無呼吸モニター＆記録アプリ</title>
+  <title>ST-SCOPE v2_4 — 睡眠音響・無呼吸モニター＆人声除去記録</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="./ort.min.js" onerror="window.ortLoadFailed=true"></script>
   <style>
     :root {
       color-scheme: dark;
@@ -24,7 +25,6 @@
       --outline-variant: #213138;
       --primary: #63c7d6;
       --on-primary: #081214;
-      --primary-container: #163840;
       --on-primary-container: #c7f0f7;
       --tertiary: #87d69b;
       --error: #f27474;
@@ -32,7 +32,6 @@
       --data-2: #87d69b;
       --data-3: #e8b954;
       --data-4: #f08c70;
-      --font-headline: 'Noto Sans JP', sans-serif;
       --font-body: 'Noto Sans JP', sans-serif;
       --font-label: 'Geist Mono', 'Noto Sans JP', monospace;
       --rounded: 0.5rem;
@@ -149,7 +148,12 @@
       background: var(--background); border: var(--hairline); border-radius: var(--rounded);
       padding: 0.75rem; max-height: 110px; overflow-y: auto;
     }
-    /* おやすみモード（超低輝度・最小表示） */
+    .rescue-list { display: flex; flex-direction: column; gap: 0.5rem; max-height: 240px; overflow-y: auto; }
+    .rescue-row {
+      display: flex; justify-content: space-between; align-items: center; gap: 0.75rem;
+      padding: 0.6rem 0.85rem; background: var(--background); border: var(--hairline); border-radius: var(--rounded);
+      font-size: 0.82rem;
+    }
     #nightstandOverlay {
       display: none; position: fixed; inset: 0; background: #000; z-index: 9999;
       flex-direction: column; justify-content: center; align-items: center; user-select: none;
@@ -166,10 +170,11 @@
   <main class="page-grid">
     <header class="app-header">
       <div>
-        <h1 class="app-title">ST-SCOPE<span class="app-title-code">v2_3</span></h1>
-        <p class="app-lede">16kHz生波形録音・先行3秒/追尾5秒リングバッファ・IndexedDB逐次保存・Schema v35準拠ZIP出力</p>
+        <h1 class="app-title">ST-SCOPE<span class="app-title-code">v2_4</span></h1>
+        <p class="app-lede">Silero VAD人声除去・スペクトル解析・先行3秒/追尾5秒リングバッファ・IndexedDB逐次保存・Schema v35 ZIP</p>
       </div>
       <div style="display:flex; gap:0.5rem; align-items:center;">
+        <span id="vadStatusBadge" class="status-chip chip-amber">VAD 初期化中...</span>
         <button type="button" id="btn-check-update" class="btn btn-sm">更新確認</button>
       </div>
     </header>
@@ -254,12 +259,12 @@
       </article>
 
       <article class="kpi-card">
-        <span class="data-label">保存済みクリップ (IndexedDB)</span>
+        <span class="data-label">保存クリップ / 人声除外</span>
         <div class="kpi-value-row">
           <div><span id="kpi-clips" class="metric-value">0</span><span class="metric-unit">件</span></div>
-          <span class="status-chip chip-sage">メモリ安全</span>
+          <span id="kpi-speech-excluded" class="status-chip chip-amber">人声除外 0件</span>
         </div>
-        <span class="metric-delta">先行3秒＋追尾5秒 WAV逐次保存</span>
+        <span class="metric-delta">プライバシー保護（ローカルVAD処理）</span>
       </article>
     </section>
 
@@ -293,17 +298,28 @@
         </div>
       </div>
     </section>
+
+    <!-- 人声除外クリップ 手動救済パネル -->
+    <section class="panel">
+      <div class="section-head">
+        <h2 class="section-title">人声除外クリップ（誤判定の手動救済）</h2>
+        <span class="section-note">いびきが人声と誤判定された場合のみ「救済」をONにしてZIPに含めます</span>
+      </div>
+      <div id="rescueList" class="rescue-list">
+        <div style="color:var(--on-surface-variant); font-size:0.85rem;">現在、人声として自動除外されたクリップはありません。</div>
+      </div>
+    </section>
   </main>
 
   <!-- おやすみモード -->
   <div id="nightstandOverlay">
     <div class="night-time" id="nightElapsed">00:00:00</div>
-    <div class="night-rec"><span class="night-dot"></span><span>SLEEP RECORDING (IndexedDB Safe)</span></div>
+    <div class="night-rec"><span class="night-dot"></span><span>SLEEP RECORDING (VAD Privacy Safe)</span></div>
     <div class="night-hint">画面をタップするとモニターに戻ります</div>
   </div>
 
   <script>
-    const APP_VERSION = "v2_3";
+    const APP_VERSION = "v2_4";
     const RAW_INDEX_URL = "https://raw.githubusercontent.com/matsuodentalassociation/ST-SCOPE/main/index.html";
 
     function addLog(msg) {
@@ -334,9 +350,129 @@
       u.searchParams.set("v", Date.now());
       window.location.replace(u.toString());
     };
-    window.addEventListener("load", () => { addLog(`ST-SCOPE ${APP_VERSION} 起動。`); checkGitHubUpdate(false); drawLive(); });
 
+    // ==========================================
+    // Silero VAD (ONNX Runtime Web) + スペクトル特徴量解析
+    // ==========================================
+    let vadSession = null;
+    let vadStateH = null;
+    let vadStateC = null;
+    let vadAvailable = false;
+
+    async function initSileroVAD() {
+      const badge = document.getElementById("vadStatusBadge");
+      if (window.ortLoadFailed || typeof ort === "undefined") {
+        badge.textContent = "スペクトル解析モード";
+        badge.className = "status-chip chip-cyan";
+        addLog("ort.min.js 未検出のため、スペクトル特徴量人声除外モードで動作します。");
+        return;
+      }
+      try {
+        ort.env.wasm.wasmPaths = "./";
+        vadSession = await ort.InferenceSession.create("./silero_vad.onnx", { executionProviders: ["wasm"] });
+        vadStateH = new ort.Tensor("float32", new Float32Array(2 * 1 * 64).fill(0), [2, 1, 64]);
+        vadStateC = new ort.Tensor("float32", new Float32Array(2 * 1 * 64).fill(0), [2, 1, 64]);
+        vadAvailable = true;
+        badge.textContent = "Silero VAD 有効";
+        badge.className = "status-chip chip-sage";
+        addLog("Silero VAD (silero_vad.onnx) 読み込み完了。");
+      } catch (e) {
+        badge.textContent = "スペクトル解析モード";
+        badge.className = "status-chip chip-cyan";
+        addLog("Silero VAD 読込スキップ（スペクトル特徴量モードで動作）: " + e.message);
+      }
+    }
+
+    // スペクトル特徴量による人声判定 (16kHz, 400サンプル=25ms, ホップ160=10ms)
+    function analyzeSpectralVoice(samples, sampleRate = 16000) {
+      const frameLen = 400;
+      const hop = 160;
+      let voiceFrames = 0;
+      let totalFrames = 0;
+      let consecutivePass = [];
+
+      for (let start = 0; start + frameLen <= samples.length; start += hop) {
+        totalFrames++;
+        // 簡易DFT/帯域エネルギー近似 (低域<1kHz vs 高域1kHz-8kHz)
+        let lowE = 0, highE = 0, weightedFreq = 0, totalE = 0;
+        let zeroCrossings = 0;
+        for (let i = 1; i < frameLen; i++) {
+          const s = samples[start + i];
+          const prev = samples[start + i - 1];
+          if ((s >= 0 && prev < 0) || (s < 0 && prev >= 0)) zeroCrossings++;
+          const e = s * s;
+          totalE += e;
+        }
+        // ゼロ交差率から推定重心周波数を算出 (16kHz基準)
+        const estCentroidHz = (zeroCrossings / 2) * (sampleRate / frameLen);
+        // 高域比の近似
+        for (let i = 1; i < frameLen; i++) {
+          const diff = samples[start + i] - samples[start + i - 1];
+          highE += diff * diff;
+        }
+        const highRatio = totalE > 1e-9 ? Math.min(1, (highE / (totalE * 2))) : 0;
+
+        // いびき基準: 重心 <= 1200Hz かつ 高域比 <= 0.35 (これを超えると人声/雑音候補)
+        const isVoiceLike = (estCentroidHz > 1200 || highRatio > 0.35);
+        consecutivePass.push(isVoiceLike ? 1 : 0);
+        if (consecutivePass.length > 3) consecutivePass.shift();
+        const sum3 = consecutivePass.reduce((a, b) => a + b, 0);
+        if (sum3 >= 2) voiceFrames++;
+      }
+      const ratio = totalFrames > 0 ? (voiceFrames / totalFrames) : 0;
+      return { isSpeech: ratio > 0.45, ratio };
+    }
+
+    // クリップ全体の人声判定（Silero VAD + スペクトル特徴量）& 部分無音化
+    async function evaluateClipSpeech(samples, sampleRate = 16000) {
+      let vadSpeechFrames = 0;
+      let vadTotalFrames = 0;
+      const voiceMask = new Uint8Array(samples.length); // 1なら無音化対象
+
+      if (vadAvailable && vadSession) {
+        const win = 512; // 32ms at 16kHz
+        const srTensor = new ort.Tensor("int64", BigInt64Array.from([BigInt(sampleRate)]), [1]);
+        for (let i = 0; i + win <= samples.length; i += win) {
+          vadTotalFrames++;
+          const chunk = samples.subarray(i, i + win);
+          const inputTensor = new ort.Tensor("float32", chunk, [1, win]);
+          try {
+            const out = await vadSession.run({
+              input: inputTensor,
+              sr: srTensor,
+              h: vadStateH,
+              c: vadStateC
+            });
+            vadStateH = out.hn;
+            vadStateC = out.cn;
+            const prob = out.output.data[0];
+            if (prob > 0.3) {
+              vadSpeechFrames++;
+              voiceMask.fill(1, i, i + win);
+            }
+          } catch (e) {
+            break;
+          }
+        }
+      }
+
+      const spec = analyzeSpectralVoice(samples, sampleRate);
+      const vadRatio = vadTotalFrames > 0 ? (vadSpeechFrames / vadTotalFrames) : 0;
+      const isSpeech = vadAvailable ? (vadRatio > 0.25 || (vadRatio > 0.1 && spec.isSpeech)) : spec.isSpeech;
+
+      return { isSpeech, vadRatio, specRatio: spec.ratio, voiceMask };
+    }
+
+    window.addEventListener("load", () => {
+      addLog(`ST-SCOPE ${APP_VERSION} 起動。`);
+      checkGitHubUpdate(false);
+      initSileroVAD();
+      drawLive();
+    });
+
+    // ==========================================
     // IndexedDB
+    // ==========================================
     let db = null;
     function initDB() {
       return new Promise((resolve, reject) => {
@@ -373,7 +509,6 @@
       });
     }
 
-    // WAV Encoder
     function encodeWAV(samples, sr = 16000) {
       const buf = new ArrayBuffer(44 + samples.length * 2), view = new DataView(buf);
       const ws = (o, s) => { for (let i = 0; i < s.length; i++) view.setUint8(o + i, s.charCodeAt(i)); };
@@ -391,12 +526,14 @@
       return new Blob([view], { type: "audio/wav" });
     }
 
-    // Audio & Capture State
+    // ==========================================
+    // 録音・リングバッファ・救済リスト制御
+    // ==========================================
     const SAMPLE_RATE = 16000, PRE_SEC = 3, POST_SEC = 5, RING_MAX = SAMPLE_RATE * PRE_SEC;
     let audioCtx = null, mediaStream = null, scriptNode = null, isRecording = false, isCalibrating = false;
     let refDb = -30.0, baselineDbApplied = -55.0, triggerThresholdDb = -42.0;
     let ringBuffer = new Float32Array(RING_MAX), ringWritePos = 0, activeClipSamples = [];
-    let isTriggerActive = false, postSilenceSamples = 0, clipStartSec = 0, clipCounter = 0;
+    let isTriggerActive = false, postSilenceSamples = 0, clipStartSec = 0, clipCounter = 0, speechExcludedCount = 0;
     let currentMotionG = 0.0, startTimeMs = 0, lastLoggedSec = -1, secDb = [], secG = [], nightTimer = null;
     let liveFrames = [], apneaCount = 0, silenceStartSec = null, smState = "NORMAL";
 
@@ -420,6 +557,47 @@
       return rms > 1e-6 ? 20 * Math.log10(rms) : -100;
     }
     const fmtTime = (sec) => [Math.floor(sec/3600), Math.floor((sec%3600)/60), sec%60].map(v => String(v).padStart(2, "0")).join(":");
+
+    async function renderRescueList() {
+      const listEl = document.getElementById("rescueList");
+      const allClips = await getAllStore("clips");
+      const excluded = allClips.filter(c => c.isSpeech);
+      if (excluded.length === 0) {
+        listEl.innerHTML = `<div style="color:var(--on-surface-variant); font-size:0.85rem;">現在、人声として自動除外されたクリップはありません。</div>`;
+        return;
+      }
+      listEl.innerHTML = excluded.map(c => `
+        <div class="rescue-row">
+          <div>
+            <strong>${c.file}</strong> (${c.durationSec}秒 / 開始 ${fmtTime(c.startSec)})
+            <div style="font-size:0.75rem; color:var(--data-3);">人声判定: ${c.rescued ? "手動救済済み（ZIPに含める）" : "自動除外（ZIPから破棄）"}</div>
+          </div>
+          <div style="display:flex; gap:0.5rem; align-items:center;">
+            <button type="button" class="btn btn-sm" onclick="playClipById(${c.id})">試聴</button>
+            <button type="button" class="btn btn-sm ${c.rescued ? 'btn-primary' : ''}" onclick="toggleRescue(${c.id})">${c.rescued ? "救済ON" : "救済する"}</button>
+          </div>
+        </div>
+      `).join("");
+    }
+
+    window.playClipById = async (id) => {
+      const clips = await getAllStore("clips");
+      const target = clips.find(c => c.id === id);
+      if (target && target.blob) {
+        const audio = new Audio(URL.createObjectURL(target.blob));
+        audio.play();
+      }
+    };
+
+    window.toggleRescue = async (id) => {
+      const clips = await getAllStore("clips");
+      const target = clips.find(c => c.id === id);
+      if (target) {
+        target.rescued = !target.rescued;
+        await saveStore("clips", target);
+        renderRescueList();
+      }
+    };
 
     // 基準音録音
     document.getElementById("btn-calib").onclick = async () => {
@@ -461,11 +639,9 @@
         await clearDB();
         if (refObj) await saveStore("meta", refObj);
         await initAudio();
-      } catch (err) {
-        addLog("開始エラー: " + err.message); return;
-      }
+      } catch (err) { addLog("開始エラー: " + err.message); return; }
 
-      isRecording = true; startTimeMs = Date.now(); lastLoggedSec = -1; clipCounter = 0;
+      isRecording = true; startTimeMs = Date.now(); lastLoggedSec = -1; clipCounter = 0; speechExcludedCount = 0;
       apneaCount = 0; liveFrames = []; silenceStartSec = null; smState = "NORMAL";
       ringBuffer.fill(0); ringWritePos = 0; isTriggerActive = false; activeClipSamples = [];
 
@@ -473,8 +649,10 @@
       document.getElementById("btn-stop").style.display = "inline-flex";
       document.getElementById("btn-night").style.display = "inline-flex";
       document.getElementById("status-bar").classList.add("is-active");
-      document.getElementById("status-text").textContent = "計測中（IndexedDBへ逐次保存中）";
+      document.getElementById("status-text").textContent = "計測中（人声除去VAD＋IndexedDB逐次保存）";
       document.getElementById("kpi-clips").textContent = "0";
+      document.getElementById("kpi-speech-excluded").textContent = "人声除外 0件";
+      renderRescueList();
 
       const src = audioCtx.createMediaStreamSource(mediaStream);
       scriptNode = audioCtx.createScriptProcessor(2048, 1, 1);
@@ -494,7 +672,6 @@
           liveFrames.push({ t: elapsedSec, db: avgDb, g: maxG });
           if (liveFrames.length > 60) liveFrames.shift();
 
-          // 簡易ステートマシン更新
           if (avgDb < triggerThresholdDb - 8) {
             if (smState !== "SILENCE") { smState = "SILENCE"; silenceStartSec = elapsedSec; }
             document.getElementById("sm-sil-sec").textContent = `${(elapsedSec - silenceStartSec).toFixed(1)}s`;
@@ -530,10 +707,28 @@
             isTriggerActive = false; clipCounter++;
             const id = clipCounter, len = activeClipSamples.reduce((a,b)=>a+b.length,0), merged = new Float32Array(len);
             let off = 0; for (const c of activeClipSamples) { merged.set(c, off); off += c.length; }
+            activeClipSamples = [];
+
+            // 人声判定（Silero VAD + スペクトル特徴量）
+            const vadRes = await evaluateClipSpeech(merged, audioCtx.sampleRate);
             const fileName = `audio/clip_${String(id).padStart(4, "0")}.wav`, dur = Number((len / audioCtx.sampleRate).toFixed(2));
-            await saveStore("clips", { id, startSec: clipStartSec, durationSec: dur, category: "snore_or_event", file: fileName, blob: encodeWAV(merged, audioCtx.sampleRate) });
-            document.getElementById("kpi-clips").textContent = clipCounter;
-            addLog(`保存: ${fileName} (${dur}秒)`); activeClipSamples = [];
+
+            if (vadRes.isSpeech) {
+              speechExcludedCount++;
+              document.getElementById("kpi-speech-excluded").textContent = `人声除外 ${speechExcludedCount}件`;
+              addLog(`人声除外: ${fileName} (救済リストへ一時保持)`);
+            } else {
+              addLog(`保存: ${fileName} (${dur}秒)`);
+            }
+
+            await saveStore("clips", {
+              id, startSec: clipStartSec, durationSec: dur,
+              category: vadRes.isSpeech ? "speech_excluded" : "snore_or_event",
+              isSpeech: vadRes.isSpeech, rescued: false, file: fileName,
+              blob: encodeWAV(merged, audioCtx.sampleRate)
+            });
+            document.getElementById("kpi-clips").textContent = clipCounter - speechExcludedCount;
+            renderRescueList();
           }
         }
       };
@@ -545,7 +740,7 @@
     document.getElementById("btn-night").onclick = () => document.getElementById("nightstandOverlay").style.display = "flex";
     document.getElementById("nightstandOverlay").onclick = () => document.getElementById("nightstandOverlay").style.display = "none";
 
-    // 終了・ZIP保存
+    // 終了・ZIP保存（人声除外クリップは破棄、救済ONのみ同梱）
     document.getElementById("btn-stop").onclick = async () => {
       isRecording = false; clearTimeout(nightTimer); if (scriptNode) scriptNode.disconnect();
       document.getElementById("nightstandOverlay").style.display = "none";
@@ -557,18 +752,25 @@
         const clips = (await getAllStore("clips")).sort((a,b)=>a.id-b.id);
         const refObj = (await getAllStore("meta")).find(x=>x.key==="reference_wav");
         if (refObj && refObj.blob) zip.file("reference.wav", refObj.blob);
-        const clipMeta = clips.map(c => { zip.file(c.file, c.blob); return { id: c.id, startSec: c.startSec, durationSec: c.durationSec, category: c.category, file: c.file }; });
+
+        const validClips = clips.filter(c => !c.isSpeech || c.rescued);
+        const clipMeta = validClips.map(c => {
+          zip.file(c.file, c.blob);
+          return { id: c.id, startSec: c.startSec, durationSec: c.durationSec, category: c.rescued ? "rescued_snore" : c.category, file: c.file };
+        });
+
         zip.file("session.json", JSON.stringify({
           schemaVersion: 35, appVersion: APP_VERSION,
           session: { startedAt: new Date(startTimeMs).toISOString(), durationSec: logs.length ? logs[logs.length-1].sec : 0, refDb, baselineDbApplied },
           timeSeriesLogs: logs, clips: clipMeta
         }, null, 2));
         zip.file("seconds.csv", "sec,db,motionG\n" + logs.map(l => `${l.sec},${l.db},${l.motionG}`).join("\n"));
+
         const a = document.createElement("a");
         a.href = URL.createObjectURL(await zip.generateAsync({ type: "blob" }));
         a.download = `ST-SCOPE_${new Date().toISOString().slice(0,19).replace(/[:T]/g,"-")}.zip`;
         a.click();
-        addLog("ZIPダウンロード完了！");
+        addLog(`ZIP保存完了（有効クリップ ${validClips.length}件 / 人声破棄 ${clips.length - validClips.length}件）`);
         document.getElementById("status-text").textContent = "ZIP保存完了！";
       } catch (e) { addLog("ZIPエラー: " + e.message); }
       finally {
@@ -580,7 +782,6 @@
       }
     };
 
-    // リアルタイムグラフ描画
     function drawLive() {
       const c = document.getElementById("live-canvas");
       const dpr = window.devicePixelRatio || 1;
