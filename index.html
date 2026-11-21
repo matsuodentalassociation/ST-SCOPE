@@ -5,9 +5,9 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
 <meta name="theme-color" content="#000000">
 <meta name="somnolog-app" content="ST-SCOPE-SomnoLog">
-<meta name="somnolog-version" content="133">
+<meta name="somnolog-version" content="134">
 <meta http-equiv="Cache-Control" content="no-cache">
-<title>③SomnoLog_V133</title>
+<title>③SomnoLog_V134</title>
 <script>
 (() => {
   const key = "somnolog.commit-package.v1";
@@ -33,8 +33,8 @@
 body{margin:0;background:#0d1117;color:#f0eee6;font-family:-apple-system,BlinkMacSystemFont,"Noto Sans JP",sans-serif}
 [hidden]{display:none!important}
 button,input,select{font:inherit}
-button{min-height:48px;padding:12px 14px;border-radius:10px;border:1px solid #3c4f63;background:#223649;color:#e5f1fb;font-size:15px;font-weight:600;width:100%;cursor:pointer}
-button.primary{background:#84b9cf;border-color:#84b9cf;color:#10202a}
+button,.dl-btn{min-height:48px;padding:12px 14px;border-radius:10px;border:1px solid #3c4f63;background:#223649;color:#e5f1fb;font-size:15px;font-weight:600;width:100%;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;text-decoration:none}
+button.primary,.dl-btn.primary{background:#84b9cf;border-color:#84b9cf;color:#10202a}
 button.danger{background:#3a2a2a;border-color:#7a4b48;color:#f2d2cf}
 button.sub{background:#171f29;border-color:#34424f;color:#d3dde7}
 button.warnbtn{background:#353024;border-color:#6d6240;color:#f3e7c9}
@@ -107,7 +107,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 1-1 起動・QR読み取り -->
 <main id="page-start" class="page" hidden>
   <header class="head">
-    <h1 class="app-name">③SomnoLog_V133</h1>
+    <h1 class="app-name">③SomnoLog_V134</h1>
     <span class="tag">患者情報確認</span>
   </header>
   <div id="scan-msg" class="err" hidden></div>
@@ -158,7 +158,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 記録画面 -->
 <main id="page-record" class="page" hidden>
   <header class="head">
-    <h1 class="app-name">③SomnoLog_V133</h1>
+    <h1 class="app-name">③SomnoLog_V134</h1>
     <div style="display:flex;align-items:center;gap:10px">
       <button id="rec-back" class="sub mini" type="button">戻る</button>
       <span id="rec-badge" class="tag">待機中</span>
@@ -187,7 +187,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 記録の準備 -->
 <main id="page-prep" class="page" hidden>
   <header class="head">
-    <h1 class="app-name">③SomnoLog_V133</h1>
+    <h1 class="app-name">③SomnoLog_V134</h1>
     <button id="prep-back" class="sub mini" type="button">戻る</button>
   </header>
   <button id="prep-usage-btn" class="warnbtn">使い方を見る</button>
@@ -282,13 +282,13 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
   </section>
   <p class="muted">本アプリは診断を行うものではありません。医師の判断の参考資料です。</p>
 </main>
-
 <!-- 睡眠記録の共有 -->
 <main id="page-share" class="page" hidden>
   <header class="head"><h1>睡眠記録の共有</h1></header>
   <p id="sh-msg" class="warn" hidden></p>
   <section class="card">
     <button id="sh-all" class="primary">全てのいびき記録を保存</button>
+    <a id="sh-dl-link" class="dl-btn primary" hidden>ZIPファイルをダウンロード</a>
     <p class="muted">会話が含まれる音声と判定できなかった音声は自動で除外されます。数値ログは必ず保存されます。</p>
   </section>
   <section class="card">
@@ -315,8 +315,8 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 
 <script>
 "use strict";
-const APP_VERSION = 133;
-const APP = "③SomnoLog_V133", RATE = 16000, STEP = 1600, PRE = RATE * 3, POST = RATE * 5;
+const APP_VERSION = 134;
+const APP = "③SomnoLog_V134", RATE = 16000, STEP = 1600, PRE = RATE * 3, POST = RATE * 5;
 const DB_NAME = "SomnoLog.v130", PROFILE = 300, MAX_CLIP = RATE * 3600;
 const REPO = "matsuodentalassociation/ST-SCOPE", UPDATE_KEY = "somnolog.commit-package.v1";
 const REF_KEY = "somnolog.v130.reference", PERSON_KEY = "somnolog.v130.person";
@@ -349,7 +349,7 @@ let calibration = null, current = null, stopping = null, starting = false, updat
 let motionAllowed = false, motionAt = -Infinity, motionG = null, gravity = null, lastMotionTime = 0;
 let camStream = null, camTimer = 0, detector = null, scanBusy = false;
 let audioDone = null, blackOn = false, blackTimer = 0, savedRootStyle = null;
-let blobUrls = [], detailSid = null, shareSid = null;
+let blobUrls = [], detailSid = null, shareSid = null, shareZipUrl = "";
 const cal = { year: 0, month: 0, selected: null, index: 0, byDay: new Map() };
 const tl = { data: null, total: 0, winStart: 0, winLen: 0, cursor: 0, zoomSec: 0, mode: "sound", motionThresh: 0.05 };
 try { const st = localStorage.getItem("somnolog-motion-thresh-g"); if (st != null) tl.motionThresh = clamp(Number(st) || 0.05, 0, 0.3); } catch (_) {}
@@ -1051,6 +1051,8 @@ class ZIP {
 async function exportZip() {
   if (isBusy() || !shareSid) return;
   exporting = true; setButtons(); shMsg("ZIPを作成中…", false);
+  const dl = $("sh-dl-link"); dl.hidden = true;
+  if (shareZipUrl) { URL.revokeObjectURL(shareZipUrl); shareZipUrl = ""; }
   try {
     const [[s], logs, bins, clips] = await Promise.all([readStore("sessions", IDBKeyRange.only(shareSid)), readStore("sessionLogs", range(shareSid)), readStore("profileBins", range(shareSid)), sessionClips(shareSid)]);
     if (!s) throw Error("記録が見つかりません。");
@@ -1066,12 +1068,14 @@ async function exportZip() {
     }
     zip.json("session.json", { format: "zip-store-v1", schemaVersion: 35, app: "SomnoLog", version: APP_VERSION, sessionId: s.id, patient: s.patient, startedAt: new Date(s.startedAt).toISOString(), endedAt: s.endedAt ? new Date(s.endedAt).toISOString() : null, durationSec: s.durationSec, baselineDbFS: s.baselineDbFS, audioSampleRate: RATE, clips: info, excludedAudio: excluded, timeSeriesLogs: logs.map((a) => ({ sec: a.sec, db: a.sourceDbFS, motionG: a.motionG })), profileBins: bins.filter((b) => b.avgMotion !== null) });
     zip.json("log.json", { format: "zip-store-v1", periodSec: 0.1, fields: ["sec", "db", "peakHz", "motionG", "motionValid", "partial"], rows: logs.map((a) => [a.sec, a.sourceDbFS, a.peakHz, a.motionG, a.motionG !== null, a.partial]) });
-    const url = URL.createObjectURL(zip.finish()), a = document.createElement("a");
-    a.href = url; a.download = `SomnoLog_${dayKey(s.startedAt)}_${s.id.slice(0, 8)}.zip`; document.body.append(a); a.click(); a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 60000);
+    const filename = `SomnoLog_${dayKey(s.startedAt)}_${s.id.slice(0, 8)}.zip`;
+    shareZipUrl = URL.createObjectURL(zip.finish());
+    dl.href = shareZipUrl; dl.download = filename; dl.hidden = false;
+    const a = document.createElement("a");
+    a.href = shareZipUrl; a.download = filename; document.body.append(a); a.click(); a.remove();
     await putStore("sessions", { ...s, exportedAt: Date.now() });
     $("sh-del-tl-card").hidden = false; $("sh-del-tl").disabled = false;
-    shMsg(`ダウンロードを開始しました。収録 ${info.length} 件、会話除外 ${excluded.conversation} 件、判定不能除外 ${excluded.unverified} 件。`, false);
+    shMsg(`ZIPの準備ができました（収録 ${info.length} 件、会話除外 ${excluded.conversation} 件、判定不能除外 ${excluded.unverified} 件）。自動で保存されない場合は「ZIPファイルをダウンロード」を押してください。`, false);
   } catch (e) { shMsg("ZIP処理：" + e.message, true); }
   finally { exporting = false; setButtons(); }
 }
@@ -1163,6 +1167,7 @@ on("tl-go-share", "click", () => {
   if (!detailSid) return; shareSid = detailSid;
   $("sh-addr").textContent = person?.logShareEmail || "（未記入）";
   $("sh-del-tl-card").hidden = !tl.data?.sess?.exportedAt; $("sh-del-tl").disabled = !tl.data?.sess?.exportedAt;
+  $("sh-dl-link").hidden = true;
   shMsg("", false); showPage("share");
 });
 on("sh-all", "click", exportZip);
@@ -1200,3 +1205,4 @@ if (chart) {
 </script>
 </body>
 </html>
+
