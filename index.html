@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
 <meta name="theme-color" content="#000000">
 <meta http-equiv="Cache-Control" content="no-cache">
-<meta name="somnolog-app" content="somnolog-v140">
-<meta name="somnolog-build" content="SomnoLog-V140">
+<meta name="somnolog-app" content="somnolog-v141">
+<meta name="somnolog-build" content="SomnoLog-V141">
 <script>
 (function () {
   try {
@@ -16,7 +16,7 @@
       return;
     }
     var v = parseInt(localStorage.getItem("sl_boot_ver") || "0", 10);
-    if (v > 140) {
+    if (v > 141) {
       var h = localStorage.getItem("sl_boot_html");
       if (h && h.indexOf("</html>") >= 0) {
         document.open();
@@ -27,7 +27,7 @@
   } catch (e) {}
 })();
 </script>
-<title>SomnoLog V140 基準音圧版</title>
+<title>SomnoLog V141 基準音圧版</title>
 <style>
 :root{color-scheme:dark}
 *{box-sizing:border-box}
@@ -116,7 +116,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 1-1 起動・QR読み取り -->
 <main id="page-start" class="page" hidden>
   <header class="head">
-    <h1 class="app-name">SomnoLog V140</h1>
+    <h1 class="app-name">SomnoLog V141</h1>
     <span class="tag">患者情報確認</span>
   </header>
 
@@ -173,7 +173,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 記録画面 -->
 <main id="page-record" class="page" hidden>
   <header class="head">
-    <h1 class="app-name">SomnoLog V140</h1>
+    <h1 class="app-name">SomnoLog V141</h1>
     <div style="display:flex;align-items:center;gap:10px">
       <button id="rec-back" class="sub mini" type="button">戻る</button>
       <span id="rec-badge" class="tag">待機中</span>
@@ -203,7 +203,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 記録の準備 -->
 <main id="page-prep" class="page" hidden>
   <header class="head">
-    <h1 class="app-name">SomnoLog V140</h1>
+    <h1 class="app-name">SomnoLog V141</h1>
     <button id="prep-back" class="sub mini" type="button">戻る</button>
   </header>
 
@@ -380,9 +380,9 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <script>
 "use strict";
 /* ===== バージョン ===== */
-const APP_VERSION = 140;
+const APP_VERSION = 141;
 const VERSION = "SomnoLog-V" + APP_VERSION;
-const REVISION = "v140-unified";
+const REVISION = "v141-unified";
 
 /* ===== 更新の取得元（GitHub） ===== */
 const UPD_REPO = "matsuodentalassociation/ST-SCOPE";
@@ -442,24 +442,20 @@ const TAG_NAME = { snore: "いびき", unknown: "判定不能", env: "環境音"
 const TL_BINS = 60;
 const TL_W = 480, TL_H = 220, TL_PL = 62, TL_PR = 8, TL_PT = 8, TL_PB = 22;
 const SAVED_BAR_COLOR = "#ffffff";
-const ENV_QUIET_MAX = 0, ENV_CALM_MAX = 2, MOVE_TH = 0.03, LINK_SEC = 2, TURN_MIN = 3, TURN_PER_HOUR = 3, PERIOD_MIN = 6, PERIOD_TOL_RATE = 0.2, PERIOD_TOL_SEC = 2;
 
 /* ===== 補助関数 ===== */
 const $ = (id) => document.getElementById(id);
 const pad = (n) => String(n).padStart(2, "0");
 const uid = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now() + "-" + Math.random().toString(16).slice(2));
 const round = (n, d = 3) => Number(n.toFixed(d));
-const round1 = (v) => Math.round(v * 10) / 10;
 const round2 = (v) => Math.round(v * 100) / 100;
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 const mean = (a) => (a.length ? a.reduce((s, v) => s + v, 0) / a.length : 0);
 const median = (a) => { if (!a.length) return null; const s = [...a].sort((x, y) => x - y); const m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
-const maxOf = (a) => a.reduce((m, v) => Math.max(m, v), -Infinity);
 const fmtTime = (ms) => { const s = Math.max(0, Math.floor(ms / 1000)); const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60; return h ? h + ":" + pad(m) + ":" + pad(sec) : m + ":" + pad(sec); };
 const fmtHM = (ms) => { const s = Math.max(0, Math.floor(ms / 1000)); return Math.floor(s / 3600) + "時間" + Math.floor((s % 3600) / 60) + "分"; };
 const fmtClock = (ms) => new Date(ms).toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 const esc = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-const mb = (bytes) => (bytes / 1048576).toFixed(1) + " MB";
 const dayKey = (ms) => { const d = new Date(ms); return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); };
 const dayLabel = (key) => { const [y, m, d] = key.split("-").map(Number); const w = "日月火水木金土"[new Date(y, m - 1, d).getDay()]; return y + "年" + m + "月" + d + "日（" + w + "）"; };
 
@@ -602,7 +598,7 @@ const sessionRange = (id) => IDBKeyRange.bound([id, -Infinity], [id, Infinity]);
 
 /* ===== 状態 ===== */
 const S = {
-  ac: null, stream: null, source: null, analyser: null, mutedOutput: null, processor: null,
+  ac: null, stream: null, source: null, analyser: null, mutedOutput: null, processor: null, refProcessor: null,
   gainDb: 0, calDb: 0, ref: null, refColl: null, refPcm: null, refEnv: null, peakDb: -Infinity,
   patient: null, running: false, saving: false, wake: null, uiTimer: null, blackOn: false, savedStyle: null, blackTimer: null, detailSid: null,
   lastLv: -100, dispWin: [], dispLv: -100, motionAllowed: false, motionValue: 0, motionAt: 0, motionSource: "", gravity: null, gravityAt: 0,
@@ -788,32 +784,53 @@ window.addEventListener("devicemotion", (e) => {
   S.gravityAt = now; S.motionValue = Math.hypot(x, y, z) / 9.80665; S.motionAt = now;
 });
 
-/* ===== 基準音測定（「あ〜」） ===== */
+/* ===== 基準音測定（「あ〜」）連続PCM録音 ===== */
+function stopRefProcessor() {
+  if (!S.refProcessor) return;
+  S.refProcessor.onaudioprocess = null;
+  try { S.source.disconnect(S.refProcessor); } catch (_) {}
+  try { S.refProcessor.disconnect(); } catch (_) {}
+  S.refProcessor = null;
+}
+
 function startRefMeasure() {
-  if (!S.ac || S.running || S.refColl) return;
+  if (!S.ac || !S.source || S.running || S.refColl) return;
   S.refEnv = null; S.refColl = []; S.refPcm = []; S.dispWin = []; S.dispLv = -100;
   setButtons();
   showRefMsg("静かにしてください…（環境音を" + REF_SEC + "秒測ります）");
-  const buf = new Float32Array(S.analyser.fftSize);
-  const iv = setInterval(() => {
-    if (!S.refColl) { clearInterval(iv); return; }
-    S.analyser.getFloatTimeDomainData(buf);
-    let sq = 0; for (let i = 0; i < buf.length; i++) sq += buf[i] * buf[i];
-    const lv = (sq > 0 ? Math.max(-100, 10 * Math.log10(sq / buf.length)) : -100) + S.gainDb + S.calDb;
+
+  stopRefProcessor();
+  const proc = S.ac.createScriptProcessor(2048, 1, 1);
+  proc.onaudioprocess = (e) => {
+    for (let ch = 0; ch < e.outputBuffer.numberOfChannels; ch++) e.outputBuffer.getChannelData(ch).fill(0);
+    if (!S.refColl) return;
+    const ch = e.inputBuffer.getChannelData(0);
+    const mult = Math.pow(10, (S.gainDb + S.calDb) / 20);
+    let sq = 0;
+    const scaled = new Float32Array(ch.length);
+    for (let i = 0; i < ch.length; i++) {
+      const v = clamp(ch[i] * mult, -1, 1);
+      scaled[i] = v;
+      sq += v * v;
+    }
+    const lv = sq > 0 ? Math.max(-100, 10 * Math.log10(sq / ch.length)) : -100;
     S.refColl.push(lv);
-    if (S.refPcm) S.refPcm.push(buf.slice(0));
-  }, 50);
+    if (S.refPcm) S.refPcm.push(scaled);
+  };
+  S.source.connect(proc);
+  proc.connect(S.ac.destination);
+  S.refProcessor = proc;
 
   setTimeout(() => {
     const arr = S.refColl || [];
-    if (arr.length < 10) { clearInterval(iv); S.refColl = null; showRefMsg("音を十分に取れませんでした。", true); setButtons(); return; }
+    if (arr.length < 5) { stopRefProcessor(); S.refColl = null; showRefMsg("音を十分に取れませんでした。", true); setButtons(); return; }
     S.refEnv = round2(median(arr));
     S.refColl = []; S.refPcm = [];
     showRefMsg("「あ〜」と声を出し続けてください…（" + REF_SEC + "秒）");
     setTimeout(() => {
-      clearInterval(iv);
+      stopRefProcessor();
       const arr2 = S.refColl || [];
-      if (arr2.length < 10) { S.refColl = null; showRefMsg("音を十分に取れませんでした。", true); setButtons(); return; }
+      if (arr2.length < 5) { S.refColl = null; showRefMsg("音を十分に取れませんでした。", true); setButtons(); return; }
       const db = Math.max(...arr2);
       if (db < REF_QUIET_DB || db <= S.refEnv) { S.refColl = null; showRefMsg("声が小さいか環境音と差がありません。音圧調整を上げてください。", true); setButtons(); return; }
       const rawDb = db - (S.gainDb + S.calDb);
@@ -1018,7 +1035,6 @@ function emitLog(sec, partial = false) {
   if (!S.winCount) return;
   const dbValue = S.winPow > 0 ? Math.max(-120, round(10 * Math.log10(S.winPow / S.winCount), 1)) : -120;
   const dt = S.winCount * HOP / RATE;
-  // 欠測時は null のまま保存
   const m = S.winMotionValid ? round(S.winMotion, 4) : null;
   S.logBatch.push({ sessionId: S.session.id, index: S.logIndex++, sec, db: dbValue, peakHz: S.winPeakHz, motionG: m, motionValid: S.winMotionValid, partial });
   if (S.winMotionValid && m >= MOTION_EVENT_G) S.motionSec += dt;
@@ -1532,7 +1548,6 @@ async function makeZip() {
 
 /* ===== イベント接続 ===== */
 const on = (id, ev, fn) => $(id).addEventListener(ev, fn);
-const toggleBox = (btnId, boxId) => on(btnId, "click", () => { $(boxId).hidden = !$(boxId).hidden; });
 ["usage", "rec-usage", "prep-usage", "cal-usage", "det-usage", "sh-usage"].forEach((k) => {
   const b = $(k === "sh-usage" ? "sh-usage" : k + "-btn");
   if (b) b.addEventListener("click", () => { $(k + "-box").hidden = !$(k + "-box").hidden; });
