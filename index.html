@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <meta name="theme-color" content="#000000">
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-  <title>ST-SCOPE v2_11</title>
+  <title>ST-SCOPE v2_12</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -102,7 +102,7 @@
   <main class="page-grid">
     <header class="app-header">
       <div>
-        <h1 class="app-title">ST-SCOPE<span class="app-title-code">v2_11</span></h1>
+        <h1 class="app-title">ST-SCOPE<span class="app-title-code">v2_12</span></h1>
         <p class="app-lede" id="lbl-app-lede"></p>
       </div>
       <div style="display:flex; gap:0.5rem; align-items:center;">
@@ -250,7 +250,7 @@
   </div>
 
   <script>
-    const APP_VERSION = "v2_11";
+    const APP_VERSION = "v2_12";
     const RAW_INDEX_URL = "https://raw.githubusercontent.com/matsuodentalassociation/ST-SCOPE/main/index.html";
 
     const LABELS = {
@@ -332,24 +332,34 @@
     nightOverlay.addEventListener("pointercancel", cancelNightHold);
     nightOverlay.addEventListener("pointerleave", cancelNightHold);
 
-    let vadSession = null, vadStateH = null, vadStateC = null, vadAvailable = false;
+    // Silero VAD (v4 / v5 自動判別 & シングルスレッドWASM対応)
+    let vadSession = null, vadMode = "none", vadStateH = null, vadStateC = null, vadStateV5 = null;
     async function initSileroVAD() {
       const badge = document.getElementById("vadStatusBadge");
       if (window.ortLoadFailed || typeof ort === "undefined") {
         badge.textContent = "スペクトル解析モード"; badge.className = "status-chip chip-cyan";
-        addLog("スペクトル特徴量人声除外モードで動作します。");
+        addLog("ort.min.js 読込不可のためスペクトル解析モードで動作します。");
         return;
       }
       try {
         ort.env.wasm.wasmPaths = "./";
+        ort.env.wasm.numThreads = 1; // GitHub Pages等でのSharedArrayBufferエラー回避
         vadSession = await ort.InferenceSession.create("./silero_vad.onnx", { executionProviders: ["wasm"] });
-        vadStateH = new ort.Tensor("float32", new Float32Array(2 * 1 * 64).fill(0), [2, 1, 64]);
-        vadStateC = new ort.Tensor("float32", new Float32Array(2 * 1 * 64).fill(0), [2, 1, 64]);
-        vadAvailable = true; badge.textContent = "Silero VAD 有効"; badge.className = "status-chip chip-sage";
-        addLog("Silero VAD 読み込み完了。");
+        const inputs = vadSession.inputNames || [];
+        if (inputs.includes("state")) {
+          vadMode = "v5";
+          vadStateV5 = new ort.Tensor("float32", new Float32Array(2 * 1 * 128).fill(0), [2, 1, 128]);
+        } else {
+          vadMode = "v4";
+          vadStateH = new ort.Tensor("float32", new Float32Array(2 * 1 * 64).fill(0), [2, 1, 64]);
+          vadStateC = new ort.Tensor("float32", new Float32Array(2 * 1 * 64).fill(0), [2, 1, 64]);
+        }
+        badge.textContent = `Silero VAD (${vadMode}) 有効`; badge.className = "status-chip chip-sage";
+        addLog(`Silero VAD (${vadMode}) 読み込み完了。`);
       } catch (e) {
+        vadMode = "none";
         badge.textContent = "スペクトル解析モード"; badge.className = "status-chip chip-cyan";
-        addLog("Silero VAD 読込スキップ（スペクトル解析モード）");
+        addLog("Silero VAD 読込エラー: " + e.message);
       }
     }
 
@@ -377,20 +387,26 @@
 
     async function evaluateClipSpeech(samples, sampleRate = 16000) {
       let vadSpeechFrames = 0, vadTotalFrames = 0;
-      if (vadAvailable && vadSession) {
+      if (vadMode !== "none" && vadSession) {
         const win = 512, srTensor = new ort.Tensor("int64", BigInt64Array.from([BigInt(sampleRate)]), [1]);
         for (let i = 0; i + win <= samples.length; i += win) {
           const inputTensor = new ort.Tensor("float32", samples.subarray(i, i + win), [1, win]);
           try {
-            const out = await vadSession.run({ input: inputTensor, sr: srTensor, h: vadStateH, c: vadStateC });
-            vadStateH = out.hn; vadStateC = out.cn; vadTotalFrames++;
-            if (out.output.data[0] > 0.3) vadSpeechFrames++;
-          } catch (e) { break; }
+            if (vadMode === "v5") {
+              const out = await vadSession.run({ input: inputTensor, sr: srTensor, state: vadStateV5 });
+              vadStateV5 = out.stateN; vadTotalFrames++;
+              if (out.output.data[0] > 0.35) vadSpeechFrames++;
+            } else {
+              const out = await vadSession.run({ input: inputTensor, sr: srTensor, h: vadStateH, c: vadStateC });
+              vadStateH = out.hn; vadStateC = out.cn; vadTotalFrames++;
+              if (out.output.data[0] > 0.35) vadSpeechFrames++;
+            }
+          } catch (e) { addLog("VAD推論エラー: " + e.message); break; }
         }
       }
       const spec = analyzeSpectralVoice(samples, sampleRate);
       const vadRatio = vadTotalFrames > 0 ? (vadSpeechFrames / vadTotalFrames) : 0;
-      return { isSpeech: vadTotalFrames > 0 ? (vadRatio > 0.25 || (vadRatio > 0.1 && spec.isSpeech)) : spec.isSpeech };
+      return { isSpeech: vadTotalFrames > 0 ? (vadRatio > 0.2 || (vadRatio > 0.08 && spec.isSpeech)) : spec.isSpeech };
     }
 
     let db = null;
@@ -623,7 +639,6 @@
       }, 200);
     };
 
-    // タイムラインのタップ＆ドラッグで赤いラインを動かす（シーク）
     const tlCanvas = document.getElementById("timeline-canvas");
     function seekTimelineByPointer(e) {
       if (!activeSession || activeSession.logs.length < 2) return;
