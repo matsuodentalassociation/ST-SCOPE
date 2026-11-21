@@ -5,9 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <meta name="theme-color" content="#000000">
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-  <meta http-equiv="Pragma" content="no-cache">
-  <meta http-equiv="Expires" content="0">
-  <title>ST-SCOPE v2_10 — 音響解析・波形モニタリング＆カレンダー</title>
+  <title>ST-SCOPE v2_11</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -18,8 +16,8 @@
       color-scheme: dark;
       --background: #0c1214; --surface-container: #152024; --surface-container-high: #1c2a30;
       --on-surface: #edf3f5; --on-surface-variant: #94a8b0; --outline: #38515c; --outline-variant: #213138;
-      --primary: #63c7d6; --on-primary: #081214; --on-primary-container: #c7f0f7;
-      --tertiary: #87d69b; --error: #f27474; --data-1: #63c7d6; --data-2: #87d69b; --data-3: #e8b954; --data-4: #f08c70;
+      --primary: #63c7d6; --on-primary: #081214; --tertiary: #87d69b; --error: #f27474;
+      --data-1: #63c7d6; --data-2: #87d69b; --data-3: #e8b954; --data-4: #f08c70;
       --font-body: 'Noto Sans JP', sans-serif; --font-label: 'Geist Mono', 'Noto Sans JP', monospace;
       --rounded: 0.5rem; --rounded-lg: 0.75rem; --hairline: 1px solid var(--outline-variant); --hairline-strong: 1px solid var(--outline);
       --panel-gradient: linear-gradient(180deg, #162226 0%, #111a1e 100%);
@@ -66,7 +64,7 @@
     .chip-coral { background: var(--coral-tint); color: var(--data-4); border: 1px solid rgba(240,140,112,0.4); }
     .monitor-layout { display: grid; grid-template-columns: minmax(0, 1.75fr) minmax(260px, 1fr); gap: 1.25rem; align-items: start; }
     .canvas-well { background: var(--background); border: var(--hairline); border-radius: var(--rounded); padding: 0.5rem; }
-    .chart-canvas { display: block; width: 100%; height: 220px; }
+    .chart-canvas { display: block; width: 100%; height: 220px; touch-action: none; cursor: pointer; }
     .legend-row { display: flex; flex-wrap: wrap; gap: 1rem; margin-top: 0.5rem; font-family: var(--font-label); font-size: 0.75rem; color: var(--on-surface-variant); }
     .legend-item { display: inline-flex; align-items: center; gap: 6px; }
     .legend-swatch { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
@@ -89,10 +87,8 @@
 
     #nightstandOverlay {
       display: none; background-color: #000000 !important; width: 100vw; height: 100lvh; min-height: 100vh;
-      position: fixed; inset: 0; margin: 0;
-      padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom) 0; z-index: 99999;
-      flex-direction: column; justify-content: center; align-items: center;
-      user-select: none; -webkit-user-select: none; touch-action: none;
+      position: fixed; inset: 0; margin: 0; padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom) 0; z-index: 99999;
+      flex-direction: column; justify-content: center; align-items: center; user-select: none; -webkit-user-select: none; touch-action: none;
     }
     .night-time { font-family: var(--font-label); font-size: 3rem; font-weight: 300; color: #334155; }
     .night-rec { display: flex; align-items: center; gap: 8px; margin-top: 16px; font-size: 0.85rem; color: #7f1d1d; }
@@ -106,7 +102,7 @@
   <main class="page-grid">
     <header class="app-header">
       <div>
-        <h1 class="app-title">ST-SCOPE<span class="app-title-code">v2_10</span></h1>
+        <h1 class="app-title">ST-SCOPE<span class="app-title-code">v2_11</span></h1>
         <p class="app-lede" id="lbl-app-lede"></p>
       </div>
       <div style="display:flex; gap:0.5rem; align-items:center;">
@@ -219,8 +215,9 @@
 
       <div id="timelineSection" style="margin-top:1.25rem; display:none;">
         <div class="section-head" style="margin-bottom:0.5rem;">
-          <span id="timelineTitle" class="data-label" style="font-size:0.85rem; color:var(--primary);">タイムライン波形</span>
+          <span id="timelineTitle" class="data-label" style="font-size:0.85rem; color:var(--primary);">タイムライン波形（グラフをタップ/ドラッグで位置移動）</span>
           <div style="display:flex; gap:0.5rem; align-items:center;">
+            <span id="timelinePosLabel" class="section-note">00:00</span>
             <button type="button" id="btn-play-timeline" class="btn btn-sm btn-primary">▶ タイムラインを再生</button>
             <button type="button" id="btn-export-zip" class="btn btn-sm">ZIP出力</button>
           </div>
@@ -229,20 +226,17 @@
         <div class="legend-row">
           <span class="legend-item"><span class="legend-swatch" style="background:var(--data-1);"></span>音圧 (dBFS)</span>
           <span class="legend-item"><span class="legend-swatch" style="background:var(--data-2);"></span>振動 (G)</span>
-          <span class="legend-item"><span class="legend-swatch" style="background:var(--error);"></span>再生ライン</span>
+          <span class="legend-item"><span class="legend-swatch" style="background:var(--error);"></span>再生ライン（ドラッグ可能）</span>
         </div>
       </div>
     </section>
 
     <section class="panel">
       <div class="section-head">
-        <h2 class="section-title">記録済み音声クリップ &amp; 人声除外クリップ救済</h2>
+        <h2 class="section-title">記録済み音声クリップ一覧</h2>
         <span class="section-note" id="lbl-rescue-note"></span>
       </div>
-      <div id="audioPlayerBar" class="well" style="margin-bottom:0.75rem; display:none; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:0.5rem;">
-        <span id="nowPlayingLabel" style="font-size:0.85rem; color:var(--primary);">再生中: --</span>
-        <audio id="clipAudioPlayer" controls style="height:36px; max-width:100%;"></audio>
-      </div>
+      <audio id="clipAudioPlayer" style="display:none;"></audio>
       <div id="clipList" class="clip-list">
         <div style="color:var(--on-surface-variant); font-size:0.85rem;">まだ記録された音声クリップはありません。</div>
       </div>
@@ -256,14 +250,14 @@
   </div>
 
   <script>
-    const APP_VERSION = "v2_10";
+    const APP_VERSION = "v2_11";
     const RAW_INDEX_URL = "https://raw.githubusercontent.com/matsuodentalassociation/ST-SCOPE/main/index.html";
 
     const LABELS = {
       appLede: "音響解析・波形モニタリング・イベント検出・カレンダー履歴・タイムライン再生",
       kpiEventTitle: "無音後イベント頻度（簡易指標）",
       smTitle: "イベント検出ステートマシン",
-      rescueNote: "環境音が人声と誤判定された場合のみ「救済」をONにしてセッションログに含めます",
+      rescueNote: "「人の声」と誤判定された環境音は「誤判定なのでZIPに含める」で復活できます",
       eventCategoryName: "環境音・音響イベント",
       rescuedCategoryName: "rescued_event"
     };
@@ -303,49 +297,35 @@
     let nightHoldTimer = null, wakeLock = null;
 
     async function requestWakeLock() {
-      if ("wakeLock" in navigator) {
-        try { wakeLock = await navigator.wakeLock.request("screen"); } catch (e) {}
-      }
+      if ("wakeLock" in navigator) { try { wakeLock = await navigator.wakeLock.request("screen"); } catch (e) {} }
     }
     function releaseWakeLock() {
       if (wakeLock) { wakeLock.release().catch(() => {}); wakeLock = null; }
     }
-
     function enterNightMode(useFullscreen = false) {
       requestWakeLock();
       document.documentElement.style.setProperty("background-color", "#000000", "important");
       document.body.style.setProperty("background-color", "#000000", "important");
-      document.documentElement.style.overflow = "hidden";
-      document.body.style.overflow = "hidden";
+      document.documentElement.style.overflow = "hidden"; document.body.style.overflow = "hidden";
       nightOverlay.style.display = "flex";
-      if (useFullscreen && document.documentElement.requestFullscreen) {
-        document.documentElement.requestFullscreen().catch(() => {});
-      }
+      if (useFullscreen && document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(() => {});
     }
-
     function exitNightMode() {
       releaseWakeLock();
       nightOverlay.style.display = "none";
       document.documentElement.style.removeProperty("background-color");
       document.body.style.removeProperty("background-color");
-      document.documentElement.style.overflow = "";
-      document.body.style.overflow = "";
+      document.documentElement.style.overflow = ""; document.body.style.overflow = "";
       nightHint.textContent = "画面のどこかを2秒間長押しするとモニターに戻ります";
-      if (document.fullscreenElement && document.exitFullscreen) {
-        document.exitFullscreen().catch(() => {});
-      }
+      if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(() => {});
     }
-
     function startNightHold() {
       if (nightHoldTimer) return;
       nightHint.textContent = "そのまま2秒間押し続けてください...";
       nightHoldTimer = setTimeout(() => { exitNightMode(); nightHoldTimer = null; }, 2000);
     }
     function cancelNightHold() {
-      if (nightHoldTimer) {
-        clearTimeout(nightHoldTimer); nightHoldTimer = null;
-        nightHint.textContent = "画面のどこかを2秒間長押しするとモニターに戻ります";
-      }
+      if (nightHoldTimer) { clearTimeout(nightHoldTimer); nightHoldTimer = null; nightHint.textContent = "画面のどこかを2秒間長押しするとモニターに戻ります"; }
     }
     nightOverlay.addEventListener("pointerdown", startNightHold);
     nightOverlay.addEventListener("pointerup", cancelNightHold);
@@ -357,7 +337,7 @@
       const badge = document.getElementById("vadStatusBadge");
       if (window.ortLoadFailed || typeof ort === "undefined") {
         badge.textContent = "スペクトル解析モード"; badge.className = "status-chip chip-cyan";
-        addLog("ort.min.js 未検出のため、スペクトル特徴量人声除外モードで動作します。");
+        addLog("スペクトル特徴量人声除外モードで動作します。");
         return;
       }
       try {
@@ -366,10 +346,10 @@
         vadStateH = new ort.Tensor("float32", new Float32Array(2 * 1 * 64).fill(0), [2, 1, 64]);
         vadStateC = new ort.Tensor("float32", new Float32Array(2 * 1 * 64).fill(0), [2, 1, 64]);
         vadAvailable = true; badge.textContent = "Silero VAD 有効"; badge.className = "status-chip chip-sage";
-        addLog("Silero VAD (silero_vad.onnx) 読み込み完了。");
+        addLog("Silero VAD 読み込み完了。");
       } catch (e) {
         badge.textContent = "スペクトル解析モード"; badge.className = "status-chip chip-cyan";
-        addLog("Silero VAD 読込スキップ（スペクトル特徴量モードで動作）: " + e.message);
+        addLog("Silero VAD 読込スキップ（スペクトル解析モード）");
       }
     }
 
@@ -382,14 +362,12 @@
         for (let i = 1; i < frameLen; i++) {
           const s = samples[start + i], prev = samples[start + i - 1];
           if ((s >= 0 && prev < 0) || (s < 0 && prev >= 0)) zeroCrossings++;
-          totalE += s * s;
-          const diff = s - prev; highE += diff * diff;
+          totalE += s * s; const diff = s - prev; highE += diff * diff;
         }
         const rms = Math.sqrt(totalE / frameLen);
         const estCentroidHz = (zeroCrossings / 2) * (sampleRate / frameLen);
         const highRatio = totalE > 1e-9 ? Math.min(1, (highE / (totalE * 2))) : 0;
-        const isVoiceFrame = rms > 0.01 && (estCentroidHz > 450 || highRatio > 0.15);
-        consecutivePass.push(isVoiceFrame ? 1 : 0);
+        consecutivePass.push((rms > 0.01 && (estCentroidHz > 450 || highRatio > 0.15)) ? 1 : 0);
         if (consecutivePass.length > 3) consecutivePass.shift();
         if (consecutivePass.reduce((a, b) => a + b, 0) >= 2) voiceFrames++;
       }
@@ -405,8 +383,7 @@
           const inputTensor = new ort.Tensor("float32", samples.subarray(i, i + win), [1, win]);
           try {
             const out = await vadSession.run({ input: inputTensor, sr: srTensor, h: vadStateH, c: vadStateC });
-            vadStateH = out.hn; vadStateC = out.cn;
-            vadTotalFrames++;
+            vadStateH = out.hn; vadStateC = out.cn; vadTotalFrames++;
             if (out.output.data[0] > 0.3) vadSpeechFrames++;
           } catch (e) { break; }
         }
@@ -419,13 +396,15 @@
     let db = null;
     function initDB() {
       return new Promise((resolve, reject) => {
-        const req = indexedDB.open("ST_SCOPE_DB", 2);
+        const req = indexedDB.open("ST_SCOPE_DB_V2", 1);
         req.onupgradeneeded = (e) => {
           const d = e.target.result;
-          if (!d.objectStoreNames.contains("clips")) d.createObjectStore("clips", { keyPath: "id" });
-          if (!d.objectStoreNames.contains("logs")) d.createObjectStore("logs", { keyPath: "sec" });
-          if (!d.objectStoreNames.contains("meta")) d.createObjectStore("meta", { keyPath: "key" });
-          if (!d.objectStoreNames.contains("sessions")) d.createObjectStore("sessions", { keyPath: "sessionId" });
+          ["clips", "logs", "meta", "sessions"].forEach(s => {
+            if (!d.objectStoreNames.contains(s)) {
+              const kp = s === "clips" ? "id" : s === "logs" ? "sec" : s === "meta" ? "key" : "sessionId";
+              d.createObjectStore(s, { keyPath: kp });
+            }
+          });
         };
         req.onsuccess = (e) => { db = e.target.result; resolve(db); }; req.onerror = reject;
       });
@@ -494,28 +473,22 @@
       let sum = 0; for (let i = 0; i < s.length; i++) sum += s[i] * s[i];
       const rms = Math.sqrt(sum / s.length); return rms > 1e-6 ? 20 * Math.log10(rms) : -100;
     }
-    const fmtTime = (sec) => [Math.floor(sec/3600), Math.floor((sec%3600)/60), sec%60].map(v => String(v).padStart(2, "0")).join(":");
+    const fmtTime = (sec) => [Math.floor(sec/3600), Math.floor((sec%3600)/60), Math.floor(sec%60)].map(v => String(v).padStart(2, "0")).join(":");
 
     async function finalizeActiveClip() {
       if (!isTriggerActive || activeClipSamples.length === 0) return;
-      isTriggerActive = false;
-      clipCounter++;
-      const id = clipCounter;
-      const len = activeClipSamples.reduce((a, b) => a + b.length, 0);
-      const merged = new Float32Array(len);
+      isTriggerActive = false; clipCounter++;
+      const id = clipCounter, len = activeClipSamples.reduce((a, b) => a + b.length, 0), merged = new Float32Array(len);
       let off = 0; for (const c of activeClipSamples) { merged.set(c, off); off += c.length; }
       activeClipSamples = [];
       const sr = audioCtx ? audioCtx.sampleRate : SAMPLE_RATE;
       const vadRes = await evaluateClipSpeech(merged, sr);
-      const fileName = `audio/clip_${String(id).padStart(4, "0")}.wav`;
-      const dur = Number((len / sr).toFixed(2));
+      const fileName = `audio/clip_${String(id).padStart(4, "0")}.wav`, dur = Number((len / sr).toFixed(2));
       if (vadRes.isSpeech) {
         speechExcludedCount++;
         document.getElementById("kpi-speech-excluded").textContent = `人声除外 ${speechExcludedCount}件`;
-        addLog(`人声除外: ${fileName} (試聴・救済可)`);
-      } else {
-        addLog(`保存: ${fileName} (${dur}秒)`);
-      }
+        addLog(`人声除外: ${fileName} (試聴可)`);
+      } else addLog(`保存: ${fileName} (${dur}秒)`);
       await saveStore("clips", {
         id, startSec: clipStartSec, durationSec: dur, category: vadRes.isSpeech ? "speech_excluded" : "audio_event",
         isSpeech: vadRes.isSpeech, rescued: false, file: fileName, blob: encodeWAV(merged, sr)
@@ -537,26 +510,23 @@
           <div>
             <strong>${c.file}</strong> (${c.durationSec}秒 / 開始 ${fmtTime(c.startSec)})
             <div style="font-size:0.75rem; color:${c.isSpeech ? 'var(--data-3)' : 'var(--tertiary)'};">
-              ${c.isSpeech ? (c.rescued ? "人声判定 → 手動救済済み（ZIPに含める）" : "人声判定 → 自動除外（ZIPから破棄）") : `${LABELS.eventCategoryName}（ZIPに含める）`}
+              ${c.isSpeech ? (c.rescued ? "誤判定を戻し済み（ZIPに含める）" : "人の声として除外中（ZIPから破棄）") : `${LABELS.eventCategoryName}（ZIPに含める）`}
             </div>
           </div>
           <div style="display:flex; gap:0.5rem; align-items:center;">
-            <button type="button" class="btn btn-sm btn-primary" onclick="playClipById(${c.id})">▶ 再生</button>
-            ${c.isSpeech ? `<button type="button" class="btn btn-sm ${c.rescued ? 'btn-primary' : ''}" onclick="toggleRescue(${c.id})">${c.rescued ? "救済ON" : "救済する"}</button>` : ""}
+            <button type="button" class="btn btn-sm btn-primary" onclick="playClipById(${c.id}, 0)">試聴</button>
+            ${c.isSpeech ? `<button type="button" class="btn btn-sm ${c.rescued ? 'btn-primary' : ''}" onclick="toggleRescue(${c.id})">${c.rescued ? "ZIPに含めるON" : "誤判定なのでZIPに含める"}</button>` : ""}
           </div>
         </div>
       `).join("");
     }
 
-    window.playClipById = async (id) => {
+    window.playClipById = async (id, offsetSec = 0) => {
       let target = (activeSession ? activeSession.clips : await getAllStore("clips")).find(c => c.id === id);
       if (target && target.blob) {
-        const bar = document.getElementById("audioPlayerBar");
         const player = document.getElementById("clipAudioPlayer");
-        const lbl = document.getElementById("nowPlayingLabel");
-        bar.style.display = "flex";
-        lbl.textContent = `再生中: ${target.file} (${target.durationSec}秒)`;
         player.src = URL.createObjectURL(target.blob);
+        player.currentTime = Math.max(0, offsetSec);
         player.play().catch(()=>{});
       }
     };
@@ -571,7 +541,7 @@
     };
 
     let calDate = new Date(), selectedDateStr = new Date().toISOString().slice(0, 10);
-    let activeSession = null, timelinePlayTimer = null, timelinePlaySec = 0, isTimelinePlaying = false;
+    let activeSession = null, timelinePlayTimer = null, timelinePlaySec = 0, isTimelinePlaying = false, isDraggingTimeline = false;
 
     async function renderCalendar() {
       if (!db) return;
@@ -579,8 +549,7 @@
       const datesWithData = new Set(sessions.map(s => s.dateStr));
       const y = calDate.getFullYear(), m = calDate.getMonth();
       document.getElementById("calMonthLabel").textContent = `${y}年${m + 1}月`;
-      const firstDay = new Date(y, m, 1).getDay();
-      const daysInMonth = new Date(y, m + 1, 0).getDate();
+      const firstDay = new Date(y, m, 1).getDay(), daysInMonth = new Date(y, m + 1, 0).getDate();
       let html = "";
       for (let i = 0; i < firstDay; i++) html += `<div class="cal-day is-empty"></div>`;
       for (let d = 1; d <= daysInMonth; d++) {
@@ -617,16 +586,22 @@
       stopTimelinePlay();
       timelinePlaySec = 0;
       document.getElementById("timelineSection").style.display = "block";
-      document.getElementById("timelineTitle").textContent = `タイムライン波形 (${activeSession.dateStr} ${new Date(activeSession.startedAtMs).toLocaleTimeString("ja-JP", {hour12:false})})`;
+      document.getElementById("timelinePosLabel").textContent = "00:00";
       renderClipList(activeSession.clips);
       drawTimeline();
     };
 
     function stopTimelinePlay() {
-      isTimelinePlaying = false;
-      clearInterval(timelinePlayTimer);
+      isTimelinePlaying = false; clearInterval(timelinePlayTimer);
       document.getElementById("btn-play-timeline").textContent = "▶ タイムラインを再生";
       document.getElementById("clipAudioPlayer").pause();
+    }
+
+    function syncAudioToTimelineSec() {
+      if (!activeSession) return;
+      const clip = activeSession.clips.find(c => timelinePlaySec >= c.startSec && timelinePlaySec <= c.startSec + c.durationSec);
+      if (clip) window.playClipById(clip.id, timelinePlaySec - clip.startSec);
+      else document.getElementById("clipAudioPlayer").pause();
     }
 
     document.getElementById("btn-play-timeline").onclick = () => {
@@ -634,19 +609,37 @@
       if (isTimelinePlaying) { stopTimelinePlay(); return; }
       isTimelinePlaying = true;
       document.getElementById("btn-play-timeline").textContent = "■ 停止";
+      syncAudioToTimelineSec();
       const maxSec = activeSession.logs[activeSession.logs.length - 1].sec || 1;
-      let lastPlayedClipId = null;
+      let lastClipId = null;
       timelinePlayTimer = setInterval(() => {
+        if (isDraggingTimeline) return;
         timelinePlaySec += 0.2;
         if (timelinePlaySec > maxSec) { stopTimelinePlay(); timelinePlaySec = 0; drawTimeline(); return; }
+        document.getElementById("timelinePosLabel").textContent = fmtTime(timelinePlaySec).slice(3);
         const clip = activeSession.clips.find(c => timelinePlaySec >= c.startSec && timelinePlaySec <= c.startSec + c.durationSec);
-        if (clip && clip.id !== lastPlayedClipId) {
-          lastPlayedClipId = clip.id;
-          window.playClipById(clip.id);
-        }
+        if (clip && clip.id !== lastClipId) { lastClipId = clip.id; window.playClipById(clip.id, timelinePlaySec - clip.startSec); }
         drawTimeline();
       }, 200);
     };
+
+    // タイムラインのタップ＆ドラッグで赤いラインを動かす（シーク）
+    const tlCanvas = document.getElementById("timeline-canvas");
+    function seekTimelineByPointer(e) {
+      if (!activeSession || activeSession.logs.length < 2) return;
+      const rect = tlCanvas.getBoundingClientRect();
+      const padL = 44, padR = 14, pw = rect.width - padL - padR;
+      const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left - padL) / pw));
+      const maxSec = activeSession.logs[activeSession.logs.length - 1].sec || 1;
+      timelinePlaySec = ratio * maxSec;
+      document.getElementById("timelinePosLabel").textContent = fmtTime(timelinePlaySec).slice(3);
+      drawTimeline();
+    }
+    tlCanvas.addEventListener("pointerdown", (e) => { isDraggingTimeline = true; seekTimelineByPointer(e); });
+    window.addEventListener("pointermove", (e) => { if (isDraggingTimeline) seekTimelineByPointer(e); });
+    window.addEventListener("pointerup", () => {
+      if (isDraggingTimeline) { isDraggingTimeline = false; if (isTimelinePlaying) syncAudioToTimelineSec(); }
+    });
 
     document.getElementById("btn-cal-prev").onclick = () => { calDate.setMonth(calDate.getMonth() - 1); renderCalendar(); };
     document.getElementById("btn-cal-next").onclick = () => { calDate.setMonth(calDate.getMonth() + 1); renderCalendar(); };
@@ -672,7 +665,7 @@
 
     function drawTimeline() {
       if (!activeSession) return;
-      const c = document.getElementById("timeline-canvas"), dpr = window.devicePixelRatio || 1, rect = c.getBoundingClientRect();
+      const c = tlCanvas, dpr = window.devicePixelRatio || 1, rect = c.getBoundingClientRect();
       const w = Math.max(300, Math.round(rect.width)), h = 220;
       if (c.width !== w * dpr || c.height !== h * dpr) { c.width = w * dpr; c.height = h * dpr; }
       const ctx = c.getContext("2d"); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -699,10 +692,8 @@
 
     window.addEventListener("load", async () => {
       addLog(`ST-SCOPE ${APP_VERSION} 起動。`);
-      checkGitHubUpdate(false);
-      initSileroVAD();
-      drawLive();
-      try { await initDB(); renderCalendar(); renderClipList(); } catch (e) {}
+      checkGitHubUpdate(false); initSileroVAD(); drawLive();
+      try { await initDB(); renderCalendar(); renderClipList(); } catch (e) { addLog("DB初期化エラー: " + e.message); }
     });
 
     document.getElementById("btn-calib").onclick = async () => {
@@ -726,22 +717,15 @@
           btn.textContent = "再録音する"; btn.disabled = false;
           addLog(`基準音完了: ${refDb} dBFS (閾値: ${triggerThresholdDb.toFixed(1)} dBFS)`);
         }, 3000);
-      } catch (err) {
-        addLog("マイクエラー: " + err.message);
-        document.getElementById("status-text").textContent = "マイクの許可を確認してください: " + err.message;
-      }
+      } catch (err) { addLog("マイクエラー: " + err.message); }
     };
 
     document.getElementById("btn-start").onclick = async () => {
       try {
-        await initDB();
-        await clearCurrentWorkingDB();
-        await initAudio();
-        requestWakeLock();
+        await initDB(); await clearCurrentWorkingDB(); await initAudio(); requestWakeLock();
       } catch (err) { addLog("開始エラー: " + err.message); return; }
 
-      activeSession = null;
-      isRecording = true; startTimeMs = Date.now(); lastLoggedSec = -1; clipCounter = 0; speechExcludedCount = 0;
+      activeSession = null; isRecording = true; startTimeMs = Date.now(); lastLoggedSec = -1; clipCounter = 0; speechExcludedCount = 0;
       eventCount = 0; liveFrames = []; silenceStartSec = null; smState = "NORMAL";
       ringBuffer.fill(0); ringWritePos = 0; isTriggerActive = false; activeClipSamples = [];
 
@@ -758,13 +742,13 @@
       scriptNode = audioCtx.createScriptProcessor(2048, 1, 1);
       scriptNode.onaudioprocess = async (e) => {
         if (!isRecording) return;
-        const input = e.inputBuffer.getChannelData(0), db = calcDb(input), elapsedSec = Math.floor((Date.now() - startTimeMs) / 1000);
+        const input = e.inputBuffer.getChannelData(0), dbVal = calcDb(input), elapsedSec = Math.floor((Date.now() - startTimeMs) / 1000);
         document.getElementById("status-duration").textContent = `経過 ${fmtTime(elapsedSec)}`;
         document.getElementById("nightElapsed").textContent = fmtTime(elapsedSec);
-        document.getElementById("kpi-db").textContent = db.toFixed(1);
+        document.getElementById("kpi-db").textContent = dbVal.toFixed(1);
         document.getElementById("kpi-g").textContent = currentMotionG.toFixed(2);
 
-        secDb.push(db); secG.push(currentMotionG);
+        secDb.push(dbVal); secG.push(currentMotionG);
         if (elapsedSec > lastLoggedSec) {
           const avgDb = Number((secDb.reduce((a,b)=>a+b,0)/secDb.length).toFixed(2));
           const maxG = Number(Math.max(...secG).toFixed(3));
@@ -791,7 +775,7 @@
 
         for (let i = 0; i < input.length; i++) { ringBuffer[ringWritePos] = input[i]; ringWritePos = (ringWritePos + 1) % RING_MAX; }
 
-        if (db >= triggerThresholdDb) {
+        if (dbVal >= triggerThresholdDb) {
           if (!isTriggerActive) {
             isTriggerActive = true; clipStartSec = Math.max(0, elapsedSec - PRE_SEC);
             const pre = new Float32Array(RING_MAX), p1 = ringBuffer.subarray(ringWritePos), p2 = ringBuffer.subarray(0, ringWritePos);
@@ -800,9 +784,7 @@
           postSilenceSamples = 0; activeClipSamples.push(new Float32Array(input));
         } else if (isTriggerActive) {
           activeClipSamples.push(new Float32Array(input)); postSilenceSamples += input.length;
-          if (postSilenceSamples >= audioCtx.sampleRate * POST_SEC) {
-            await finalizeActiveClip();
-          }
+          if (postSilenceSamples >= audioCtx.sampleRate * POST_SEC) await finalizeActiveClip();
         }
       };
       src.connect(scriptNode); connectSilent(scriptNode);
@@ -821,20 +803,12 @@
         const logs = (await getAllStore("logs")).sort((a,b)=>a.sec-b.sec);
         const clips = (await getAllStore("clips")).sort((a,b)=>a.id-b.id);
         const dateStr = new Date(startTimeMs).toISOString().slice(0, 10);
-        const sessObj = {
-          sessionId: "sess_" + startTimeMs,
-          dateStr,
-          startedAtMs: startTimeMs,
-          durationSec: logs.length ? logs[logs.length - 1].sec : 0,
-          refDb,
-          logs,
-          clips
-        };
+        const sessObj = { sessionId: "sess_" + startTimeMs, dateStr, startedAtMs: startTimeMs, durationSec: logs.length ? logs[logs.length - 1].sec : 0, refDb, logs, clips };
         await saveStore("sessions", sessObj);
         selectedDateStr = dateStr;
         await renderCalendar();
         await loadSessionToTimeline(sessObj.sessionId);
-        addLog(`セッション保存完了（クリップ ${clips.length}件）。カレンダーとタイムラインから再生できます。`);
+        addLog(`セッション保存完了（クリップ ${clips.length}件）。`);
         document.getElementById("status-text").textContent = "保存完了！カレンダー・タイムラインから再生やZIP出力ができます。";
       } catch (e) { addLog("保存エラー: " + e.message); }
       finally {
