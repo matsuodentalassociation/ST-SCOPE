@@ -5,9 +5,9 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
 <meta name="theme-color" content="#000000">
 <meta name="somnolog-app" content="ST-SCOPE-SomnoLog">
-<meta name="somnolog-version" content="132">
+<meta name="somnolog-version" content="133">
 <meta http-equiv="Cache-Control" content="no-cache">
-<title>③SomnoLog_V132</title>
+<title>③SomnoLog_V133</title>
 <script>
 (() => {
   const key = "somnolog.commit-package.v1";
@@ -98,11 +98,6 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 .legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:4px;vertical-align:middle}
 #level-bar{background:#ff9f43}
 #motion-bar{background:#e04848}
-.zip-progress{position:fixed;left:16px;right:16px;bottom:16px;z-index:100000;max-width:448px;margin:0 auto;padding:14px;border-radius:12px;border:1px solid #84b9cf;background:#161d26;color:#f0eee6;box-shadow:0 4px 20px rgba(0,0,0,.6);display:flex;flex-direction:column;gap:10px}
-.zip-progress-title{font-size:15px;font-weight:600;margin:0}
-.zip-progress-text{font-size:13px;line-height:1.7;margin:0;white-space:pre-line;color:#d3dde7}
-.zip-bar{position:relative;height:12px;background:#111820;border-radius:6px;overflow:hidden;border:1px solid #2a3643}
-.zip-bar i{display:block;height:100%;width:0%;background:#84b9cf;transition:width .2s}
 </style>
 </head>
 <body>
@@ -112,7 +107,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 1-1 起動・QR読み取り -->
 <main id="page-start" class="page" hidden>
   <header class="head">
-    <h1 class="app-name">③SomnoLog_V132</h1>
+    <h1 class="app-name">③SomnoLog_V133</h1>
     <span class="tag">患者情報確認</span>
   </header>
   <div id="scan-msg" class="err" hidden></div>
@@ -163,7 +158,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 記録画面 -->
 <main id="page-record" class="page" hidden>
   <header class="head">
-    <h1 class="app-name">③SomnoLog_V132</h1>
+    <h1 class="app-name">③SomnoLog_V133</h1>
     <div style="display:flex;align-items:center;gap:10px">
       <button id="rec-back" class="sub mini" type="button">戻る</button>
       <span id="rec-badge" class="tag">待機中</span>
@@ -192,7 +187,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 記録の準備 -->
 <main id="page-prep" class="page" hidden>
   <header class="head">
-    <h1 class="app-name">③SomnoLog_V132</h1>
+    <h1 class="app-name">③SomnoLog_V133</h1>
     <button id="prep-back" class="sub mini" type="button">戻る</button>
   </header>
   <button id="prep-usage-btn" class="warnbtn">使い方を見る</button>
@@ -294,7 +289,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
   <p id="sh-msg" class="warn" hidden></p>
   <section class="card">
     <button id="sh-all" class="primary">全てのいびき記録を保存</button>
-    <p class="muted">会話が含まれる音声と判定できなかった音声は自動で除外されます。</p>
+    <p class="muted">会話が含まれる音声と判定できなかった音声は自動で除外されます。数値ログは必ず保存されます。</p>
   </section>
   <section class="card">
     <h2>共有先確認（宛先）</h2>
@@ -320,8 +315,8 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 
 <script>
 "use strict";
-const APP_VERSION = 132;
-const APP = "③SomnoLog_V132", RATE = 16000, STEP = 1600, PRE = RATE * 3, POST = RATE * 5;
+const APP_VERSION = 133;
+const APP = "③SomnoLog_V133", RATE = 16000, STEP = 1600, PRE = RATE * 3, POST = RATE * 5;
 const DB_NAME = "SomnoLog.v130", PROFILE = 300, MAX_CLIP = RATE * 3600;
 const REPO = "matsuodentalassociation/ST-SCOPE", UPDATE_KEY = "somnolog.commit-package.v1";
 const REF_KEY = "somnolog.v130.reference", PERSON_KEY = "somnolog.v130.person";
@@ -339,14 +334,14 @@ const fmtClock = (ms) => new Date(ms).toLocaleTimeString("ja-JP", { hour: "2-dig
 const rmsDb = (power, n) => Math.max(-120, 10 * Math.log10(Math.max(1e-12, power / n)));
 const esc = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
-function showError(msg) { const b = $("errbox"); b.hidden = false; b.textContent = "エラー: " + msg + "\n（タップで閉じます）"; }
-function clearError() { $("errbox").hidden = true; }
+function showError(msg) { const b = $("errbox"); if (!b) return; b.hidden = false; b.textContent = "エラー: " + msg + "\n（タップで閉じます）"; }
+function clearError() { const b = $("errbox"); if (b) b.hidden = true; }
 window.addEventListener("error", (e) => showError(e.message));
 window.addEventListener("unhandledrejection", (e) => showError((e.reason && e.reason.message) || String(e.reason)));
-function showMicMsg(t) { $("mic-msg").hidden = !t; $("mic-msg").textContent = t || ""; }
-function showRefMsg(t, isErr) { $("ref-msg").textContent = t || ""; $("ref-msg").className = isErr ? "err" : "muted"; }
-function showScanMsg(t) { $("scan-msg").hidden = !t; $("scan-msg").textContent = t || ""; }
-function shMsg(t, isErr) { $("sh-msg").hidden = !t; $("sh-msg").textContent = t || ""; $("sh-msg").className = isErr ? "err" : "warn"; }
+function showMicMsg(t) { const b = $("mic-msg"); if (b) { b.hidden = !t; b.textContent = t || ""; } }
+function showRefMsg(t, isErr) { const b = $("ref-msg"); if (b) { b.textContent = t || ""; b.className = isErr ? "err" : "muted"; } }
+function showScanMsg(t) { const b = $("scan-msg"); if (b) { b.hidden = !t; b.textContent = t || ""; } }
+function shMsg(t, isErr) { const b = $("sh-msg"); if (b) { b.hidden = !t; b.textContent = t || ""; b.className = isErr ? "err" : "warn"; } }
 
 let db = null, person = null, pendingPerson = null, ref = null, refUrl = "";
 let stream = null, ctx = null, tap = null, source = null, silencer = null, wake = null, captureEpoch = 0, micBusy = false;
@@ -356,14 +351,14 @@ let camStream = null, camTimer = 0, detector = null, scanBusy = false;
 let audioDone = null, blackOn = false, blackTimer = 0, savedRootStyle = null;
 let blobUrls = [], detailSid = null, shareSid = null;
 const cal = { year: 0, month: 0, selected: null, index: 0, byDay: new Map() };
-const tl = { data: null, total: 0, winStart: 0, winLen: 0, cursor: 0, zoomSec: 0, mode: "sound", motionThresh: 0.05, scale: { refDb: -40, envDb: -52, topDb: -40 } };
+const tl = { data: null, total: 0, winStart: 0, winLen: 0, cursor: 0, zoomSec: 0, mode: "sound", motionThresh: 0.05 };
 try { const st = localStorage.getItem("somnolog-motion-thresh-g"); if (st != null) tl.motionThresh = clamp(Number(st) || 0.05, 0, 0.3); } catch (_) {}
 
 const isBusy = () => !!(current || stopping || starting || updating || exporting || calibration || micBusy);
 const micReady = () => !!stream?.getAudioTracks().some((t) => t.readyState === "live");
 function showPage(name) {
   if (name !== "start") stopCamera();
-  ["start", "confirm", "record", "prep", "calendar", "detail", "share"].forEach((n) => { $("page-" + n).hidden = n !== name; });
+  ["start", "confirm", "record", "prep", "calendar", "detail", "share"].forEach((n) => { const el = $("page-" + n); if (el) el.hidden = n !== name; });
   window.scrollTo(0, 0);
   setButtons();
 }
@@ -935,6 +930,17 @@ function renderTimeline() {
   $("tl-cur-text").textContent = `黄色い線：記録から ${fmtTime(tl.cursor * 1000)}（${fmtClock(tl.data.sess.startedAt + tl.cursor * 1000)}）`;
 }
 
+let tlDrag = null;
+function tlPointerDown(e) {
+  if (!tl.data || !tl.data.rows.length) return;
+  const box = $("d-chart"), rect = box.getBoundingClientRect(), k = rect.width / TL_W, x = e.clientX - rect.left, plotW = TL_W - TL_PL - TL_PR;
+  const cx = (TL_PL + (tl.cursor - tl.winStart) / tl.winLen * plotW) * k;
+  tlDrag = { mode: Math.abs(x - cx) <= 24 ? "cursor" : "window", lastX: e.clientX, pxSec: (plotW * k) / tl.winLen };
+  try { box.setPointerCapture(e.pointerId); } catch (_) {}
+}
+function tlPointerMove(e) { if (!tlDrag) return; const dx = e.clientX - tlDrag.lastX; tlDrag.lastX = e.clientX; if (tlDrag.mode === "cursor") tl.cursor += dx / tlDrag.pxSec; else tl.winStart += dx / tlDrag.pxSec; renderTimeline(); }
+function tlPointerEnd() { tlDrag = null; }
+
 const CONVERSATION_SCORE = 0.5, CONVERSATION_WINDOW = RATE * 10, CONVERSATION_HOP = RATE * 5;
 let classifierPromise = null, reviewQueue = Promise.resolve();
 function conversationClassifier() {
@@ -987,8 +993,14 @@ async function scanConversation(parts) {
 }
 function reviewAudio(c) {
   const job = reviewQueue.then(async () => {
-    try { const parts = await clipParts(c), result = await scanConversation(parts); return result === "no-conversation-detected" ? { result, parts } : { result }; }
-    catch (_) { return { result: "unverified" }; }
+    try {
+      const parts = await clipParts(c);
+      const result = await Promise.race([
+        scanConversation(parts),
+        new Promise((_, rej) => setTimeout(() => rej(Error("timeout")), 15000))
+      ]);
+      return result === "no-conversation-detected" ? { result, parts } : { result };
+    } catch (_) { return { result: "unverified" }; }
   });
   reviewQueue = job.then(() => undefined, () => undefined);
   return job;
@@ -1041,6 +1053,7 @@ async function exportZip() {
   exporting = true; setButtons(); shMsg("ZIPを作成中…", false);
   try {
     const [[s], logs, bins, clips] = await Promise.all([readStore("sessions", IDBKeyRange.only(shareSid)), readStore("sessionLogs", range(shareSid)), readStore("profileBins", range(shareSid)), sessionClips(shareSid)]);
+    if (!s) throw Error("記録が見つかりません。");
     const zip = new ZIP(), info = [], excluded = { conversation: 0, unverified: 0 };
     const list = clips.filter((c) => !c.deleted).sort((a, b) => a.startSample - b.startSample);
     for (const [i, c] of list.entries()) {
@@ -1085,8 +1098,8 @@ async function updateApp() {
   finally { updating = false; setButtons(); }
 }
 
-const on = (id, ev, fn) => $(id).addEventListener(ev, (e) => Promise.resolve().then(() => fn(e)).catch((err) => showError(err.message || String(err))));
-const toggleBox = (b, box) => on(b, "click", () => { $(box).hidden = !$(box).hidden; });
+const on = (id, ev, fn) => { const el = $(id); if (el) el.addEventListener(ev, (e) => Promise.resolve().then(() => fn(e)).catch((err) => showError(err.message || String(err)))); };
+const toggleBox = (b, box) => on(b, "click", () => { const el = $(box); if (el) el.hidden = !el.hidden; });
 toggleBox("usage-btn", "usage-box"); toggleBox("rec-usage-btn", "rec-usage-box"); toggleBox("prep-usage-btn", "prep-usage-box");
 on("errbox", "click", clearError);
 on("upd-reload", "click", updateApp);
@@ -1106,6 +1119,7 @@ on("start-btn", "click", startRec);
 on("btn-enter-black", "click", enterBlack);
 
 function hold(el, fire, prog = () => {}) {
+  if (!el) return;
   let start = 0, iv = 0, who = null;
   const end = () => { clearInterval(iv); iv = 0; who = null; prog(0); };
   el.addEventListener("pointerdown", (e) => {
@@ -1164,6 +1178,13 @@ on("sh-del-tl", "click", async () => {
   shMsg(`${clips.length} 件の未保護音声を削除しました。`, false);
 });
 on("sh-back", "click", () => showPage("record"));
+const chart = $("d-chart");
+if (chart) {
+  chart.addEventListener("pointerdown", tlPointerDown);
+  chart.addEventListener("pointermove", tlPointerMove);
+  chart.addEventListener("pointerup", tlPointerEnd);
+  chart.addEventListener("pointercancel", tlPointerEnd);
+}
 
 (async () => {
   try { ref = JSON.parse(localStorage.getItem(REF_KEY) || "null"); } catch (_) {}
