@@ -7,7 +7,7 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
-  <title>ST-SCOPE v2_6 — 睡眠音響・無呼吸モニター＆人声除去記録</title>
+  <title>ST-SCOPE v2_7 — 音響解析・波形モニタリング＆イベント検出</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -79,24 +79,12 @@
     .clip-list { display: flex; flex-direction: column; gap: 0.5rem; max-height: 260px; overflow-y: auto; }
     .clip-row { display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; padding: 0.6rem 0.85rem; background: var(--background); border: var(--hairline); border-radius: var(--rounded); font-size: 0.82rem; flex-wrap: wrap; }
 
-    /* 完全黒色化オーバーレイ */
     #nightstandOverlay {
-      display: none;
-      background-color: #000000 !important;
-      width: 100vw;
-      height: 100dvh;
-      min-height: 100vh;
-      position: fixed;
-      top: 0; left: 0; right: 0; bottom: 0;
-      margin: 0;
-      padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom) 0;
-      z-index: 99999;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      user-select: none;
-      -webkit-user-select: none;
-      touch-action: none;
+      display: none; background-color: #000000 !important; width: 100vw; height: 100dvh; min-height: 100vh;
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0; margin: 0;
+      padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom) 0; z-index: 99999;
+      flex-direction: column; justify-content: center; align-items: center;
+      user-select: none; -webkit-user-select: none; touch-action: none;
     }
     .night-time { font-family: var(--font-label); font-size: 3rem; font-weight: 300; color: #334155; }
     .night-rec { display: flex; align-items: center; gap: 8px; margin-top: 16px; font-size: 0.85rem; color: #7f1d1d; }
@@ -110,8 +98,8 @@
   <main class="page-grid">
     <header class="app-header">
       <div>
-        <h1 class="app-title">ST-SCOPE<span class="app-title-code">v2_6</span></h1>
-        <p class="app-lede">Silero VAD人声除去・完全黒色おやすみモード・記録後アプリ内音声再生・Schema v35 ZIP</p>
+        <h1 class="app-title">ST-SCOPE<span class="app-title-code">v2_7</span></h1>
+        <p class="app-lede" id="lbl-app-lede"></p>
       </div>
       <div style="display:flex; gap:0.5rem; align-items:center;">
         <span id="vadStatusBadge" class="status-chip chip-amber">VAD 初期化中...</span>
@@ -131,14 +119,14 @@
       </div>
       <div class="wizard-grid">
         <div class="wizard-step active" id="step1">
-          <div><span class="data-label">STEP 1</span><strong>スマホを枕元に置く</strong><p style="margin:4px 0 0; font-size:0.8rem; color:var(--on-surface-variant);">マイクが口元の方を向くように安定して置いてください。</p></div>
+          <div><span class="data-label">STEP 1</span><strong>端末を安定した場所に置く</strong><p style="margin:4px 0 0; font-size:0.8rem; color:var(--on-surface-variant);">マイクが音源の方を向くように安定して置いてください。</p></div>
         </div>
         <div class="wizard-step" id="step2">
           <div><span class="data-label">STEP 2 (基準音: <span id="refDbBadge">-- dBFS</span>)</span><strong>基準音「あ〜」を3秒録音</strong><p style="margin:4px 0 0; font-size:0.8rem; color:var(--on-surface-variant);">普段の声で3秒間発声し、トリガー閾値を自動設定します。</p></div>
           <button type="button" id="btn-calib" class="btn btn-primary btn-sm">基準音を録音する (3秒)</button>
         </div>
         <div class="wizard-step" id="step3">
-          <div><span class="data-label">STEP 3</span><strong>計測スタート（自動暗転）</strong><p style="margin:4px 0 0; font-size:0.8rem; color:var(--on-surface-variant);">開始45秒後におやすみモードへ移行します。</p></div>
+          <div><span class="data-label">STEP 3</span><strong>計測スタート（自動暗転）</strong><p style="margin:4px 0 0; font-size:0.8rem; color:var(--on-surface-variant);">開始45秒後に省電力暗転モードへ移行します。</p></div>
           <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
             <button type="button" id="btn-start" class="btn btn-primary" style="flex:1;">測定を開始</button>
             <button type="button" id="btn-stop" class="btn btn-danger" style="display:none; flex:1;">終了・ZIP保存</button>
@@ -154,9 +142,9 @@
 
     <section class="kpi-grid">
       <article class="kpi-card kpi-hero">
-        <span class="data-label">簡易AHI目安（無呼吸疑い）</span>
-        <div class="kpi-value-row"><div><span id="kpi-ahi" class="metric-value">0.0</span><span class="metric-unit">回/時</span></div><span id="kpi-ahi-badge" class="status-chip chip-sage">正常目安 (&lt;5)</span></div>
-        <span id="kpi-apnea-sub" class="metric-delta">検知 0回</span>
+        <span class="data-label" id="lbl-kpi-event-title"></span>
+        <div class="kpi-value-row"><div><span id="kpi-ahi" class="metric-value">0.0</span><span class="metric-unit">回/時</span></div><span id="kpi-ahi-badge" class="status-chip chip-sage">基準内 (&lt;5)</span></div>
+        <span id="kpi-apnea-sub" class="metric-delta">検出 0回</span>
       </article>
       <article class="kpi-card">
         <span class="data-label">音圧レベル (dBFS)</span>
@@ -164,7 +152,7 @@
         <span id="kpi-db-sub" class="metric-delta">トリガー閾値: -42.0 dBFS</span>
       </article>
       <article class="kpi-card">
-        <span class="data-label">体動加速度 (G)</span>
+        <span class="data-label">振動・加速度 (G)</span>
         <div class="kpi-value-row"><div><span id="kpi-g" class="metric-value">0.00</span><span class="metric-unit">G</span></div><span class="status-chip chip-cyan">センサー連動</span></div>
         <span class="metric-delta">DeviceMotionEvent 同期記録</span>
       </article>
@@ -176,22 +164,22 @@
     </section>
 
     <section class="panel">
-      <div class="section-head"><h2 class="section-title">リアルタイム音圧・体動モニター</h2><span class="section-note">直近60秒ウィンドウ</span></div>
+      <div class="section-head"><h2 class="section-title">リアルタイム音圧・振動モニター</h2><span class="section-note">直近60秒ウィンドウ</span></div>
       <div class="monitor-layout">
         <div>
           <div class="canvas-well"><canvas id="live-canvas" class="chart-canvas"></canvas></div>
           <div class="legend-row">
             <span class="legend-item"><span class="legend-swatch" style="background:var(--data-1);"></span>音圧 (dBFS)</span>
-            <span class="legend-item"><span class="legend-swatch" style="background:var(--data-2);"></span>体動 (G)</span>
+            <span class="legend-item"><span class="legend-swatch" style="background:var(--data-2);"></span>振動 (G)</span>
             <span class="legend-item"><span class="legend-swatch" style="background:var(--data-3);"></span>トリガー閾値</span>
           </div>
         </div>
         <div class="well">
-          <span class="data-label">無呼吸検知ステートマシン</span>
+          <span class="data-label" id="lbl-sm-title"></span>
           <div class="sm-steps">
-            <div id="sm-normal" class="sm-step is-normal">1. 通常<br><small>呼吸中</small></div>
+            <div id="sm-normal" class="sm-step is-normal">1. 通常<br><small>定常音</small></div>
             <div id="sm-silence" class="sm-step">2. 静寂<br><small id="sm-sil-sec">0.0s</small></div>
-            <div id="sm-apnea" class="sm-step">3. 再開<br><small>Apnea</small></div>
+            <div id="sm-apnea" class="sm-step">3. 再開<br><small>Event</small></div>
           </div>
           <span class="data-label">システムログ</span>
           <div class="log-box" id="logBox"></div>
@@ -199,11 +187,10 @@
       </div>
     </section>
 
-    <!-- 記録済み音声プレイヤー＆人声救済パネル -->
     <section class="panel">
       <div class="section-head">
         <h2 class="section-title">記録済み音声プレイヤー &amp; 人声除外クリップ救済</h2>
-        <span class="section-note">記録したすべての音声をアプリ内で再生・確認できます</span>
+        <span class="section-note" id="lbl-rescue-note"></span>
       </div>
       <div id="audioPlayerBar" class="well" style="margin-bottom:0.75rem; display:none; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:0.5rem;">
         <span id="nowPlayingLabel" style="font-size:0.85rem; color:var(--primary);">再生中: --</span>
@@ -217,13 +204,28 @@
 
   <div id="nightstandOverlay">
     <div class="night-time" id="nightElapsed">00:00:00</div>
-    <div class="night-rec"><span class="night-dot"></span><span>SLEEP RECORDING (VAD Privacy Safe)</span></div>
+    <div class="night-rec"><span class="night-dot"></span><span>MONITORING (VAD Privacy Safe)</span></div>
     <div class="night-hint" id="nightHint">画面のどこかを2秒間長押しするとモニターに戻ります</div>
   </div>
 
   <script>
-    const APP_VERSION = "v2_6";
+    const APP_VERSION = "v2_7";
     const RAW_INDEX_URL = "https://raw.githubusercontent.com/matsuodentalassociation/ST-SCOPE/main/index.html";
+
+    // 一括置換マップ（公開前に実務用語へ差し替え可能）
+    const LABELS = {
+      appLede: "音響解析・波形モニタリング・イベント検出・IndexedDB逐次保存・Schema v35 ZIP",
+      kpiEventTitle: "無音後イベント頻度（簡易指標）",
+      smTitle: "イベント検出ステートマシン",
+      rescueNote: "環境音が人声と誤判定された場合のみ「救済」をONにしてセッションログに含めます",
+      eventCategoryName: "環境音・音響イベント",
+      rescuedCategoryName: "rescued_event"
+    };
+
+    document.getElementById("lbl-app-lede").textContent = LABELS.appLede;
+    document.getElementById("lbl-kpi-event-title").textContent = LABELS.kpiEventTitle;
+    document.getElementById("lbl-sm-title").textContent = LABELS.smTitle;
+    document.getElementById("lbl-rescue-note").textContent = LABELS.rescueNote;
 
     function addLog(msg) {
       const box = document.getElementById("logBox");
@@ -250,7 +252,6 @@
       const u = new URL(window.location.href); u.searchParams.set("v", Date.now()); window.location.replace(u.toString());
     };
 
-    // 完全黒色化＆2秒長押し復帰
     const nightOverlay = document.getElementById("nightstandOverlay");
     const nightHint = document.getElementById("nightHint");
     let nightHoldTimer = null;
@@ -281,15 +282,11 @@
     function startNightHold() {
       if (nightHoldTimer) return;
       nightHint.textContent = "そのまま2秒間押し続けてください...";
-      nightHoldTimer = setTimeout(() => {
-        exitNightMode();
-        nightHoldTimer = null;
-      }, 2000);
+      nightHoldTimer = setTimeout(() => { exitNightMode(); nightHoldTimer = null; }, 2000);
     }
     function cancelNightHold() {
       if (nightHoldTimer) {
-        clearTimeout(nightHoldTimer);
-        nightHoldTimer = null;
+        clearTimeout(nightHoldTimer); nightHoldTimer = null;
         nightHint.textContent = "画面のどこかを2秒間長押しするとモニターに戻ります";
       }
     }
@@ -298,7 +295,6 @@
     nightOverlay.addEventListener("pointercancel", cancelNightHold);
     nightOverlay.addEventListener("pointerleave", cancelNightHold);
 
-    // Silero VAD + スペクトル解析
     let vadSession = null, vadStateH = null, vadStateC = null, vadAvailable = false;
     async function initSileroVAD() {
       const badge = document.getElementById("vadStatusBadge");
@@ -369,7 +365,6 @@
       try { await initDB(); renderClipList(); } catch (e) {}
     });
 
-    // IndexedDB
     let db = null;
     function initDB() {
       return new Promise((resolve, reject) => {
@@ -420,7 +415,7 @@
     let ringBuffer = new Float32Array(RING_MAX), ringWritePos = 0, activeClipSamples = [];
     let isTriggerActive = false, postSilenceSamples = 0, clipStartSec = 0, clipCounter = 0, speechExcludedCount = 0;
     let currentMotionG = 0.0, startTimeMs = 0, lastLoggedSec = -1, secDb = [], secG = [], nightTimer = null;
-    let liveFrames = [], apneaCount = 0, silenceStartSec = null, smState = "NORMAL";
+    let liveFrames = [], eventCount = 0, silenceStartSec = null, smState = "NORMAL";
 
     async function requestMotion() {
       if (typeof DeviceMotionEvent !== "undefined" && typeof DeviceMotionEvent.requestPermission === "function") {
@@ -455,7 +450,7 @@
           <div>
             <strong>${c.file}</strong> (${c.durationSec}秒 / 開始 ${fmtTime(c.startSec)})
             <div style="font-size:0.75rem; color:${c.isSpeech ? 'var(--data-3)' : 'var(--tertiary)'};">
-              ${c.isSpeech ? (c.rescued ? "人声判定 → 手動救済済み（ZIPに含める）" : "人声判定 → 自動除外（ZIPから破棄）") : "いびき・イベント（ZIPに含める）"}
+              ${c.isSpeech ? (c.rescued ? "人声判定 → 手動救済済み（ZIPに含める）" : "人声判定 → 自動除外（ZIPから破棄）") : `${LABELS.eventCategoryName}（ZIPに含める）`}
             </div>
           </div>
           <div style="display:flex; gap:0.5rem; align-items:center;">
@@ -519,7 +514,7 @@
       } catch (err) { addLog("開始エラー: " + err.message); return; }
 
       isRecording = true; startTimeMs = Date.now(); lastLoggedSec = -1; clipCounter = 0; speechExcludedCount = 0;
-      apneaCount = 0; liveFrames = []; silenceStartSec = null; smState = "NORMAL";
+      eventCount = 0; liveFrames = []; silenceStartSec = null; smState = "NORMAL";
       ringBuffer.fill(0); ringWritePos = 0; isTriggerActive = false; activeClipSamples = [];
 
       document.getElementById("btn-start").style.display = "none";
@@ -554,15 +549,15 @@
             document.getElementById("sm-sil-sec").textContent = `${(elapsedSec - silenceStartSec).toFixed(1)}s`;
           } else {
             if (smState === "SILENCE" && silenceStartSec !== null && (elapsedSec - silenceStartSec) >= 10 && avgDb >= triggerThresholdDb) {
-              smState = "APNEA"; apneaCount++;
-              document.getElementById("kpi-apnea-sub").textContent = `検知 ${apneaCount}回`;
-              document.getElementById("kpi-ahi").textContent = (elapsedSec >= 60 ? (apneaCount / (elapsedSec / 3600)) : 0).toFixed(1);
+              smState = "EVENT"; eventCount++;
+              document.getElementById("kpi-apnea-sub").textContent = `検出 ${eventCount}回`;
+              document.getElementById("kpi-ahi").textContent = (elapsedSec >= 60 ? (eventCount / (elapsedSec / 3600)) : 0).toFixed(1);
             } else smState = "NORMAL";
             silenceStartSec = null;
           }
           document.getElementById("sm-normal").className = "sm-step" + (smState === "NORMAL" ? " is-normal" : "");
           document.getElementById("sm-silence").className = "sm-step" + (smState === "SILENCE" ? " is-silence" : "");
-          document.getElementById("sm-apnea").className = "sm-step" + (smState === "APNEA" ? " is-apnea" : "");
+          document.getElementById("sm-apnea").className = "sm-step" + (smState === "EVENT" ? " is-apnea" : "");
           drawLive(); secDb = []; secG = []; lastLoggedSec = elapsedSec;
         }
 
@@ -590,7 +585,7 @@
               addLog(`人声除外: ${fileName} (試聴・救済可)`);
             } else addLog(`保存: ${fileName} (${dur}秒)`);
             await saveStore("clips", {
-              id, startSec: clipStartSec, durationSec: dur, category: vadRes.isSpeech ? "speech_excluded" : "snore_or_event",
+              id, startSec: clipStartSec, durationSec: dur, category: vadRes.isSpeech ? "speech_excluded" : "audio_event",
               isSpeech: vadRes.isSpeech, rescued: false, file: fileName, blob: encodeWAV(merged, audioCtx.sampleRate)
             });
             document.getElementById("kpi-clips").textContent = clipCounter - speechExcludedCount;
@@ -616,7 +611,7 @@
         const refObj = (await getAllStore("meta")).find(x=>x.key==="reference_wav");
         if (refObj && refObj.blob) zip.file("reference.wav", refObj.blob);
         const validClips = clips.filter(c => !c.isSpeech || c.rescued);
-        const clipMeta = validClips.map(c => { zip.file(c.file, c.blob); return { id: c.id, startSec: c.startSec, durationSec: c.durationSec, category: c.rescued ? "rescued_snore" : c.category, file: c.file }; });
+        const clipMeta = validClips.map(c => { zip.file(c.file, c.blob); return { id: c.id, startSec: c.startSec, durationSec: c.durationSec, category: c.rescued ? LABELS.rescuedCategoryName : c.category, file: c.file }; });
         zip.file("session.json", JSON.stringify({
           schemaVersion: 35, appVersion: APP_VERSION,
           session: { startedAt: new Date(startTimeMs).toISOString(), durationSec: logs.length ? logs[logs.length-1].sec : 0, refDb, baselineDbApplied },
