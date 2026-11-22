@@ -14,7 +14,7 @@
       return;
     }
     var v = parseInt(localStorage.getItem("sl_boot_ver") || "0", 10);
-    if (v > 419) {
+    if (v > 420) {
       var h = localStorage.getItem("sl_boot_html");
       if (h && h.indexOf("</html>") >= 0) {
         document.open();
@@ -25,7 +25,8 @@
   } catch (e) {}
 })();
 </script>
-<title>SomnoLog V419 基準音圧版</title>
+<title>SomnoLog V420 基準音圧版</title>
+<script src="https://matsuodentalassociation.github.io/ST-SCOPE/ort.min.js"></script>
 <style>
 :root{color-scheme:dark}
 *{box-sizing:border-box}
@@ -117,7 +118,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 1-1 起動・QR読み取り -->
 <main id="page-start" class="page" hidden>
   <header class="head">
-    <h1 class="app-name">SomnoLog V419</h1>
+    <h1 class="app-name">SomnoLog V420</h1>
     <span class="tag">患者情報確認</span>
   </header>
 
@@ -174,7 +175,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 記録画面 -->
 <main id="page-record" class="page" hidden>
   <header class="head">
-    <h1 class="app-name">SomnoLog V419</h1>
+    <h1 class="app-name">SomnoLog V420</h1>
     <div style="display:flex;align-items:center;gap:10px">
       <button id="rec-back" class="sub mini" type="button">戻る</button>
       <span id="rec-badge" class="tag">待機中</span>
@@ -204,7 +205,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 <!-- 記録の準備 -->
 <main id="page-prep" class="page" hidden>
   <header class="head">
-    <h1 class="app-name">SomnoLog V419</h1>
+    <h1 class="app-name">SomnoLog V420</h1>
     <button id="prep-back" class="sub mini" type="button">戻る</button>
   </header>
   <button id="prep-usage-btn" class="warnbtn">使い方を見る</button>
@@ -742,7 +743,7 @@ const SleepEngine = (() => {
 <script>
 "use strict";
 /* ===== バージョン ===== */
-const APP_VERSION = 419;
+const APP_VERSION = 420;
 const APP = "SomnoLogV" + APP_VERSION + "_ref";
 
 /* ===== 更新の取得元（GitHub） ===== */
@@ -753,6 +754,10 @@ const UPD_PAGES = "https://matsuodentalassociation.github.io/ST-SCOPE/";
 const UPDATE_EVERY_MS = 10 * 60 * 1000;
 const UPD_TIMEOUT_MS = 10000;
 const UPD_TARGET_KEY = "somnolog-update-target";
+
+/* ===== Silero VAD モデル・実行環境 ===== */
+const VAD_BASE_URL = "https://matsuodentalassociation.github.io/ST-SCOPE/";
+const VAD_MODEL_URL = VAD_BASE_URL + "silero_vad.onnx";
 
 /* ===== 設定 ===== */
 const SR = 16000, FRAME = 512;
@@ -1060,7 +1065,8 @@ const DB = (() => {
 /* ===== 状態 ===== */
 const S = {
   ctx: null, pendingCtx: null, stream: null, tap: null, micMode: "",
-  vad: null, vadOk: true, vadState: null, vadCtx: new Float32Array(VAD_CTX),
+  vad: null, vadOk: false, vadErr: "", vadLoading: null,
+  vadState: null, vadCtx: new Float32Array(VAD_CTX),
   gainDb: 0,
   loudDb: LOUD_DB,
   calDb: 0,
@@ -1145,6 +1151,97 @@ async function engineDetailData(sid, needClips) {
 }
 
 function isBusy() { return S.running || S.saving || recActionPending || !!S.refColl; }
+
+/* ===== Silero VAD 読み込み・推論 ===== */
+function newVadState() {
+  return new ort.Tensor("float32", new Float32Array(2 * 1 * 128), [2, 1, 128]);
+}
+
+async function ensureVadLoaded() {
+  if (S.vad && S.vadOk) return true;
+  if (S.vadLoading) return S.vadLoading;
+  S.vadLoading = (async () => {
+    try {
+      if (typeof ort === "undefined" || !ort.InferenceSession) {
+        throw new Error("ort.min.js が読み込まれていません");
+      }
+      ort.env.wasm.wasmPaths = VAD_BASE_URL;
+      ort.env.wasm.numThreads = 1;
+      S.vad = await ort.InferenceSession.create(VAD_MODEL_URL, { executionProviders: ["wasm"] });
+      S.vadOk = true;
+      S.vadErr = "";
+      return true;
+    } catch (e) {
+      S.vad = null;
+      S.vadOk = false;
+      S.vadErr = (e && e.message) ? e.message : String(e);
+      return false;
+    } finally {
+      S.vadLoading = null;
+    }
+  })();
+  return S.vadLoading;
+}
+
+async function runVadFrame(frame512, stateObj) {
+  const inputArr = new Float32Array(VAD_CTX + FRAME);
+  inputArr.set(stateObj.ctx, 0);
+  inputArr.set(frame512, VAD_CTX);
+  stateObj.ctx.set(frame512.subarray(FRAME - VAD_CTX));
+
+  const feeds = {
+    input: new ort.Tensor("float32", inputArr, [1, VAD_CTX + FRAME]),
+    sr: new ort.Tensor("int64", BigInt64Array.from([16000n]), [1]),
+    state: stateObj.state
+  };
+  const out = await S.vad.run(feeds);
+  stateObj.state = out.stateN;
+  return clamp(Number(out.output.data[0]) || 0, 0, 1);
+}
+
+async function measureChunksVadProb(chunks) {
+  const ok = await ensureVadLoaded();
+  if (!ok) throw new Error("人声判定AIを読み込めませんでした: " + S.vadErr);
+  const st = { state: newVadState(), ctx: new Float32Array(VAD_CTX) };
+  let activeSum = 0, activeN = 0, maxP = 0;
+  for (const d of chunks) {
+    const p = await runVadFrame(d, st);
+    if (p > maxP) maxP = p;
+    let ss = 0;
+    for (let j = 0; j < d.length; j++) ss += d[j] * d[j];
+    const rms = Math.sqrt(ss / d.length);
+    if (rms >= 0.01) {
+      activeSum += p;
+      activeN++;
+    }
+  }
+  const prob = activeN > 0 ? activeSum / activeN : maxP;
+  return Math.round(clamp(prob * 100, 0, 100));
+}
+
+async function measurePcmVadProb(pcm) {
+  const ok = await ensureVadLoaded();
+  if (!ok) return null;
+  const st = { state: newVadState(), ctx: new Float32Array(VAD_CTX) };
+  let activeSum = 0, activeN = 0, maxP = 0;
+  const buf = new Float32Array(FRAME);
+  for (let i = 0; i + FRAME <= pcm.length; i += FRAME) {
+    let ss = 0;
+    for (let j = 0; j < FRAME; j++) {
+      const x = pcm[i + j] / 32768;
+      buf[j] = x;
+      ss += x * x;
+    }
+    const p = await runVadFrame(buf, st);
+    if (p > maxP) maxP = p;
+    if (Math.sqrt(ss / FRAME) >= 0.01) {
+      activeSum += p;
+      activeN++;
+    }
+  }
+  const prob = activeN > 0 ? activeSum / activeN : maxP;
+  return Math.round(clamp(prob * 100, 0, 100));
+}
 
 /* ===== 画面切り替え ===== */
 let motionOn = false;
@@ -1612,32 +1709,7 @@ function finishRefEnv() {
   setTimeout(finishRefMeasure, REF_SEC * 1000);
 }
 
-function calcFloatVoiceScore(chunks) {
-  let activeFrames = 0, scoreSum = 0;
-  for (const d of chunks) {
-    let ss = 0, diffSs = 0, zcr = 0;
-    const n = d.length;
-    for (let j = 0; j < n; j++) {
-      const x = d[j];
-      ss += x * x;
-      if (j > 0) {
-        const prev = d[j - 1];
-        const df = x - prev;
-        diffSs += df * df;
-        if ((x >= 0 && prev < 0) || (x < 0 && prev >= 0)) zcr++;
-      }
-    }
-    const rms = Math.sqrt(ss / n);
-    if (rms < 0.01) continue;
-    const zcrRate = zcr / (n - 1);
-    const hfRatio = diffSs / ss;
-    scoreSum += clamp((zcrRate * 250 + hfRatio * 100) / 2, 0, 100);
-    activeFrames++;
-  }
-  return activeFrames > 0 ? Math.round(scoreSum / activeFrames) : 0;
-}
-
-function finishRefMeasure() {
+async function finishRefMeasure() {
   const arr = S.refColl || [];
   const env = S.refEnv;
   if (arr.length < REF_MIN_FRAMES) {
@@ -1664,7 +1736,18 @@ function finishRefMeasure() {
   const shift = calNew - S.calDb;
   S.calDb = calNew;
   try { localStorage.setItem("somnolog-cal-db", String(S.calDb)); } catch (e) {}
-  const refVoiceScore = (S.refPcm && S.refPcm.length) ? calcFloatVoiceScore(S.refPcm) : null;
+
+  let refVoiceScore = null;
+  if (S.refPcm && S.refPcm.length) {
+    try {
+      showRefMsg("人声判定AIで基準音を確認しています…");
+      refVoiceScore = await measureChunksVadProb(S.refPcm);
+    } catch (e) {
+      refFail("人声判定AIが利用できないため基準音を設定できませんでした: " + e.message);
+      return;
+    }
+  }
+
   S.ref = { db: round2(db + shift), envDb: env == null ? null : round2(env + shift), voiceScore: refVoiceScore, at: Date.now() };
   saveRef();
   if (S.refPcm && S.refPcm.length) {
@@ -1678,38 +1761,10 @@ function finishRefMeasure() {
   S.refPcm = null;
   S.refEnv = null;
   showRefMsg("基準音圧を設定しました（「あいうえお」" + S.ref.db.toFixed(1) + "dB" +
-    (refVoiceScore != null ? "／人声スコア " + refVoiceScore : "") +
+    (refVoiceScore != null ? "／人声確率 " + refVoiceScore + "%" : "") +
     "）。この設定は保存されるので、次回からは測らなくて大丈夫です。そのまま「記録開始」を押してください。");
   setButtons();
   updateUI();
-}
-
-/* ===== 記録後の人声スコア計算（0〜100） ===== */
-function calcClipVoiceScore(pcm) {
-  let activeFrames = 0;
-  let scoreSum = 0;
-  const n = pcm.length;
-  for (let i = 0; i + FRAME <= n; i += FRAME) {
-    let ss = 0, diffSs = 0, zcr = 0;
-    for (let j = 0; j < FRAME; j++) {
-      const x = pcm[i + j] / 32768;
-      ss += x * x;
-      if (j > 0) {
-        const prev = pcm[i + j - 1] / 32768;
-        const df = x - prev;
-        diffSs += df * df;
-        if ((x >= 0 && prev < 0) || (x < 0 && prev >= 0)) zcr++;
-      }
-    }
-    const rms = Math.sqrt(ss / FRAME);
-    if (rms < 0.01) continue;
-    const zcrRate = zcr / (FRAME - 1);
-    const hfRatio = diffSs / ss;
-    const fScore = clamp((zcrRate * 250 + hfRatio * 100) / 2, 0, 100);
-    scoreSum += fScore;
-    activeFrames++;
-  }
-  return activeFrames > 0 ? Math.round(scoreSum / activeFrames) : 0;
 }
 
 async function pump() {
@@ -1719,7 +1774,19 @@ async function pump() {
     while (S.running && S.queue.length) {
       const f = S.queue.shift();
       if (f.ep !== S.epoch) continue;
-      processFrame(f, 0);
+      let p = 0;
+      if (S.vadOk && S.vad && S.vadState) {
+        try {
+          p = await runVadFrame(f.data, S.vadState);
+        } catch (e) {
+          console.error("VAD inference error:", e);
+          p = 1;
+        }
+      } else {
+        p = 1;
+      }
+      if (f.ep !== S.epoch) continue;
+      processFrame(f, p);
     }
   } finally { S.busy = false; }
 }
@@ -1775,12 +1842,13 @@ function processFrame(f, p) {
 
   if (S.calibrated) {
     if (lv > S.base + S.loudDb) {
-      if (!S.cand) S.cand = { startMs: t, lastMs: t, peakDb: -100, sumDb: 0, sumP: 0, n: 0 };
+      if (!S.cand) S.cand = { startMs: t, lastMs: t, peakDb: -100, sumDb: 0, sumP: 0, maxP: 0, n: 0 };
       const c = S.cand;
       c.lastMs = t;
       c.peakDb = Math.max(c.peakDb, lv);
       c.sumDb += lv;
       c.sumP += p;
+      if (p > c.maxP) c.maxP = p;
       c.n++;
       if (t - c.startMs > SEG_MAX * 1000) { closeCand(c, t + FRAME / SR * 1000); S.cand = null; }
     } else if (S.cand) {
@@ -1803,17 +1871,19 @@ function closeCand(c, endMsOverride) {
 
 function decideCand(it) {
   const { c, endMs, durMs } = it;
-  let type = durMs > SEG_MAX * 1000 ? "unknown" : "snore";
+  const meanP = c.n > 0 ? (c.sumP / c.n) : 0;
+  const voiceScore = Math.round(clamp(meanP * 100, 0, 100));
+  let type = durMs > SEG_MAX * 1000 ? "unknown" : (voiceScore >= tl.voiceThresh ? "speech" : "snore");
 
   const ev = {
     id: uid(), sid: S.sid, type,
     startMs: round1(c.startMs), endMs: round1(endMs), durMs: round1(durMs),
     peakSourceDb: round1(c.peakDb - (S.gainDb + S.calDb)), peakAppliedDb: round1(c.peakDb),
     meanSourceDb: round1(c.sumDb / c.n - (S.gainDb + S.calDb)), meanAppliedDb: round1(c.sumDb / c.n),
-    vadMax: null, vadNear: null, voiceScore: null,
+    vadMax: round2(c.maxP || 0), vadNear: round2(meanP), voiceScore,
     gainDb: S.gainDb, calDb: S.calDb, label: null, clipId: null, review: null, saved: false
   };
-  if (type === "snore" || type === "unknown") {
+  if (type === "snore" || type === "speech" || type === "unknown") {
     ev.clipId = saveClip(c.startMs - PRE_MS, endMs + POST_MS, ev.id, type, false);
   }
   S.counts[type]++;
@@ -1981,6 +2051,14 @@ async function startRec() {
   if (S.running || !S.ctx) return;
   if (!S.patient) { showError("患者情報がありません。最初からQRを読み取ってください。"); showPage("start"); return; }
   if (!S.ref) { showRefMsg("先に「基準音の設定」を押してください。", true); return; }
+
+  const vadReady = await ensureVadLoaded();
+  if (!vadReady || !S.vad) {
+    showError("人声判定AIを読み込めないため、記録を開始できません。通信状態を確認してください。（" + (S.vadErr || "読込失敗") + "）");
+    setButtons();
+    return;
+  }
+
   if (S.ctx.state !== "running") await S.ctx.resume().catch(() => {});
 
   S.epoch++;
@@ -1994,8 +2072,7 @@ async function startRec() {
   S.bucket = null; S.secBuf = []; S.envRun = 0; S.lastEnvMs = -1e9;
   S.counts = newCounts();
   S.vadOk = true;
-  S.vadCtx = new Float32Array(VAD_CTX);
-  S.vadState = null;
+  S.vadState = { state: newVadState(), ctx: new Float32Array(VAD_CTX) };
   S.sess = {
     id: S.sid, startedAt: Date.now(), endedAt: null, gainDb: S.gainDb, calDb: S.calDb, vadOk: S.vadOk,
     base: null,
@@ -2099,7 +2176,7 @@ function setButtons() {
   $("prep-voice-adj").hidden = !S.ref;
   updateRefJudgeDisplay();
 
-  $("start-btn").disabled = S.running || !S.ctx || !S.patient || !S.ref;
+  $("start-btn").disabled = S.running || !S.ctx || !S.patient || !S.ref || !S.vadOk;
   $("stop-btn").disabled = !S.running;
   $("btn-enter-black").disabled = !S.running;
   $("gain").disabled = S.running || measuring;
@@ -2770,9 +2847,12 @@ async function scoreEventsIfNeeded(sess, evs) {
       const clip = await DB.get("clips", e.clipId);
       if (clip && clip.data) {
         const pcm = clipPcm(clip);
-        e.voiceScore = calcClipVoiceScore(pcm);
-        await DB.put("events", e);
-        changed = true;
+        const p = await measurePcmVadProb(pcm);
+        if (p != null) {
+          e.voiceScore = p;
+          await DB.put("events", e);
+          changed = true;
+        }
       }
     }
   }
@@ -2795,7 +2875,7 @@ function reclassifyByThreshold(sess, evs, th) {
 function updateRefJudgeDisplay() {
   const hasScore = S.ref && S.ref.voiceScore != null;
   const isSpeech = hasScore && S.ref.voiceScore >= tl.voiceThresh;
-  const txt = hasScore ? ((isSpeech ? "人声（除外）" : "いびき（残る）") + "（スコア " + S.ref.voiceScore + "）") : "-";
+  const txt = hasScore ? ((isSpeech ? "人声（除外）" : "いびき（残る）") + "（確率 " + S.ref.voiceScore + "%）") : "-";
   const col = isSpeech ? "#4caf7a" : "#ff9f43";
 
   const pvVal = $("pv-ref-judge-val");
@@ -3437,7 +3517,6 @@ async function listenAtCursor() {
       msg.textContent = "この棒の音声データはありません（削除済み、または音声が保存されていません）。";
       return;
     }
-    // 棒の範囲内の最初のいびき開始ポイントから再生
     playStartSec = Math.max(binStart, list[0].startMs / 1000);
     playEndSec = binEnd;
   }
@@ -4582,6 +4661,10 @@ async function boot() {
   await loadPatient();
   if (!checkHashOnLoad()) showPage("start");
   await loadRef();
+  const vadOk = await ensureVadLoaded();
+  if (!vadOk) {
+    showError("人声判定AIを読み込めませんでした。通信状態を確認してください。（" + (S.vadErr || "読込失敗") + "）");
+  }
   updateBackButtons();
   setButtons();
   updateUI();
@@ -4597,3 +4680,4 @@ boot().catch(handleErr);
 </script>
 </body>
 </html>
+
