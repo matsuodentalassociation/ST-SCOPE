@@ -1,4 +1,1053 @@
-/* ===== 第5部：患者情報の確認・QR読み取り ===== */
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<meta http-equiv="Cache-Control" content="no-cache">
+<title>SomnoLog 基準音圧版 V424</title>
+<script>
+/* 更新は別の文書環境で起動する。失敗時は元のURLへ戻す。 */
+(function () {
+  "use strict";
+  var baseVersion = 424;
+  var htmlKey = "sl_boot_html";
+  var versionKey = "sl_boot_ver";
+  var attemptKey = "sl_boot_attempt";
+  var returnKey = "sl_boot_return";
+  var noticeKey = "sl_boot_notice";
+  var params = new URLSearchParams(location.search);
+
+  function safeGet(store, key) {
+    try { return store.getItem(key); } catch (_) { return null; }
+  }
+  function safeSet(store, key, value) {
+    try { store.setItem(key, value); return true; } catch (_) { return false; }
+  }
+  function clearUpdate() {
+    try { localStorage.removeItem(versionKey); } catch (_) {}
+    try { localStorage.removeItem(htmlKey); } catch (_) {}
+    try { sessionStorage.removeItem(attemptKey); } catch (_) {}
+    try { sessionStorage.removeItem(returnKey); } catch (_) {}
+  }
+  function recover(reason) {
+    try { localStorage.setItem(noticeKey, reason); } catch (_) {}
+    var back = safeGet(sessionStorage, returnKey);
+    clearUpdate();
+    if (back) {
+      try {
+        var url = new URL(back);
+        url.searchParams.delete("v");
+        url.searchParams.delete("c");
+        url.searchParams.delete("t");
+        url.searchParams.set("safe", "1");
+        location.replace(url.href);
+        return;
+      } catch (_) {}
+    }
+    var body = document.body || document.documentElement.appendChild(document.createElement("body"));
+    var box = document.createElement("main");
+    var title = document.createElement("h1");
+    var message = document.createElement("p");
+    var link = document.createElement("a");
+    var url = new URL(location.href);
+    url.searchParams.delete("v");
+    url.searchParams.delete("c");
+    url.searchParams.delete("t");
+    url.searchParams.set("safe", "1");
+    title.textContent = "SomnoLogの更新を起動できませんでした";
+    message.textContent = reason;
+    link.textContent = "元の版を開き直す";
+    link.href = url.href;
+    box.append(title, message, link);
+    body.replaceChildren(box);
+  }
+
+  try {
+    if (params.get("safe") === "1") {
+      clearUpdate();
+      window.__slBootNotice = safeGet(localStorage, noticeKey) || "";
+      try { localStorage.removeItem(noticeKey); } catch (_) {}
+      return;
+    }
+
+    var version = Number(safeGet(localStorage, versionKey) || 0);
+    var pending = safeGet(sessionStorage, attemptKey);
+    if (pending) {
+      if (Number(pending) === baseVersion && version === baseVersion) {
+        var timer = setTimeout(function () {
+          recover("新版の起動を確認できませんでした。元の版に戻します。");
+        }, 35000);
+        window.__slBootReady = function (startedVersion) {
+          if (startedVersion !== baseVersion) return;
+          clearTimeout(timer);
+          clearUpdate();
+          window.__slBootReady = null;
+        };
+        return;
+      }
+      clearUpdate();
+      window.__slBootNotice = "保存済み更新の起動を確認できなかったため、元の版で起動しました。";
+      return;
+    }
+
+    if (!Number.isSafeInteger(version) || version <= baseVersion) return;
+    var html = safeGet(localStorage, htmlKey) || "";
+    var match = html.match(/\bconst\s+APP_VERSION\s*=\s*(\d+)\s*;/);
+    if (!match || Number(match[1]) !== version || !/<\/html\s*>\s*$/i.test(html)) {
+      clearUpdate();
+      window.__slBootNotice = "保存された更新ファイルが不完全だったため、元の版で起動しました。";
+      return;
+    }
+
+    if (!safeSet(sessionStorage, attemptKey, String(version)) ||
+        !safeSet(sessionStorage, returnKey, location.href)) {
+      clearUpdate();
+      window.__slBootNotice = "更新の起動情報を保存できないため、元の版で起動しました。";
+      return;
+    }
+
+    /* document.writeではなくBlob URLへ遷移し、新しいJS実行環境を作る。 */
+    var blobUrl = URL.createObjectURL(new Blob([html], { type: "text/html;charset=utf-8" }));
+    location.replace(blobUrl);
+  } catch (error) {
+    recover(error && error.message ? error.message : String(error));
+  }
+})();
+</script>
+<script src="https://matsuodentalassociation.github.io/ST-SCOPE/ort.min.js"></script>
+<style>
+:root{color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:#0d1117;color:#f0eee6;font-family:-apple-system,BlinkMacSystemFont,"Noto Sans JP",sans-serif}
+[hidden]{display:none!important}
+button,input,select{font:inherit}
+button{min-height:48px;padding:12px 14px;border-radius:10px;border:1px solid #3c4f63;background:#223649;color:#e5f1fb;font-size:15px;font-weight:600;width:100%;cursor:pointer}
+button.primary{background:#84b9cf;border-color:#84b9cf;color:#10202a}
+button.danger{background:#3a2a2a;border-color:#7a4b48;color:#f2d2cf}
+button.sub{background:#171f29;border-color:#34424f;color:#d3dde7}
+button.warnbtn{background:#353024;border-color:#6d6240;color:#f3e7c9}
+button:disabled{opacity:.4;cursor:not-allowed}
+:focus-visible{outline:2px solid #f3e7c9;outline-offset:2px}
+select{min-height:40px;padding:8px 10px;border-radius:10px;border:1px solid #3c4f63;background:#223649;color:#e5f1fb;font-size:14px;width:auto}
+.mini{width:auto;min-width:44px;min-height:40px;padding:8px 12px;font-size:14px}
+.page{max-width:480px;margin:0 auto;padding:20px 16px 40px;display:flex;flex-direction:column;gap:14px}
+#page-start{min-height:100vh;min-height:100dvh}
+.sticky-bar{position:sticky;top:0;z-index:10;background:#0d1117;padding:8px 0;display:grid;gap:10px}
+.head{display:flex;justify-content:space-between;align-items:center;gap:10px}
+h1{margin:0;font-size:22px}
+h2{margin:0;font-size:17px}
+.card{background:#161d26;border:1px solid #2a3643;border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:10px}
+.muted{color:#aebbc9;font-size:12px;line-height:1.7;margin:0}
+.warn,.err{padding:10px 12px;border-radius:10px;font-size:13px;line-height:1.6;overflow-wrap:anywhere}
+.warn{background:#3a2f1a;border:1px solid #7a6a3a;color:#f3e7c9}
+.err{background:#4a1f1f;border:1px solid #9a4a4a;color:#ffd9d6;white-space:pre-wrap}
+.err.tap{cursor:pointer}
+.tag{font-size:11px;padding:4px 9px;border-radius:999px;background:#263b38;color:#bfdbd1;white-space:nowrap}
+.tag.rec{background:#7a2e2e;color:#ffd9d6}
+.kv{display:flex;justify-content:space-between;gap:8px;font-size:14px;padding:4px 0;border-bottom:1px solid #2a3643}
+.kv b{color:#f3e7c9;font-weight:600;text-align:right;overflow-wrap:anywhere}
+.field{background:#0d1117;border:1px solid #2a3643;border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:4px}
+.field span{font-size:11px;color:#8fa0b3}
+.field b{font-size:16px;font-weight:600;overflow-wrap:anywhere}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.meter{position:relative;height:12px;background:#111820;border-radius:6px;overflow:hidden}
+.meter i{display:block;height:100%;width:0;background:#84b9cf}
+.meter .tk{position:absolute;top:0;bottom:0;width:1px;background:#3c4f63}
+.meter .mid{position:absolute;left:50%;top:0;bottom:0;width:2px;background:#f3e7c9}
+.scale-row{display:flex;justify-content:space-between;font-size:11px;color:#8fa0b3}
+input[type=range]{width:100%;accent-color:#84b9cf}
+.chart{background:#101923;border:1px solid #2a3643;border-radius:10px;padding:6px}
+.chart svg{width:100%;height:auto;display:block}
+.tl-area{touch-action:none;user-select:none;-webkit-user-select:none;cursor:ew-resize}
+audio,video{width:100%}
+.cal-nav{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center}
+.cal-nav h2{text-align:center}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.cal-wk{font-size:11px;color:#8fa0b3;text-align:center;padding:4px 0}
+.cal-day{position:relative;min-height:44px;padding:6px 0;font-size:14px;background:#111820;border-color:#2a3643}
+.cal-day.has::after{content:"";position:absolute;bottom:5px;left:50%;transform:translateX(-50%);width:5px;height:5px;border-radius:50%;background:#84b9cf}
+.cal-day.today{border-color:#f3e7c9}
+.cal-day.sel{background:#84b9cf;border-color:#84b9cf;color:#10202a}
+.cal-day.sel::after{background:#10202a}
+.pager{display:flex;align-items:center;gap:8px}
+.cal-sum-head{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.tl-info{font-size:12px;color:#d3dde7;line-height:1.7;margin:0}
+ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
+#black-screen{position:fixed;inset:0;z-index:99999;background:#000;color:#756f61;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;touch-action:none;overflow:hidden;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)}
+#black-screen,#black-screen *,#stop-btn{user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+#stop-btn{touch-action:none}
+#black-progress{width:40vw;max-width:220px;height:3px;background:rgba(255,255,255,.14);border-radius:2px;overflow:hidden}
+#black-progress-bar{width:0;height:100%;background:#756f61}
+#black-clock{font-size:64px;font-variant-numeric:tabular-nums}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px}
+.modal-box{background:#161d26;border:1px solid #2a3643;border-radius:12px;padding:18px;max-width:420px;width:100%;max-height:85vh;max-height:85dvh;overflow:auto;display:flex;flex-direction:column;gap:12px}
+.modal-box p{margin:0;font-size:14px;line-height:1.8}
+.tagbar{display:flex;flex-wrap:wrap;gap:8px}
+.tagbtn{width:auto;min-height:40px;padding:8px 12px;border-radius:10px;font-size:13px;display:flex;align-items:center;gap:6px;background:#171f29;border-color:#34424f;color:#d3dde7}
+.tagbtn i{display:inline-block;width:12px;height:12px;border-radius:3px}
+.tagbtn.off{opacity:.45;border-style:dashed}
+.tagbtn.off i{background:transparent!important;border:1px solid #8fa0b3}
+.tagbtn small{font-size:11px;color:#aebbc9;font-weight:400}
+.legend{display:flex;flex-wrap:wrap;gap:12px;font-size:12px;color:#d3dde7}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:4px;vertical-align:middle}
+#level-bar{background:#ff9f43}
+#motion-bar{background:#e04848}
+.zip-progress{position:fixed;left:16px;right:16px;bottom:16px;z-index:100000;max-width:448px;margin:0 auto;padding:14px;border-radius:12px;border:1px solid #84b9cf;background:#161d26;color:#f0eee6;box-shadow:0 4px 20px rgba(0,0,0,.6);display:flex;flex-direction:column;gap:10px}
+.zip-progress-title{font-size:15px;font-weight:600;margin:0}
+.zip-progress-text{font-size:13px;line-height:1.7;margin:0;white-space:pre-line;color:#d3dde7}
+.zip-bar{height:12px;background:#111820;border-radius:6px;overflow:hidden;border:1px solid #2a3643}
+.zip-bar i{display:block;height:100%;width:0;background:#84b9cf}
+</style>
+</head>
+<body><div id="errbox" class="err tap" role="alert" hidden></div>
+
+<main id="page-start" class="page">
+  <header class="head">
+    <h1 class="app-name">SomnoLog V424</h1>
+    <span class="tag">患者情報確認</span>
+  </header>
+  <p id="boot-status" class="muted" role="status">アプリを起動しています…</p>
+  <noscript><p class="err">このアプリを使うには、ブラウザでJavaScriptを有効にしてください。</p></noscript>
+  <div id="scan-msg" class="err" role="alert" hidden></div>
+  <button id="upd-reload" class="sub" disabled>アプリの更新</button>
+  <p id="upd-msg" class="muted" hidden aria-live="polite"></p>
+  <p id="ver-text" class="muted">現在のバージョン：SomnoLog V424</p>
+  <section class="card">
+    <button id="usage-btn" class="warnbtn">使い方を見る</button>
+    <button id="cam-btn">QRコードを読む</button>
+    <button id="qr-file-btn">QR画像を選択</button>
+    <input id="qr-file" type="file" accept="image/*" hidden>
+    <button id="back-rec-start" class="primary" hidden>睡眠記録画面に移動</button>
+  </section>
+  <section id="cam-box" class="card" hidden>
+    <video id="cam-video" playsinline muted></video>
+    <p class="muted">QRコードを画面内に収めてください。読み取れると自動で次に進みます。</p>
+    <button id="cam-stop" class="sub">カメラを止める</button>
+  </section>
+  <section id="usage-box" class="card" hidden>
+    <h2>使い方</h2>
+    <ol class="steps">
+      <li>「アプリの更新」を押すと、最新版を確認できます。</li>
+      <li>発行されたQRコードをカメラで読み取ります。画像で受け取った場合は「QR画像を選択」を押します。</li>
+      <li>患者情報が正しければ「始める」を押します。違う場合は「情報が間違っています」を押して、診療所にご連絡ください。</li>
+      <li>登録済みの場合は「睡眠記録画面に移動」を押すと、QRコードを読み直さずに記録画面へ進めます。</li>
+    </ol>
+  </section>
+  <canvas id="scan-canvas" hidden></canvas>
+</main>
+
+<main id="page-confirm" class="page" hidden>
+  <header class="head"><h1>患者情報の確認</h1></header>
+  <section class="card">
+    <div class="field"><span>診療所名</span><b id="cf-clinic"></b></div>
+    <div class="field"><span>カルテNo</span><b id="cf-chart"></b></div>
+    <div class="field"><span>患者名</span><b id="cf-name"></b></div>
+    <div class="field"><span>シリアルNo</span><b id="cf-serial"></b></div>
+    <div class="field"><span>ログ共有通知先（宛先）</span><b id="cf-email"></b></div>
+    <button id="cf-ok" class="primary">始める</button>
+    <button id="cf-ng" class="warnbtn">情報が間違っています</button>
+    <button id="back-rec-confirm" class="sub" hidden>睡眠記録画面に移動</button>
+  </section>
+</main>
+
+<main id="page-record" class="page" hidden>
+  <header class="head">
+    <h1 class="app-name">SomnoLog V424</h1>
+    <div style="display:flex;align-items:center;gap:10px">
+      <button id="rec-back" class="sub mini" type="button">戻る</button>
+      <span id="rec-badge" class="tag">待機中</span>
+    </div>
+  </header>
+  <button id="rec-usage-btn" class="warnbtn">使い方を見る</button>
+  <section id="rec-usage-box" class="card" hidden>
+    <h2>使い方</h2>
+    <ol class="steps">
+      <li>「記録の準備」でマイクとモーションセンサーを許可し、基準音を設定します。</li>
+      <li>「記録開始」を押すと記録が始まります。「停止」を2秒間長押しすると記録が終わります。</li>
+      <li>「黒画面に切り替え」を押すと、画面を暗くして記録を続けられます。</li>
+      <li>記録は「記録カレンダーを見る」から確認できます。</li>
+    </ol>
+  </section>
+  <section class="card">
+    <button id="prep-btn" class="primary">記録の準備</button>
+    <button id="start-btn" class="primary" disabled>記録開始</button>
+    <button id="btn-enter-black" class="sub" disabled>黒画面に切り替え</button>
+    <button id="stop-btn" class="danger" disabled>停止</button>
+    <button id="history-btn" class="sub">記録カレンダーを見る</button>
+  </section>
+</main>
+
+<main id="page-prep" class="page" hidden>
+  <header class="head">
+    <h1 class="app-name">SomnoLog V424</h1>
+    <button id="prep-back" class="sub mini" type="button">戻る</button>
+  </header>
+  <button id="prep-usage-btn" class="warnbtn">使い方を見る</button>
+  <section id="prep-usage-box" class="card" hidden>
+    <h2>使い方</h2>
+    <ol class="steps">
+      <li>「マイクを許可」を押します。</li>
+      <li>「基準音の設定」を押し、最初の2秒は静かにし、続く4秒で「あいうえお」と発声します。</li>
+      <li>基準音は端末に保存されます。音圧を調整した場合は、基準音を測り直してください。</li>
+      <li>以前の版から引き継いだ基準音に再生用の音声がなくても、測定値が残っていれば記録できます。</li>
+    </ol>
+  </section>
+  <div id="mic-msg" class="err" role="alert" hidden></div>
+  <section class="card">
+    <div class="kv"><span>マイク</span><b id="mic-state">未許可</b></div>
+    <button id="mic-btn">マイクを許可</button>
+    <div class="meter">
+      <i id="level-bar"></i>
+      <i class="tk" style="left:25%"></i><i class="tk" style="left:50%"></i><i class="tk" style="left:75%"></i>
+      <b id="mid-line" class="mid"></b>
+    </div>
+    <div id="scale-row" class="scale-row"></div>
+    <div class="kv"><span>下端：環境音</span><b id="g-env">-</b></div>
+    <div class="kv"><span>白い線：「あいうえお」</span><b id="g-ah">-</b></div>
+    <div class="kv"><span>上端：記録中の最大</span><b id="g-top">-</b></div>
+    <div class="kv"><span id="level-text">-</span><span id="base-text">待機中</span></div>
+    <label for="gain" class="muted">音圧調整（基準音が小さい場合にマイク感度を上げます）</label>
+    <input id="gain" type="range" min="-9" max="18" step="1" value="0">
+    <p class="muted">調整後は基準音を測り直してください。</p>
+    <label for="loud-db" class="kv"><span>検出閾値</span><b id="loud-val">環境音基準 + 10 dB</b></label>
+    <input id="loud-db" type="range" min="3" max="20" step="1" value="10">
+    <p class="muted">音を拾いすぎる場合は右へ、拾わない場合は左へ調整してください。</p>
+  </section>
+  <section class="card">
+    <button id="ref-btn" class="primary" disabled>基準音の設定</button>
+    <p id="ref-msg" class="muted" role="status">基準音が未設定です。</p>
+    <div id="prep-voice-adj" hidden>
+      <label for="pv-thresh" class="kv"><span>人声を除外する強さ</span><b id="pv-thresh-val">65</b></label>
+      <input id="pv-thresh" type="range" min="5" max="100" step="1" value="65">
+      <div class="kv"><span>基準の「あいうえお」の判定</span><b id="pv-ref-judge-val">-</b></div>
+      <p class="muted">右へ動かすほど、人声と判定しやすくなります。</p>
+    </div>
+    <button id="ref-play-btn" class="sub" hidden>基準音を聴く</button>
+  </section>
+  <section class="card">
+    <div class="kv"><span>体動（重力除去）</span><b id="motion-text">-</b></div>
+    <div class="meter"><i id="motion-bar"></i></div>
+  </section>
+  <button id="prep-back2" class="sub">戻る</button>
+</main><main id="page-calendar" class="page" hidden>
+  <header class="head">
+    <h1>記録カレンダー</h1>
+    <button id="cal-back" class="sub mini" type="button">戻る</button>
+  </header>
+  <section class="card" aria-label="月別カレンダー">
+    <div class="cal-nav">
+      <button id="cal-prev" class="sub mini" type="button" aria-label="前の月">‹</button>
+      <h2 id="cal-month" aria-live="polite"></h2>
+      <button id="cal-next" class="sub mini" type="button" aria-label="次の月">›</button>
+    </div>
+    <div id="cal-grid" class="cal-grid"></div>
+    <p class="muted">点が付いた日には記録があります。</p>
+  </section>
+  <section class="card" aria-labelledby="cal-selected">
+    <div class="cal-sum-head">
+      <h2 id="cal-selected">日付を選択してください</h2>
+      <span id="cal-count" class="tag" hidden></span>
+    </div>
+    <p id="cal-status" class="muted" role="status"></p>
+    <div id="cal-records"></div>
+  </section>
+</main>
+
+<main id="page-detail" class="page" hidden>
+  <header class="head">
+    <h1>記録の詳細</h1>
+    <button id="detail-back" class="sub mini" type="button">戻る</button>
+  </header>
+  <p id="detail-status" class="muted" role="status"></p>
+  <section id="detail-summary" class="card" aria-labelledby="detail-date" hidden>
+    <h2 id="detail-date">睡眠記録</h2>
+    <div class="kv"><span>開始</span><b id="detail-start">—</b></div>
+    <div class="kv"><span>終了</span><b id="detail-end">—</b></div>
+    <div class="kv"><span>記録時間</span><b id="detail-duration">—</b></div>
+    <div class="kv"><span>いびき</span><b id="detail-snore-count">—</b></div>
+    <div class="kv"><span>人声</span><b id="detail-voice-count">—</b></div>
+    <div class="kv"><span>体動</span><b id="detail-motion-count">—</b></div>
+  </section>
+  <section id="detail-chart-card" class="card" aria-labelledby="detail-chart-title" hidden>
+    <h2 id="detail-chart-title">記録グラフ</h2>
+    <p id="detail-chart-status" class="muted" role="status"></p>
+    <div id="detail-chart-filters" class="tagbar" aria-label="グラフの表示項目"></div>
+    <div id="detail-chart" class="chart"></div>
+    <p id="detail-chart-info" class="tl-info"></p>
+  </section>
+  <section id="detail-clips-card" class="card" aria-labelledby="detail-clips-title" hidden>
+    <div class="cal-sum-head">
+      <h2 id="detail-clips-title">音声イベント</h2>
+      <span id="detail-clip-count" class="tag"></span>
+    </div>
+    <div id="detail-clip-filters" class="tagbar" aria-label="音声イベントの絞り込み"></div>
+    <p id="detail-clip-status" class="muted" role="status"></p>
+    <div id="detail-clips"></div>
+    <div id="detail-clip-pager" class="pager" hidden>
+      <button id="detail-clip-prev" class="sub mini" type="button">前へ</button>
+      <span id="detail-clip-page" class="muted" aria-live="polite"></span>
+      <button id="detail-clip-next" class="sub mini" type="button">次へ</button>
+    </div>
+    <audio id="detail-audio" controls preload="none" hidden></audio>
+  </section>
+  <section class="card">
+    <button id="detail-share" class="primary" type="button" disabled>共有の内容を確認</button>
+  </section>
+</main>
+
+<main id="page-share" class="page" hidden>
+  <header class="head">
+    <h1>記録の共有</h1>
+    <button id="share-back" class="sub mini" type="button">戻る</button>
+  </header>
+  <section class="card" aria-labelledby="share-title">
+    <h2 id="share-title">共有する内容</h2>
+    <p id="share-record-label" class="muted"></p>
+    <div class="kv"><span>いびき判定の音声</span><b id="share-snore-count">—</b></div>
+    <div class="kv"><span>保存済みの人声クリップ</span><b id="share-voice-count">—</b></div>
+    <div class="kv"><span>分析用の基準音</span><b id="share-reference-state">—</b></div>
+    <p class="muted">いびき判定の音声は自動で共有対象になります。未保存の人声クリップは、音声にも共有ログにも含めません。</p>
+    <p class="muted">基準音が保存されている場合は、分析用の <code>reference.wav</code> として含めます。</p>
+    <div id="share-warn" class="warn" role="status" hidden></div>
+    <div id="share-error" class="err" role="alert" hidden></div>
+    <button id="share-create" class="primary" type="button" disabled>ZIPを作成する</button>
+  </section>
+</main>
+
+<div id="share-confirm" class="modal" role="dialog" aria-modal="true" aria-labelledby="share-confirm-title" hidden>
+  <div class="modal-box">
+    <h2 id="share-confirm-title">共有用ZIPを作成しますか？</h2>
+    <p id="share-confirm-text">共有内容を確認してから保存先を選択してください。この操作でファイルが自動送信されることはありません。</p>
+    <button id="share-confirm-ok" class="primary" type="button">保存先を選ぶ</button>
+    <button id="share-confirm-cancel" class="sub" type="button">キャンセル</button>
+  </div>
+</div>
+
+<aside id="zip-progress" class="zip-progress" aria-labelledby="zip-progress-title" hidden>
+  <h2 id="zip-progress-title" class="zip-progress-title">共有用ZIPを作成しています</h2>
+  <p id="zip-progress-text" class="zip-progress-text" role="status"></p>
+  <div id="zip-progress-meter" class="zip-bar" role="progressbar"
+       aria-label="ZIP作成の進捗" aria-valuemin="0" aria-valuemax="100">
+    <i id="zip-progress-fill"></i>
+  </div>
+  <button id="zip-cancel" class="sub" type="button">作成を中止</button>
+</aside>
+
+<div id="black-screen" role="region" aria-label="記録中の黒画面" hidden>
+  <span id="black-clock" aria-hidden="true">--:--</span>
+  <span>記録中</span>
+  <p class="muted">長押しで記録画面に戻ります。</p>
+  <div id="black-progress" aria-hidden="true"><div id="black-progress-bar"></div></div>
+  <button id="black-exit" class="sub mini" type="button">記録画面に戻る</button>
+</div><script>
+"use strict";
+
+/* ===== 第4部：共通処理・端末内保存・旧記録の引き継ぎ ===== */
+const APP_VERSION = 424;
+const APP_NAME = `SomnoLog V${APP_VERSION}`;
+const $ = id => document.getElementById(id);
+const PAGE_IDS = [
+  "page-start", "page-confirm", "page-record", "page-prep",
+  "page-calendar", "page-detail", "page-share"
+];
+
+function showPage(pageId) {
+  if (!PAGE_IDS.includes(pageId)) throw new RangeError(`未定義の画面です: ${pageId}`);
+  for (const id of PAGE_IDS) $(id).hidden = id !== pageId;
+  window.scrollTo(0, 0);
+}
+
+function setMessage(id, value) {
+  const el = $(id);
+  if (!el) return;
+  const text = value == null ? "" : String(value);
+  el.textContent = text;
+  el.hidden = text.length === 0;
+}
+
+function errorText(error) {
+  if (error && typeof error.message === "string") return error.message;
+  return error == null ? "不明なエラー" : String(error);
+}
+
+function localDayKey(value) {
+  const d = value instanceof Date ? value : new Date(value);
+  if (!Number.isFinite(d.getTime())) throw new RangeError("記録日時が不正です。");
+  return [
+    String(d.getFullYear()).padStart(4, "0"),
+    String(d.getMonth() + 1).padStart(2, "0"),
+    String(d.getDate()).padStart(2, "0")
+  ].join("-");
+}
+
+function newRecordId() {
+  if (typeof globalThis.crypto?.randomUUID === "function") return globalThis.crypto.randomUUID();
+  const bytes = new Uint8Array(16);
+  globalThis.crypto.getRandomValues(bytes);
+  return Array.from(bytes, x => x.toString(16).padStart(2, "0")).join("");
+}
+
+const storage = (() => {
+  const DB_NAME = "SomnoLog-local";
+  const DB_VERSION = 1;
+  const MIGRATION_KEY = "migration:v424:legacy";
+  const ENGINE_SCALE_KEY = "somnolog-scale-unified-v68";
+  const ENGINE_MARKER = "__somnolog_internal_scale_v68__";
+  let opening = null;
+  let migration = null;
+
+  function openLocal() {
+    if (opening) return opening;
+    const promise = new Promise((resolve, reject) => {
+      if (!globalThis.indexedDB) {
+        reject(new Error("このブラウザでは端末内保存を使用できません。"));
+        return;
+      }
+      const req = indexedDB.open(DB_NAME, DB_VERSION);
+      let blocked = false;
+      req.onupgradeneeded = () => {
+        const db = req.result;
+        const tx = req.transaction;
+        const records = db.objectStoreNames.contains("records")
+          ? tx.objectStore("records") : db.createObjectStore("records", { keyPath: "id" });
+        if (!records.indexNames.contains("day")) records.createIndex("day", "day");
+        const clips = db.objectStoreNames.contains("clips")
+          ? tx.objectStore("clips") : db.createObjectStore("clips", { keyPath: ["recordId", "id"] });
+        if (!clips.indexNames.contains("recordId")) clips.createIndex("recordId", "recordId");
+        if (!db.objectStoreNames.contains("settings")) db.createObjectStore("settings");
+      };
+      req.onblocked = () => {
+        blocked = true;
+        reject(new Error("別のタブでSomnoLogが開いています。そのタブを閉じてから開き直してください。"));
+      };
+      req.onerror = () => reject(req.error || new Error("端末内データベースを開けませんでした。"));
+      req.onsuccess = () => {
+        const db = req.result;
+        if (blocked) {
+          db.close();
+          return;
+        }
+        const reset = () => {
+          if (opening === promise) {
+            opening = null;
+            migration = null;
+          }
+        };
+        db.onversionchange = () => { db.close(); reset(); };
+        db.onclose = reset;
+        resolve(db);
+      };
+    });
+    opening = promise;
+    promise.catch(() => { if (opening === promise) opening = null; });
+    return promise;
+  }
+
+  function transaction(db, names, mode, enqueue) {
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(names, mode);
+      let value;
+      let failure;
+      tx.oncomplete = () => resolve(value);
+      tx.onerror = e => { failure ||= e.target?.error || tx.error; };
+      tx.onabort = () => reject(failure || tx.error || new Error("端末内保存の処理が中断されました。"));
+
+      const abort = error => {
+        failure = error;
+        try { tx.abort(); } catch (_) { reject(error); }
+      };
+      const onSuccess = (request, action) => {
+        request.onsuccess = () => {
+          try { action(request.result); } catch (error) { abort(error); }
+        };
+      };
+      try {
+        enqueue(name => tx.objectStore(name), result => { value = result; }, onSuccess);
+      } catch (error) {
+        abort(error);
+      }
+    });
+  }
+
+  function read(db, store, key) {
+    return transaction(db, [store], "readonly", (s, done, on) => on(s(store).get(key), done));
+  }
+
+  function all(db, store) {
+    return transaction(db, [store], "readonly", (s, done, on) => on(s(store).getAll(), done));
+  }
+
+  async function openSource(name, required, action) {
+    const db = await new Promise((resolve, reject) => {
+      const req = indexedDB.open(name);
+      let missing = false;
+      let finished = false;
+      const timer = setTimeout(() => {
+        finished = true;
+        reject(new Error(`${name} を開く処理が時間内に終わりませんでした。`));
+      }, 8000);
+      req.onupgradeneeded = () => {
+        // DBが存在しない場合、空DBを確定させない。
+        missing = true;
+        req.transaction.abort();
+      };
+      req.onerror = () => {
+        clearTimeout(timer);
+        finished = true;
+        if (missing) resolve(null);
+        else reject(req.error || new Error(`${name} を開けませんでした。`));
+      };
+      req.onsuccess = () => {
+        clearTimeout(timer);
+        if (finished) req.result.close();
+        else {
+          finished = true;
+          resolve(req.result);
+        }
+      };
+    });
+
+    if (!db) return;
+    db.onversionchange = () => db.close();
+    try {
+      for (const name of required) {
+        if (!db.objectStoreNames.contains(name)) {
+          throw new Error(`${db.name} に必要なストア ${name} がありません。`);
+        }
+      }
+      await action(db);
+    } finally {
+      db.close();
+    }
+  }
+
+  function bySid(db, store, sid, project = row => row) {
+    return transaction(db, [store], "readonly", (s, done, on) => {
+      const rows = [];
+      const source = s(store);
+      const indexed = source.indexNames.contains("sid");
+      const request = indexed ? source.index("sid").openCursor(IDBKeyRange.only(sid))
+        : source.openCursor();
+      on(request, cursor => {
+        if (!cursor) {
+          done(rows);
+          return;
+        }
+        if (indexed || indexedDB.cmp(cursor.value.sid, sid) === 0) {
+          rows.push(project(cursor.value));
+        }
+        cursor.continue();
+      });
+    });
+  }
+
+  const finite = value => Number.isFinite(value) ? value : null;
+  const bound = (value, lo, hi) => Math.max(lo, Math.min(hi, value));
+  const firstNumber = (...values) => values.find(Number.isFinite) ?? null;
+  const migratedId = (prefix, key) => `${prefix}:${typeof key}:${String(key)}`;
+  const text = value => typeof value === "string" ? value.trim() : "";
+
+  function localNumber(key, fallback, lo, hi) {
+    try {
+      const value = localStorage.getItem(key);
+      const number = value?.trim() ? Number(value) : NaN;
+      return Number.isFinite(number) ? bound(number, lo, hi) : fallback;
+    } catch (_) {
+      return fallback;
+    }
+  }
+
+  function referenceWav(encoded) {
+    if (encoded == null || encoded === "") return null;
+    if (typeof encoded !== "string") throw new Error("旧版の基準音の保存形式が不明です。");
+    const bytes = atob(encoded);
+    if (bytes.length < 44 || bytes.slice(0, 4) !== "RIFF" || bytes.slice(8, 12) !== "WAVE") {
+      throw new Error("旧版の基準音をWAVとして読み込めません。");
+    }
+    return new Blob([Uint8Array.from(bytes, c => c.charCodeAt(0))], { type: "audio/wav" });
+  }
+
+  function putSettingsIfMissing(db, entries) {
+    return transaction(db, ["settings"], "readwrite", (s, _, on) => {
+      const store = s("settings");
+      for (const [key, value] of entries) {
+        on(store.get(key), current => {
+          if (current === undefined) store.add(value, key);
+        });
+      }
+    });
+  }
+
+  async function migrateSettings(source, dest) {
+    const [patientRow, refRow, audioRow, gainRow] = await Promise.all(
+      ["patient", "ref", "refAudio", "refGain"].map(key => read(source, "settings", key))
+    );
+    const entries = [];
+    const p = patientRow?.value;
+    if (p && text(p.name) && text(p.chartNo)) {
+      entries.push(["patient", {
+        clinic: text(p.clinic), chart: text(p.chartNo), name: text(p.name),
+        serial: text(p.serialNumber), email: text(p.logShareEmail),
+        issuedOn: text(p.issuedOn), issueId: text(p.issueId)
+      }]);
+    }
+
+    const gain = localNumber("somnolog-gain-db", 0, -9, 18);
+    const loudDb = localNumber("somnolog-loud-db", 10, 3, 20);
+    const ref = refRow?.value;
+    let score = null;
+    let archivedReference = null;
+    if (ref && Number.isFinite(ref.db)) {
+      const measuredAt = finite(ref.at);
+      const measuredGain = measuredAt !== null && gainRow?.refAt === measuredAt &&
+        Number.isFinite(gainRow.value) ? gainRow.value : gain;
+      const voiceMetrics = ref.voiceMetrics && typeof ref.voiceMetrics === "object"
+        ? ref.voiceMetrics : null;
+      score = Number.isFinite(ref.voiceScore) ? bound(ref.voiceScore, 0, 100)
+        : Number.isFinite(voiceMetrics?.vadEventMean)
+          ? bound(Math.round(voiceMetrics.vadEventMean * 100), 0, 100) : null;
+      // 音声行の日付が判明していて、不一致なら別の測定の音声を紐付けない。
+      const dateMatches = measuredAt === null || !Number.isFinite(audioRow?.savedAt) ||
+        measuredAt === audioRow.savedAt;
+      const wav = dateMatches ? referenceWav(audioRow?.value) : null;
+      archivedReference = {
+        voiceDb: ref.db, envDb: firstNumber(ref.envDb, ref.db - 12),
+        gain: measuredGain, measuredAt, voiceScore: score, voiceMetrics, wav
+      };
+      entries.push(["reference", archivedReference]);
+    }
+
+    const threshold = score === null ? 35 : bound(Math.round(score * 0.8), 5, 95);
+    entries.push(["audioPreferences", { gain, loudDb, voiceThreshold: 100 - threshold }]);
+    await putSettingsIfMissing(dest, entries);
+    return archivedReference;
+  }
+
+  const engineTypes = new Map([
+    ["いびき", "snore"], ["snore", "snore"],
+    ["人声", "voice"], ["speech", "voice"], ["talk", "voice"], ["voice", "voice"],
+    ["環境音", "env"], ["env", "env"], ["判定不能", "unknown"], ["unknown", "unknown"]
+  ]);
+
+  function eventType(event, engine) {
+    if (!engine) return event.type === "speech" ? "voice" : event.type || "unknown";
+    const a = engineTypes.get(String(event.displayCategory ?? "").trim().toLowerCase());
+    const b = engineTypes.get(String(event.category ?? "").trim().toLowerCase());
+    return a === "voice" || b === "voice" ? "voice" : a || b || "unknown";
+  }
+
+  function engineTimeline(chunks, startedAt, dbScale) {
+    const bins = new Map();
+    for (const chunk of chunks) {
+      if (!Array.isArray(chunk.rows)) continue;
+      for (const row of chunk.rows) {
+        if (!Number.isFinite(row?.sec)) continue;
+        const sec = Math.floor(row.sec);
+        const bin = bins.get(sec) || { sum: 0, count: 0, motion: null };
+        if (Number.isFinite(row.db)) {
+          bin.sum += dbScale(row.db);
+          bin.count++;
+        }
+        if (Number.isFinite(row.motionG)) bin.motion = Math.max(bin.motion ?? 0, row.motionG);
+        bins.set(sec, bin);
+      }
+    }
+    return Array.from(bins, ([sec, bin]) => ({
+      at: startedAt + sec * 1000,
+      levelDb: bin.count ? bin.sum / bin.count : null,
+      motion: bin.motion
+    })).sort((a, b) => a.at - b.at);
+  }
+
+  async function migrateRecords(source, dest, engine, archivedReference) {
+    const prefix = engine ? "v63" : "v3";
+    const sessions = await all(source, "sessions");
+    let unified = sessions.some(row => row.id === ENGINE_MARKER && row.internalScaleMarker === true);
+    if (engine && !unified) {
+      try { unified = !!localStorage.getItem(ENGINE_SCALE_KEY); } catch (_) {}
+    }
+    const dbScale = db => !Number.isFinite(db) ? null
+      : !engine || unified ? db : Math.round((db - 72) * 10) / 10;
+
+    for (const sess of sessions) {
+      if (sess.internalScaleMarker || !Number.isFinite(sess.startedAt)) continue;
+      const sid = sess.id;
+      const id = migratedId(prefix, sid);
+      if (await read(dest, "records", id)) continue;
+      const [rows, oldEvents, clipInfo] = await Promise.all([
+        bySid(source, engine ? "timeline" : "secs", sid),
+        bySid(source, "events", sid),
+        bySid(source, "clips", sid, row => {
+          const audio = engine ? row.blob : row.data;
+          return {
+            id: row.id, eventId: row.eventId, saved: row.saved === true,
+            hasClip: audio instanceof Blob ? audio.size > 0
+              : !engine && (audio instanceof ArrayBuffer || ArrayBuffer.isView(audio)) &&
+                audio.byteLength > 0
+          };
+        })
+      ]);
+
+      const byClip = new Map(clipInfo.map(c => [c.id, c]));
+      const byEvent = new Map(clipInfo.filter(c => c.eventId != null).map(c => [c.eventId, c]));
+      const startedAt = sess.startedAt;
+      const events = oldEvents.map(ev => {
+        const clip = engine ? byClip.get(ev.clipId ?? ev.id)
+          : byClip.get(ev.clipId) || byEvent.get(ev.id);
+        const relative = finite(ev.startMs) ?? 0;
+        const durationMs = Math.max(0, firstNumber(
+          engine && Number.isFinite(ev.durationSec) ? ev.durationSec * 1000 : null,
+          ev.durMs,
+          Number.isFinite(ev.endMs) ? ev.endMs - relative : null
+        ) ?? 0);
+        return {
+          ...ev,
+          id: migratedId("event", ev.id),
+          clipId: clip?.hasClip ? migratedId("clip", clip.id) : null,
+          type: eventType(ev, engine),
+          legacyRecordedType: ev.type ?? ev.displayCategory ?? ev.category ?? null,
+          startedAt: startedAt + relative, durationMs,
+          peakDb: engine ? dbScale(firstNumber(ev.peakDb, ev.meanDb))
+            : firstNumber(ev.peakAppliedDb, ev.meanAppliedDb, ev.peakDb, ev.meanDb),
+          saved: ev.saved === true || clip?.saved === true,
+          hasClip: clip?.hasClip === true
+        };
+      }).sort((a, b) => a.startedAt - b.startedAt);
+
+      const timeline = engine ? engineTimeline(rows, startedAt, dbScale)
+        : rows.filter(row => Number.isFinite(row.sec)).map(row => ({
+          at: startedAt + row.sec * 1000,
+          levelDb: firstNumber(row.dbApplied, row.peakApplied, row.dbSource),
+          motion: finite(row.motion)
+        })).sort((a, b) => a.at - b.at);
+
+      const durationMs = Math.max(0,
+        firstNumber(sess.durationMs > 0 ? sess.durationMs : null,
+          Number.isFinite(sess.endedAt) ? sess.endedAt - startedAt : null,
+          Number.isFinite(sess.durationSec) ? sess.durationSec * 1000 : null) ?? 0);
+      let visibleDuration = durationMs;
+      for (const point of timeline) visibleDuration = Math.max(visibleDuration, point.at - startedAt);
+      for (const event of events) {
+        visibleDuration = Math.max(visibleDuration, event.startedAt - startedAt + event.durationMs);
+      }
+
+      // 旧版では基準音WAVは全体設定に保存される。
+      // 測定時刻が一致する記録だけに結び付け、別の夜の測定を誤って共有しない。
+      const referenceMatches = !engine && Number.isFinite(sess.refAt) &&
+        sess.refAt === archivedReference?.measuredAt;
+      const referenceClip = referenceMatches ? archivedReference.wav : null;
+      const record = {
+        id, day: localDayKey(startedAt), startedAt,
+        endedAt: Number.isFinite(sess.endedAt)
+          ? Math.max(sess.endedAt, startedAt + visibleDuration) : startedAt + visibleDuration,
+        durationMs: visibleDuration, timeline, events,
+        sourceDb: source.name, sourceRecordId: sid, legacyStatus: sess.status ?? null,
+        reference: {
+          envDb: finite(sess.refEnvDb), voiceDb: finite(sess.refDb),
+          measuredAt: finite(sess.refAt), clipId: referenceClip ? "reference" : null,
+          voiceScore: referenceMatches ? archivedReference.voiceScore : null,
+          voiceMetrics: referenceMatches ? archivedReference.voiceMetrics : null
+        }
+      };
+
+      // 音声をセッション全件分まとめて保持しない。記録行は音声処理後に確定する。
+      // 再試行時も同じキーを使用し、途中までのコピーで記録が重複しない。
+      for (const clip of clipInfo) {
+        if (!clip.hasClip) continue;
+        const row = await read(source, "clips", clip.id);
+        if (!row || indexedDB.cmp(row.sid, sid) !== 0) throw new Error("旧記録の音声が移行中に変更されました。");
+        const audio = engine ? row.blob : row.data;
+        const blob = audio instanceof Blob ? audio : new Blob([audio], { type: "audio/wav" });
+        if (!blob.size) throw new Error("旧記録の音声が移行中に空になりました。");
+        await writeClip(dest, id, migratedId("clip", clip.id), blob);
+      }
+      if (referenceClip) await writeClip(dest, id, "reference", referenceClip);
+
+      await transaction(dest, ["records"], "readwrite", (s, _, on) => {
+        const store = s("records");
+        on(store.get(id), existing => { if (!existing) store.add(record); });
+      });
+    }
+  }
+
+  async function importLegacy(db) {
+    if (await read(db, "settings", MIGRATION_KEY)) return;
+    await openSource("somnolog-v3", ["settings", "sessions", "secs", "events", "clips"], async source => {
+      const reference = await migrateSettings(source, db);
+      await migrateRecords(source, db, false, reference);
+    });
+    await openSource("somnolog-v63", ["sessions", "timeline", "events", "clips"], source =>
+      migrateRecords(source, db, true, null)
+    );
+    await putSettingsIfMissing(db, [[MIGRATION_KEY, { completedAt: Date.now() }]]);
+  }
+
+  async function open() {
+    const db = await openLocal();
+    if (!migration) {
+      const pending = importLegacy(db);
+      migration = pending;
+      pending.catch(() => { if (migration === pending) migration = null; });
+    }
+    await migration;
+    return db;
+  }
+
+  async function getSetting(key) { return read(await open(), "settings", key); }
+
+  async function setSetting(key, value) {
+    return transaction(await open(), ["settings"], "readwrite", s => s("settings").put(value, key));
+  }
+
+  async function putRecord(record) {
+    if (!record || typeof record.id !== "string" || !record.id || !Number.isFinite(record.startedAt)) {
+      throw new TypeError("記録IDまたは開始日時が不正です。");
+    }
+    const row = { ...record, day: localDayKey(record.startedAt) };
+    return transaction(await open(), ["records"], "readwrite", s => s("records").put(row));
+  }
+
+  async function getRecord(id) { return read(await open(), "records", id); }
+
+  async function listRecordsByDay(day) {
+    return transaction(await open(), ["records"], "readonly", (s, done, on) => {
+      on(s("records").index("day").getAll(day), rows => done(rows.sort((a, b) => b.startedAt - a.startedAt)));
+    });
+  }
+
+  async function listRecordedDays(firstDay, lastDay) {
+    return transaction(await open(), ["records"], "readonly", (s, done, on) => {
+      const days = new Set();
+      const range = IDBKeyRange.bound(firstDay, lastDay);
+      on(s("records").index("day").openKeyCursor(range, "nextunique"), cursor => {
+        if (!cursor) done(days);
+        else {
+          days.add(cursor.key);
+          cursor.continue();
+        }
+      });
+    });
+  }
+
+  function writeClip(db, recordId, clipId, blob) {
+    return transaction(db, ["clips"], "readwrite", s => s("clips").put({ recordId, id: clipId, blob }));
+  }
+
+  async function putClip(recordId, clipId, blob) {
+    if (typeof recordId !== "string" || !recordId ||
+        typeof clipId !== "string" || !clipId || !(blob instanceof Blob)) {
+      throw new TypeError("音声クリップのIDまたはデータが不正です。");
+    }
+    return writeClip(await open(), recordId, clipId, blob);
+  }
+
+  // 旧版のIMA ADPCMを再生要求時だけPCM化する。保存済みの原本は変更しない。
+  const imaSteps = [
+    7,8,9,10,11,12,13,14,16,17,19,21,23,25,28,31,34,37,41,45,50,55,60,
+    66,73,80,88,97,107,118,130,143,157,173,190,209,230,253,279,307,337,371,
+    408,449,494,544,598,658,724,796,876,963,1060,1166,1282,1411,1552,1707,
+    1878,2066,2272,2499,2749,3024,3327,3660,4026,4428,4871,5358,5894,6484,
+    7132,7845,8630,9493,10442,11487,12635,13899,15289,16818,18500,20350,
+    22385,24623,27086,29794,32767
+  ];
+  const imaIndex = [-1,-1,-1,-1,2,4,6,8];
+
+  async function oldWavForPlayback(blob) {
+    const header = new DataView(await blob.slice(0, 12).arrayBuffer());
+    if (header.byteLength < 12 || header.getUint32(0) !== 0x52494646 ||
+        header.getUint32(8) !== 0x57415645) return blob;
+    const view = new DataView(await blob.arrayBuffer());
+    const end = 8 + view.getUint32(4, true);
+    if (end < 12 || end > view.byteLength) throw new Error("旧記録のWAVが破損しています。");
+    let fmt, data, fact;
+    for (let offset = 12; offset + 8 <= end;) {
+      const size = view.getUint32(offset + 4, true);
+      const at = offset + 8;
+      if (at + size > end) throw new Error("旧記録のWAVが破損しています。");
+      switch (view.getUint32(offset)) {
+        case 0x666d7420: fmt = { at, size }; break;
+        case 0x64617461: data ||= { at, size }; break;
+        case 0x66616374: if (size >= 4) fact = view.getUint32(at, true); break;
+      }
+      offset = at + size + (size & 1);
+    }
+    if (!fmt || fmt.size < 2 || view.getUint16(fmt.at, true) !== 0x11) return blob;
+    const invalid = () => new Error("旧記録のIMA ADPCM WAVに対応できません。");
+    if (fmt.size < 20 || !data || view.getUint16(fmt.at + 2, true) !== 1 ||
+        view.getUint16(fmt.at + 14, true) !== 4) throw invalid();
+    const rate = view.getUint32(fmt.at + 4, true);
+    const align = view.getUint16(fmt.at + 12, true);
+    const perBlock = view.getUint16(fmt.at + 18, true);
+    if (!rate || rate > 0x7fffffff || align < 4 ||
+        perBlock !== 1 + (align - 4) * 2 || data.size % align) throw invalid();
+
+    const available = data.size / align * perBlock;
+    const count = fact ?? available;
+    if (!count || count > available || count > (0xffffffff - 36) / 2) throw invalid();
+    const buffer = new ArrayBuffer(44 + 2 * count);
+    const wav = new DataView(buffer);
+    wav.setUint32(0, 0x52494646);
+    wav.setUint32(4, buffer.byteLength - 8, true);
+    wav.setUint32(8, 0x57415645);
+    wav.setUint32(12, 0x666d7420);
+    wav.setUint32(16, 16, true);
+    wav.setUint16(20, 1, true);
+    wav.setUint16(22, 1, true);
+    wav.setUint32(24, rate, true);
+    wav.setUint32(28, rate * 2, true);
+    wav.setUint16(32, 2, true);
+    wav.setUint16(34, 16, true);
+    wav.setUint32(36, 0x64617461);
+    wav.setUint32(40, 2 * count, true);
+
+    let written = 0;
+    const emit = sample => wav.setInt16(44 + 2 * written++, sample, true);
+    for (let offset = data.at; offset < data.at + data.size && written < count; offset += align) {
+      let sample = view.getInt16(offset, true);
+      let index = view.getUint8(offset + 2);
+      if (index > 88) throw invalid();
+      emit(sample);
+      for (let j = 4; j < align && written < count; j++) {
+        const byte = view.getUint8(offset + j);
+        for (let shift = 0; shift <= 4 && written < count; shift += 4) {
+          const code = (byte >> shift) & 15;
+          const step = imaSteps[index];
+          const delta = (step >> 3) + ((code & 4) ? step : 0) +
+            ((code & 2) ? step >> 1 : 0) + ((code & 1) ? step >> 2 : 0);
+          sample = bound(sample + ((code & 8) ? -delta : delta), -32768, 32767);
+          index = bound(index + imaIndex[code & 7], 0, 88);
+          emit(sample);
+        }
+      }
+    }
+    return new Blob([buffer], { type: "audio/wav" });
+  }
+
+  async function getClip(recordId, clipId) {
+    const db = await open();
+    const row = await read(db, "clips", [recordId, clipId]);
+    const blob = row?.blob ?? null;
+    if (blob && (recordId.startsWith("v3:") || recordId.startsWith("v63:")) &&
+        clipId.startsWith("clip:")) return oldWavForPlayback(blob);
+    return blob;
+  }
+
+  return Object.freeze({
+    open, getSetting, setSetting, putRecord, getRecord,
+    listRecordsByDay, listRecordedDays, putClip, getClip
+  });
+})();
+
+const appState = {
+  patient: null,
+  pendingPatient: null,
+  reference: null,
+  recording: null,
+  selectedRecord: null
+};
+
+/* ===== 第4部ここまで：scriptタグは閉じない ===== *//* ===== 第5部：患者情報の確認・QR読み取り ===== */
 const patientUI = (() => {
   const settingKey = "patient";
   const fields = [
@@ -330,4 +1379,2338 @@ const patientUI = (() => {
   return Object.freeze({ bind, restore, stopCamera });
 })();
 
-/* ===== 第5部ここまで：scriptタグは閉じない ===== */
+/* ===== 第5部ここまで：scriptタグは閉じない ===== *//* ===== 第6部：マイク・基準音・体動センサー ===== */
+const preparation = (() => {
+  const REFERENCE_KEY = "reference";
+  const SETTINGS_KEY = "audioPreferences";
+  const defaults = { gain: 0, loudDb: 10, voiceThreshold: 65 };
+  let preferences = { ...defaults };
+  let microphone = null;
+  let opening = null;
+  let generation = 0;
+  let measuring = false;
+  let motionAttached = false;
+  let motionSample = null;
+  let playback = null;
+  let playbackURL = null;
+  let saveQueue = Promise.resolve();
+
+  const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+  const amplitudeDb = rms => 20 * Math.log10(Math.max(0.000001, rms));
+  const finiteNumber = (v, fallback, lo, hi) =>
+    typeof v === "number" && Number.isFinite(v) ? clamp(v, lo, hi) : fallback;
+
+  function validLevels(ref) {
+    return Boolean(ref && Number.isFinite(ref.envDb) &&
+      Number.isFinite(ref.voiceDb) && ref.voiceDb > ref.envDb &&
+      ref.envDb >= -120 && ref.voiceDb <= 0);
+  }
+
+  function referenceReady() {
+    const ref = appState.reference;
+    return validLevels(ref) && ref.gain === preferences.gain;
+  }
+
+  function gainFactor() {
+    return Math.pow(10, preferences.gain / 20);
+  }
+
+  function rmsOf(samples, factor = 1) {
+    let sum = 0;
+    for (const sample of samples) {
+      const scaled = clamp(sample * factor, -1, 1);
+      sum += scaled * scaled;
+    }
+    return Math.sqrt(sum / Math.max(1, samples.length));
+  }
+
+  function encodeMonoWav(chunks, sampleRate) {
+    const count = chunks.reduce((total, chunk) => total + chunk.length, 0);
+    if (!Number.isInteger(sampleRate) || sampleRate < 1 ||
+        sampleRate > 0x7fffffff || count > (0xffffffff - 36) / 2) {
+      throw new RangeError("基準音をWAVに変換できませんでした。");
+    }
+    const bytes = new ArrayBuffer(44 + count * 2);
+    const view = new DataView(bytes);
+    function tag(offset, value) {
+      for (let i = 0; i < value.length; i++) view.setUint8(offset + i, value.charCodeAt(i));
+    }
+    tag(0, "RIFF");
+    view.setUint32(4, bytes.byteLength - 8, true);
+    tag(8, "WAVE");
+    tag(12, "fmt ");
+    view.setUint32(16, 16, true);
+    view.setUint16(20, 1, true);
+    view.setUint16(22, 1, true);
+    view.setUint32(24, sampleRate, true);
+    view.setUint32(28, sampleRate * 2, true);
+    view.setUint16(32, 2, true);
+    view.setUint16(34, 16, true);
+    tag(36, "data");
+    view.setUint32(40, count * 2, true);
+    let offset = 44;
+    for (const chunk of chunks) {
+      for (const sample of chunk) {
+        const v = Number.isFinite(sample) ? clamp(sample, -1, 1) : 0;
+        view.setInt16(offset, Math.round(v * (v < 0 ? 32768 : 32767)), true);
+        offset += 2;
+      }
+    }
+    return new Blob([bytes], { type: "audio/wav" });
+  }
+
+  function microphoneReady() {
+    return Boolean(microphone && microphone.context.state === "running" &&
+      microphone.stream.getAudioTracks().some(track => track.readyState === "live"));
+  }
+
+  function refresh() {
+    const ref = appState.reference;
+    const levels = validLevels(ref);
+    const ready = referenceReady();
+    const live = microphoneReady();
+    $("mic-state").textContent = live ? "許可済み" : "未接続";
+    $("mic-btn").disabled = Boolean(opening || measuring || appState.recording);
+    $("ref-btn").disabled = !live || measuring || Boolean(appState.recording);
+    $("prep-back").disabled = measuring;
+    $("prep-back2").disabled = measuring;
+    $("start-btn").disabled = !ready || measuring || Boolean(appState.recording);
+    $("gain").disabled = measuring || Boolean(appState.recording);
+    $("loud-db").disabled = measuring || Boolean(appState.recording);
+    $("pv-thresh").disabled = measuring || Boolean(appState.recording);
+    $("gain").value = String(preferences.gain);
+    $("loud-db").value = String(preferences.loudDb);
+    $("pv-thresh").value = String(preferences.voiceThreshold);
+    $("loud-val").textContent = `環境音基準 + ${preferences.loudDb} dB`;
+    $("pv-thresh-val").textContent = String(preferences.voiceThreshold);
+    $("prep-voice-adj").hidden = !levels;
+    $("ref-play-btn").hidden = !(ref?.wav instanceof Blob && ref.wav.size);
+    $("ref-play-btn").disabled = measuring || Boolean(appState.recording);
+    $("g-env").textContent = levels ? `${ref.envDb.toFixed(1)} dBFS` : "—";
+    $("g-ah").textContent = levels ? `${ref.voiceDb.toFixed(1)} dBFS` : "—";
+    $("g-top").textContent = levels ? `${scaleTop(ref).toFixed(1)} dBFS` : "—";
+    if (!measuring) {
+      $("ref-msg").textContent = ready
+        ? (ref.wav instanceof Blob && ref.wav.size
+          ? "基準音は設定済みです。"
+          : "基準値は設定済みです。再生用WAVはありませんが、記録できます。")
+        : (levels ? "音圧調整が変更されました。基準音を測り直してください。" : "基準音が未設定です。");
+      $("base-text").textContent = ready ? "基準値設定済み" : "基準値未設定";
+    }
+  }
+
+  function scaleTop(ref) {
+    return clamp(ref.voiceDb + (ref.voiceDb - ref.envDb), ref.voiceDb, 0);
+  }
+
+  function showLevel(db) {
+    if ($("page-prep").hidden) return;
+    const ref = appState.reference;
+    const low = validLevels(ref) ? ref.envDb : -90;
+    const top = validLevels(ref) ? scaleTop(ref) : 0;
+    const span = Math.max(1, top - low);
+    $("level-bar").style.width = `${clamp((db - low) / span, 0, 1) * 100}%`;
+    $("mid-line").style.left = validLevels(ref)
+      ? `${clamp((ref.voiceDb - low) / span, 0, 1) * 100}%` : "50%";
+    $("level-text").textContent = `${db.toFixed(1)} dBFS`;
+  }
+
+  async function restore() {
+    const saved = await storage.getSetting(SETTINGS_KEY);
+    preferences = {
+      gain: finiteNumber(saved?.gain, defaults.gain, -9, 18),
+      loudDb: finiteNumber(saved?.loudDb, defaults.loudDb, 3, 20),
+      voiceThreshold: finiteNumber(saved?.voiceThreshold, defaults.voiceThreshold, 5, 100)
+    };
+    const ref = await storage.getSetting(REFERENCE_KEY);
+    appState.reference = validLevels(ref)
+      ? { ...ref, wav: ref.wav instanceof Blob && ref.wav.size ? ref.wav : null }
+      : null;
+    refresh();
+  }
+
+  function savePreference(key, value) {
+    if (measuring || appState.recording || !Number.isFinite(value)) return;
+    preferences = { ...preferences, [key]: value };
+    const snapshot = { ...preferences };
+    refresh();
+    saveQueue = saveQueue
+      .catch(() => {})
+      .then(() => storage.setSetting(SETTINGS_KEY, snapshot))
+      .catch(error => {
+        setMessage("mic-msg", `設定を保存できませんでした：${errorText(error)}`);
+      });
+  }
+
+  function closeMicrophone() {
+    ++generation;
+    opening = null;
+    const old = microphone;
+    microphone = null;
+    if (!old) return;
+    cancelAnimationFrame(old.raf);
+    old.cancelMeasurement?.(new Error("マイクが切断されました。"));
+    old.processor.onaudioprocess = null;
+    for (const node of [old.source, old.processor, old.mute]) {
+      try { node.disconnect(); } catch (_) {}
+    }
+    for (const track of old.stream.getTracks()) track.stop();
+    void old.context.close().catch(() => {});
+  }
+
+  function openMicrophone() {
+    if (microphoneReady()) return Promise.resolve(microphone);
+    if (opening) return opening;
+    if (microphone) closeMicrophone();
+    const token = ++generation;
+
+    const task = (async () => {
+      const AudioContextClass = globalThis.AudioContext || globalThis.webkitAudioContext;
+      if (!AudioContextClass || !navigator.mediaDevices?.getUserMedia) {
+        throw new Error("マイクを使えるブラウザ環境で開いてください。");
+      }
+      let context;
+      let stream;
+      try {
+        context = new AudioContextClass();
+        const resumed = context.resume();
+        resumed.catch(() => {});
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: false,
+          audio: {
+            channelCount: { ideal: 1 },
+            echoCancellation: false,
+            noiseSuppression: false,
+            autoGainControl: false
+          }
+        });
+        await resumed;
+        if (token !== generation) throw new Error("マイクの接続を中止しました。");
+
+        const source = context.createMediaStreamSource(stream);
+        const processor = context.createScriptProcessor(4096, 1, 1);
+        const mute = context.createGain();
+        mute.gain.value = 0;
+        const state = {
+          context, stream, source, processor, mute, raf: 0, db: -120,
+          listeners: new Set(), cancelMeasurement: null
+        };
+        processor.onaudioprocess = event => {
+          if (microphone !== state) return;
+          const samples = event.inputBuffer.getChannelData(0);
+          const factor = gainFactor();
+          state.db = amplitudeDb(rmsOf(samples, factor));
+          for (const listener of state.listeners) listener(samples, context.sampleRate, factor);
+        };
+        source.connect(processor);
+        processor.connect(mute);
+        mute.connect(context.destination);
+        microphone = state;
+
+        for (const track of stream.getAudioTracks()) {
+          track.addEventListener("ended", () => {
+            if (microphone !== state) return;
+            closeMicrophone();
+            refresh();
+            setMessage("mic-msg", "マイクが切断されました。再接続してください。");
+          }, { once: true });
+        }
+
+        function meter() {
+          if (microphone !== state) return;
+          showLevel(state.db);
+          state.raf = requestAnimationFrame(meter);
+        }
+        state.raf = requestAnimationFrame(meter);
+        return state;
+      } catch (error) {
+        for (const track of stream?.getTracks() ?? []) track.stop();
+        if (context && context.state !== "closed") {
+          void context.close().catch(() => {});
+        }
+        throw error;
+      }
+    })();
+    opening = task;
+    refresh();
+    const settle = () => {
+      if (opening === task) {
+        opening = null;
+        refresh();
+      }
+    };
+    task.then(settle, settle);
+    return task;
+  }
+
+  function subscribe(listener) {
+    if (!microphoneReady()) throw new Error("マイクが接続されていません。");
+    const listeners = microphone.listeners;
+    listeners.add(listener);
+    return () => listeners.delete(listener);
+  }
+
+  async function measureReference() {
+    if (!microphoneReady() || measuring || appState.recording) return;
+    stopPlayback();
+    measuring = true;
+    refresh();
+    setMessage("mic-msg", "");
+    $("ref-msg").textContent = "最初の2秒は静かにしてください。";
+    const mic = microphone;
+    const gain = preferences.gain;
+
+    try {
+      const ref = await new Promise((resolve, reject) => {
+        const rate = mic.context.sampleRate;
+        const quietLimit = 2 * rate;
+        const total = 6 * rate;
+        let frames = 0;
+        let quietEnergy = 0;
+        let voiceEnergy = 0;
+        const chunks = [];
+        const timer = setTimeout(() => fail(new Error("基準音の測定が時間内に終わりませんでした。")), 15000);
+
+        function dispose() {
+          clearTimeout(timer);
+          mic.listeners.delete(collect);
+          mic.cancelMeasurement = null;
+        }
+
+        function fail(error) {
+          dispose();
+          reject(error);
+        }
+
+        function collect(samples, sampleRate, factor) {
+          try {
+            const count = Math.min(samples.length, total - frames);
+            const chunk = new Float32Array(count);
+            for (let i = 0; i < count; i++) {
+              const v = clamp(samples[i] * factor, -1, 1);
+              chunk[i] = v;
+              if (frames + i < quietLimit) quietEnergy += v * v;
+              else voiceEnergy += v * v;
+            }
+            chunks.push(chunk);
+            if (frames < quietLimit && frames + count >= quietLimit) {
+              $("ref-msg").textContent = "「あいうえお」と発声してください。";
+            }
+            frames += count;
+            if (frames < total) return;
+            const envDb = amplitudeDb(Math.sqrt(quietEnergy / quietLimit));
+            const voiceDb = amplitudeDb(Math.sqrt(voiceEnergy / (total - quietLimit)));
+            if (voiceDb < envDb + 3) {
+              throw new Error("環境音と発声の差が小さいため、静かな場所で測り直してください。");
+            }
+            let wav = null;
+            try { wav = encodeMonoWav(chunks, sampleRate); } catch (_) {}
+            dispose();
+            resolve({ envDb, voiceDb, gain, wav, measuredAt: Date.now() });
+          } catch (error) {
+            fail(error);
+          }
+        }
+
+        mic.cancelMeasurement = fail;
+        mic.listeners.add(collect);
+      });
+
+      await saveQueue;
+      try {
+        await storage.setSetting(REFERENCE_KEY, ref);
+      } catch (error) {
+        if (!(ref.wav instanceof Blob) || error?.name !== "QuotaExceededError") throw error;
+        ref.wav = null;
+        await storage.setSetting(REFERENCE_KEY, ref);
+      }
+      appState.reference = ref;
+    } catch (error) {
+      setMessage("mic-msg", `基準音を設定できませんでした：${errorText(error)}`);
+    } finally {
+      measuring = false;
+      refresh();
+    }
+  }
+
+  function onMotion(event) {
+    const a = event.acceleration;
+    if (!a || ![a.x, a.y, a.z].every(Number.isFinite)) return;
+    const magnitude = Math.hypot(a.x, a.y, a.z);
+    motionSample = { magnitude, at: performance.now() };
+    if (!$("page-prep").hidden) {
+      $("motion-text").textContent = `${magnitude.toFixed(2)} m/s²`;
+      $("motion-bar").style.width = `${clamp(magnitude * 10, 0, 100)}%`;
+    }
+  }
+
+  async function enableMotion() {
+    if (motionAttached) return true;
+    const Motion = globalThis.DeviceMotionEvent;
+    if (!Motion) return false;
+    if (typeof Motion.requestPermission === "function") {
+      if (await Motion.requestPermission() !== "granted") return false;
+    }
+    if (!motionAttached) {
+      window.addEventListener("devicemotion", onMotion, { passive: true });
+      motionAttached = true;
+    }
+    return true;
+  }
+
+  function latestMotion() {
+    return motionSample && performance.now() - motionSample.at <= 1500
+      ? { ...motionSample } : null;
+  }
+
+  function stopPlayback() {
+    const old = playback;
+    playback = null;
+    if (old) {
+      old.pause();
+      old.removeAttribute("src");
+      old.load();
+    }
+    if (playbackURL) URL.revokeObjectURL(playbackURL);
+    playbackURL = null;
+  }
+
+  async function playReference() {
+    const wav = appState.reference?.wav;
+    if (!(wav instanceof Blob) || !wav.size) return;
+    if (playback) {
+      stopPlayback();
+      return;
+    }
+    const url = URL.createObjectURL(wav);
+    const audio = new Audio(url);
+    playbackURL = url;
+    playback = audio;
+    audio.addEventListener("ended", () => {
+      if (playback === audio) stopPlayback();
+    }, { once: true });
+    try {
+      await audio.play();
+    } catch (error) {
+      if (playback !== audio) return;
+      stopPlayback();
+      setMessage("mic-msg", `基準音を再生できませんでした：${errorText(error)}`);
+    }
+  }
+
+  function leave() {
+    if (measuring) return;
+    stopPlayback();
+    showPage("page-record");
+    refresh();
+  }
+
+  let bound = false;
+  function bind() {
+    if (bound) return;
+    bound = true;
+    $("prep-btn").addEventListener("click", () => {
+      showPage("page-prep");
+      refresh();
+      void enableMotion().catch(() => {});
+    });
+    $("prep-back").addEventListener("click", leave);
+    $("prep-back2").addEventListener("click", leave);
+    $("prep-usage-btn").addEventListener("click", () => {
+      const box = $("prep-usage-box");
+      box.hidden = !box.hidden;
+      $("prep-usage-btn").setAttribute("aria-expanded", String(!box.hidden));
+    });
+    $("mic-btn").addEventListener("click", async () => {
+      setMessage("mic-msg", "");
+      try {
+        await openMicrophone();
+      } catch (error) {
+        setMessage("mic-msg", `マイクを開始できませんでした：${errorText(error)}`);
+      }
+    });
+    $("ref-btn").addEventListener("click", measureReference);
+    $("ref-play-btn").addEventListener("click", playReference);
+    for (const [id, key] of [
+      ["gain", "gain"], ["loud-db", "loudDb"], ["pv-thresh", "voiceThreshold"]
+    ]) {
+      $(id).addEventListener("input", event => savePreference(key, Number(event.target.value)));
+    }
+    window.addEventListener("pagehide", () => {
+      stopPlayback();
+      closeMicrophone();
+    });
+    window.addEventListener("pageshow", refresh);
+    refresh();
+  }
+
+  return Object.freeze({
+    bind, restore, refresh, referenceReady, openMicrophone, closeMicrophone,
+    subscribe, latestMotion, encodeMonoWav, amplitudeDb, rmsOf,
+    getPreferences: () => ({ ...preferences })
+  });
+})();
+
+/* ===== 第6部ここまで：scriptタグは閉じない ===== *//* ===== 第7部：録音とイベントごとのSilero VAD ===== */
+const recorder = (() => {
+  const HOLD_MS = 2000;
+  const MIN_EVENT_MS = 240;
+  const SILENCE_MS = 650;
+  const MAX_EVENT_MS = 20000;
+  const MAX_PENDING_CLIPS = 8;
+  const VAD_ROOT = "https://matsuodentalassociation.github.io/ST-SCOPE/";
+  const VAD_RATE = 16000;
+  const FRAME = 512;
+  const CONTEXT = 64;
+  const FRAME_THRESHOLD = 0.30;
+  const ACTIVE_RMS = 0.01;
+  const MIN_VAD_FRAMES = 4;
+
+  let starting = false;
+  let classifier = null;
+  let blackTimer = null;
+  let modelPromise = null;
+  let inferenceTail = Promise.resolve();
+  const sliderTouched = new WeakSet();
+
+  const clamp = (value, lo, hi) => Math.max(lo, Math.min(hi, value));
+
+  function freshVAD() {
+    return { db: null, activeMs: 0 };
+  }
+
+  function setClassifier(next) {
+    if (next !== null && typeof next !== "function") {
+      throw new TypeError("音声分類器には関数を指定してください。");
+    }
+    classifier = next;
+  }
+
+  function dispose(tensor) {
+    try { tensor?.dispose?.(); } catch (_) {}
+  }
+
+  function loadSilero() {
+    if (!modelPromise) {
+      const pending = Promise.resolve().then(async () => {
+        const runtime = globalThis.ort;
+        if (!runtime?.InferenceSession || !runtime.env?.wasm) {
+          throw new Error("ST-SCOPEのONNX Runtimeを読み込めませんでした。");
+        }
+        runtime.env.wasm.wasmPaths = VAD_ROOT;
+        runtime.env.wasm.numThreads = 1;
+        const model = await runtime.InferenceSession.create(
+          VAD_ROOT + "silero_vad.onnx",
+          { executionProviders: ["wasm"] }
+        );
+        if (!["input", "sr", "state"].every(name => model.inputNames.includes(name)) ||
+            !["output", "stateN"].every(name => model.outputNames.includes(name))) {
+          try { await model.release?.(); } catch (_) {}
+          throw new Error("Sileroモデルの入出力がV422の仕様と一致しません。");
+        }
+        return { runtime, model };
+      });
+      modelPromise = pending;
+      pending.catch(() => { if (modelPromise === pending) modelPromise = null; });
+    }
+    return modelPromise;
+  }
+
+  async function toVadSamples(chunks, sampleRate) {
+    if (!Number.isFinite(sampleRate) || sampleRate < 1) {
+      throw new Error("録音のサンプルレートが不正です。");
+    }
+    const count = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
+    const length = Math.floor(count * VAD_RATE / sampleRate);
+    if (!length) return new Float32Array(0);
+
+    if (sampleRate === VAD_RATE) {
+      const samples = new Float32Array(count);
+      let offset = 0;
+      for (const chunk of chunks) {
+        samples.set(chunk, offset);
+        offset += chunk.length;
+      }
+      return samples;
+    }
+
+    const Offline = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+    if (!Offline) throw new Error("このブラウザでは16 kHzへの音声変換を使用できません。");
+    const context = new Offline(1, length, VAD_RATE);
+    const buffer = context.createBuffer(1, count, sampleRate);
+    const channel = buffer.getChannelData(0);
+    let offset = 0;
+    for (const chunk of chunks) {
+      channel.set(chunk, offset);
+      offset += chunk.length;
+    }
+    const source = context.createBufferSource();
+    source.buffer = buffer;
+    source.connect(context.destination);
+    source.start(0);
+    return (await context.startRendering()).getChannelData(0);
+  }
+
+  function emptyMetrics(status) {
+    return {
+      vadMetricsVersion: 1,
+      vadStatus: status,
+      vadEventMean: null,
+      vadMax: null,
+      voiceFrameRatio: null,
+      voiceScore: null,
+      vadActiveFrames: 0,
+      vadScoredFrames: 0,
+      vadFailedFrames: 0
+    };
+  }
+
+  function measureSilero(samples, factor, signal, activeRms = ACTIVE_RMS) {
+    const task = inferenceTail.then(async () => {
+      if (signal?.aborted) return emptyMetrics("timeout");
+      const { runtime, model } = await loadSilero();
+      if (signal?.aborted) return emptyMetrics("timeout");
+
+      // ONNXセッションは再利用するが、状態と文脈はイベントごとにゼロから始める。
+      let state = new runtime.Tensor("float32", new Float32Array(256), [2, 1, 128]);
+      const inputData = new Float32Array(CONTEXT + FRAME);
+      let sr;
+      let n = 0, active = 0, failed = 0, sum = 0, max = 0, hits = 0;
+      let status = "insufficient";
+      try {
+        sr = new runtime.Tensor("int64", BigInt64Array.of(16000n), [1]);
+        const frames = Math.floor(samples.length / FRAME);
+        for (let i = 0; i < frames; i++) {
+          if (signal?.aborted) {
+            status = "timeout";
+            break;
+          }
+          let squares = 0;
+          const offset = i * FRAME;
+          for (let j = 0; j < FRAME; j++) {
+            const raw = samples[offset + j];
+            const scaled = Number.isFinite(raw) ? clamp(raw * factor, -1, 1) : 0;
+            inputData[CONTEXT + j] = scaled;
+            squares += scaled * scaled;
+          }
+          const isActive = Math.sqrt(squares / FRAME) >= activeRms;
+          if (isActive) active++;
+
+          let input, result;
+          try {
+            input = new runtime.Tensor("float32", inputData, [1, CONTEXT + FRAME]);
+            result = await model.run({ input, sr, state });
+            if (signal?.aborted) {
+              status = "timeout";
+              break;
+            }
+            const p = Number(result.output?.data?.[0]);
+            if (!Number.isFinite(p) || p < 0 || p > 1 || !result.stateN) {
+              throw new Error("Sileroモデルが不正な出力を返しました。");
+            }
+            if (state !== result.stateN) dispose(state);
+            state = result.stateN;
+            inputData.copyWithin(0, FRAME, FRAME + CONTEXT);
+            if (isActive) {
+              n++;
+              sum += p;
+              max = Math.max(max, p);
+              if (p >= FRAME_THRESHOLD) hits++;
+            }
+          } catch (_) {
+            if (isActive) failed++;
+            status = "failed";
+            break;
+          } finally {
+            dispose(input);
+            dispose(result?.output);
+            if (result?.stateN !== state) dispose(result?.stateN);
+          }
+          if (i % 16 === 15) await new Promise(resolve => setTimeout(resolve, 0));
+        }
+        if (signal?.aborted) status = "timeout";
+        else if (status === "insufficient" && n >= MIN_VAD_FRAMES) status = "ok";
+      } finally {
+        dispose(sr);
+        dispose(state);
+      }
+
+      return {
+        vadMetricsVersion: 1,
+        vadStatus: status,
+        vadEventMean: n ? sum / n : null,
+        vadMax: n ? max : null,
+        voiceFrameRatio: n ? hits / n : null,
+        voiceScore: n ? Math.round(sum / n * 100) : null,
+        vadActiveFrames: active,
+        vadScoredFrames: n,
+        vadFailedFrames: failed
+      };
+    });
+
+    // タイムアウト後も、終了していない推論と次の推論を重ねない。
+    inferenceTail = task.catch(() => {});
+    return task;
+  }
+
+  async function sileroClassifier({ chunks, sampleRate, factor, envDb, threshold, signal }) {
+    const samples = await toVadSamples(chunks, sampleRate);
+    const activeRms = Math.max(ACTIVE_RMS, 10 ** ((envDb + 3) / 20));
+    const metrics = await measureSilero(samples, factor, signal, activeRms);
+    let type = "unknown";
+    if (metrics.vadStatus === "ok") {
+      const voice = metrics.vadEventMean * 100 >= threshold ||
+        (metrics.voiceFrameRatio >= 0.12 + threshold * 0.002 && metrics.vadMax >= 0.65);
+      type = voice ? "voice" : "snore";
+    }
+    return { ...metrics, type, vadDecisionThresholdPct: threshold };
+  }
+
+  function scoreOf(ref) {
+    if (Number.isFinite(ref?.voiceScore)) return clamp(ref.voiceScore, 0, 100);
+    if (Number.isFinite(ref?.voiceMetrics?.vadEventMean)) {
+      return clamp(Math.round(ref.voiceMetrics.vadEventMean * 100), 0, 100);
+    }
+    return null;
+  }
+
+  function autoThreshold(score) {
+    return score === null ? 35 : clamp(Math.round(score * 0.8), 5, 95);
+  }
+
+  function strengthSlider() {
+    return $("pv-thresh");
+  }
+
+  function syncVoiceControl(ref) {
+    const slider = strengthSlider();
+    if (!slider) return;
+    slider.max = "95";
+    const score = scoreOf(ref);
+    if (ref && !sliderTouched.has(ref)) slider.value = String(100 - autoThreshold(score));
+    const strength = Number(slider.value);
+    const threshold = clamp(100 - strength, 5, 95);
+    if ($("pv-thresh-val")) $("pv-thresh-val").textContent = String(strength);
+    if ($("pv-ref-judge-val")) {
+      const metrics = ref?.voiceMetrics;
+      const meanPct = Number.isFinite(metrics?.vadEventMean) ? metrics.vadEventMean * 100 : score;
+      const voice = meanPct !== null && (meanPct >= threshold ||
+        (metrics?.voiceFrameRatio >= 0.12 + threshold * 0.002 && metrics?.vadMax >= 0.65));
+      $("pv-ref-judge-val").textContent = meanPct === null ? "未計測"
+        : `${voice ? "人声" : "人声の条件に未達"}（平均 ${meanPct.toFixed(1)}%）`;
+    }
+  }
+
+  function referenceSnapshot(ref) {
+    return {
+      envDb: ref.envDb,
+      voiceDb: ref.voiceDb,
+      gain: ref.gain,
+      measuredAt: ref.measuredAt ?? null,
+      voiceScore: scoreOf(ref),
+      voiceMetrics: ref.voiceMetrics ?? null,
+      wav: ref.wav instanceof Blob && ref.wav.size > 0 ? ref.wav : null
+    };
+  }
+
+  async function measureReferenceIfNeeded(context, ref, signal) {
+    const snapshot = referenceSnapshot(ref);
+    if (snapshot.voiceScore !== null || !snapshot.wav) return snapshot;
+
+    // 第6部・V422の既存WAVには収録時のゲインが適用済みの場合がある。
+    // ここでは追加のゲインを掛けず、既存WAV自体も書き換えない。
+    const audio = await context.decodeAudioData(await snapshot.wav.arrayBuffer());
+    if (signal.aborted) throw new Error("基準音の人声判定が時間内に終わりませんでした。");
+    const samples = await toVadSamples([audio.getChannelData(0)], audio.sampleRate);
+    const metrics = await measureSilero(samples, 1, signal);
+    if (signal.aborted || metrics.vadStatus !== "ok") {
+      throw new Error("基準音の人声確率を計測できません。記録の準備で基準音を測り直してください。");
+    }
+    snapshot.voiceScore = metrics.voiceScore;
+    snapshot.voiceMetrics = metrics;
+    return snapshot;
+  }
+
+  async function deadline(work, ms, message) {
+    const controller = new AbortController();
+    let timer;
+    try {
+      return await Promise.race([
+        Promise.resolve().then(() => work(controller.signal)),
+        new Promise((_, reject) => {
+          timer = setTimeout(() => {
+            controller.abort();
+            const error = new Error(message);
+            error.name = "SomnoLogTimeout";
+            reject(error);
+          }, ms);
+        })
+      ]);
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  function refresh() {
+    const session = appState.recording;
+    const running = Boolean(session && !session.stopping);
+    preparation.refresh();
+    if (!session) syncVoiceControl(appState.reference);
+    $("start-btn").disabled = starting || Boolean(session) ||
+      !appState.patient || !preparation.referenceReady();
+    $("prep-btn").disabled = starting || Boolean(session);
+    $("history-btn").disabled = starting || Boolean(session);
+    $("rec-back").disabled = starting || Boolean(session);
+    $("btn-enter-black").disabled = !running;
+    $("stop-btn").disabled = !running && !session?.saveFailed;
+    $("stop-btn").textContent = session?.saveFailed ? "保存を再試行" : "停止";
+    $("rec-badge").textContent = session?.saveFailed ? "保存未完了"
+      : session?.stopping ? "保存中"
+      : running ? "記録中" : starting ? "準備中" : "待機中";
+    $("rec-badge").classList.toggle("rec", running);
+  }
+
+  function exitBlack() {
+    $("black-screen").hidden = true;
+    $("black-progress-bar").style.width = "0";
+    clearInterval(blackTimer);
+    blackTimer = null;
+  }
+
+  function enterBlack() {
+    if (!appState.recording || appState.recording.stopping) return;
+    $("black-screen").hidden = false;
+    const draw = () => {
+      $("black-clock").textContent = new Date().toLocaleTimeString("ja-JP", {
+        hour: "2-digit", minute: "2-digit"
+      });
+    };
+    draw();
+    clearInterval(blackTimer);
+    blackTimer = setInterval(draw, 1000);
+    $("black-exit").focus();
+  }
+
+  async function classifyEvent(session, event, sampleRate) {
+    try {
+      const result = await deadline(signal => session.classifier({
+        chunks: event.chunks,
+        sampleRate,
+        factor: event.factor,
+        envDb: session.reference.envDb,
+        threshold: session.voiceThreshold,
+        voiceThreshold: session.voiceThreshold,
+        signal
+      }), 10000, "イベントの人声判定が時間内に終わりませんでした。");
+
+      if (!result || typeof result !== "object") return emptyMetrics("failed");
+      const type = result.vadStatus === "ok" && (result.type === "voice" || result.type === "snore")
+        ? result.type : "unknown";
+      return { ...result, type };
+    } catch (error) {
+      return emptyMetrics(error?.name === "SomnoLogTimeout" ? "timeout" : "failed");
+    }
+  }
+
+  function closeEvent(session, sampleRate) {
+    const event = session.audioEvent;
+    session.audioEvent = null;
+    session.vad = freshVAD();
+    if (!event || event.activeMs < MIN_EVENT_MS) return;
+
+    const id = newRecordId();
+    const metadata = {
+      id,
+      clipId: id,
+      startedAt: event.startedAt,
+      durationMs: Math.round(event.durationMs),
+      peakDb: event.peakDb,
+      type: "unknown",
+      saved: false,
+      hasClip: false,
+      ...emptyMetrics("pending"),
+      vadDecisionThresholdPct: session.voiceThreshold
+    };
+    session.events.push(metadata);
+
+    if (session.pendingClips >= MAX_PENDING_CLIPS) {
+      Object.assign(metadata, emptyMetrics("queue-full"));
+      session.clipFailures++;
+      session.vadFailures++;
+      return;
+    }
+
+    session.pendingClips++;
+    session.clipWrites = session.clipWrites.then(async () => {
+      try {
+        // 元サンプルをPCM WAV化する。推論用ゲインはWAVには反映しない。
+        try {
+          const wav = preparation.encodeMonoWav(event.chunks, sampleRate);
+          await storage.putClip(session.id, id, wav);
+          metadata.hasClip = true;
+        } catch (_) {
+          session.clipFailures++;
+        }
+
+        const result = await classifyEvent(session, event, sampleRate);
+        Object.assign(metadata, result);
+        if (metadata.vadStatus !== "ok") session.vadFailures++;
+      } finally {
+        session.pendingClips--;
+      }
+    });
+  }
+
+  function acceptAudio(session, samples, sampleRate, factor) {
+    if (session.stopping || !samples.length || !(sampleRate > 0)) return;
+    if (sampleRate !== session.sampleRate) closeEvent(session, session.sampleRate);
+    const elapsedMs = samples.length * 1000 / sampleRate;
+    session.audioMs += elapsedMs;
+    session.sampleRate = sampleRate;
+    const at = session.startedAt + session.audioMs - elapsedMs;
+    const db = preparation.amplitudeDb(preparation.rmsOf(samples, factor));
+    const openingThreshold = Math.min(-1, session.reference.envDb + session.preferences.loudDb);
+    const threshold = session.audioEvent ? openingThreshold - 3 : openingThreshold;
+    const above = db >= threshold;
+
+    if (above && !session.audioEvent) {
+      session.vad = freshVAD();
+      session.audioEvent = {
+        startedAt: Math.round(at),
+        chunks: [],
+        durationMs: 0,
+        silenceMs: 0,
+        activeMs: 0,
+        peakDb: db,
+        factor: Number.isFinite(factor) ? factor : 1
+      };
+    }
+
+    const event = session.audioEvent;
+    if (event) {
+      const vad = session.vad;
+      vad.db = vad.db === null ? db : vad.db * 0.65 + db * 0.35;
+      const active = above || vad.db >= threshold;
+      vad.activeMs += active ? elapsedMs : 0;
+      event.activeMs = vad.activeMs;
+      event.silenceMs = active ? 0 : event.silenceMs + elapsedMs;
+      event.durationMs += elapsedMs;
+      event.peakDb = Math.max(event.peakDb, db);
+      event.chunks.push(Float32Array.from(samples));
+      if (event.silenceMs >= SILENCE_MS || event.durationMs >= MAX_EVENT_MS) {
+        closeEvent(session, sampleRate);
+      }
+    }
+
+    if (session.audioMs >= session.nextSampleMs) {
+      session.nextSampleMs = session.audioMs + 5000;
+      const motion = preparation.latestMotion();
+      session.timeline.push({
+        at: Math.round(at),
+        levelDb: db,
+        motion: motion?.magnitude ?? null
+      });
+    }
+  }
+
+  async function start() {
+    if (starting || appState.recording || !appState.patient) return;
+    if (!preparation.referenceReady()) {
+      setMessage("errbox", "記録を始める前に基準音を測定してください。");
+      return;
+    }
+    starting = true;
+    setMessage("errbox", "");
+    refresh();
+
+    try {
+      // マイク開始を最初に行い、録音操作から遠い非同期処理の後に許可を求めない。
+      const mic = await preparation.openMicrophone();
+      if (!preparation.referenceReady()) throw new Error("基準値を再確認してください。");
+      const ref = appState.reference;
+      if (!classifier) throw new Error("人声分類器が接続されていません。");
+
+      let reference;
+      await deadline(async signal => {
+        await loadSilero();
+        if (signal.aborted) return;
+        reference = await measureReferenceIfNeeded(mic.context, ref, signal);
+      }, 20000, "人声判定AIの準備が時間内に終わりませんでした。");
+
+      if (!reference || ref !== appState.reference || !preparation.referenceReady()) {
+        throw new Error("基準値を再確認してください。");
+      }
+      if (scoreOf(ref) === null && reference.voiceScore !== null) {
+        const updated = {
+          ...ref,
+          voiceScore: reference.voiceScore,
+          voiceMetrics: reference.voiceMetrics
+        };
+        await storage.setSetting("reference", updated);
+        if (sliderTouched.has(ref)) sliderTouched.add(updated);
+        appState.reference = updated;
+      }
+      syncVoiceControl(appState.reference);
+      const slider = strengthSlider();
+      const strength = slider && sliderTouched.has(appState.reference)
+        ? Number(slider.value) : 100 - autoThreshold(reference.voiceScore);
+      const threshold = clamp(100 - strength, 5, 95);
+
+      const session = {
+        id: newRecordId(),
+        startedAt: Date.now(),
+        endedAt: null,
+        reference,
+        preferences: preparation.getPreferences(),
+        voiceThreshold: threshold,
+        classifier,
+        events: [],
+        timeline: [],
+        vad: freshVAD(),
+        audioEvent: null,
+        audioMs: 0,
+        nextSampleMs: 0,
+        sampleRate: mic.context.sampleRate,
+        clipWrites: Promise.resolve(),
+        pendingClips: 0,
+        clipFailures: 0,
+        vadFailures: 0,
+        unsubscribe: null,
+        detachTrackListeners: null,
+        stopping: false,
+        saving: false,
+        saveFailed: false
+      };
+
+      const tracks = mic.stream.getAudioTracks();
+      if (!tracks.some(track => track.readyState === "live")) {
+        throw new Error("マイク入力が終了しました。マイクを許可し直してください。");
+      }
+      session.unsubscribe = preparation.subscribe((samples, rate, factor) => {
+        try {
+          acceptAudio(session, samples, rate, factor);
+        } catch (error) {
+          void stop(`音声処理を継続できなかったため、記録を停止しました：${errorText(error)}`);
+        }
+      });
+      appState.recording = session;
+      const onEnded = () => {
+        if (appState.recording === session && !session.stopping) {
+          void stop("マイクが切断されたため、記録を停止しました。");
+        }
+      };
+      for (const track of tracks) track.addEventListener("ended", onEnded, { once: true });
+      session.detachTrackListeners = () => {
+        for (const track of tracks) track.removeEventListener("ended", onEnded);
+      };
+    } catch (error) {
+      preparation.closeMicrophone();
+      setMessage("errbox", `記録を開始できませんでした：${errorText(error)}`);
+    } finally {
+      starting = false;
+      refresh();
+    }
+  }
+
+  async function stop(notice = "") {
+    const session = appState.recording;
+    if (!session || session.saving) return;
+    session.saving = true;
+    session.saveFailed = false;
+    if (!session.stopping) {
+      session.stopping = true;
+      session.endedAt = Date.now();
+      session.unsubscribe?.();
+      session.detachTrackListeners?.();
+      exitBlack();
+      preparation.closeMicrophone();
+    }
+    refresh();
+
+    try {
+      closeEvent(session, session.sampleRate);
+      await session.clipWrites;
+      const { wav, ...referenceLevels } = session.reference;
+      if (wav) await storage.putClip(session.id, "reference", wav);
+      await storage.putRecord({
+        id: session.id,
+        startedAt: session.startedAt,
+        endedAt: session.endedAt,
+        durationMs: Math.max(0, session.endedAt - session.startedAt),
+        events: session.events,
+        timeline: session.timeline,
+        reference: { ...referenceLevels, clipId: wav ? "reference" : null },
+        voiceThreshold: session.voiceThreshold,
+        clipFailures: session.clipFailures,
+        vadFailures: session.vadFailures
+      });
+      appState.recording = null;
+      const warnings = [notice];
+      if (session.clipFailures) warnings.push(`保存できなかった音声：${session.clipFailures}件。`);
+      if (session.vadFailures) warnings.push(`人声判定を確定できなかったイベント：${session.vadFailures}件。`);
+      setMessage("errbox", warnings.filter(Boolean).join("\n"));
+    } catch (error) {
+      session.saveFailed = true;
+      setMessage("errbox", `記録を保存できませんでした：${errorText(error)}。「保存を再試行」を長押ししてください。`);
+    } finally {
+      session.saving = false;
+      refresh();
+    }
+  }
+
+  function bindHold(button, action, progress) {
+    let timeout = null;
+    let animation = 0;
+    let pointer = null;
+    let key = null;
+
+    function cancel() {
+      clearTimeout(timeout);
+      cancelAnimationFrame(animation);
+      timeout = null;
+      animation = 0;
+      pointer = null;
+      key = null;
+      progress?.(0);
+    }
+
+    function begin() {
+      const started = performance.now();
+      if (progress) {
+        const draw = () => {
+          if (timeout === null) return;
+          progress(Math.min(1, (performance.now() - started) / HOLD_MS));
+          animation = requestAnimationFrame(draw);
+        };
+        animation = requestAnimationFrame(draw);
+      }
+      timeout = setTimeout(() => {
+        cancel();
+        if (!button.disabled) action();
+      }, HOLD_MS);
+    }
+
+    button.addEventListener("pointerdown", event => {
+      if (button.disabled || timeout !== null || !event.isPrimary || event.button !== 0) return;
+      pointer = event.pointerId;
+      try { button.setPointerCapture(pointer); } catch (_) {}
+      begin();
+    });
+    for (const name of ["pointerup", "pointercancel", "lostpointercapture"]) {
+      button.addEventListener(name, event => {
+        if (event.pointerId === pointer) cancel();
+      });
+    }
+    button.addEventListener("keydown", event => {
+      if (event.key !== " " && event.key !== "Enter") return;
+      event.preventDefault();
+      if (button.disabled || event.repeat || timeout !== null) return;
+      key = event.key;
+      begin();
+    });
+    button.addEventListener("keyup", event => {
+      if (event.key === key) {
+        event.preventDefault();
+        cancel();
+      }
+    });
+    button.addEventListener("blur", cancel);
+    button.addEventListener("contextmenu", event => event.preventDefault());
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden) cancel();
+    });
+  }
+
+  let bound = false;
+  function bind() {
+    if (bound) return;
+    bound = true;
+    setClassifier(sileroClassifier);
+
+    const slider = strengthSlider();
+    if (slider) {
+      slider.max = "95";
+      slider.labels?.forEach(label => {
+        const caption = label.querySelector("span");
+        if (caption) caption.textContent = "人声を除外する強さ";
+      });
+      slider.addEventListener("input", () => {
+        const ref = appState.reference;
+        if (ref && !starting && !appState.recording) sliderTouched.add(ref);
+        syncVoiceControl(ref);
+      });
+    }
+
+    $("prep-btn").addEventListener("click", () => syncVoiceControl(appState.reference));
+    $("start-btn").addEventListener("click", () => void start());
+    $("btn-enter-black").addEventListener("click", enterBlack);
+    bindHold($("stop-btn"), () => void stop());
+    bindHold($("black-exit"), () => {
+      exitBlack();
+      $("btn-enter-black").focus();
+    }, value => {
+      $("black-progress-bar").style.width = `${value * 100}%`;
+    });
+
+    window.addEventListener("beforeunload", event => {
+      if (!appState.recording) return;
+      event.preventDefault();
+      event.returnValue = "";
+    });
+    window.addEventListener("pagehide", () => {
+      if (appState.recording && !appState.recording.stopping) {
+        void stop("ページを離れたため、記録を停止しました。");
+      }
+    });
+    refresh();
+  }
+
+  return Object.freeze({ bind, refresh, start, stop, setClassifier });
+})();
+
+/* ===== 第7部ここまで：scriptタグは閉じない ===== *//* ===== 第8部：記録カレンダーと詳細データの読み込み ===== */
+const recordBrowser = (() => {
+  const weekdays = ["日", "月", "火", "水", "木", "金", "土"];
+  let month = null;
+  let selectedDay = null;
+  let recordedDays = new Set();
+  let monthGeneration = 0;
+  let dayGeneration = 0;
+  let detailGeneration = 0;
+  let detailRenderer = null;
+
+  function firstOfMonth(date) {
+    return new Date(date.getFullYear(), date.getMonth(), 1);
+  }
+
+  function dateFromKey(key) {
+    const [year, monthNumber, day] = key.split("-").map(Number);
+    return new Date(year, monthNumber - 1, day);
+  }
+
+  function formatDate(date) {
+    return date.toLocaleDateString("ja-JP", {
+      year: "numeric", month: "long", day: "numeric"
+    });
+  }
+
+  function formatTime(ms) {
+    return Number.isFinite(ms)
+      ? new Date(ms).toLocaleTimeString("ja-JP", {
+          hour: "2-digit", minute: "2-digit"
+        })
+      : "—";
+  }
+
+  function formatDuration(ms) {
+    if (!Number.isFinite(ms) || ms < 0) return "—";
+    const seconds = Math.floor(ms / 1000);
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const remainder = seconds % 60;
+    return `${hours ? `${hours}時間` : ""}${minutes}分${remainder}秒`;
+  }
+
+  function monthBounds(date) {
+    const year = date.getFullYear();
+    const monthIndex = date.getMonth();
+    return {
+      first: localDayKey(new Date(year, monthIndex, 1)),
+      last: localDayKey(new Date(year, monthIndex + 1, 0))
+    };
+  }
+
+  function renderMonth() {
+    if (!month) return;
+    const host = $("cal-grid");
+    const focusedDay = host.contains(document.activeElement)
+      ? document.activeElement.dataset.day : null;
+    const year = month.getFullYear();
+    const monthIndex = month.getMonth();
+    const today = localDayKey(new Date());
+    const last = new Date(year, monthIndex + 1, 0).getDate();
+    const fragment = document.createDocumentFragment();
+    let nextFocus = null;
+
+    $("cal-month").textContent = `${year}年${monthIndex + 1}月`;
+
+    for (const weekday of weekdays) {
+      const label = document.createElement("span");
+      label.className = "cal-wk";
+      label.textContent = weekday;
+      fragment.append(label);
+    }
+
+    for (let i = 0; i < month.getDay(); i++) {
+      const spacer = document.createElement("span");
+      spacer.setAttribute("aria-hidden", "true");
+      fragment.append(spacer);
+    }
+
+    for (let day = 1; day <= last; day++) {
+      const date = new Date(year, monthIndex, day);
+      const key = localDayKey(date);
+      const hasRecord = recordedDays.has(key);
+      const isSelected = key === selectedDay;
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "cal-day";
+      button.dataset.day = key;
+      button.classList.toggle("has", hasRecord);
+      button.classList.toggle("today", key === today);
+      button.classList.toggle("sel", isSelected);
+      button.textContent = String(day);
+      button.setAttribute("aria-pressed", String(isSelected));
+      button.setAttribute("aria-label", `${formatDate(date)}${hasRecord ? "、記録あり" : ""}`);
+      if (key === today) button.setAttribute("aria-current", "date");
+      button.addEventListener("click", () => void selectDay(key));
+      fragment.append(button);
+      if (key === focusedDay) nextFocus = button;
+    }
+
+    host.replaceChildren(fragment);
+    nextFocus?.focus({ preventScroll: true });
+  }
+
+  function renderRecords(records) {
+    const fragment = document.createDocumentFragment();
+    for (const record of records) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "sub";
+      button.style.marginBlock = "4px";
+      button.textContent = `${formatTime(record.startedAt)} 開始 ／ ${formatDuration(record.durationMs)}`;
+      button.addEventListener("click", () => void openDetail(record.id));
+      fragment.append(button);
+    }
+    $("cal-records").replaceChildren(fragment);
+    $("cal-count").textContent = `${records.length}件`;
+    $("cal-count").hidden = false;
+  }
+
+  async function selectDay(key) {
+    const token = ++dayGeneration;
+    selectedDay = key;
+    renderMonth();
+    $("cal-selected").textContent = formatDate(dateFromKey(key));
+    $("cal-records").replaceChildren();
+    $("cal-count").hidden = true;
+    setMessage("cal-status", "記録を読み込んでいます…");
+
+    try {
+      const records = await storage.listRecordsByDay(key);
+      if (token !== dayGeneration) return;
+      renderRecords(records);
+      setMessage("cal-status", records.length ? "" : "この日の記録はありません。");
+    } catch (error) {
+      if (token === dayGeneration) {
+        setMessage("cal-status", `記録を読み込めませんでした：${errorText(error)}`);
+      }
+    }
+  }
+
+  async function loadMonth(date, preferredDay) {
+    const token = ++monthGeneration;
+    month = firstOfMonth(date);
+    const { first, last } = monthBounds(month);
+    recordedDays = new Set();
+    const day = preferredDay >= first && preferredDay <= last ? preferredDay : first;
+    const dayTask = selectDay(day);
+
+    try {
+      const days = await storage.listRecordedDays(first, last);
+      if (token !== monthGeneration) return;
+      recordedDays = days;
+      renderMonth();
+    } catch (error) {
+      if (token === monthGeneration) {
+        setMessage("errbox", `カレンダーの記録マークを読み込めませんでした：${errorText(error)}`);
+      }
+    }
+    await dayTask;
+  }
+
+  function openCalendar() {
+    if (!appState.patient || appState.recording) return;
+    ++detailGeneration;
+    appState.selectedRecord = null;
+    setMessage("errbox", "");
+    showPage("page-calendar");
+    const today = new Date();
+    return loadMonth(month ?? today, selectedDay ?? localDayKey(today));
+  }
+
+  function moveMonth(offset) {
+    if (!month) return;
+    const target = new Date(month.getFullYear(), month.getMonth() + offset, 1);
+    const today = localDayKey(new Date());
+    return loadMonth(target, today);
+  }
+
+  function normalizeRecord(row) {
+    if (!row || typeof row.id !== "string" || !Number.isFinite(row.startedAt)) {
+      throw new Error("記録が見つからないか、記録形式が正しくありません。");
+    }
+    const events = Array.isArray(row.events)
+      ? row.events.filter(event => event && typeof event.id === "string")
+      : [];
+    const timeline = Array.isArray(row.timeline)
+      ? row.timeline.filter(point => point && Number.isFinite(point.at))
+      : [];
+    return { ...row, events, timeline };
+  }
+
+  async function openDetail(id) {
+    if (!appState.patient || appState.recording) return;
+    const token = ++detailGeneration;
+    appState.selectedRecord = null;
+    $("detail-summary").hidden = true;
+    $("detail-chart-card").hidden = true;
+    $("detail-clips-card").hidden = true;
+    $("detail-share").disabled = true;
+    setMessage("detail-status", "記録を読み込んでいます…");
+    showPage("page-detail");
+
+    const isCurrent = () => token === detailGeneration && !$("page-detail").hidden;
+
+    try {
+      const record = normalizeRecord(await storage.getRecord(id));
+      if (!isCurrent()) return;
+      if (!detailRenderer) throw new Error("詳細画面の処理が接続されていません。");
+      appState.selectedRecord = record;
+      setMessage("detail-status", "");
+      await detailRenderer(record, isCurrent);
+    } catch (error) {
+      if (isCurrent()) {
+        $("detail-share").disabled = true;
+        setMessage("detail-status", `詳細を表示できませんでした：${errorText(error)}`);
+      }
+    }
+  }
+
+  function setDetailRenderer(renderer) {
+    if (typeof renderer !== "function") throw new TypeError("詳細表示には関数が必要です。");
+    detailRenderer = renderer;
+  }
+
+  async function loadEventClip(record, event) {
+    if (!record?.id || !event?.hasClip) return null;
+    const clipId = event.clipId ?? event.id;
+    if (typeof clipId !== "string" || !clipId) return null;
+    const blob = await storage.getClip(record.id, clipId);
+    return blob instanceof Blob && blob.size > 0 ? blob : null;
+  }
+
+  async function loadReferenceClip(record) {
+    const clipId = record?.reference?.clipId;
+    if (!record?.id || typeof clipId !== "string" || !clipId) return null;
+    const blob = await storage.getClip(record.id, clipId);
+    return blob instanceof Blob && blob.size > 0 ? blob : null;
+  }
+
+  let bound = false;
+  function bind() {
+    if (bound) return;
+    bound = true;
+    $("history-btn").addEventListener("click", () => void openCalendar());
+    $("cal-prev").addEventListener("click", () => void moveMonth(-1));
+    $("cal-next").addEventListener("click", () => void moveMonth(1));
+    $("cal-back").addEventListener("click", () => {
+      ++monthGeneration;
+      ++dayGeneration;
+      showPage("page-record");
+      recorder.refresh();
+    });
+    $("detail-back").addEventListener("click", () => void openCalendar());
+  }
+
+  return Object.freeze({
+    bind, openCalendar, openDetail, setDetailRenderer,
+    loadEventClip, loadReferenceClip, formatTime, formatDuration
+  });
+})();
+
+/* ===== 第8部ここまで：scriptタグは閉じない ===== *//* ===== 第9部：詳細グラフ・音声イベント一覧 ===== */
+const recordDetail = (() => {
+  const labels = { snore: "いびき", voice: "人声", unknown: "未判定" };
+  let playbackGeneration = 0;
+  let activeAudio = null;
+  let activeURL = null;
+  let activeButton = null;
+  let saving = false;
+
+  function stopPlayback() {
+    ++playbackGeneration;
+    if (activeButton) activeButton.textContent = "再生";
+    activeButton = null;
+    if (activeAudio) {
+      activeAudio.pause();
+      activeAudio.removeAttribute("src");
+      activeAudio.load();
+      activeAudio = null;
+    }
+    if (activeURL) URL.revokeObjectURL(activeURL);
+    activeURL = null;
+  }
+
+  function drawChart(record, host) {
+    const ns = "http://www.w3.org/2000/svg";
+    const svg = document.createElementNS(ns, "svg");
+    const width = 720;
+    const x0 = 56;
+    const x1 = 702;
+    const start = record.startedAt;
+    const end = Math.max(start + 1, record.endedAt ?? start + (record.durationMs || 0));
+    const points = record.timeline
+      .filter(point => point.at >= start && point.at <= end)
+      .sort((a, b) => a.at - b.at);
+    if (!points.some(p => Number.isFinite(p.levelDb) || Number.isFinite(p.motion))) {
+      host.textContent = "表示できる音量・体動データはありません。";
+      return;
+    }
+    svg.setAttribute("viewBox", `0 0 ${width} 236`);
+    svg.setAttribute("role", "img");
+    svg.setAttribute("aria-label", "記録中の音量と体動の推移");
+    svg.style.display = "block";
+    svg.style.width = "100%";
+
+    function node(name, attributes, text) {
+      const el = document.createElementNS(ns, name);
+      for (const [key, value] of Object.entries(attributes)) el.setAttribute(key, value);
+      if (text !== undefined) el.textContent = text;
+      svg.append(el);
+      return el;
+    }
+
+    const x = time => x0 + (x1 - x0) * (time - start) / (end - start);
+    function track(key, top, bottom, min, max, ticks, title, color) {
+      const y = value => bottom - (bottom - top) *
+        Math.max(0, Math.min(1, (value - min) / (max - min)));
+      node("text", { x: x0, y: top - 7, fill: "currentColor", "font-size": 12 }, title);
+      for (const tick of ticks) {
+        node("line", {
+          x1: x0, x2: x1, y1: y(tick), y2: y(tick),
+          stroke: "currentColor", "stroke-opacity": 0.22
+        });
+        node("text", {
+          x: x0 - 6, y: y(tick) + 4, fill: "currentColor",
+          "text-anchor": "end", "font-size": 11
+        }, String(tick));
+      }
+      const commands = [];
+      let previous = null;
+      for (const point of points) {
+        if (!Number.isFinite(point[key])) {
+          previous = null;
+          continue;
+        }
+        const px = x(point.at).toFixed(1);
+        const py = y(point[key]).toFixed(1);
+        if (previous === null || point.at - previous > 12000) {
+          commands.push(`M${px},${py}l0.01,0`);
+        } else {
+          commands.push(`L${px},${py}`);
+        }
+        previous = point.at;
+      }
+      if (commands.length) {
+        node("path", {
+          d: commands.join(" "), stroke: color, "stroke-width": 2,
+          "stroke-linecap": "round", "stroke-linejoin": "round", fill: "none"
+        });
+      } else {
+        node("text", {
+          x: (x0 + x1) / 2, y: (top + bottom) / 2,
+          "text-anchor": "middle", fill: "currentColor", "font-size": 12
+        }, "データなし");
+      }
+    }
+
+    let motionMax = 1;
+    for (const point of points) {
+      if (Number.isFinite(point.motion)) motionMax = Math.max(motionMax, Math.ceil(point.motion));
+    }
+    track("levelDb", 24, 98, -120, 0, [-120, -60, 0], "音量（dBFS）", "#3889dc");
+    track("motion", 130, 204, 0, motionMax, [0, motionMax], "体動（m/s²）", "#21a17b");
+    node("text", { x: x0, y: 224, fill: "currentColor", "font-size": 12 },
+      recordBrowser.formatTime(start));
+    node("text", {
+      x: x1, y: 224, fill: "currentColor", "text-anchor": "end", "font-size": 12
+    }, recordBrowser.formatTime(end));
+    host.replaceChildren(svg);
+  }
+
+  function makeButton(label, action) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "sub";
+    button.textContent = label;
+    button.addEventListener("click", action);
+    return button;
+  }
+
+  function makePlayButton(load, isCurrent) {
+    const button = makeButton("再生", async () => {
+      if (!isCurrent()) return;
+      if (activeButton === button) {
+        stopPlayback();
+        return;
+      }
+      stopPlayback();
+      const token = playbackGeneration;
+      activeButton = button;
+      button.textContent = "読み込みを中止";
+      setMessage("detail-status", "");
+      try {
+        const blob = await load();
+        if (token !== playbackGeneration) return;
+        if (!isCurrent()) {
+          stopPlayback();
+          return;
+        }
+        if (!blob) throw new Error("音声ファイルが見つかりません。");
+        activeURL = URL.createObjectURL(blob);
+        const audio = new Audio(activeURL);
+        activeAudio = audio;
+        audio.addEventListener("ended", () => {
+          if (token === playbackGeneration) stopPlayback();
+        }, { once: true });
+        audio.addEventListener("error", () => {
+          if (token !== playbackGeneration) return;
+          stopPlayback();
+          if (isCurrent()) setMessage("detail-status", "音声を再生できませんでした。");
+        }, { once: true });
+        await audio.play();
+        if (token === playbackGeneration && isCurrent()) button.textContent = "停止";
+      } catch (error) {
+        if (token !== playbackGeneration) return;
+        stopPlayback();
+        if (isCurrent()) setMessage("detail-status", `音声を再生できませんでした：${errorText(error)}`);
+      }
+    });
+    return button;
+  }
+
+  function renderClips(record, host, isCurrent) {
+    const list = document.createDocumentFragment();
+    if (record.reference?.clipId) {
+      const row = document.createElement("p");
+      row.append("基準音（分析用） ", makePlayButton(
+        () => recordBrowser.loadReferenceClip(record), isCurrent
+      ));
+      list.append(row);
+    }
+    if (!record.events.length) {
+      const empty = document.createElement("p");
+      empty.textContent = "音声イベントはありません。";
+      list.append(empty);
+    }
+    for (const event of record.events) {
+      const row = document.createElement("div");
+      const type = Object.hasOwn(labels, event.type) ? labels[event.type] : labels.unknown;
+      const info = document.createElement("p");
+      info.textContent = [
+        recordBrowser.formatTime(event.startedAt), type,
+        recordBrowser.formatDuration(event.durationMs),
+        event.hasClip ? "" : "音声なし"
+      ].filter(Boolean).join(" ／ ");
+      row.append(info);
+      if (event.hasClip) {
+        row.append(makePlayButton(() => recordBrowser.loadEventClip(record, event), isCurrent));
+      }
+      if (event.type === "voice" && event.hasClip) {
+        const toggle = makeButton("", async () => {
+          if (saving || !isCurrent()) return;
+          saving = true;
+          toggle.disabled = true;
+          $("detail-share").disabled = true;
+          const next = !event.saved;
+          const updated = {
+            ...record,
+            events: record.events.map(item => item === event ? { ...item, saved: next } : item)
+          };
+          try {
+            await storage.putRecord(updated);
+            event.saved = next;
+            updateLabel();
+            if (isCurrent()) setMessage("detail-status", "");
+          } catch (error) {
+            if (isCurrent()) setMessage("detail-status", `保存指定を変更できませんでした：${errorText(error)}`);
+          } finally {
+            saving = false;
+            toggle.disabled = false;
+            if (isCurrent()) $("detail-share").disabled = false;
+          }
+        });
+        function updateLabel() {
+          toggle.textContent = event.saved ? "保存指定を解除" : "保存済みにする";
+          toggle.setAttribute("aria-pressed", String(Boolean(event.saved)));
+        }
+        updateLabel();
+        row.append(" ", toggle);
+      }
+      list.append(row);
+    }
+    host.replaceChildren(list);
+  }
+
+  function bodyOf(card, heading, key) {
+    let body = card.querySelector(`[data-v423-detail="${key}"]`);
+    if (!body) {
+      const title = document.createElement("h3");
+      title.textContent = heading;
+      body = document.createElement("div");
+      body.dataset.v423Detail = key;
+      card.replaceChildren(title, body);
+    }
+    return body;
+  }
+
+  async function render(record, isCurrent) {
+    stopPlayback();
+    const summary = $("detail-summary");
+    const chart = $("detail-chart-card");
+    const clips = $("detail-clips-card");
+    const date = new Date(record.startedAt).toLocaleDateString("ja-JP");
+    const snoreCount = record.events.filter(event => event.type === "snore").length;
+    bodyOf(summary, "記録の概要", "summary").textContent = [
+      `${date} ${recordBrowser.formatTime(record.startedAt)} 開始`,
+      `記録時間：${recordBrowser.formatDuration(record.durationMs)}`,
+      `音声イベント：${record.events.length}件（いびき判定：${snoreCount}件）`
+    ].join(" ／ ");
+    drawChart(record, bodyOf(chart, "音量・体動グラフ", "chart"));
+    summary.hidden = false;
+    chart.hidden = false;
+
+    // グラフの描画機会を確保してから一覧を組み立てる。
+    await new Promise(resolve => {
+      if (document.hidden) {
+        setTimeout(resolve, 0);
+        return;
+      }
+      const fallback = setTimeout(resolve, 120);
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          clearTimeout(fallback);
+          resolve();
+        }, 0);
+      });
+    });
+    if (!isCurrent()) return;
+    renderClips(record, bodyOf(clips, "音声イベント", "clips"), isCurrent);
+    clips.hidden = false;
+    $("detail-share").disabled = false;
+  }
+
+  let bound = false;
+  function bind() {
+    if (bound) return;
+    bound = true;
+    recordBrowser.setDetailRenderer(render);
+    $("detail-back").addEventListener("click", stopPlayback);
+    $("detail-share").addEventListener("click", stopPlayback);
+    window.addEventListener("pagehide", stopPlayback);
+  }
+
+  return Object.freeze({ bind, render, stopPlayback });
+})();
+
+/* ===== 第9部ここまで：scriptタグは閉じない ===== *//* ===== 第10部：利用者による共有確認・ZIP書き出し ===== */
+const shareExport = (() => {
+  const LIMIT = 0xffffffff;
+  const encoder = new TextEncoder();
+  const crcTable = Uint32Array.from({ length: 256 }, (_, index) => {
+    let crc = index;
+    for (let bit = 0; bit < 8; bit++) {
+      crc = (crc >>> 1) ^ ((crc & 1) ? 0xedb88320 : 0);
+    }
+    return crc >>> 0;
+  });
+
+  function packet(length, fields) {
+    const bytes = new Uint8Array(length);
+    const view = new DataView(bytes.buffer);
+    for (const [offset, width, value] of fields) {
+      if (width === 2) view.setUint16(offset, value, true);
+      else view.setUint32(offset, value, true);
+    }
+    return bytes;
+  }
+
+  async function writeZip(sink, startedAt, populate) {
+    const date = new Date(startedAt);
+    const year = Math.max(1980, Math.min(2107, date.getFullYear()));
+    const dosDate = ((year - 1980) << 9) | ((date.getMonth() + 1) << 5) | date.getDate();
+    const dosTime = (date.getHours() << 11) | (date.getMinutes() << 5) | (date.getSeconds() >> 1);
+    const flags = 0x0800;
+    const entries = [];
+    let offset = 0;
+
+    async function write(part) {
+      const size = part instanceof Blob ? part.size : part.byteLength;
+      if (offset + size >= LIMIT) throw new Error("ZIPのサイズ上限を超えました。");
+      await sink.write(part);
+      offset += size;
+    }
+
+    async function add(filename, blob) {
+      const name = encoder.encode(filename);
+      if (!(blob instanceof Blob) || !blob.size || blob.size >= LIMIT ||
+          entries.length >= 65534 || name.length > 65535) {
+        throw new Error(`ZIPに追加できないファイルです：${filename}`);
+      }
+
+      // CRCを先に計算し、サイズとCRCが入ったローカルヘッダーを作る。
+      // 音声全体をArrayBufferにせず、1 MiBずつ読む。
+      let crc = LIMIT;
+      const block = 1024 * 1024;
+      for (let position = 0; position < blob.size; position += block) {
+        const bytes = new Uint8Array(await blob.slice(position, position + block).arrayBuffer());
+        for (const byte of bytes) crc = (crc >>> 8) ^ crcTable[(crc ^ byte) & 255];
+      }
+      crc = (crc ^ LIMIT) >>> 0;
+
+      const start = offset;
+      await write(packet(30, [
+        [0, 4, 0x04034b50], [4, 2, 20], [6, 2, flags],
+        [10, 2, dosTime], [12, 2, dosDate], [14, 4, crc],
+        [18, 4, blob.size], [22, 4, blob.size], [26, 2, name.length]
+      ]));
+      await write(name);
+      await write(blob);
+      entries.push({ name, crc, size: blob.size, start });
+    }
+
+    await populate(add);
+    const directoryStart = offset;
+    for (const entry of entries) {
+      await write(packet(46, [
+        [0, 4, 0x02014b50], [4, 2, 20], [6, 2, 20], [8, 2, flags],
+        [12, 2, dosTime], [14, 2, dosDate], [16, 4, entry.crc],
+        [20, 4, entry.size], [24, 4, entry.size], [28, 2, entry.name.length],
+        [42, 4, entry.start]
+      ]));
+      await write(entry.name);
+    }
+    await write(packet(22, [
+      [0, 4, 0x06054b50], [8, 2, entries.length], [10, 2, entries.length],
+      [12, 4, offset - directoryStart], [16, 4, directoryStart]
+    ]));
+  }
+
+  async function writeRecord(sink, record, selected, hasReference, report) {
+    const log = {
+      version: APP_VERSION,
+      startedAt: record.startedAt,
+      endedAt: record.endedAt ?? null,
+      durationMs: record.durationMs ?? null,
+      referenceFile: null,
+      events: []
+    };
+    const total = selected.length + Number(hasReference) + 1;
+    let done = 0;
+    const tick = () => report(++done, total);
+
+    await writeZip(sink, record.startedAt, async add => {
+      if (hasReference) {
+        const reference = await recordBrowser.loadReferenceClip(record);
+        if (!reference) throw new Error("保存済みの基準音を読み込めません。");
+        await add("reference.wav", reference);
+        log.referenceFile = "reference.wav";
+        tick();
+      }
+      for (const [index, event] of selected.entries()) {
+        const audio = await recordBrowser.loadEventClip(record, event);
+        const type = event.type === "voice" || event.type === "snore" ? event.type : "unknown";
+        const file = `audio/${type}_${String(index + 1).padStart(4, "0")}.wav`;
+        if (!audio) throw new Error(`承認済みの音声を読み込めません：${file}`);
+        await add(file, audio);
+        log.events.push({
+          type,
+          startedAt: event.startedAt ?? null,
+          durationMs: event.durationMs ?? null,
+          peakDb: Number.isFinite(event.peakDb) ? event.peakDb : null,
+          file
+        });
+        tick();
+      }
+      await add("share-log.json", new Blob(
+        [JSON.stringify(log, null, 2) + "\n"], { type: "application/json" }
+      ));
+      tick();
+    });
+  }
+
+  function errorMessage(error) {
+    return errorText(error) + "。別のブラウザまたは端末でお試しください。";
+  }
+
+  let bound = false;
+  function bind() {
+    if (bound) return;
+    bound = true;
+
+    const dialog = document.createElement("dialog");
+    dialog.setAttribute("aria-labelledby", "sl-share-review-title");
+    const title = document.createElement("h2");
+    title.id = "sl-share-review-title";
+    title.textContent = "共有する音声の確認";
+    const description = document.createElement("p");
+    const controls = document.createElement("div");
+    const review = document.createElement("div");
+    const status = document.createElement("p");
+    status.setAttribute("role", "status");
+    const progress = document.createElement("progress");
+    progress.setAttribute("aria-label", "ZIPに書き込んだファイル数");
+    const download = document.createElement("a");
+    download.textContent = "ZIPをダウンロード";
+    dialog.append(title, description, controls, review, status, progress, download);
+    document.body.append(dialog);
+
+    let busy = false;
+    let current = null;
+    let downloadURL = null;
+    let previewURL = null;
+    let preview = null;
+    let generation = 0;
+
+    function button(label, action) {
+      const node = document.createElement("button");
+      node.type = "button";
+      node.textContent = label;
+      node.addEventListener("click", action);
+      return node;
+    }
+
+    function stopPreview() {
+      ++generation;
+      if (preview) {
+        preview.pause();
+        preview.removeAttribute("src");
+        preview.load();
+        preview.remove();
+      }
+      preview = null;
+      if (previewURL) URL.revokeObjectURL(previewURL);
+      previewURL = null;
+    }
+
+    function clearDownload() {
+      if (downloadURL) URL.revokeObjectURL(downloadURL);
+      downloadURL = null;
+      download.removeAttribute("href");
+      download.hidden = true;
+    }
+
+    function showChoices() {
+      stopPreview();
+      review.replaceChildren();
+      controls.replaceChildren(
+        button("1. 一つずつ確認する", () => showEvent(0, new Set())),
+        button("2. 全て確認した", () => showSave(current.events.slice())),
+        button("3. 共有しない", () => dialog.close())
+      );
+    }
+
+    function showEvent(index, approved) {
+      stopPreview();
+      status.textContent = "";
+      const event = current.events[index];
+      if (!event) {
+        showSave(current.events.filter((_, i) => approved.has(i)));
+        return;
+      }
+
+      const labels = { voice: "人声", snore: "いびき", unknown: "未判定" };
+      const type = Object.hasOwn(labels, event.type) ? labels[event.type] : labels.unknown;
+      const line = document.createElement("p");
+      line.textContent = `${index + 1}／${current.events.length}件：` +
+        `${recordBrowser.formatTime(event.startedAt)} ／ ${type} ／ ` +
+        recordBrowser.formatDuration(event.durationMs);
+
+      const playerHost = document.createElement("div");
+      const listen = button("音声を読み込む", async () => {
+        const snapshot = current;
+        stopPreview();
+        const token = generation;
+        status.textContent = "音声を読み込んでいます…";
+        try {
+          const blob = await recordBrowser.loadEventClip(snapshot.record, event);
+          if (token !== generation || !dialog.open) return;
+          if (!blob) throw new Error("音声ファイルが見つかりません。");
+          preview = document.createElement("audio");
+          preview.controls = true;
+          previewURL = URL.createObjectURL(blob);
+          preview.src = previewURL;
+          playerHost.replaceChildren(preview);
+          status.textContent = "再生ボタンを押して確認してください。";
+        } catch (error) {
+          if (token === generation && dialog.open) status.textContent = errorText(error);
+        }
+      });
+      review.replaceChildren(line, listen, playerHost);
+      controls.replaceChildren(
+        button("この音声を共有する", () => {
+          approved.add(index);
+          showEvent(index + 1, approved);
+        }),
+        button("この音声を共有しない", () => showEvent(index + 1, approved)),
+        button("最初の選択に戻る", showChoices),
+        button("共有を取りやめる", () => dialog.close())
+      );
+    }
+
+    function showSave(selected) {
+      stopPreview();
+      status.textContent = "";
+      progress.hidden = true;
+      clearDownload();
+
+      const { record, hasReference } = current;
+      const line = document.createElement("p");
+      line.textContent = `共有を承認した音声：${selected.length}件 ／ 基準音：${hasReference ? "あり" : "なし"}`;
+      review.replaceChildren(line);
+
+      const canPick = window.isSecureContext && typeof window.showSaveFilePicker === "function";
+      const save = button(canPick ? "保存先を選んでZIPを作成" : "ZIPを作成", () => void run(canPick));
+      const fallback = button("通常のダウンロード用ZIPを作成", () => void run(false));
+      const back = button("最初の選択に戻る", showChoices);
+      const close = button("閉じる", () => dialog.close());
+      controls.replaceChildren(save, fallback, back, close);
+      fallback.hidden = true;
+      save.disabled = !selected.length && !hasReference;
+      if (save.disabled) status.textContent = "共有対象がありません。ZIPは作成しません。";
+
+      async function run(usePicker) {
+        if (busy || (!selected.length && !hasReference)) return;
+        busy = true;
+        clearDownload();
+        for (const node of [save, fallback, back, close]) node.disabled = true;
+        let writable = null;
+        let completed = false;
+        let waitingForPicker = false;
+        const filename = `SomnoLog_${localDayKey(record.startedAt)}.zip`;
+
+        try {
+          let sink;
+          const parts = [];
+          if (usePicker) {
+            status.textContent = "保存先を選んでください。";
+            waitingForPicker = true;
+            const handle = await window.showSaveFilePicker({
+              suggestedName: filename,
+              types: [{ description: "ZIP アーカイブ", accept: { "application/zip": [".zip"] } }]
+            });
+            waitingForPicker = false;
+            writable = await handle.createWritable();
+            sink = {
+              async write(part) {
+                if (!(part instanceof Blob)) {
+                  await writable.write(part);
+                  return;
+                }
+                const block = 1024 * 1024;
+                for (let offset = 0; offset < part.size; offset += block) {
+                  await writable.write(part.slice(offset, offset + block));
+                }
+              }
+            };
+          } else {
+            sink = { write(part) { parts.push(part); } };
+          }
+
+          progress.max = selected.length + Number(hasReference) + 1;
+          progress.value = 0;
+          progress.hidden = false;
+          status.textContent = "ZIPを作成しています…";
+          await writeRecord(sink, record, selected, hasReference, (done, total) => {
+            progress.value = done;
+            status.textContent = `ZIPを作成しています（${done}／${total}ファイル）`;
+          });
+
+          if (writable) {
+            await writable.close();
+            writable = null;
+            status.textContent = "共有用ZIPを保存しました。自動送信は行っていません。";
+          } else {
+            const zip = new Blob(parts, { type: "application/zip" });
+            downloadURL = URL.createObjectURL(zip);
+            download.href = downloadURL;
+            download.download = filename;
+            download.hidden = false;
+            status.textContent = "ZIPを作成しました。下のリンクを押して保存してください。";
+          }
+          completed = true;
+        } catch (error) {
+          if (writable) {
+            try { await writable.abort(); } catch (_) {}
+          }
+          progress.hidden = true;
+          if (waitingForPicker && error?.name === "AbortError") {
+            status.textContent = "保存先の選択をキャンセルしました。";
+          } else if (usePicker) {
+            status.textContent = `逐次保存ができませんでした：${errorText(error)}。通常のダウンロードを試せます。`;
+            fallback.hidden = false;
+          } else {
+            status.textContent = `ZIPを作成できませんでした：${errorMessage(error)}`;
+          }
+        } finally {
+          busy = false;
+          save.disabled = completed;
+          fallback.disabled = completed;
+          back.disabled = false;
+          close.disabled = false;
+        }
+      }
+    }
+
+    $("detail-share").addEventListener("click", () => {
+      const record = appState.selectedRecord;
+      if (busy || dialog.open || !record || $("page-detail").hidden) return;
+      // 第9部の保存指定や機械判定は、今回の共有承認には使わない。
+      const events = record.events.filter(event => event.hasClip === true);
+      current = { record, events, hasReference: Boolean(record.reference?.clipId) };
+      description.textContent = `確認対象の音声：${events.length}件。` +
+        "「全て確認した」を選ぶと、人声・未判定を含む確認対象の全音声が共有対象になります。" +
+        "保存済みの基準音は、共有を実行した場合に分析用として入ります。";
+      status.textContent = "";
+      progress.hidden = true;
+      clearDownload();
+      showChoices();
+      dialog.showModal();
+    });
+
+    dialog.addEventListener("cancel", event => {
+      if (busy) event.preventDefault();
+    });
+    dialog.addEventListener("close", () => {
+      stopPreview();
+      clearDownload();
+      current = null;
+    });
+    window.addEventListener("pagehide", () => {
+      stopPreview();
+      clearDownload();
+    });
+  }
+
+  return Object.freeze({ bind });
+})();
+
+/* ===== 第10部ここまで：scriptタグは閉じない ===== *//* ===== 第11部：更新・初期化 ===== */
+const appUpdate = (() => {
+  const MAX_HTML_BYTES = 25 * 1024 * 1024;
+  const OFFICIAL_ROOT = new URL("https://matsuodentalassociation.github.io/ST-SCOPE/");
+  const HTML_KEY = "sl_boot_html";
+  const VERSION_KEY = "sl_boot_ver";
+  let busy = false;
+
+  function getSource(button) {
+    const configured = button.dataset.updateUrl ||
+      document.querySelector('meta[name="somnolog-update-url"]')?.content;
+    const raw = configured?.trim() || window.prompt(
+      "ST-SCOPEに公開された次版HTMLのURLを入力してください。"
+    )?.trim();
+    if (!raw) return null;
+    const url = new URL(raw, OFFICIAL_ROOT);
+    if (url.origin !== OFFICIAL_ROOT.origin || url.username || url.password ||
+        !url.pathname.startsWith(OFFICIAL_ROOT.pathname)) {
+      throw new Error("更新元はST-SCOPEの公式配信先に限ります。");
+    }
+    return url;
+  }
+
+  async function fetchHtml(url) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 30000);
+    let reader;
+    try {
+      const response = await fetch(url, {
+        cache: "no-store",
+        credentials: "omit",
+        redirect: "error",
+        signal: controller.signal
+      });
+      if (!response.ok || !response.body) {
+        throw new Error(`新版HTMLを取得できませんでした（HTTP ${response.status}）。`);
+      }
+
+      reader = response.body.getReader();
+      const decoder = new TextDecoder("utf-8", { fatal: true });
+      const parts = [];
+      let size = 0;
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        size += value.byteLength;
+        if (size > MAX_HTML_BYTES) throw new Error("更新ファイルが大きすぎます。");
+        parts.push(decoder.decode(value, { stream: true }));
+      }
+      parts.push(decoder.decode());
+      return parts.join("");
+    } catch (error) {
+      if (reader) await reader.cancel().catch(() => {});
+      if (controller.signal.aborted) {
+        throw new Error("更新ファイルの取得が時間内に終わりませんでした。");
+      }
+      throw error;
+    } finally {
+      clearTimeout(timer);
+      if (reader) reader.releaseLock();
+    }
+  }
+
+  function validateHtml(html) {
+    const title = /<title(?:\s[^>]*)?>\s*([^<]*)<\/title\s*>/i.exec(html)?.[1];
+    const app = /\bconst\s+APP_VERSION\s*=\s*(\d+)\s*;/.exec(html);
+    const boot = /\bvar\s+baseVersion\s*=\s*(\d+)\s*;/.exec(html);
+    const version = Number(app?.[1]);
+    if (!/^\s*(?:<!doctype\s+html\s*>\s*)?<html(?:\s|>)/i.test(html) ||
+        !/<\/html\s*>\s*$/i.test(html) ||
+        !Number.isSafeInteger(version) ||
+        !title || !/\bSomnoLog\b/i.test(title) ||
+        !new RegExp(`\\bV${version}\\b`, "i").test(title) ||
+        Number(boot?.[1]) !== version) {
+      throw new Error("新版HTMLが不完全か、タイトル・本体・起動処理の版数が一致しません。");
+    }
+    if (version <= APP_VERSION) {
+      throw new Error(`V${APP_VERSION}より新しい版ではありません。`);
+    }
+    return version;
+  }
+
+  function stage(html, version) {
+    const store = window.localStorage;
+    const oldHtml = store.getItem(HTML_KEY);
+    const oldVersion = store.getItem(VERSION_KEY);
+    try {
+      store.setItem(HTML_KEY, html);
+      store.setItem(VERSION_KEY, String(version));
+    } catch (error) {
+      // 保存に失敗した場合は、HTMLと版数が食い違ったまま残らないようにする。
+      try {
+        store.removeItem(VERSION_KEY);
+        if (oldHtml === null) store.removeItem(HTML_KEY);
+        else store.setItem(HTML_KEY, oldHtml);
+        if (oldHtml !== null && oldVersion !== null) {
+          store.setItem(VERSION_KEY, oldVersion);
+        }
+      } catch (_) {}
+      if (error?.name === "QuotaExceededError") {
+        throw new Error("ブラウザの保存容量が不足し、新版を保存できませんでした。");
+      }
+      throw error;
+    }
+  }
+
+  function bind() {
+    const button = $("upd-reload");
+    if (!button) throw new Error("「アプリの更新」ボタンが見つかりません。");
+    button.disabled = false;
+
+    button.addEventListener("click", async () => {
+      if (busy) return;
+      if (appState.recording) {
+        setMessage("upd-msg", "記録を停止し、保存が終わってから更新してください。");
+        return;
+      }
+
+      const restart = new URL(location.href);
+      if (restart.protocol === "blob:") {
+        setMessage("upd-msg", "現在は取り込んだ版を使用中です。次の更新は元の起動ページを開いて行ってください。");
+        return;
+      }
+
+      busy = true;
+      button.disabled = true;
+      try {
+        const source = getSource(button);
+        if (!source) {
+          setMessage("upd-msg", "更新元の入力をキャンセルしました。");
+          return;
+        }
+
+        setMessage("upd-msg", "新版HTMLを取得しています…");
+        const html = await fetchHtml(source);
+        const version = validateHtml(html);
+
+        if (appState.recording) {
+          throw new Error("記録中は更新できません。保存が終わってからやり直してください。");
+        }
+        stage(html, version);
+
+        // 安全復帰用の指定が残るURLでは、次回起動時に更新が消去される。
+        restart.searchParams.delete("safe");
+        setMessage("upd-msg", `V${version}を保存しました。再起動すると適用します。`);
+        if (window.confirm(`V${version}を保存しました。今すぐ再起動しますか？`)) {
+          location.replace(restart.href);
+        } else if (new URL(location.href).searchParams.get("safe") === "1") {
+          setMessage("upd-msg", `V${version}を保存しました。次回はURL末尾の safe=1 を外した元の起動ページを開いてください。`);
+        }
+      } catch (error) {
+        setMessage("upd-msg", `更新できませんでした：${errorText(error)}`);
+      } finally {
+        busy = false;
+        button.disabled = false;
+      }
+    });
+  }
+
+  return Object.freeze({ bind });
+})();
+
+async function initializeSomnoLog() {
+  try {
+    patientUI.bind();
+    preparation.bind();
+    recorder.bind();
+    recordBrowser.bind();
+    recordDetail.bind();
+    shareExport.bind();
+
+    $("rec-back").addEventListener("click", () => {
+      if (appState.recording) return;
+      patientUI.stopCamera();
+      preparation.closeMicrophone();
+      showPage("page-start");
+    });
+
+    showPage("page-start");
+    await storage.open();
+    await patientUI.restore();
+    await preparation.restore();
+    recorder.refresh();
+    appUpdate.bind();
+
+    setMessage("boot-status", "");
+    if (typeof window.__slBootNotice === "string" && window.__slBootNotice) {
+      setMessage("upd-msg", window.__slBootNotice);
+    }
+    if (typeof window.__slBootReady === "function") {
+      window.__slBootReady(APP_VERSION);
+    }
+  } catch (error) {
+    const message = `${APP_NAME}を初期化できませんでした：${errorText(error)}`;
+    console.error(message, error);
+    setMessage("boot-status", "");
+    const box = document.createElement("p");
+    box.setAttribute("role", "alert");
+    box.textContent = message;
+    document.body.prepend(box);
+    for (const id of ["start-btn", "prep-btn", "history-btn", "upd-reload"]) {
+      const button = $(id);
+      if (button) button.disabled = true;
+    }
+    // 失敗時には起動完了を通知せず、第1部の安全復帰に任せる。
+  }
+}
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", initializeSomnoLog, { once: true });
+} else {
+  void initializeSomnoLog();
+}
+/* ===== 第11部ここまで ===== */
+</script>
+</body>
+</html>
