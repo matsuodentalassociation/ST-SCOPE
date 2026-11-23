@@ -491,11 +491,82 @@ function newRecordId() {
 const storage = (() => {
   const DB_NAME = "SomnoLog-local";
   const DB_VERSION = 1;
+  const WAIT_MS = 8000;
   const MIGRATION_KEY = "migration:v424:legacy";
-  const ENGINE_SCALE_KEY = "somnolog-scale-unified-v68";
+  const STEP_PREFIX = `${MIGRATION_KEY}:record:`;
   const ENGINE_MARKER = "__somnolog_internal_scale_v68__";
+  const ENGINE_SCALE_KEY = "somnolog-scale-unified-v68";
+  const INITIAL_SETTINGS = new Set(["patient", "reference", "audioPreferences"]);
+  const CLIP_BATCH = 12;
+  const PAGE_SIZE = 128;
   let opening = null;
   let migration = null;
+  let settingsImport = null;
+  let completed = false;
+  let status = null;
+
+  const finite = value => Number.isFinite(value) ? value : null;
+  const bound = (value, lo, hi) => Math.max(lo, Math.min(hi, value));
+  const firstNumber = (...values) => values.find(Number.isFinite) ?? null;
+  const text = value => typeof value === "string" ? value.trim() : "";
+  const validRow = row => row !== null && typeof row === "object" && !Array.isArray(row);
+  const nextTask = () => new Promise(resolve => setTimeout(resolve, 0));
+
+  function timeoutError(label) {
+    const error = new Error(`${label}が8秒以内に終わりませんでした。`);
+    error.name = "SomnoLogStorageTimeout";
+    return error;
+  }
+
+  function waitAtMost(promise, label) {
+    let timer;
+    return Promise.race([
+      promise,
+      new Promise((_, reject) => {
+        timer = setTimeout(() => reject(timeoutError(label)), WAIT_MS);
+      })
+    ]).finally(() => clearTimeout(timer));
+  }
+
+  function renderMigrationStatus() {
+    if (!status) return;
+    for (const pageId of ["page-start", "page-confirm", "page-record", "page-calendar", "page-detail"]) {
+      const page = $(pageId);
+      if (!page) continue;
+      let box = $(`legacy-status-${pageId}`);
+      if (!box) {
+        box = document.createElement("div");
+        box.id = `legacy-status-${pageId}`;
+        box.className = "muted";
+        const lead = document.createElement("p");
+        lead.setAttribute("role", "status");
+        box.append(lead);
+        const retry = document.createElement("button");
+        retry.type = "button";
+        retry.className = "sub";
+        retry.textContent = "引き継ぎを再試行";
+        retry.addEventListener("click", () => {
+          void openLocal().then(db => startMigration(db, true)).catch(error => {
+            setStatus(`引き継ぎを再開できませんでした：${errorText(error)}`, true);
+          });
+        });
+        box.append(retry);
+        const boot = pageId === "page-start" ? $("boot-status") : null;
+        if (boot && page.contains(boot)) boot.after(box);
+        else page.prepend(box);
+      }
+      if (box.firstElementChild.textContent !== status.message) {
+        box.firstElementChild.textContent = status.message;
+      }
+      box.lastElementChild.hidden = !status.retry;
+      box.hidden = !status.message;
+    }
+  }
+
+  function setStatus(message, retry = false) {
+    status = { message, retry };
+    renderMigrationStatus();
+  }
 
   function openLocal() {
     if (opening) return opening;
@@ -505,8 +576,17 @@ const storage = (() => {
         return;
       }
       const req = indexedDB.open(DB_NAME, DB_VERSION);
-      let blocked = false;
+      let abandoned = false;
+      const timer = setTimeout(() => {
+        abandoned = true;
+        reject(timeoutError("端末内データベースを開く処理"));
+      }, WAIT_MS);
+
       req.onupgradeneeded = () => {
+        if (abandoned) {
+          req.transaction.abort();
+          return;
+        }
         const db = req.result;
         const tx = req.transaction;
         const records = db.objectStoreNames.contains("records")
@@ -517,21 +597,22 @@ const storage = (() => {
         if (!clips.indexNames.contains("recordId")) clips.createIndex("recordId", "recordId");
         if (!db.objectStoreNames.contains("settings")) db.createObjectStore("settings");
       };
-      req.onblocked = () => {
-        blocked = true;
-        reject(new Error("別のタブでSomnoLogが開いています。そのタブを閉じてから開き直してください。"));
+      req.onerror = () => {
+        clearTimeout(timer);
+        reject(req.error || new Error("端末内データベースを開けませんでした。"));
       };
-      req.onerror = () => reject(req.error || new Error("端末内データベースを開けませんでした。"));
       req.onsuccess = () => {
+        clearTimeout(timer);
         const db = req.result;
-        if (blocked) {
+        if (abandoned) {
           db.close();
           return;
         }
         const reset = () => {
           if (opening === promise) {
             opening = null;
-            migration = null;
+            completed = false;
+            settingsImport = null;
           }
         };
         db.onversionchange = () => { db.close(); reset(); };
@@ -549,16 +630,31 @@ const storage = (() => {
       const tx = db.transaction(names, mode);
       let value;
       let failure;
-      tx.oncomplete = () => resolve(value);
-      tx.onerror = e => { failure ||= e.target?.error || tx.error; };
-      tx.onabort = () => reject(failure || tx.error || new Error("端末内保存の処理が中断されました。"));
-
+      let settled = false;
+      const finish = (error) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        if (error) reject(error);
+        else resolve(value);
+      };
       const abort = error => {
         failure = error;
-        try { tx.abort(); } catch (_) { reject(error); }
+        try {
+          tx.abort();
+          finish(error);
+        } catch (_) {
+          // コミット段階に入った処理は取り消せない場合がある。
+          finish(error);
+        }
       };
+      const timer = setTimeout(() => abort(timeoutError("端末内データベースの処理")), WAIT_MS);
+      tx.oncomplete = () => finish();
+      tx.onerror = event => { failure ||= event.target?.error || tx.error; };
+      tx.onabort = () => finish(failure || tx.error || new Error("端末内保存の処理が中断されました。"));
       const onSuccess = (request, action) => {
         request.onsuccess = () => {
+          if (settled) return;
           try { action(request.result); } catch (error) { abort(error); }
         };
       };
@@ -574,88 +670,112 @@ const storage = (() => {
     return transaction(db, [store], "readonly", (s, done, on) => on(s(store).get(key), done));
   }
 
-  function all(db, store) {
-    return transaction(db, [store], "readonly", (s, done, on) => on(s(store).getAll(), done));
-  }
-
-  async function openSource(name, required, action) {
+  async function openSource(name, action) {
     const db = await new Promise((resolve, reject) => {
       const req = indexedDB.open(name);
       let missing = false;
-      let finished = false;
+      let abandoned = false;
       const timer = setTimeout(() => {
-        finished = true;
-        reject(new Error(`${name} を開く処理が時間内に終わりませんでした。`));
-      }, 8000);
+        abandoned = true;
+        reject(timeoutError(`${name} を開く処理`));
+      }, WAIT_MS);
       req.onupgradeneeded = () => {
-        // DBが存在しない場合、空DBを確定させない。
         missing = true;
         req.transaction.abort();
       };
       req.onerror = () => {
         clearTimeout(timer);
-        finished = true;
         if (missing) resolve(null);
         else reject(req.error || new Error(`${name} を開けませんでした。`));
       };
       req.onsuccess = () => {
         clearTimeout(timer);
-        if (finished) req.result.close();
-        else {
-          finished = true;
-          resolve(req.result);
-        }
+        if (abandoned) req.result.close();
+        else resolve(req.result);
       };
     });
-
-    if (!db) return;
+    if (!db) return null;
     db.onversionchange = () => db.close();
-    try {
-      for (const name of required) {
-        if (!db.objectStoreNames.contains(name)) {
-          throw new Error(`${db.name} に必要なストア ${name} がありません。`);
-        }
-      }
-      await action(db);
-    } finally {
-      db.close();
-    }
+    try { return await action(db); }
+    finally { db.close(); }
   }
 
-  function bySid(db, store, sid, project = row => row) {
-    return transaction(db, [store], "readonly", (s, done, on) => {
+  function keyToken(key) {
+    if (typeof key === "string" || typeof key === "number") return `${typeof key}:${String(key)}`;
+    if (key instanceof Date) return `date:${key.getTime()}`;
+    if (Array.isArray(key)) return `array:${JSON.stringify(key.map(keyToken))}`;
+    if (key instanceof ArrayBuffer || ArrayBuffer.isView(key)) {
+      const bytes = key instanceof ArrayBuffer ? new Uint8Array(key)
+        : new Uint8Array(key.buffer, key.byteOffset, key.byteLength);
+      return `binary:${Array.from(bytes, byte => byte.toString(16).padStart(2, "0")).join("")}`;
+    }
+    throw new TypeError("旧記録のキーが不正です。");
+  }
+
+  const migratedId = (prefix, key) => `${prefix}:${keyToken(key)}`;
+  function tokenOrNull(key) {
+    try { return keyToken(key); } catch (_) { return null; }
+  }
+
+  // 1ページでトランザクションを閉じ、末尾キーの次から再開する。
+  // 索引がない場合も、セッションごとに全ストアを読み直さない。
+  function scanPage(db, name, after, project, sid) {
+    return transaction(db, [name], "readonly", (s, done, on) => {
+      const store = s(name);
+      const indexed = sid !== undefined;
+      const source = indexed ? store.index("sid") : store;
+      const range = indexed ? IDBKeyRange.only(sid)
+        : after === undefined ? undefined : IDBKeyRange.lowerBound(after, true);
       const rows = [];
-      const source = s(store);
-      const indexed = source.indexNames.contains("sid");
-      const request = indexed ? source.index("sid").openCursor(IDBKeyRange.only(sid))
-        : source.openCursor();
-      on(request, cursor => {
+      let last = after;
+      const req = source.openCursor(range);
+      on(req, cursor => {
         if (!cursor) {
-          done(rows);
+          done({ rows, last, more: false });
           return;
         }
-        if (indexed || indexedDB.cmp(cursor.value.sid, sid) === 0) {
-          rows.push(project(cursor.value));
+        if (indexed && after !== undefined && indexedDB.cmp(cursor.primaryKey, after) <= 0) {
+          cursor.continuePrimaryKey(sid, after);
+          // continuePrimaryKey には現在より大きいキーが必要。
+          return;
         }
-        cursor.continue();
+        last = cursor.primaryKey;
+        rows.push(project(cursor.value, cursor.primaryKey));
+        if (rows.length >= PAGE_SIZE) done({ rows, last, more: true });
+        else cursor.continue();
       });
     });
   }
 
-  const finite = value => Number.isFinite(value) ? value : null;
-  const bound = (value, lo, hi) => Math.max(lo, Math.min(hi, value));
-  const firstNumber = (...values) => values.find(Number.isFinite) ?? null;
-  const migratedId = (prefix, key) => `${prefix}:${typeof key}:${String(key)}`;
-  const text = value => typeof value === "string" ? value.trim() : "";
+  async function walk(db, name, project, visit) {
+    let after;
+    for (;;) {
+      const page = await scanPage(db, name, after, project);
+      for (const row of page.rows) visit(row);
+      if (!page.more) return;
+      after = page.last;
+      await nextTask();
+    }
+  }
+
+  function sidRows(db, name, sid, project) {
+    return transaction(db, [name], "readonly", (s, done, on) => {
+      const rows = [];
+      const req = s(name).index("sid").openCursor(IDBKeyRange.only(sid));
+      on(req, cursor => {
+        if (!cursor) { done(rows); return; }
+        rows.push(project(cursor.value, cursor.primaryKey));
+        cursor.continue();
+      });
+    });
+  }
 
   function localNumber(key, fallback, lo, hi) {
     try {
       const value = localStorage.getItem(key);
       const number = value?.trim() ? Number(value) : NaN;
       return Number.isFinite(number) ? bound(number, lo, hi) : fallback;
-    } catch (_) {
-      return fallback;
-    }
+    } catch (_) { return fallback; }
   }
 
   function referenceWav(encoded) {
@@ -668,60 +788,89 @@ const storage = (() => {
     return new Blob([Uint8Array.from(bytes, c => c.charCodeAt(0))], { type: "audio/wav" });
   }
 
-  function putSettingsIfMissing(db, entries) {
-    return transaction(db, ["settings"], "readwrite", (s, _, on) => {
-      const store = s("settings");
-      for (const [key, value] of entries) {
-        on(store.get(key), current => {
-          if (current === undefined) store.add(value, key);
-        });
-      }
+  function putIfMissing(store, key, value, on) {
+    on(store.get(key), current => {
+      if (current === undefined) store.add(value, key);
     });
   }
 
-  async function migrateSettings(source, dest) {
-    const [patientRow, refRow, audioRow, gainRow] = await Promise.all(
-      ["patient", "ref", "refAudio", "refGain"].map(key => read(source, "settings", key))
-    );
-    const entries = [];
-    const p = patientRow?.value;
-    if (p && text(p.name) && text(p.chartNo)) {
-      entries.push(["patient", {
-        clinic: text(p.clinic), chart: text(p.chartNo), name: text(p.name),
-        serial: text(p.serialNumber), email: text(p.logShareEmail),
-        issuedOn: text(p.issuedOn), issueId: text(p.issueId)
-      }]);
-    }
+  async function readOldSettings() {
+    return await openSource("somnolog-v3", async source => {
+      if (!source.objectStoreNames.contains("settings")) return { entries: [], reference: null, skipped: 1 };
+      const [patientRow, refRow, audioRow, gainRow] = await transaction(
+        source, ["settings"], "readonly", (s, done, on) => {
+          const keys = ["patient", "ref", "refAudio", "refGain"];
+          const rows = Array(keys.length);
+          const store = s("settings");
+          keys.forEach((key, i) => on(store.get(key), value => { rows[i] = value; }));
+          done(rows);
+        }
+      );
+      const entries = [];
+      let skipped = 0;
+      const p = patientRow?.value;
+      if (p && text(p.name) && text(p.chartNo)) {
+        entries.push(["patient", {
+          clinic: text(p.clinic), chart: text(p.chartNo), name: text(p.name),
+          serial: text(p.serialNumber), email: text(p.logShareEmail),
+          issuedOn: text(p.issuedOn), issueId: text(p.issueId)
+        }]);
+      } else if (patientRow !== undefined) skipped++;
 
-    const gain = localNumber("somnolog-gain-db", 0, -9, 18);
-    const loudDb = localNumber("somnolog-loud-db", 10, 3, 20);
-    const ref = refRow?.value;
-    let score = null;
-    let archivedReference = null;
-    if (ref && Number.isFinite(ref.db)) {
-      const measuredAt = finite(ref.at);
-      const measuredGain = measuredAt !== null && gainRow?.refAt === measuredAt &&
-        Number.isFinite(gainRow.value) ? gainRow.value : gain;
-      const voiceMetrics = ref.voiceMetrics && typeof ref.voiceMetrics === "object"
-        ? ref.voiceMetrics : null;
-      score = Number.isFinite(ref.voiceScore) ? bound(ref.voiceScore, 0, 100)
-        : Number.isFinite(voiceMetrics?.vadEventMean)
-          ? bound(Math.round(voiceMetrics.vadEventMean * 100), 0, 100) : null;
-      // 音声行の日付が判明していて、不一致なら別の測定の音声を紐付けない。
-      const dateMatches = measuredAt === null || !Number.isFinite(audioRow?.savedAt) ||
-        measuredAt === audioRow.savedAt;
-      const wav = dateMatches ? referenceWav(audioRow?.value) : null;
-      archivedReference = {
-        voiceDb: ref.db, envDb: firstNumber(ref.envDb, ref.db - 12),
-        gain: measuredGain, measuredAt, voiceScore: score, voiceMetrics, wav
-      };
-      entries.push(["reference", archivedReference]);
-    }
+      const gain = localNumber("somnolog-gain-db", 0, -9, 18);
+      const loudDb = localNumber("somnolog-loud-db", 10, 3, 20);
+      const ref = refRow?.value;
+      let score = null;
+      let reference = null;
+      if (validRow(ref) && Number.isFinite(ref.db)) {
+        const measuredAt = finite(ref.at);
+        const measuredGain = measuredAt !== null && gainRow?.refAt === measuredAt &&
+          Number.isFinite(gainRow.value) ? gainRow.value : gain;
+        const voiceMetrics = validRow(ref.voiceMetrics) ? ref.voiceMetrics : null;
+        score = Number.isFinite(ref.voiceScore) ? bound(ref.voiceScore, 0, 100)
+          : Number.isFinite(voiceMetrics?.vadEventMean)
+            ? bound(Math.round(voiceMetrics.vadEventMean * 100), 0, 100) : null;
+        const dateMatches = measuredAt === null || !Number.isFinite(audioRow?.savedAt) ||
+          measuredAt === audioRow.savedAt;
+        let wav = null;
+        if (dateMatches) {
+          try { wav = referenceWav(audioRow?.value); }
+          catch (_) { skipped++; }
+        }
+        reference = {
+          voiceDb: ref.db, envDb: firstNumber(ref.envDb, ref.db - 12),
+          gain: measuredGain, measuredAt, voiceScore: score, voiceMetrics, wav
+        };
+        entries.push(["reference", reference]);
+      } else if (refRow !== undefined) skipped++;
+      const threshold = score === null ? 35 : bound(Math.round(score * 0.8), 5, 95);
+      entries.push(["audioPreferences", { gain, loudDb, voiceThreshold: 100 - threshold }]);
+      return { entries, reference, skipped };
+    }) ?? { entries: [], reference: null, skipped: 0 };
+  }
 
-    const threshold = score === null ? 35 : bound(Math.round(score * 0.8), 5, 95);
-    entries.push(["audioPreferences", { gain, loudDb, voiceThreshold: 100 - threshold }]);
-    await putSettingsIfMissing(dest, entries);
-    return archivedReference;
+  function seedSettings(db) {
+    if (settingsImport) return settingsImport;
+    const pending = (async () => {
+      const previous = await read(db, "settings", MIGRATION_KEY);
+      if (previous?.completedAt) return { reference: null };
+      const legacy = await readOldSettings();
+      await transaction(db, ["settings"], "readwrite", (s, _, on) => {
+        const store = s("settings");
+        on(store.get(MIGRATION_KEY), current => {
+          if (current?.completedAt || current?.settingsDone) return;
+          for (const [key, value] of legacy.entries) putIfMissing(store, key, value, on);
+          store.put({
+            ...current, settingsDone: true, startedAt: current?.startedAt ?? Date.now(),
+            settingsSkipped: legacy.skipped, status: "pending"
+          }, MIGRATION_KEY);
+        });
+      });
+      return legacy;
+    })();
+    settingsImport = pending;
+    pending.catch(() => { if (settingsImport === pending) settingsImport = null; });
+    return pending;
   }
 
   const engineTypes = new Map([
@@ -737,18 +886,70 @@ const storage = (() => {
     return a === "voice" || b === "voice" ? "voice" : a || b || "unknown";
   }
 
-  function engineTimeline(chunks, startedAt, dbScale) {
+  function clipMetadata(row, key, engine) {
+    if (!validRow(row)) return null;
+    const raw = engine ? row.blob : row.data;
+    const bytes = raw instanceof Blob ? raw.size
+      : !engine && (raw instanceof ArrayBuffer || ArrayBuffer.isView(raw)) ? raw.byteLength : 0;
+    return { key, id: row.id ?? key, sid: row.sid, eventId: row.eventId, saved: row.saved === true, bytes };
+  }
+
+  async function storeReader(source, name, sessionTokens, project, stats) {
+    if (!source.objectStoreNames.contains(name)) {
+      stats.skipped++;
+      return async () => [];
+    }
+    const indexed = await transaction(source, [name], "readonly", (s, done) => {
+      const store = s(name);
+      const index = store.indexNames.contains("sid") ? store.index("sid") : null;
+      done(index?.keyPath === "sid" && !index.multiEntry);
+    });
+    // カーソルを一度だけ通し、索引なしでは sid 別に分類する。
+    // 索引ありでも一度通し、索引に載らない壊れた sid や孤立行を数える。
+    const buckets = new Map();
+    await walk(source, name, (row, key) => {
+      const sid = tokenOrNull(row?.sid);
+      if (sid === null || !sessionTokens.has(sid)) return null;
+      return { sid, data: indexed ? null : project(row, key) };
+    }, item => {
+      if (!item) { stats.skipped++; return; }
+      if (indexed) return;
+      if (!buckets.has(item.sid)) buckets.set(item.sid, []);
+      buckets.get(item.sid).push(item.data);
+    });
+    return async sid => {
+      if (indexed) return sidRows(source, name, sid, project);
+      const key = keyToken(sid);
+      const result = buckets.get(key) || [];
+      buckets.delete(key);
+      return result;
+    };
+  }
+
+  function makeTimeline(rows, startedAt, engine, dbScale, tally) {
+    if (!engine) {
+      const output = [];
+      for (const row of rows) {
+        const at = startedAt + row?.sec * 1000;
+        if (!Number.isFinite(row?.sec) || !Number.isFinite(at)) { tally.skipped++; continue; }
+        output.push({
+          at, levelDb: firstNumber(row.dbApplied, row.peakApplied, row.dbSource),
+          motion: finite(row.motion)
+        });
+      }
+      return output.sort((a, b) => a.at - b.at);
+    }
     const bins = new Map();
-    for (const chunk of chunks) {
-      if (!Array.isArray(chunk.rows)) continue;
+    for (const chunk of rows) {
+      if (!Array.isArray(chunk?.rows)) { tally.skipped++; continue; }
       for (const row of chunk.rows) {
-        if (!Number.isFinite(row?.sec)) continue;
+        if (!Number.isFinite(row?.sec) || !Number.isFinite(startedAt + row.sec * 1000)) {
+          tally.skipped++;
+          continue;
+        }
         const sec = Math.floor(row.sec);
         const bin = bins.get(sec) || { sum: 0, count: 0, motion: null };
-        if (Number.isFinite(row.db)) {
-          bin.sum += dbScale(row.db);
-          bin.count++;
-        }
+        if (Number.isFinite(row.db)) { bin.sum += dbScale(row.db); bin.count++; }
         if (Number.isFinite(row.motionG)) bin.motion = Math.max(bin.motion ?? 0, row.motionG);
         bins.set(sec, bin);
       }
@@ -760,144 +961,253 @@ const storage = (() => {
     })).sort((a, b) => a.at - b.at);
   }
 
-  async function migrateRecords(source, dest, engine, archivedReference) {
-    const prefix = engine ? "v63" : "v3";
-    const sessions = await all(source, "sessions");
-    let unified = sessions.some(row => row.id === ENGINE_MARKER && row.internalScaleMarker === true);
-    if (engine && !unified) {
-      try { unified = !!localStorage.getItem(ENGINE_SCALE_KEY); } catch (_) {}
-    }
-    const dbScale = db => !Number.isFinite(db) ? null
-      : !engine || unified ? db : Math.round((db - 72) * 10) / 10;
+  function readClipBatch(source, entries) {
+    return transaction(source, ["clips"], "readonly", (s, done, on) => {
+      const rows = Array(entries.length);
+      const store = s("clips");
+      entries.forEach((entry, i) => on(store.get(entry.key), value => { rows[i] = value; }));
+      done(rows);
+    });
+  }
 
-    for (const sess of sessions) {
-      if (sess.internalScaleMarker || !Number.isFinite(sess.startedAt)) continue;
-      const sid = sess.id;
-      const id = migratedId(prefix, sid);
-      if (await read(dest, "records", id)) continue;
-      const [rows, oldEvents, clipInfo] = await Promise.all([
-        bySid(source, engine ? "timeline" : "secs", sid),
-        bySid(source, "events", sid),
-        bySid(source, "clips", sid, row => {
-          const audio = engine ? row.blob : row.data;
-          return {
-            id: row.id, eventId: row.eventId, saved: row.saved === true,
-            hasClip: audio instanceof Blob ? audio.size > 0
-              : !engine && (audio instanceof ArrayBuffer || ArrayBuffer.isView(audio)) &&
-                audio.byteLength > 0
-          };
-        })
-      ]);
+  function storeClipBatch(dest, id, rows) {
+    return transaction(dest, ["records", "clips"], "readwrite", (s, done, on) => {
+      on(s("records").get(id), existing => {
+        if (existing !== undefined) return;
+        const store = s("clips");
+        for (const row of rows) store.put(row);
+        done(true);
+      });
+    });
+  }
 
-      const byClip = new Map(clipInfo.map(c => [c.id, c]));
-      const byEvent = new Map(clipInfo.filter(c => c.eventId != null).map(c => [c.eventId, c]));
-      const startedAt = sess.startedAt;
-      const events = oldEvents.map(ev => {
-        const clip = engine ? byClip.get(ev.clipId ?? ev.id)
-          : byClip.get(ev.clipId) || byEvent.get(ev.id);
-        const relative = finite(ev.startMs) ?? 0;
+  function commitRecord(dest, id, record, skipped) {
+    return transaction(dest, ["records", "settings"], "readwrite", (s, _, on) => {
+      const settings = s("settings");
+      const records = s("records");
+      on(settings.get(STEP_PREFIX + id), checkpoint => {
+        if (checkpoint !== undefined) return;
+        on(records.get(id), existing => {
+          if (existing === undefined && record) records.add(record);
+          settings.add({ skipped, completedAt: Date.now() }, STEP_PREFIX + id);
+        });
+      });
+    });
+  }
+
+  async function migrateRecord(source, dest, engine, sess, id, readers, dbScale, reference) {
+    const sid = sess.id;
+    const token = keyToken(sid);
+    const tally = { skipped: 0 };
+    const [rows, oldEvents, oldClips] = await Promise.all(readers.map(reader => reader(sid)));
+    const clipInfo = oldClips.filter(clip => {
+      if (clip?.bytes) return true;
+      tally.skipped++;
+      return false;
+    });
+    const byClip = new Map(clipInfo.map(clip => [keyToken(clip.id), clip]));
+    const byEvent = new Map(clipInfo.filter(clip => tokenOrNull(clip.eventId) !== null)
+      .map(clip => [keyToken(clip.eventId), clip]));
+    const startedAt = sess.startedAt;
+    const events = [];
+    for (const ev of oldEvents) {
+      if (!validRow(ev) || tokenOrNull(ev.id) === null ||
+          !Number.isFinite(ev.startMs) || !Number.isFinite(startedAt + ev.startMs)) {
+        tally.skipped++;
+        continue;
+      }
+      try {
+        const clip = engine ? byClip.get(tokenOrNull(ev.clipId ?? ev.id))
+          : byClip.get(tokenOrNull(ev.clipId)) || byEvent.get(keyToken(ev.id));
+        const relative = ev.startMs;
         const durationMs = Math.max(0, firstNumber(
           engine && Number.isFinite(ev.durationSec) ? ev.durationSec * 1000 : null,
-          ev.durMs,
-          Number.isFinite(ev.endMs) ? ev.endMs - relative : null
+          ev.durMs, Number.isFinite(ev.endMs) ? ev.endMs - relative : null
         ) ?? 0);
-        return {
-          ...ev,
-          id: migratedId("event", ev.id),
-          clipId: clip?.hasClip ? migratedId("clip", clip.id) : null,
+        if (!Number.isFinite(startedAt + relative + durationMs)) throw new Error("イベントの日時が不正です。");
+        events.push({
+          ...ev, id: migratedId("event", ev.id),
+          clipId: clip ? migratedId("clip", clip.id) : null,
           type: eventType(ev, engine),
           legacyRecordedType: ev.type ?? ev.displayCategory ?? ev.category ?? null,
           startedAt: startedAt + relative, durationMs,
           peakDb: engine ? dbScale(firstNumber(ev.peakDb, ev.meanDb))
             : firstNumber(ev.peakAppliedDb, ev.meanAppliedDb, ev.peakDb, ev.meanDb),
-          saved: ev.saved === true || clip?.saved === true,
-          hasClip: clip?.hasClip === true
-        };
-      }).sort((a, b) => a.startedAt - b.startedAt);
+          saved: ev.saved === true || clip?.saved === true, hasClip: Boolean(clip)
+        });
+      } catch (_) { tally.skipped++; }
+    }
+    events.sort((a, b) => a.startedAt - b.startedAt);
+    const timeline = makeTimeline(rows, startedAt, engine, dbScale, tally);
+    let durationMs = Math.max(0, firstNumber(sess.durationMs > 0 ? sess.durationMs : null,
+      Number.isFinite(sess.endedAt) ? sess.endedAt - startedAt : null,
+      Number.isFinite(sess.durationSec) ? sess.durationSec * 1000 : null) ?? 0);
+    for (const point of timeline) durationMs = Math.max(durationMs, point.at - startedAt);
+    for (const event of events) {
+      durationMs = Math.max(durationMs, event.startedAt - startedAt + event.durationMs);
+    }
+    const matches = !engine && Number.isFinite(sess.refAt) && sess.refAt === reference?.measuredAt;
+    const referenceClip = matches ? reference.wav : null;
+    const failed = new Set();
 
-      const timeline = engine ? engineTimeline(rows, startedAt, dbScale)
-        : rows.filter(row => Number.isFinite(row.sec)).map(row => ({
-          at: startedAt + row.sec * 1000,
-          levelDb: firstNumber(row.dbApplied, row.peakApplied, row.dbSource),
-          motion: finite(row.motion)
-        })).sort((a, b) => a.at - b.at);
-
-      const durationMs = Math.max(0,
-        firstNumber(sess.durationMs > 0 ? sess.durationMs : null,
-          Number.isFinite(sess.endedAt) ? sess.endedAt - startedAt : null,
-          Number.isFinite(sess.durationSec) ? sess.durationSec * 1000 : null) ?? 0);
-      let visibleDuration = durationMs;
-      for (const point of timeline) visibleDuration = Math.max(visibleDuration, point.at - startedAt);
-      for (const event of events) {
-        visibleDuration = Math.max(visibleDuration, event.startedAt - startedAt + event.durationMs);
-      }
-
-      // 旧版では基準音WAVは全体設定に保存される。
-      // 測定時刻が一致する記録だけに結び付け、別の夜の測定を誤って共有しない。
-      const referenceMatches = !engine && Number.isFinite(sess.refAt) &&
-        sess.refAt === archivedReference?.measuredAt;
-      const referenceClip = referenceMatches ? archivedReference.wav : null;
-      const record = {
-        id, day: localDayKey(startedAt), startedAt,
-        endedAt: Number.isFinite(sess.endedAt)
-          ? Math.max(sess.endedAt, startedAt + visibleDuration) : startedAt + visibleDuration,
-        durationMs: visibleDuration, timeline, events,
-        sourceDb: source.name, sourceRecordId: sid, legacyStatus: sess.status ?? null,
-        reference: {
-          envDb: finite(sess.refEnvDb), voiceDb: finite(sess.refDb),
-          measuredAt: finite(sess.refAt), clipId: referenceClip ? "reference" : null,
-          voiceScore: referenceMatches ? archivedReference.voiceScore : null,
-          voiceMetrics: referenceMatches ? archivedReference.voiceMetrics : null
+    // クリップ原本は一括で全件保持せず、最大12件ずつ読み書きする。
+    for (let i = 0; i < clipInfo.length; i += CLIP_BATCH) {
+      const batch = clipInfo.slice(i, i + CLIP_BATCH);
+      const values = await readClipBatch(source, batch);
+      const writes = [];
+      for (let j = 0; j < batch.length; j++) {
+        const c = batch[j];
+        const row = values[j];
+        const clipId = migratedId("clip", c.id);
+        const raw = engine ? row?.blob : row?.data;
+        let blob = null;
+        if (tokenOrNull(row?.sid) === token) {
+          if (raw instanceof Blob) blob = raw;
+          else if (!engine && (raw instanceof ArrayBuffer || ArrayBuffer.isView(raw))) {
+            blob = new Blob([raw], { type: "audio/wav" });
+          }
         }
-      };
-
-      // 音声をセッション全件分まとめて保持しない。記録行は音声処理後に確定する。
-      // 再試行時も同じキーを使用し、途中までのコピーで記録が重複しない。
-      for (const clip of clipInfo) {
-        if (!clip.hasClip) continue;
-        const row = await read(source, "clips", clip.id);
-        if (!row || indexedDB.cmp(row.sid, sid) !== 0) throw new Error("旧記録の音声が移行中に変更されました。");
-        const audio = engine ? row.blob : row.data;
-        const blob = audio instanceof Blob ? audio : new Blob([audio], { type: "audio/wav" });
-        if (!blob.size) throw new Error("旧記録の音声が移行中に空になりました。");
-        await writeClip(dest, id, migratedId("clip", clip.id), blob);
+        if (!blob?.size) { failed.add(clipId); tally.skipped++; continue; }
+        writes.push({ recordId: id, id: clipId, blob });
       }
-      if (referenceClip) await writeClip(dest, id, "reference", referenceClip);
+      if (writes.length) await storeClipBatch(dest, id, writes);
+      await nextTask();
+    }
 
-      await transaction(dest, ["records"], "readwrite", (s, _, on) => {
-        const store = s("records");
-        on(store.get(id), existing => { if (!existing) store.add(record); });
-      });
+    if (referenceClip) await storeClipBatch(dest, id, [{ recordId: id, id: "reference", blob: referenceClip }]);
+    for (const ev of events) {
+      if (failed.has(ev.clipId)) { ev.clipId = null; ev.hasClip = false; }
+    }
+    const record = {
+      id, day: localDayKey(startedAt), startedAt,
+      endedAt: Number.isFinite(sess.endedAt)
+        ? Math.max(sess.endedAt, startedAt + durationMs) : startedAt + durationMs,
+      durationMs, timeline, events,
+      sourceDb: source.name, sourceRecordId: sid, legacyStatus: sess.status ?? null,
+      reference: {
+        envDb: finite(sess.refEnvDb), voiceDb: finite(sess.refDb),
+        measuredAt: finite(sess.refAt), clipId: referenceClip ? "reference" : null,
+        voiceScore: matches ? reference.voiceScore : null,
+        voiceMetrics: matches ? reference.voiceMetrics : null
+      }
+    };
+    await commitRecord(dest, id, record, tally.skipped);
+    return tally.skipped;
+  }
+
+  async function migrateSource(source, dest, engine, reference, stats) {
+    if (!source.objectStoreNames.contains("sessions")) { stats.skipped++; return; }
+    const sessions = [];
+    let unified = false;
+    await walk(source, "sessions", (row, key) => ({ row, key }), item => {
+      if (item.row?.internalScaleMarker) {
+        if (item.key === ENGINE_MARKER) unified = true;
+      } else sessions.push(item);
+    });
+    if (engine && !unified) {
+      try { unified = !!localStorage.getItem(ENGINE_SCALE_KEY); } catch (_) {}
+    }
+    const dbScale = value => !Number.isFinite(value) ? null
+      : !engine || unified ? value : Math.round((value - 72) * 10) / 10;
+    const prefix = engine ? "v63" : "v3";
+    const validSessions = new Set();
+    for (const { row, key } of sessions) {
+      if (validRow(row) && tokenOrNull(row.id) === keyToken(key) &&
+          Number.isFinite(new Date(row.startedAt).getTime()) && Number.isFinite(row.startedAt)) {
+        validSessions.add(keyToken(key));
+      }
+    }
+    const readers = await Promise.all([
+      storeReader(source, engine ? "timeline" : "secs", validSessions, row => row, stats),
+      storeReader(source, "events", validSessions, row => row, stats),
+      storeReader(source, "clips", validSessions, (row, key) => clipMetadata(row, key, engine), stats)
+    ]);
+    let done = 0;
+    for (const { row, key } of sessions) {
+      const id = migratedId(prefix, key);
+      const checkpoint = await read(dest, "settings", STEP_PREFIX + id);
+      if (checkpoint !== undefined) stats.skipped += checkpoint.skipped || 0;
+      else if (!validSessions.has(keyToken(key))) {
+        await commitRecord(dest, id, null, 1);
+        stats.skipped++;
+      } else if (await read(dest, "records", id)) {
+        await commitRecord(dest, id, null, 0);
+      } else {
+        stats.skipped += await migrateRecord(source, dest, engine, row, id, readers, dbScale, reference);
+      }
+      done++;
+      setStatus(`過去の記録を引き継ぎ中… ${source.name} ${done} / ${sessions.length}件`);
+      await nextTask();
     }
   }
 
   async function importLegacy(db) {
-    if (await read(db, "settings", MIGRATION_KEY)) return;
-    await openSource("somnolog-v3", ["settings", "sessions", "secs", "events", "clips"], async source => {
-      const reference = await migrateSettings(source, db);
-      await migrateRecords(source, db, false, reference);
+    const previous = await read(db, "settings", MIGRATION_KEY);
+    if (previous?.completedAt) return previous;
+    const settings = await seedSettings(db);
+    const state = await read(db, "settings", MIGRATION_KEY);
+    const stats = { skipped: state?.settingsSkipped || 0 };
+    setStatus("過去の記録を引き継ぎ中… 旧記録を調べています。");
+    await openSource("somnolog-v3", source => migrateSource(source, db, false, settings.reference, stats));
+    await openSource("somnolog-v63", source => migrateSource(source, db, true, null, stats));
+    const final = { ...state, status: "complete", completedAt: Date.now(), skipped: stats.skipped };
+    await transaction(db, ["settings"], "readwrite", (s, done, on) => {
+      const store = s("settings");
+      on(store.get(MIGRATION_KEY), current => {
+        if (current?.completedAt) done(current);
+        else { store.put(final, MIGRATION_KEY); done(final); }
+      });
     });
-    await openSource("somnolog-v63", ["sessions", "timeline", "events", "clips"], source =>
-      migrateRecords(source, db, true, null)
-    );
-    await putSettingsIfMissing(db, [[MIGRATION_KEY, { completedAt: Date.now() }]]);
+    return final;
+  }
+
+  function startMigration(db, retry = false) {
+    if (completed || migration) return migration;
+    if (status?.retry && !retry) return null;
+    setStatus("過去の記録を引き継ぎ中…");
+    const work = async () => {
+      await nextTask();
+      // 対応ブラウザではタブ間で同じ移行を重ねない。
+      // 非対応環境でも、記録と進捗は確定済みの行を上書きしない。
+      if (navigator.locks?.request) {
+        return navigator.locks.request(`${DB_NAME}:legacy-import`, () => importLegacy(db));
+      }
+      return importLegacy(db);
+    };
+    migration = work().then(result => {
+      completed = true;
+      setStatus(result.skipped
+        ? `過去の記録の引き継ぎが完了しました。取り込めなかった旧データ：${result.skipped}件。`
+        : "");
+    }).catch(error => {
+      console.warn("SomnoLog: 旧記録の引き継ぎを中断", error);
+      setStatus("過去の記録の引き継ぎを中断しました。空き容量や他のタブを確認して再試行してください。引き継ぎ済みの記録は利用できます。", true);
+    }).finally(() => { migration = null; });
+    return migration;
   }
 
   async function open() {
     const db = await openLocal();
-    if (!migration) {
-      const pending = importLegacy(db);
-      migration = pending;
-      pending.catch(() => { if (migration === pending) migration = null; });
-    }
-    await migration;
+    void startMigration(db);
     return db;
   }
 
-  async function getSetting(key) { return read(await open(), "settings", key); }
+  async function getSetting(key) {
+    const db = await open();
+    const current = await read(db, "settings", key);
+    if (current !== undefined || !INITIAL_SETTINGS.has(key) || completed) return current;
+    // 記録・クリップ移行は待たない。未登録の設定だけ、旧設定数件を短時間で確認する。
+    try {
+      await waitAtMost(seedSettings(db), "旧設定の確認");
+    } catch (error) {
+      console.warn("SomnoLog: 旧設定を起動時に復元できませんでした", error);
+    }
+    return read(db, "settings", key);
+  }
 
   async function setSetting(key, value) {
-    return transaction(await open(), ["settings"], "readwrite", s => s("settings").put(value, key));
+    const db = await open();
+    return transaction(db, ["settings"], "readwrite", s => s("settings").put(value, key));
   }
 
   async function putRecord(record) {
@@ -922,16 +1232,9 @@ const storage = (() => {
       const range = IDBKeyRange.bound(firstDay, lastDay);
       on(s("records").index("day").openKeyCursor(range, "nextunique"), cursor => {
         if (!cursor) done(days);
-        else {
-          days.add(cursor.key);
-          cursor.continue();
-        }
+        else { days.add(cursor.key); cursor.continue(); }
       });
     });
-  }
-
-  function writeClip(db, recordId, clipId, blob) {
-    return transaction(db, ["clips"], "readwrite", s => s("clips").put({ recordId, id: clipId, blob }));
   }
 
   async function putClip(recordId, clipId, blob) {
@@ -939,10 +1242,10 @@ const storage = (() => {
         typeof clipId !== "string" || !clipId || !(blob instanceof Blob)) {
       throw new TypeError("音声クリップのIDまたはデータが不正です。");
     }
-    return writeClip(await open(), recordId, clipId, blob);
+    return transaction(await open(), ["clips"], "readwrite",
+      s => s("clips").put({ recordId, id: clipId, blob }));
   }
 
-  // 旧版のIMA ADPCMを再生要求時だけPCM化する。保存済みの原本は変更しない。
   const imaSteps = [
     7,8,9,10,11,12,13,14,16,17,19,21,23,25,28,31,34,37,41,45,50,55,60,
     66,73,80,88,97,107,118,130,143,157,173,190,209,230,253,279,307,337,371,
@@ -981,7 +1284,6 @@ const storage = (() => {
     const perBlock = view.getUint16(fmt.at + 18, true);
     if (!rate || rate > 0x7fffffff || align < 4 ||
         perBlock !== 1 + (align - 4) * 2 || data.size % align) throw invalid();
-
     const available = data.size / align * perBlock;
     const count = fact ?? available;
     if (!count || count > available || count > (0xffffffff - 36) / 2) throw invalid();
@@ -1000,7 +1302,6 @@ const storage = (() => {
     wav.setUint16(34, 16, true);
     wav.setUint32(36, 0x64617461);
     wav.setUint32(40, 2 * count, true);
-
     let written = 0;
     const emit = sample => wav.setInt16(44 + 2 * written++, sample, true);
     for (let offset = data.at; offset < data.at + data.size && written < count; offset += align) {
@@ -1025,8 +1326,7 @@ const storage = (() => {
   }
 
   async function getClip(recordId, clipId) {
-    const db = await open();
-    const row = await read(db, "clips", [recordId, clipId]);
+    const row = await read(await open(), "clips", [recordId, clipId]);
     const blob = row?.blob ?? null;
     if (blob && (recordId.startsWith("v3:") || recordId.startsWith("v63:")) &&
         clipId.startsWith("clip:")) return oldWavForPlayback(blob);
@@ -1047,7 +1347,9 @@ const appState = {
   selectedRecord: null
 };
 
-/* ===== 第4部ここまで：scriptタグは閉じない ===== *//* ===== 第5部：患者情報の確認・QR読み取り ===== */
+/* ===== 第4部ここまで：scriptタグは閉じない ===== */
+
+/* ===== 第5部：患者情報の確認・QR読み取り ===== */
 const patientUI = (() => {
   const settingKey = "patient";
   const fields = [
@@ -1162,7 +1464,6 @@ const patientUI = (() => {
     const hash = location.hash;
     if (!hash.includes("#slp=")) return;
 
-    // URLからフラグメントだけを除く。クエリと現在の画面は維持する。
     try {
       const cleanURL = new URL(location.href);
       cleanURL.hash = "";
@@ -1181,39 +1482,76 @@ const patientUI = (() => {
   }
 
   async function restore() {
-    const saved = await storage.getSetting(settingKey);
     appState.patient = null;
-    if (saved != null) {
-      try {
-        // QR形式にかかわらず、保存後は同じ5項目の形式。
-        // 任意項目が空の旧QRや移行済みの患者情報も復元できるようにする。
-        appState.patient = normalizePatient(saved, { legacy: true });
-      } catch (_) {
-        setMessage("scan-msg", "保存済みの患者情報を確認できません。QRコードを読み直してください。");
-      }
+    try {
+      const saved = await storage.getSetting(settingKey);
+      if (saved != null) appState.patient = normalizePatient(saved, { legacy: true });
+    } catch (_) {
+      setMessage("scan-msg", "保存済みの患者情報を確認できません。QRコードを読み直してください。");
     }
     refreshReturnButtons();
     checkHashOnLoad();
     return appState.patient;
   }
 
+  function nextPaint() {
+    return new Promise(resolve => {
+      let frame = 0;
+      const timer = setTimeout(finish, 100);
+      function finish() {
+        clearTimeout(timer);
+        if (frame) cancelAnimationFrame(frame);
+        resolve();
+      }
+      if (!document.hidden && typeof requestAnimationFrame === "function") {
+        frame = requestAnimationFrame(() => { frame = requestAnimationFrame(finish); });
+      }
+    });
+  }
+
+  function saveStatus() {
+    let node = $("patient-save-status");
+    if (!node) {
+      node = document.createElement("p");
+      node.id = "patient-save-status";
+      node.className = "muted";
+      node.setAttribute("role", "status");
+      $("cf-ok").after(node);
+    }
+    return node;
+  }
+
   async function accept() {
     const patient = appState.pendingPatient;
     if (saving || !patient) return;
     saving = true;
-    for (const id of ["cf-ok", "cf-ng", "back-rec-confirm"]) $(id).disabled = true;
+    const button = $("cf-ok");
+    const originalLabel = button.textContent;
+    const status = saveStatus();
+    const locked = ["cf-ok", "cf-ng", "back-rec-confirm"].map($);
+    for (const node of locked) node.disabled = true;
+    button.textContent = "保存中…";
+    status.hidden = false;
+    status.textContent = "患者情報を保存中…";
+    setMessage("errbox", "");
+
     try {
+      // 保存開始前に、ボタンと状態表示を描画できる機会を作る。
+      await nextPaint();
       await storage.setSetting(settingKey, patient);
       appState.patient = patient;
       clearCandidate();
       refreshReturnButtons();
-      setMessage("errbox", "");
       showPage("page-record");
     } catch (error) {
       setMessage("errbox", `患者情報を保存できませんでした：${errorText(error)}`);
+      // 確認画面に候補を残し、同じ内容で再試行できる。
     } finally {
+      status.hidden = true;
+      status.textContent = "";
+      button.textContent = originalLabel;
+      for (const node of locked) node.disabled = false;
       saving = false;
-      for (const id of ["cf-ok", "cf-ng", "back-rec-confirm"]) $(id).disabled = false;
     }
   }
 
