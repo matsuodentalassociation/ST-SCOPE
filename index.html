@@ -17,6 +17,7 @@
       --primary-hover: #1d4ed8;
       --danger: #dc2626;
       --success: #16a34a;
+      --warning: #d97706;
       --border: #e2e8f0;
     }
 
@@ -109,11 +110,16 @@
       background: var(--primary);
       color: #ffffff;
       margin-bottom: 8px;
-      transition: background 0.15s;
+      transition: background 0.15s, opacity 0.15s;
     }
 
     .btn:active {
       transform: scale(0.99);
+    }
+
+    .btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
     }
 
     .btn-secondary {
@@ -131,9 +137,15 @@
       color: #ffffff;
     }
 
+    .btn-success {
+      background: var(--success);
+      color: #ffffff;
+    }
+
     .status-row {
       display: flex;
       justify-content: space-between;
+      align-items: center;
       padding: 8px 0;
       border-bottom: 1px solid var(--border);
       font-size: 0.95rem;
@@ -141,6 +153,54 @@
 
     .status-row:last-child {
       border-bottom: none;
+    }
+
+    .badge-ok {
+      color: var(--success);
+      font-weight: 700;
+    }
+
+    .badge-ng {
+      color: var(--danger);
+      font-weight: 700;
+    }
+
+    .input-group {
+      margin-bottom: 12px;
+    }
+
+    .input-group label {
+      display: block;
+      font-size: 0.85rem;
+      color: var(--text-sub);
+      margin-bottom: 4px;
+    }
+
+    .input-group input[type="text"],
+    .input-group input[type="range"] {
+      width: 100%;
+    }
+
+    .input-group input[type="text"] {
+      padding: 10px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 0.95rem;
+    }
+
+    #qr-video-container {
+      display: none;
+      margin-bottom: 12px;
+      border-radius: 8px;
+      overflow: hidden;
+      background: #000;
+    }
+
+    #qr-video {
+      width: 100%;
+      max-height: 260px;
+      object-fit: cover;
+      display: block;
     }
 
     .footnote {
@@ -191,7 +251,7 @@
   <div class="app-container">
     <header>
       <h1 data-label="appTitle">SomnoLog</h1>
-      <span class="version-badge" id="app-version">v1.0.0-step1</span>
+      <span class="version-badge" id="app-version">v1.0.0-step2</span>
     </header>
 
     <!-- 1. 開始画面 -->
@@ -220,8 +280,24 @@
         <div class="status-row"><span data-label="issuerLabel">発行元</span><span id="user-issuer">-</span></div>
         <div class="status-row"><span data-label="idLabel">管理番号</span><span id="user-chart">-</span></div>
         <div class="status-row"><span data-label="nameLabel">氏名</span><span id="user-name">-</span></div>
+        <div class="status-row"><span>シリアル</span><span id="user-serial">-</span></div>
       </div>
+
+      <div id="qr-video-container">
+        <video id="qr-video" playsinline></video>
+      </div>
+
       <button class="btn" id="btn-scan-qr" data-label="btnScanQr">二次元コードを読み取る</button>
+
+      <div class="card">
+        <div class="input-group">
+          <label for="qr-manual-input">URLまたはコード文字列を直接貼り付け</label>
+          <input type="text" id="qr-manual-input" placeholder="#slp=... を含むURLを貼り付け">
+        </div>
+        <button class="btn btn-secondary" id="btn-apply-manual-qr">貼り付けたコードを登録</button>
+        <button class="btn btn-secondary" id="btn-demo-user">テスト用計測者を登録（開発用）</button>
+      </div>
+
       <button class="btn btn-secondary" onclick="App.navigate('page-start')" data-label="btnBack">戻る</button>
     </section>
 
@@ -229,12 +305,35 @@
     <section id="page-prep" class="page">
       <div class="card">
         <h2 data-label="prepTitle">計測の準備</h2>
-        <div class="status-row"><span data-label="refSoundLabel">基準音（「あいうえお」）</span><span id="prep-ref-status">未測定</span></div>
-        <div class="status-row"><span data-label="micPermLabel">マイク許可</span><span id="prep-mic-status">未許可</span></div>
-        <div class="status-row"><span data-label="motionPermLabel">モーション許可</span><span id="prep-motion-status">未許可</span></div>
+        <div class="status-row">
+          <span data-label="refSoundLabel">基準音（「あいうえお」）</span>
+          <span id="prep-ref-status" class="badge-ng">未測定</span>
+        </div>
+        <div class="status-row">
+          <span>環境音 / 基準音 (dB)</span>
+          <span id="prep-ref-db">- / -</span>
+        </div>
+        <div class="status-row">
+          <span data-label="micPermLabel">マイク許可</span>
+          <span id="prep-mic-status" class="badge-ng">未許可</span>
+        </div>
+        <div class="status-row">
+          <span data-label="motionPermLabel">モーション許可</span>
+          <span id="prep-motion-status" class="badge-ng">未許可</span>
+        </div>
       </div>
-      <button class="btn" id="btn-measure-ref" data-label="btnMeasureRef">基準音を測定する</button>
-      <button class="btn btn-dark" onclick="App.navigate('page-record')" data-label="btnStartRecord">計測を開始する</button>
+
+      <div class="card">
+        <div class="input-group">
+          <label for="voice-exclude-strength">人声を除外する強さ: <strong id="voice-strength-val">65</strong>%</label>
+          <input type="range" id="voice-exclude-strength" min="20" max="95" value="65">
+        </div>
+      </div>
+
+      <button class="btn" id="btn-request-perms">マイク・モーション許可を取得</button>
+      <button class="btn" id="btn-measure-ref" data-label="btnMeasureRef">基準音を測定する（3秒間）</button>
+      <button class="btn btn-secondary" id="btn-play-ref" disabled>基準音を再生する</button>
+      <button class="btn btn-dark" id="btn-go-record" onclick="App.navigate('page-record')" disabled data-label="btnStartRecord">計測を開始する</button>
       <button class="btn btn-secondary" onclick="App.navigate('page-start')" data-label="btnBack">戻る</button>
     </section>
 
@@ -290,7 +389,6 @@
   <script>
     /**
      * 表示ラベル定義オブジェクト（一括置換マップ）
-     * 公開前の最終仕上げで、ここを実務用語に差し替えるだけで全体に反映されます。
      */
     const LABELS = {
       appTitle: "SomnoLog",
@@ -310,7 +408,7 @@
       refSoundLabel: "基準音（「あいうえお」）",
       micPermLabel: "マイク許可",
       motionPermLabel: "モーション許可",
-      btnMeasureRef: "基準音を測定する",
+      btnMeasureRef: "基準音を測定する（3秒間）",
       btnStartRecord: "計測を開始する",
       recordTitle: "波形・音圧モニタリング中",
       recordStateLabel: "状態",
@@ -357,6 +455,69 @@
           };
           req.onerror = (e) => reject(e.target.error);
         });
+      },
+
+      async getSetting(key) {
+        return new Promise((resolve, reject) => {
+          const tx = this.instance.transaction("settings", "readonly");
+          const req = tx.objectStore("settings").get(key);
+          req.onsuccess = () => resolve(req.result ? req.result.value : null);
+          req.onerror = () => reject(req.error);
+        });
+      },
+
+      async setSetting(key, value) {
+        return new Promise((resolve, reject) => {
+          const tx = this.instance.transaction("settings", "readwrite");
+          const req = tx.objectStore("settings").put({ key, value });
+          req.onsuccess = () => resolve();
+          req.onerror = () => reject(req.error);
+        });
+      }
+    };
+
+    /**
+     * 音声ユーティリティ（WAVエンコード・dB計算）
+     */
+    const AudioUtil = {
+      calcRmsDb(samples) {
+        let sum = 0;
+        for (let i = 0; i < samples.length; i++) {
+          sum += samples[i] * samples[i];
+        }
+        const rms = Math.sqrt(sum / samples.length);
+        if (rms <= 1e-6) return -120;
+        return Math.max(-120, Math.min(0, 20 * Math.log10(rms)));
+      },
+
+      encodeWav(samples, sampleRate) {
+        const buffer = new ArrayBuffer(44 + samples.length * 2);
+        const view = new DataView(buffer);
+        const writeString = (offset, str) => {
+          for (let i = 0; i < str.length; i++) {
+            view.setUint8(offset + i, str.charCodeAt(i));
+          }
+        };
+        writeString(0, "RIFF");
+        view.setUint32(4, 36 + samples.length * 2, true);
+        writeString(8, "WAVE");
+        writeString(12, "fmt ");
+        view.setUint32(16, 16, true);
+        view.setUint16(20, 1, true);
+        view.setUint16(22, 1, true);
+        view.setUint32(24, sampleRate, true);
+        view.setUint32(28, sampleRate * 2, true);
+        view.setUint16(32, 2, true);
+        view.setUint16(34, 16, true);
+        writeString(36, "data");
+        view.setUint32(40, samples.length * 2, true);
+        let offset = 44;
+        for (let i = 0; i < samples.length; i++) {
+          const s = Math.max(-1, Math.min(1, samples[i]));
+          view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7fff, true);
+          offset += 2;
+        }
+        return new Blob([buffer], { type: "audio/wav" });
       }
     };
 
@@ -366,28 +527,46 @@
     const App = {
       currentPage: "page-start",
       blackScreenTimer: null,
+      state: {
+        patient: null,
+        reference: null,
+        audioPrefs: { gain: 0, loudDb: 10, voiceThreshold: 65 },
+        micGranted: false,
+        motionGranted: false
+      },
+      qrStream: null,
 
       async init() {
         this.applyLabels();
         try {
           await DB.init();
-          console.log("IndexedDB 初期化完了");
+          await this.loadSavedState();
         } catch (err) {
-          console.error("IndexedDB 初期化エラー:", err);
+          console.error("初期化エラー:", err);
         }
         this.setupBlackScreen();
+        this.setupUserEvents();
+        this.setupPrepEvents();
+        this.checkUrlHashRegistration();
+        this.refreshUI();
       },
 
       applyLabels() {
         document.querySelectorAll("[data-label]").forEach((el) => {
           const key = el.getAttribute("data-label");
-          if (LABELS[key]) {
-            el.textContent = LABELS[key];
-          }
+          if (LABELS[key]) el.textContent = LABELS[key];
         });
       },
 
+      async loadSavedState() {
+        this.state.patient = await DB.getSetting("patient");
+        this.state.reference = await DB.getSetting("reference");
+        const prefs = await DB.getSetting("audioPreferences");
+        if (prefs) this.state.audioPrefs = prefs;
+      },
+
       navigate(pageId) {
+        this.stopQrCamera();
         document.querySelectorAll(".page").forEach((p) => p.classList.remove("active"));
         const target = document.getElementById(pageId);
         if (target) {
@@ -395,24 +574,275 @@
           this.currentPage = pageId;
           window.scrollTo(0, 0);
         }
+        this.refreshUI();
       },
 
+      refreshUI() {
+        // 開始画面
+        const startUser = document.getElementById("start-user-status");
+        startUser.textContent = this.state.patient ? `登録済み (${this.state.patient.name})` : "未登録";
+
+        // 計測者情報画面
+        document.getElementById("user-issuer").textContent = this.state.patient ? this.state.patient.clinic : "-";
+        document.getElementById("user-chart").textContent = this.state.patient ? this.state.patient.chart : "-";
+        document.getElementById("user-name").textContent = this.state.patient ? this.state.patient.name : "-";
+        document.getElementById("user-serial").textContent = this.state.patient ? this.state.patient.serial : "-";
+
+        // 準備画面
+        const refEl = document.getElementById("prep-ref-status");
+        const refDbEl = document.getElementById("prep-ref-db");
+        const btnPlayRef = document.getElementById("btn-play-ref");
+        if (this.state.reference) {
+          refEl.textContent = "測定済み";
+          refEl.className = "badge-ok";
+          refDbEl.textContent = `${this.state.reference.envDb.toFixed(1)} / ${this.state.reference.voiceDb.toFixed(1)} dB`;
+          btnPlayRef.disabled = !this.state.reference.wav;
+        } else {
+          refEl.textContent = "未測定";
+          refEl.className = "badge-ng";
+          refDbEl.textContent = "- / -";
+          btnPlayRef.disabled = true;
+        }
+
+        const micEl = document.getElementById("prep-mic-status");
+        micEl.textContent = this.state.micGranted ? "許可済み" : "未許可";
+        micEl.className = this.state.micGranted ? "badge-ok" : "badge-ng";
+
+        const motionEl = document.getElementById("prep-motion-status");
+        motionEl.textContent = this.state.motionGranted ? "許可済み" : "未許可";
+        motionEl.className = this.state.motionGranted ? "badge-ok" : "badge-ng";
+
+        document.getElementById("voice-exclude-strength").value = this.state.audioPrefs.voiceThreshold;
+        document.getElementById("voice-strength-val").textContent = this.state.audioPrefs.voiceThreshold;
+
+        // 記録開始条件（仕様書 3.2）
+        const canStart = Boolean(this.state.patient && this.state.reference && this.state.micGranted);
+        document.getElementById("btn-go-record").disabled = !canStart;
+      },
+
+      /* --- 計測者登録 (仕様書 3.1 / 5.1) --- */
+      checkUrlHashRegistration() {
+        if (window.location.hash.includes("slp=")) {
+          this.parseAndSavePatientCode(window.location.hash);
+        }
+      },
+
+      async parseAndSavePatientCode(rawText) {
+        try {
+          const match = rawText.match(/#?slp=([A-Za-z0-9\-_]+)/);
+          if (!match) throw new Error("コード形式が正しくありません");
+          let b64 = match[1].replace(/-/g, "+").replace(/_/g, "/");
+          while (b64.length % 4) b64 += "=";
+          const jsonStr = decodeURIComponent(escape(atob(b64)));
+          const data = JSON.parse(jsonStr);
+          if (!data.clinicName || !data.chartNo || !data.patientName) {
+            throw new Error("必須項目が不足しています");
+          }
+          const patient = {
+            clinic: data.clinicName,
+            chart: data.chartNo,
+            name: data.patientName,
+            serial: data.serial || "",
+            email: data.logShareEmail || ""
+          };
+          await DB.setSetting("patient", patient);
+          this.state.patient = patient;
+          this.refreshUI();
+          alert(`登録完了：${patient.name} 様`);
+        } catch (err) {
+          alert("コードの読み取りに失敗しました：" + err.message);
+        }
+      },
+
+      setupUserEvents() {
+        document.getElementById("btn-apply-manual-qr").addEventListener("click", () => {
+          const val = document.getElementById("qr-manual-input").value.trim();
+          if (val) this.parseAndSavePatientCode(val);
+        });
+
+        document.getElementById("btn-demo-user").addEventListener("click", async () => {
+          const demo = {
+            clinic: "テスト発行元",
+            chart: "0001",
+            name: "テスト計測者",
+            serial: "DEMO-001",
+            email: "demo@example.com"
+          };
+          await DB.setSetting("patient", demo);
+          this.state.patient = demo;
+          this.refreshUI();
+          alert("テスト用計測者を登録しました");
+        });
+
+        document.getElementById("btn-scan-qr").addEventListener("click", () => this.startQrCamera());
+      },
+
+      async startQrCamera() {
+        if (!("BarcodeDetector" in window)) {
+          alert("このブラウザはカメラでのQR自動認識に非対応です。下の入力欄にURLを貼り付けてください。");
+          return;
+        }
+        try {
+          const video = document.getElementById("qr-video");
+          const container = document.getElementById("qr-video-container");
+          this.qrStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+          video.srcObject = this.qrStream;
+          await video.play();
+          container.style.display = "block";
+
+          const detector = new BarcodeDetector({ formats: ["qr_code"] });
+          const scanLoop = async () => {
+            if (!this.qrStream) return;
+            try {
+              const codes = await detector.detect(video);
+              if (codes.length > 0) {
+                this.stopQrCamera();
+                await this.parseAndSavePatientCode(codes[0].rawValue);
+                return;
+              }
+            } catch (_) {}
+            requestAnimationFrame(scanLoop);
+          };
+          requestAnimationFrame(scanLoop);
+        } catch (err) {
+          alert("カメラの起動に失敗しました：" + err.message);
+        }
+      },
+
+      stopQrCamera() {
+        if (this.qrStream) {
+          this.qrStream.getTracks().forEach((t) => t.stop());
+          this.qrStream = null;
+        }
+        const container = document.getElementById("qr-video-container");
+        if (container) container.style.display = "none";
+      },
+
+      /* --- 準備・許可・基準音 (仕様書 3.2 / 4.2 / 5.2) --- */
+      setupPrepEvents() {
+        const slider = document.getElementById("voice-exclude-strength");
+        slider.addEventListener("input", async (e) => {
+          const val = Number(e.target.value);
+          document.getElementById("voice-strength-val").textContent = val;
+          this.state.audioPrefs.voiceThreshold = val;
+          await DB.setSetting("audioPreferences", this.state.audioPrefs);
+        });
+
+        document.getElementById("btn-request-perms").addEventListener("click", () => this.requestPermissions());
+        document.getElementById("btn-measure-ref").addEventListener("click", () => this.measureReferenceSound());
+        document.getElementById("btn-play-ref").addEventListener("click", () => this.playReferenceSound());
+      },
+
+      async requestPermissions() {
+        // 仕様書 3.2: iOS ではセンサー許可の要求を他の許可より先に発行する
+        if (typeof DeviceMotionEvent !== "undefined" && typeof DeviceMotionEvent.requestPermission === "function") {
+          try {
+            const res = await DeviceMotionEvent.requestPermission();
+            this.state.motionGranted = (res === "granted");
+          } catch (_) {
+            this.state.motionGranted = false;
+          }
+        } else {
+          this.state.motionGranted = true;
+        }
+
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          stream.getTracks().forEach((t) => t.stop());
+          this.state.micGranted = true;
+        } catch (err) {
+          this.state.micGranted = false;
+          alert("マイクの許可が必要です：" + err.message);
+        }
+        this.refreshUI();
+      },
+
+      async measureReferenceSound() {
+        if (!this.state.micGranted) {
+          alert("先に「マイク・モーション許可を取得」を押してください。");
+          return;
+        }
+        const btn = document.getElementById("btn-measure-ref");
+        btn.disabled = true;
+        btn.textContent = "測定中...「あいうえお」と発声してください（3秒）";
+
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({
+            audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }
+          });
+          const ctx = new (window.AudioContext || window.webkitAudioContext)();
+          const src = ctx.createMediaStreamSource(stream);
+          const proc = ctx.createScriptProcessor(4096, 1, 1);
+          const chunks = [];
+          proc.onaudioprocess = (e) => {
+            chunks.push(new Float32Array(e.inputBuffer.getChannelData(0)));
+          };
+          src.connect(proc);
+          proc.connect(ctx.destination);
+
+          await new Promise((r) => setTimeout(r, 3000));
+
+          proc.disconnect();
+          src.disconnect();
+          stream.getTracks().forEach((t) => t.stop());
+          const sampleRate = ctx.sampleRate;
+          await ctx.close();
+
+          const totalLen = chunks.reduce((acc, c) => acc + c.length, 0);
+          const allSamples = new Float32Array(totalLen);
+          let offset = 0;
+          for (const c of chunks) {
+            allSamples.set(c, offset);
+            offset += c.length;
+          }
+
+          // 前半0.5秒を環境音、全体を声のピークとして簡易算出
+          const envLen = Math.min(allSamples.length, Math.floor(sampleRate * 0.5));
+          const envDb = AudioUtil.calcRmsDb(allSamples.slice(0, envLen));
+          const voiceDb = AudioUtil.calcRmsDb(allSamples);
+
+          if (!(envDb >= -120 && voiceDb > envDb && voiceDb <= 0)) {
+            throw new Error("有効な基準音が取れませんでした。もう少しはっきり発声してください。");
+          }
+
+          const wavBlob = AudioUtil.encodeWav(allSamples, sampleRate);
+          const refObj = {
+            envDb,
+            voiceDb,
+            gain: this.state.audioPrefs.gain,
+            measuredAt: Date.now(),
+            wav: wavBlob
+          };
+          await DB.setSetting("reference", refObj);
+          this.state.reference = refObj;
+          this.refreshUI();
+          alert("基準音を保存しました！");
+        } catch (err) {
+          alert("測定エラー：" + err.message);
+        } finally {
+          btn.disabled = false;
+          btn.textContent = LABELS.btnMeasureRef;
+        }
+      },
+
+      playReferenceSound() {
+        if (!this.state.reference || !this.state.reference.wav) return;
+        const url = URL.createObjectURL(this.state.reference.wav);
+        const audio = new Audio(url);
+        audio.onended = () => URL.revokeObjectURL(url);
+        audio.play();
+      },
+
+      /* --- 黒画面モード --- */
       setupBlackScreen() {
         const btnEnter = document.getElementById("btn-enter-black");
         const overlay = document.getElementById("black-screen");
+        btnEnter.addEventListener("click", () => this.enterBlackScreen());
 
-        btnEnter.addEventListener("click", () => {
-          this.enterBlackScreen();
-        });
-
-        // 長押し（1.5秒）で復帰
         const startHold = (e) => {
           e.preventDefault();
-          this.blackScreenTimer = setTimeout(() => {
-            this.exitBlackScreen();
-          }, 1500);
+          this.blackScreenTimer = setTimeout(() => this.exitBlackScreen(), 1500);
         };
-
         const cancelHold = () => {
           if (this.blackScreenTimer) {
             clearTimeout(this.blackScreenTimer);
@@ -433,11 +863,8 @@
         document.documentElement.classList.add("is-black-screen");
         document.body.classList.add("is-black-screen");
         overlay.classList.add("active");
-
         if (document.documentElement.requestFullscreen) {
-          document.documentElement.requestFullscreen().catch(() => {
-            // ブラウザや環境により拒否された場合はCSSのみで継続
-          });
+          document.documentElement.requestFullscreen().catch(() => {});
         }
       },
 
@@ -446,7 +873,6 @@
         overlay.classList.remove("active");
         document.documentElement.classList.remove("is-black-screen");
         document.body.classList.remove("is-black-screen");
-
         if (document.fullscreenElement && document.exitFullscreen) {
           document.exitFullscreen().catch(() => {});
         }
