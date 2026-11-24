@@ -321,7 +321,7 @@
   <div class="app-container">
     <header>
       <h1 data-label="appTitle">SomnoLog</h1>
-      <span class="version-badge" id="app-version">v1.0.0-complete</span>
+      <span class="version-badge" id="app-version">v1.0.1-complete</span>
     </header>
 
     <!-- 1. 開始画面 -->
@@ -752,6 +752,7 @@
       timeline: [],
       events: [],
       inEvent: false,
+      preRollChunks: [],
       eventChunks: [],
       eventStartOffset: 0,
       silenceCount: 0,
@@ -766,6 +767,7 @@
         this.timeline = [];
         this.events = [];
         this.inEvent = false;
+        this.preRollChunks = [];
         this.eventChunks = [];
         this.silenceCount = 0;
         this.pendingSaveRecord = null;
@@ -821,15 +823,17 @@
             if (db >= thresholdDb) {
               if (!this.inEvent) {
                 this.inEvent = true;
-                this.eventStartOffset = (Date.now() - this.startedAt) / 1000;
-                this.eventChunks = [];
+                this.eventStartOffset = Math.max(0, (Date.now() - this.startedAt) / 1000 - 0.5);
+                this.eventChunks = [...this.preRollChunks, input];
+                this.preRollChunks = [];
+              } else {
+                this.eventChunks.push(input);
               }
-              this.eventChunks.push(input);
               this.silenceCount = 0;
             } else if (this.inEvent) {
               this.eventChunks.push(input);
               this.silenceCount++;
-              if (this.silenceCount >= 5) {
+              if (this.silenceCount >= 12) {
                 const captured = this.eventChunks;
                 const startSec = this.eventStartOffset;
                 this.inEvent = false;
@@ -837,6 +841,9 @@
                 this.silenceCount = 0;
                 this.processEvent(captured, startSec);
               }
+            } else {
+              this.preRollChunks.push(input);
+              if (this.preRollChunks.length > 6) this.preRollChunks.shift();
             }
           };
 
@@ -1220,9 +1227,6 @@
       }
     };
 
-    /**
-     * 共有・プライバシー確認・単体ZIP生成モジュール
-     */
     const Sharer = {
       decisions: {},
       targetEvents: [],
