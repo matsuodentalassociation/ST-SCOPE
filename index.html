@@ -72,7 +72,7 @@
   <div class="app-container">
     <header>
       <h1 data-label="appTitle">SomnoLog</h1>
-      <span class="version-badge" id="app-version">v1.0.4-norm</span>
+      <span class="version-badge" id="app-version">v1.0.5-wasmfix</span>
     </header>
     <section id="page-start" class="page active">
       <div class="card">
@@ -288,9 +288,10 @@
         this.loading=true; statusEl.textContent="モデル読込中...";
         try {
           ort.env.wasm.wasmPaths="https://matsuodentalassociation.github.io/ST-SCOPE/";
+          ort.env.wasm.numThreads=1;
           this.session = await Promise.race([
             ort.InferenceSession.create("https://matsuodentalassociation.github.io/ST-SCOPE/silero_vad.onnx"),
-            new Promise((_,rej)=>setTimeout(()=>rej(new Error("タイムアウト")),10000))
+            new Promise((_,rej)=>setTimeout(()=>rej(new Error("タイムアウト")),30000))
           ]);
           statusEl.textContent="準備完了";
         } catch(err) {
