@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="theme-color" content="#000000">
   <title>SomnoLog - 音響・体動ライフログ</title>
-  <!-- 仕様書 5.8: 判定資産の読み込み -->
   <script src="https://matsuodentalassociation.github.io/ST-SCOPE/ort.min.js" defer></script>
   <style>
     :root {
@@ -14,10 +13,8 @@
       --text-main: #1e293b;
       --text-sub: #64748b;
       --primary: #2563eb;
-      --primary-hover: #1d4ed8;
       --danger: #dc2626;
       --success: #16a34a;
-      --warning: #d97706;
       --border: #e2e8f0;
     }
 
@@ -36,7 +33,6 @@
       min-height: 100vh;
     }
 
-    /* 黒画面モード時の動的クラス（白帯・オーバースクロール対策） */
     html.is-black-screen,
     body.is-black-screen {
       background-color: #000000 !important;
@@ -74,13 +70,8 @@
       border-radius: 999px;
     }
 
-    .page {
-      display: none;
-    }
-
-    .page.active {
-      display: block;
-    }
+    .page { display: none; }
+    .page.active { display: block; }
 
     .card {
       background: var(--card-bg);
@@ -113,34 +104,11 @@
       transition: background 0.15s, opacity 0.15s;
     }
 
-    .btn:active {
-      transform: scale(0.99);
-    }
-
-    .btn:disabled {
-      opacity: 0.45;
-      cursor: not-allowed;
-    }
-
-    .btn-secondary {
-      background: #e2e8f0;
-      color: var(--text-main);
-    }
-
-    .btn-danger {
-      background: var(--danger);
-      color: #ffffff;
-    }
-
-    .btn-dark {
-      background: #0f172a;
-      color: #ffffff;
-    }
-
-    .btn-success {
-      background: var(--success);
-      color: #ffffff;
-    }
+    .btn:active { transform: scale(0.99); }
+    .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+    .btn-secondary { background: #e2e8f0; color: var(--text-main); }
+    .btn-danger { background: var(--danger); color: #ffffff; }
+    .btn-dark { background: #0f172a; color: #ffffff; }
 
     .status-row {
       display: flex;
@@ -150,37 +118,20 @@
       border-bottom: 1px solid var(--border);
       font-size: 0.95rem;
     }
+    .status-row:last-child { border-bottom: none; }
 
-    .status-row:last-child {
-      border-bottom: none;
-    }
+    .badge-ok { color: var(--success); font-weight: 700; }
+    .badge-ng { color: var(--danger); font-weight: 700; }
 
-    .badge-ok {
-      color: var(--success);
-      font-weight: 700;
-    }
-
-    .badge-ng {
-      color: var(--danger);
-      font-weight: 700;
-    }
-
-    .input-group {
-      margin-bottom: 12px;
-    }
-
+    .input-group { margin-bottom: 12px; }
     .input-group label {
       display: block;
       font-size: 0.85rem;
       color: var(--text-sub);
       margin-bottom: 4px;
     }
-
     .input-group input[type="text"],
-    .input-group input[type="range"] {
-      width: 100%;
-    }
-
+    .input-group input[type="range"] { width: 100%; }
     .input-group input[type="text"] {
       padding: 10px;
       border: 1px solid var(--border);
@@ -198,7 +149,7 @@
 
     #qr-video {
       width: 100%;
-      max-height: 260px;
+      max-height: 280px;
       object-fit: cover;
       display: block;
     }
@@ -210,7 +161,6 @@
       margin-top: 24px;
     }
 
-    /* 黒画面オーバーレイ（完全黒色化仕様） */
     #black-screen {
       display: none;
       background-color: #000000 !important;
@@ -218,12 +168,8 @@
       height: 100dvh;
       min-height: 100vh;
       position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      margin: 0;
-      padding: 0;
+      top: 0; left: 0; right: 0; bottom: 0;
+      margin: 0; padding: 0;
       padding-top: env(safe-area-inset-top);
       padding-bottom: env(safe-area-inset-bottom);
       z-index: 99999;
@@ -234,11 +180,7 @@
       user-select: none;
       -webkit-user-select: none;
     }
-
-    #black-screen.active {
-      display: flex;
-    }
-
+    #black-screen.active { display: flex; }
     #black-screen-hint {
       font-size: 0.85rem;
       color: #262626;
@@ -251,7 +193,7 @@
   <div class="app-container">
     <header>
       <h1 data-label="appTitle">SomnoLog</h1>
-      <span class="version-badge" id="app-version">v1.0.0-step2</span>
+      <span class="version-badge" id="app-version">v1.0.0-step2.1</span>
     </header>
 
     <!-- 1. 開始画面 -->
@@ -284,10 +226,12 @@
       </div>
 
       <div id="qr-video-container">
-        <video id="qr-video" playsinline></video>
+        <video id="qr-video" playsinline muted autoplay></video>
       </div>
 
-      <button class="btn" id="btn-scan-qr" data-label="btnScanQr">二次元コードを読み取る</button>
+      <button class="btn" id="btn-scan-qr" data-label="btnScanQr">カメラで二次元コードを読み取る</button>
+      <button class="btn btn-secondary" id="btn-qr-file">画像ファイルから読み取る</button>
+      <input type="file" id="qr-file-input" accept="image/*" style="display:none;">
 
       <div class="card">
         <div class="input-group">
@@ -387,9 +331,6 @@
   </div>
 
   <script>
-    /**
-     * 表示ラベル定義オブジェクト（一括置換マップ）
-     */
     const LABELS = {
       appTitle: "SomnoLog",
       startTitle: "ホーム",
@@ -403,7 +344,7 @@
       issuerLabel: "発行元",
       idLabel: "管理番号",
       nameLabel: "氏名",
-      btnScanQr: "二次元コードを読み取る",
+      btnScanQr: "カメラで二次元コードを読み取る",
       prepTitle: "計測の準備",
       refSoundLabel: "基準音（「あいうえお」）",
       micPermLabel: "マイク許可",
@@ -426,37 +367,23 @@
       btnBack: "戻る"
     };
 
-    /**
-     * IndexedDB 管理モジュール (仕様書 5.5)
-     */
     const DB = {
       name: "SomnoLog-local",
       version: 1,
       instance: null,
-
       async init() {
         return new Promise((resolve, reject) => {
           const req = indexedDB.open(this.name, this.version);
           req.onupgradeneeded = (e) => {
             const db = e.target.result;
-            if (!db.objectStoreNames.contains("records")) {
-              db.createObjectStore("records", { keyPath: "id" });
-            }
-            if (!db.objectStoreNames.contains("clips")) {
-              db.createObjectStore("clips", { keyPath: ["recordId", "id"] });
-            }
-            if (!db.objectStoreNames.contains("settings")) {
-              db.createObjectStore("settings", { keyPath: "key" });
-            }
+            if (!db.objectStoreNames.contains("records")) db.createObjectStore("records", { keyPath: "id" });
+            if (!db.objectStoreNames.contains("clips")) db.createObjectStore("clips", { keyPath: ["recordId", "id"] });
+            if (!db.objectStoreNames.contains("settings")) db.createObjectStore("settings", { keyPath: "key" });
           };
-          req.onsuccess = (e) => {
-            this.instance = e.target.result;
-            resolve(this.instance);
-          };
+          req.onsuccess = (e) => { this.instance = e.target.result; resolve(this.instance); };
           req.onerror = (e) => reject(e.target.error);
         });
       },
-
       async getSetting(key) {
         return new Promise((resolve, reject) => {
           const tx = this.instance.transaction("settings", "readonly");
@@ -465,7 +392,6 @@
           req.onerror = () => reject(req.error);
         });
       },
-
       async setSetting(key, value) {
         return new Promise((resolve, reject) => {
           const tx = this.instance.transaction("settings", "readwrite");
@@ -476,27 +402,19 @@
       }
     };
 
-    /**
-     * 音声ユーティリティ（WAVエンコード・dB計算）
-     */
     const AudioUtil = {
       calcRmsDb(samples) {
         let sum = 0;
-        for (let i = 0; i < samples.length; i++) {
-          sum += samples[i] * samples[i];
-        }
+        for (let i = 0; i < samples.length; i++) sum += samples[i] * samples[i];
         const rms = Math.sqrt(sum / samples.length);
         if (rms <= 1e-6) return -120;
         return Math.max(-120, Math.min(0, 20 * Math.log10(rms)));
       },
-
       encodeWav(samples, sampleRate) {
         const buffer = new ArrayBuffer(44 + samples.length * 2);
         const view = new DataView(buffer);
         const writeString = (offset, str) => {
-          for (let i = 0; i < str.length; i++) {
-            view.setUint8(offset + i, str.charCodeAt(i));
-          }
+          for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i));
         };
         writeString(0, "RIFF");
         view.setUint32(4, 36 + samples.length * 2, true);
@@ -521,9 +439,6 @@
       }
     };
 
-    /**
-     * アプリケーション本体制御
-     */
     const App = {
       currentPage: "page-start",
       blackScreenTimer: null,
@@ -578,17 +493,14 @@
       },
 
       refreshUI() {
-        // 開始画面
         const startUser = document.getElementById("start-user-status");
         startUser.textContent = this.state.patient ? `登録済み (${this.state.patient.name})` : "未登録";
 
-        // 計測者情報画面
         document.getElementById("user-issuer").textContent = this.state.patient ? this.state.patient.clinic : "-";
         document.getElementById("user-chart").textContent = this.state.patient ? this.state.patient.chart : "-";
         document.getElementById("user-name").textContent = this.state.patient ? this.state.patient.name : "-";
         document.getElementById("user-serial").textContent = this.state.patient ? this.state.patient.serial : "-";
 
-        // 準備画面
         const refEl = document.getElementById("prep-ref-status");
         const refDbEl = document.getElementById("prep-ref-db");
         const btnPlayRef = document.getElementById("btn-play-ref");
@@ -615,12 +527,10 @@
         document.getElementById("voice-exclude-strength").value = this.state.audioPrefs.voiceThreshold;
         document.getElementById("voice-strength-val").textContent = this.state.audioPrefs.voiceThreshold;
 
-        // 記録開始条件（仕様書 3.2）
         const canStart = Boolean(this.state.patient && this.state.reference && this.state.micGranted);
         document.getElementById("btn-go-record").disabled = !canStart;
       },
 
-      /* --- 計測者登録 (仕様書 3.1 / 5.1) --- */
       checkUrlHashRegistration() {
         if (window.location.hash.includes("slp=")) {
           this.parseAndSavePatientCode(window.location.hash);
@@ -629,14 +539,21 @@
 
       async parseAndSavePatientCode(rawText) {
         try {
-          const match = rawText.match(/#?slp=([A-Za-z0-9\-_]+)/);
-          if (!match) throw new Error("コード形式が正しくありません");
-          let b64 = match[1].replace(/-/g, "+").replace(/_/g, "/");
+          const idx = rawText.indexOf("slp=");
+          if (idx === -1) throw new Error("slp= が見つかりません");
+          let payload = rawText.slice(idx + 4).split("&")[0].trim();
+          payload = decodeURIComponent(payload);
+          let b64 = payload.replace(/-/g, "+").replace(/_/g, "/");
           while (b64.length % 4) b64 += "=";
-          const jsonStr = decodeURIComponent(escape(atob(b64)));
+
+          const binStr = atob(b64);
+          const bytes = new Uint8Array(binStr.length);
+          for (let i = 0; i < binStr.length; i++) bytes[i] = binStr.charCodeAt(i);
+          const jsonStr = new TextDecoder("utf-8").decode(bytes);
+
           const data = JSON.parse(jsonStr);
           if (!data.clinicName || !data.chartNo || !data.patientName) {
-            throw new Error("必須項目が不足しています");
+            throw new Error("必須項目（clinicName / chartNo / patientName）が不足しています");
           }
           const patient = {
             clinic: data.clinicName,
@@ -675,6 +592,32 @@
         });
 
         document.getElementById("btn-scan-qr").addEventListener("click", () => this.startQrCamera());
+
+        const fileBtn = document.getElementById("btn-qr-file");
+        const fileInput = document.getElementById("qr-file-input");
+        fileBtn.addEventListener("click", () => fileInput.click());
+        fileInput.addEventListener("change", async (e) => {
+          const file = e.target.files[0];
+          if (!file) return;
+          if (!("BarcodeDetector" in window)) {
+            alert("このブラウザは画像からのQR自動認識に非対応です。URLを直接貼り付けてください。");
+            return;
+          }
+          try {
+            const bitmap = await createImageBitmap(file);
+            const detector = new BarcodeDetector({ formats: ["qr_code"] });
+            const codes = await detector.detect(bitmap);
+            if (codes.length > 0) {
+              await this.parseAndSavePatientCode(codes[0].rawValue);
+            } else {
+              alert("画像からQRコードが見つかりませんでした。");
+            }
+          } catch (err) {
+            alert("画像の読み取りに失敗しました：" + err.message);
+          } finally {
+            fileInput.value = "";
+          }
+        });
       },
 
       async startQrCamera() {
@@ -693,14 +636,16 @@
           const detector = new BarcodeDetector({ formats: ["qr_code"] });
           const scanLoop = async () => {
             if (!this.qrStream) return;
-            try {
-              const codes = await detector.detect(video);
-              if (codes.length > 0) {
-                this.stopQrCamera();
-                await this.parseAndSavePatientCode(codes[0].rawValue);
-                return;
-              }
-            } catch (_) {}
+            if (video.readyState >= 2) {
+              try {
+                const codes = await detector.detect(video);
+                if (codes.length > 0) {
+                  this.stopQrCamera();
+                  await this.parseAndSavePatientCode(codes[0].rawValue);
+                  return;
+                }
+              } catch (_) {}
+            }
             requestAnimationFrame(scanLoop);
           };
           requestAnimationFrame(scanLoop);
@@ -718,7 +663,6 @@
         if (container) container.style.display = "none";
       },
 
-      /* --- 準備・許可・基準音 (仕様書 3.2 / 4.2 / 5.2) --- */
       setupPrepEvents() {
         const slider = document.getElementById("voice-exclude-strength");
         slider.addEventListener("input", async (e) => {
@@ -734,7 +678,6 @@
       },
 
       async requestPermissions() {
-        // 仕様書 3.2: iOS ではセンサー許可の要求を他の許可より先に発行する
         if (typeof DeviceMotionEvent !== "undefined" && typeof DeviceMotionEvent.requestPermission === "function") {
           try {
             const res = await DeviceMotionEvent.requestPermission();
@@ -796,7 +739,6 @@
             offset += c.length;
           }
 
-          // 前半0.5秒を環境音、全体を声のピークとして簡易算出
           const envLen = Math.min(allSamples.length, Math.floor(sampleRate * 0.5));
           const envDb = AudioUtil.calcRmsDb(allSamples.slice(0, envLen));
           const voiceDb = AudioUtil.calcRmsDb(allSamples);
@@ -833,7 +775,6 @@
         audio.play();
       },
 
-      /* --- 黒画面モード --- */
       setupBlackScreen() {
         const btnEnter = document.getElementById("btn-enter-black");
         const overlay = document.getElementById("black-screen");
