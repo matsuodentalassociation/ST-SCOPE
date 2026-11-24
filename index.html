@@ -72,7 +72,7 @@
   <div class="app-container">
     <header>
       <h1 data-label="appTitle">SomnoLog</h1>
-      <span class="version-badge" id="app-version">v1.0.5-wasmfix</span>
+      <span class="version-badge" id="app-version">v1.0.7-realtime-vad</span>
     </header>
     <section id="page-start" class="page active">
       <div class="card">
@@ -142,6 +142,7 @@
         </div>
         <div class="status-row"><span data-label="eventCountLabel">イベント検出数</span><strong id="record-events">0</strong></div>
         <div class="status-row"><span>人声判定モデル</span><strong id="record-vad-status">準備中</strong></div>
+        <div class="status-row"><span>AI人声確率（直近）</span><strong id="record-vad-prob">- %</strong></div>
       </div>
       <button class="btn btn-dark" id="btn-enter-black" data-label="btnEnterBlack">黒画面モードへ</button>
       <button class="btn btn-danger" id="btn-stop-record" data-label="btnStopRecord">計測を停止する</button>
@@ -199,8 +200,8 @@
     <section id="page-share" class="page">
       <div class="card">
         <h2 data-label="shareTitle">データの書き出し・共有</h2>
-        <p style="color:var(--text-sub);font-size:0.85rem;margin-top:0;">プライバシー保護のため、人声・不明と判定された音声を共有に含めるか確認してください。</p>
-        <div class="status-row"><span>確認対象（人声・不明）</span><strong id="share-target-count">0件</strong></div>
+        <p style="color:var(--text-sub);font-size:0.85rem;margin-top:0;">プライバシー保護のため、不明と判定された音声を共有に含めるか確認してください。</p>
+        <div class="status-row"><span>確認対象（不明）</span><strong id="share-target-count">0件</strong></div>
         <div class="btn-row" style="margin-top:8px;">
           <button class="btn btn-success btn-sm" id="btn-share-all-ok" style="flex:1;">まとめてOK</button>
           <button class="btn btn-danger btn-sm" id="btn-share-all-ng" style="flex:1;">すべてダメ（除外）</button>
@@ -318,7 +319,7 @@
       active:false, wakeLock:null, stream:null, ctx:null, proc:null, timerId:null, timelineTimerId:null, motionHandler:null, currentMotion:null, recordId:null, startedAt:0, sampleRate:44100, timeline:[], events:[], inEvent:false, preRollChunks:[], eventChunks:[], eventStartOffset:0, silenceCount:0, lastWindowDb:-120, pendingSaveRecord:null,
       async start() {
         if(this.active) return; this.active=true; this.recordId="rec_"+Date.now(); this.startedAt=Date.now(); this.timeline=[]; this.events=[]; this.inEvent=false; this.preRollChunks=[]; this.eventChunks=[]; this.silenceCount=0; this.pendingSaveRecord=null; this.currentMotion=null;
-        document.getElementById("btn-retry-save").style.display="none"; document.getElementById("record-state").textContent="記録中"; document.getElementById("record-events").textContent="0"; document.getElementById("record-elapsed").textContent="00:00:00"; document.getElementById("record-db").textContent="- dB"; document.getElementById("record-db-bar").style.width="0%"; document.getElementById("record-motion-val").textContent="-"; document.getElementById("record-motion-bar").style.width="0%";
+        document.getElementById("btn-retry-save").style.display="none"; document.getElementById("record-state").textContent="記録中"; document.getElementById("record-events").textContent="0"; document.getElementById("record-elapsed").textContent="00:00:00"; document.getElementById("record-db").textContent="- dB"; document.getElementById("record-db-bar").style.width="0%"; document.getElementById("record-motion-val").textContent="-"; document.getElementById("record-motion-bar").style.width="0%"; document.getElementById("record-vad-prob").textContent="- %";
         if("wakeLock"in navigator){ try{ this.wakeLock=await navigator.wakeLock.request("screen"); }catch(_){} }
         VAD.init();
         this.motionHandler=(e)=>{ const acc=e.acceleration||e.accelerationIncludingGravity; if(acc&&acc.x!==null){ const mag=Math.sqrt(acc.x*acc.x+acc.y*acc.y+acc.z*acc.z); this.currentMotion=mag; document.getElementById("record-motion-val").textContent=mag.toFixed(2); document.getElementById("record-motion-bar").style.width=Math.min(100,(mag/15)*100).toFixed(1)+"%"; } };
@@ -350,14 +351,19 @@
         const totalLen=chunks.reduce((a,c)=>a+c.length,0), samples=new Float32Array(totalLen); let offset=0;
         for(const c of chunks){ samples.set(c,offset); offset+=c.length; }
         const durationSec=totalLen/this.sampleRate; if(durationSec<0.3) return;
-        const peakDb=AudioUtil.calcRmsDb(samples), clipId="clip_"+Date.now()+"_"+Math.floor(Math.random()*1000), wavBlob=AudioUtil.encodeWav(samples,this.sampleRate);
+        const peakDb=AudioUtil.calcRmsDb(samples), clipId="clip_"+Date.now()+"_"+Math.floor(Math.random()*1000);
         let category="unknown", voiceProb=null, vadErr=null;
         try {
           const samples16k=AudioUtil.resampleTo16k(samples,this.sampleRate); voiceProb=await VAD.predictVoiceProb(samples16k);
-          if(voiceProb!==null){ const th=(App.state.audioPrefs.voiceThreshold||65)/100; category=voiceProb>=th?"voice":"snore"; }
+          if(voiceProb!==null){
+            document.getElementById("record-vad-prob").textContent=Math.round(voiceProb*100)+" %";
+            const th=(App.state.audioPrefs.voiceThreshold||65)/100; category=voiceProb>=th?"voice":"snore";
+          }
         } catch(err){ vadErr=err.message; console.warn("イベント判定失敗:",err); }
         const eventMeta={id:clipId,startSec:Number(startSec.toFixed(2)),durationSec:Number(durationSec.toFixed(2)),peakDb:Number(peakDb.toFixed(1)),category,voiceProb:voiceProb!==null?Number(voiceProb.toFixed(3)):null,vadErr};
         this.events.push(eventMeta); document.getElementById("record-events").textContent=String(this.events.length);
+        if(category==="voice") return;
+        const wavBlob=AudioUtil.encodeWav(samples,this.sampleRate);
         try{ await DB.saveClip({recordId:this.recordId,id:clipId,wav:wavBlob,meta:eventMeta}); }catch(err){ console.error("クリップ保存失敗:",err); }
       },
       async stop(save=true) {
@@ -422,13 +428,16 @@
         listEl.innerHTML="";
         evs.forEach(ev=>{
           const row=document.createElement("div"); row.className="event-item";
-          const tc=ev.category==="voice"?"tag-voice":ev.category==="snore"?"tag-snore":"tag-unknown", lb=ev.category==="voice"?"人声":ev.category==="snore"?"いびき":"不明";
+          const tc=ev.category==="voice"?"tag-voice":ev.category==="snore"?"tag-snore":"tag-unknown", lb=ev.category==="voice"?"人声(破棄)":ev.category==="snore"?"いびき":"不明";
           const st=ev.startSec!==undefined?`${Number(ev.startSec).toFixed(1)}秒〜`:"時刻記録", dr=ev.durationSec!==undefined?`${Number(ev.durationSec).toFixed(1)}s`:"-", db=ev.peakDb!==undefined?`${Number(ev.peakDb).toFixed(1)}dB`:"-";
           const vp=ev.voiceProb!==null&&ev.voiceProb!==undefined?` AI:${Math.round(ev.voiceProb*100)}%`:(ev.vadErr?` (${ev.vadErr})`:"");
           row.innerHTML=`<div><span class="tag ${tc}">${lb}</span><span> ${st} (${dr} / ${db}${vp})</span></div>`;
-          const btn=document.createElement("button"); btn.className="btn btn-secondary btn-sm"; btn.textContent="▶ 再生";
-          btn.addEventListener("click",async()=>{ const clip=await DB.getClip(record.id,ev.id); if(!clip||!clip.wav){alert("音声クリップが見つかりません。");return;} const u=URL.createObjectURL(clip.wav), a=new Audio(u); a.onended=()=>URL.revokeObjectURL(u); a.play(); });
-          row.appendChild(btn); listEl.appendChild(row);
+          if(ev.category!=="voice"){
+            const btn=document.createElement("button"); btn.className="btn btn-secondary btn-sm"; btn.textContent="▶ 再生";
+            btn.addEventListener("click",async()=>{ const clip=await DB.getClip(record.id,ev.id); if(!clip||!clip.wav){alert("音声クリップが見つかりません。");return;} const u=URL.createObjectURL(clip.wav), a=new Audio(u); a.onended=()=>URL.revokeObjectURL(u); a.play(); });
+            row.appendChild(btn);
+          }
+          listEl.appendChild(row);
         });
       },
       drawTimeline() {
@@ -477,7 +486,7 @@
       decisions:{}, targetEvents:[],
       openShare() {
         const rec=Viewer.currentRecord; if(!rec) return;
-        this.decisions={}; this.targetEvents=(rec.events||[]).filter(e=>e.category!=="snore");
+        this.decisions={}; this.targetEvents=(rec.events||[]).filter(e=>e.category!=="snore"&&e.category!=="voice");
         document.getElementById("share-target-count").textContent=`${this.targetEvents.length}件`;
         document.getElementById("btn-open-mail").disabled=true; this.renderReviewList(rec); App.navigate("page-share");
       },
@@ -547,112 +556,4 @@
         this.checkUrlHashRegistration(); this.refreshUI();
       },
       applyLabels(){ document.querySelectorAll("[data-label]").forEach(el=>{ const k=el.getAttribute("data-label"); if(LABELS[k]) el.textContent=LABELS[k]; }); },
-      async loadSavedState(){ this.state.patient=await DB.getSetting("patient"); this.state.reference=await DB.getSetting("reference"); const p=await DB.getSetting("audioPreferences"); if(p) this.state.audioPrefs=p; },
-      navigate(pageId) {
-        this.stopQrCamera(); document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));
-        const t=document.getElementById(pageId); if(t){ t.classList.add("active"); this.currentPage=pageId; window.scrollTo(0,0); }
-        if(pageId==="page-calendar") Viewer.loadCalendar();
-        this.refreshUI();
-      },
-      refreshUI() {
-        document.getElementById("start-user-status").textContent=this.state.patient?`登録済み (${this.state.patient.name})`:"未登録";
-        document.getElementById("user-issuer").textContent=this.state.patient?this.state.patient.clinic:"-";
-        document.getElementById("user-chart").textContent=this.state.patient?this.state.patient.chart:"-";
-        document.getElementById("user-name").textContent=this.state.patient?this.state.patient.name:"-";
-        document.getElementById("user-serial").textContent=this.state.patient?this.state.patient.serial:"-";
-        const refEl=document.getElementById("prep-ref-status"), refDbEl=document.getElementById("prep-ref-db"), btnPlayRef=document.getElementById("btn-play-ref");
-        if(this.state.reference){ refEl.textContent="測定済み"; refEl.className="badge-ok"; refDbEl.textContent=`${this.state.reference.envDb.toFixed(1)} / ${this.state.reference.voiceDb.toFixed(1)} dB`; btnPlayRef.disabled=!this.state.reference.wav; }
-        else { refEl.textContent="未測定"; refEl.className="badge-ng"; refDbEl.textContent="- / -"; btnPlayRef.disabled=true; }
-        const micEl=document.getElementById("prep-mic-status"); micEl.textContent=this.state.micGranted?"許可済み":"未許可"; micEl.className=this.state.micGranted?"badge-ok":"badge-ng";
-        const motEl=document.getElementById("prep-motion-status"); motEl.textContent=this.state.motionGranted?"許可済み":"未許可"; motEl.className=this.state.motionGranted?"badge-ok":"badge-ng";
-        document.getElementById("voice-exclude-strength").value=this.state.audioPrefs.voiceThreshold; document.getElementById("voice-strength-val").textContent=this.state.audioPrefs.voiceThreshold;
-        document.getElementById("btn-go-record").disabled=!Boolean(this.state.patient&&this.state.reference&&this.state.micGranted);
-      },
-      checkUrlHashRegistration(){ if(window.location.hash.includes("slp=")) this.parseAndSavePatientCode(window.location.hash); },
-      async parseAndSavePatientCode(rawText) {
-        try {
-          const idx=rawText.indexOf("slp="); if(idx===-1) throw new Error("slp= が見つかりません");
-          let b64=decodeURIComponent(rawText.slice(idx+4).split("&")[0].trim()).replace(/-/g,"+").replace(/_/g,"/");
-          while(b64.length%4) b64+="=";
-          const bin=atob(b64), bytes=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) bytes[i]=bin.charCodeAt(i);
-          const data=JSON.parse(new TextDecoder("utf-8").decode(bytes));
-          if(!data.clinicName||!data.chartNo||!data.patientName) throw new Error("必須項目が不足しています");
-          const patient={clinic:data.clinicName,chart:data.chartNo,name:data.patientName,serial:data.serial||"",email:data.logShareEmail||""};
-          await DB.setSetting("patient",patient); this.state.patient=patient; this.refreshUI(); alert(`登録完了：${patient.name} 様`);
-        } catch(err){ alert("コードの読み取りに失敗しました："+err.message); }
-      },
-      setupUserEvents() {
-        document.getElementById("btn-apply-manual-qr").addEventListener("click",()=>{ const v=document.getElementById("qr-manual-input").value.trim(); if(v) this.parseAndSavePatientCode(v); });
-        document.getElementById("btn-demo-user").addEventListener("click",async()=>{ const d={clinic:"テスト発行元",chart:"0001",name:"テスト計測者",serial:"DEMO-001",email:"demo@example.com"}; await DB.setSetting("patient",d); this.state.patient=d; this.refreshUI(); alert("テスト用計測者を登録しました"); });
-        document.getElementById("btn-scan-qr").addEventListener("click",()=>this.startQrCamera());
-        const fi=document.getElementById("qr-file-input"); document.getElementById("btn-qr-file").addEventListener("click",()=>fi.click());
-        fi.addEventListener("change",async(e)=>{ const f=e.target.files[0]; if(!f)return; if(!("BarcodeDetector"in window)){alert("画像QR非対応です。URLを貼り付けてください。");return;} try{ const det=new BarcodeDetector({formats:["qr_code"]}), codes=await det.detect(await createImageBitmap(f)); if(codes.length>0) await this.parseAndSavePatientCode(codes[0].rawValue); else alert("QRが見つかりませんでした。"); }catch(err){alert("読取失敗："+err.message);}finally{fi.value="";} });
-      },
-      async startQrCamera() {
-        if(!("BarcodeDetector"in window)){ alert("カメラQR非対応です。URLを貼り付けてください。"); return; }
-        try {
-          const v=document.getElementById("qr-video"), c=document.getElementById("qr-video-container");
-          this.qrStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment"}}); v.srcObject=this.qrStream; await v.play(); c.style.display="block";
-          const det=new BarcodeDetector({formats:["qr_code"]});
-          const loop=async()=>{ if(!this.qrStream)return; if(v.readyState>=2){ try{ const codes=await det.detect(v); if(codes.length>0){this.stopQrCamera();await this.parseAndSavePatientCode(codes[0].rawValue);return;} }catch(_){} } requestAnimationFrame(loop); };
-          requestAnimationFrame(loop);
-        } catch(err){ alert("カメラ起動失敗："+err.message); }
-      },
-      stopQrCamera(){ if(this.qrStream){ this.qrStream.getTracks().forEach(t=>t.stop()); this.qrStream=null; } const c=document.getElementById("qr-video-container"); if(c) c.style.display="none"; },
-      setupPrepEvents() {
-        document.getElementById("voice-exclude-strength").addEventListener("input",async(e)=>{ const v=Number(e.target.value); document.getElementById("voice-strength-val").textContent=v; this.state.audioPrefs.voiceThreshold=v; await DB.setSetting("audioPreferences",this.state.audioPrefs); });
-        document.getElementById("btn-request-perms").addEventListener("click",()=>this.requestPermissions());
-        document.getElementById("btn-measure-ref").addEventListener("click",()=>this.measureReferenceSound());
-        document.getElementById("btn-play-ref").addEventListener("click",()=>this.playReferenceSound());
-        document.getElementById("btn-go-record").addEventListener("click",()=>{ this.navigate("page-record"); Recorder.start(); });
-      },
-      setupRecordEvents(){ document.getElementById("btn-stop-record").addEventListener("click",()=>Recorder.stop(true)); document.getElementById("btn-retry-save").addEventListener("click",()=>Recorder.trySaveRecord()); },
-      setupViewerEvents() {
-        document.getElementById("btn-cal-prev").addEventListener("click",()=>{ Viewer.calMonth--; if(Viewer.calMonth<0){Viewer.calMonth=11;Viewer.calYear--;} Viewer.renderCalendar(); });
-        document.getElementById("btn-cal-next").addEventListener("click",()=>{ Viewer.calMonth++; if(Viewer.calMonth>11){Viewer.calMonth=0;Viewer.calYear++;} Viewer.renderCalendar(); });
-        const ei=document.getElementById("external-file-input"); document.getElementById("btn-import-external").addEventListener("click",()=>ei.click());
-        ei.addEventListener("change",(e)=>{ const f=e.target.files[0]; if(f) Viewer.handleExternalFile(f); ei.value=""; });
-        document.getElementById("btn-go-share").addEventListener("click",()=>Sharer.openShare());
-      },
-      setupShareEvents() {
-        document.getElementById("btn-share-all-ok").addEventListener("click",()=>Sharer.setAll(true));
-        document.getElementById("btn-share-all-ng").addEventListener("click",()=>Sharer.setAll(false));
-        document.getElementById("btn-create-zip").addEventListener("click",()=>Sharer.createZip());
-        document.getElementById("btn-open-mail").addEventListener("click",()=>Sharer.openMail());
-      },
-      async requestPermissions() {
-        if(typeof DeviceMotionEvent!=="undefined"&&typeof DeviceMotionEvent.requestPermission==="function"){ try{ this.state.motionGranted=(await DeviceMotionEvent.requestPermission())==="granted"; }catch(_){ this.state.motionGranted=false; } } else { this.state.motionGranted=true; }
-        try{ const s=await navigator.mediaDevices.getUserMedia({audio:true}); s.getTracks().forEach(t=>t.stop()); this.state.micGranted=true; }catch(err){ this.state.micGranted=false; alert("マイクの許可が必要です："+err.message); }
-        this.refreshUI();
-      },
-      async measureReferenceSound() {
-        if(!this.state.micGranted){ alert("先に許可を取得してください。"); return; }
-        const btn=document.getElementById("btn-measure-ref"); btn.disabled=true; btn.textContent="測定中...「あいうえお」（3秒）";
-        try {
-          const stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}});
-          const ctx=new(window.AudioContext||window.webkitAudioContext)(), src=ctx.createMediaStreamSource(stream), proc=ctx.createScriptProcessor(4096,1,1), chunks=[];
-          proc.onaudioprocess=(e)=>chunks.push(new Float32Array(e.inputBuffer.getChannelData(0)));
-          src.connect(proc); proc.connect(ctx.destination);
-          await new Promise(r=>setTimeout(r,3000));
-          proc.disconnect(); src.disconnect(); stream.getTracks().forEach(t=>t.stop()); const sr=ctx.sampleRate; await ctx.close();
-          const len=chunks.reduce((a,c)=>a+c.length,0), all=new Float32Array(len); let off=0; for(const c of chunks){ all.set(c,off); off+=c.length; }
-          const envDb=AudioUtil.calcRmsDb(all.slice(0,Math.min(all.length,Math.floor(sr*0.5)))), voiceDb=AudioUtil.calcRmsDb(all);
-          if(!(envDb>=-120&&voiceDb>envDb&&voiceDb<=0)) throw new Error("有効な基準音が取れませんでした。");
-          const refObj={envDb,voiceDb,gain:this.state.audioPrefs.gain,measuredAt:Date.now(),wav:AudioUtil.encodeWav(all,sr)};
-          await DB.setSetting("reference",refObj); this.state.reference=refObj; this.refreshUI(); alert("基準音を保存しました！");
-        } catch(err){ alert("測定エラー："+err.message); } finally{ btn.disabled=false; btn.textContent=LABELS.btnMeasureRef; }
-      },
-      playReferenceSound(){ if(!this.state.reference||!this.state.reference.wav) return; const u=URL.createObjectURL(this.state.reference.wav), a=new Audio(u); a.onended=()=>URL.revokeObjectURL(u); a.play(); },
-      setupBlackScreen() {
-        const ov=document.getElementById("black-screen"); document.getElementById("btn-enter-black").addEventListener("click",()=>this.enterBlackScreen());
-        const sh=(e)=>{ e.preventDefault(); this.blackScreenTimer=setTimeout(()=>this.exitBlackScreen(),1500); };
-        const ch=()=>{ if(this.blackScreenTimer){ clearTimeout(this.blackScreenTimer); this.blackScreenTimer=null; } };
-        ov.addEventListener("touchstart",sh,{passive:false}); ov.addEventListener("touchend",ch); ov.addEventListener("touchcancel",ch); ov.addEventListener("mousedown",sh); ov.addEventListener("mouseup",ch); ov.addEventListener("mouseleave",ch);
-      },
-      enterBlackScreen(){ document.documentElement.classList.add("is-black-screen"); document.body.classList.add("is-black-screen"); document.getElementById("black-screen").classList.add("active"); if(document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(()=>{}); },
-      exitBlackScreen(){ document.documentElement.classList.remove("is-black-screen"); document.body.classList.remove("is-black-screen"); document.getElementById("black-screen").classList.remove("active"); if(document.fullscreenElement&&document.exitFullscreen) document.exitFullscreen().catch(()=>{}); }
-    };
-    window.addEventListener("DOMContentLoaded",()=>App.init());
-  </script>
-</body>
-</html>
+      async load
