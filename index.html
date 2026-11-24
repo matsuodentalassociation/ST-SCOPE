@@ -1376,6 +1376,26 @@ async function savePatient(p) {
       document.body.appendChild(el);
     }
   }
+
+  // V113の黒画面長押しでV424のblack-exitを発火させる
+  const bs = document.getElementById("black-screen") || document.getElementById("page-black");
+  if (bs) {
+    let timer = null;
+    const start = () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        const exitBtn = document.getElementById("black-exit");
+        if (exitBtn) exitBtn.click();
+      }, 1200);
+    };
+    const cancel = () => clearTimeout(timer);
+    bs.addEventListener("pointerdown", start);
+    bs.addEventListener("pointerup", cancel);
+    bs.addEventListener("pointercancel", cancel);
+    bs.addEventListener("touchstart", start, { passive: true });
+    bs.addEventListener("touchend", cancel);
+    bs.addEventListener("touchcancel", cancel);
+  }
 })();
 
 const appState = {
@@ -1472,15 +1492,18 @@ const storage = {
         motion: t.motion
       };
     });
+    const baseDb = rec.reference?.voiceDb ?? null;
     await DB.put("sessions", {
       id: rec.id,
       startedAt: rec.startedAt,
       endedAt: rec.endedAt,
       durationMs: rec.durationMs,
       counts,
-      refDb: rec.reference?.voiceDb ?? null,
+      base: baseDb,
+      refDb: baseDb,
       refEnvDb: rec.reference?.envDb ?? null,
-      refAt: rec.reference?.measuredAt ?? null
+      refAt: rec.reference?.measuredAt ?? null,
+      patient: S.patient ? { ...S.patient } : null
     });
     if (events.length) await DB.putMany("events", events);
     if (secs.length) await DB.putMany("secs", secs);
@@ -4891,7 +4914,7 @@ window.addEventListener("pagehide", () => {
 /* ===== 起動 ===== */
 async function boot() {
   const vt = $("ver-text"); if (vt) vt.textContent = "SomnoLog V113_1";
-  document.querySelectorAll(".app-name").forEach((el) => { el.textContent = "SomnoLog V113_1"; });
+  document.querySelectorAll(".app-name").forEach((el) => { el.textContent = "SomnoLog V113_2"; });
   await loadPatient();
   if (!checkHashOnLoad()) showPage("start");
   updateBackButtons();
