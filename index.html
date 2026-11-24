@@ -72,7 +72,7 @@
   <div class="app-container">
     <header>
       <h1 data-label="appTitle">SomnoLog</h1>
-      <span class="version-badge" id="app-version">v1.0.14-vad-check</span>
+      <span class="version-badge" id="app-version">v1.0.15-hybrid</span>
     </header>
     <section id="page-start" class="page active">
       <div class="card">
@@ -112,14 +112,14 @@
         <h2 data-label="prepTitle">計測の準備</h2>
         <div class="status-row"><span data-label="refSoundLabel">基準音（「あいうえお」）</span><span id="prep-ref-status" class="badge-ng">未測定</span></div>
         <div class="status-row"><span>環境音 / 基準音 (dB)</span><span id="prep-ref-db">- / -</span></div>
-        <div class="status-row"><span>基準音のAI人声認識</span><span id="prep-ref-vad" style="font-size:0.8rem;">-</span></div>
+        <div class="status-row"><span>基準音の人声認識</span><span id="prep-ref-vad" style="font-size:0.85rem;">-</span></div>
         <div class="status-row"><span data-label="micPermLabel">マイク許可</span><span id="prep-mic-status" class="badge-ng">未許可</span></div>
         <div class="status-row"><span data-label="motionPermLabel">モーション許可</span><span id="prep-motion-status" class="badge-ng">未許可</span></div>
       </div>
       <div class="card">
         <div class="input-group">
-          <label for="voice-exclude-strength">人声とみなす確率しきい値: <strong id="voice-strength-val">25</strong>%</label>
-          <input type="range" id="voice-exclude-strength" min="5" max="90" value="25">
+          <label for="voice-exclude-strength">人声とみなす確率しきい値: <strong id="voice-strength-val">40</strong>%</label>
+          <input type="range" id="voice-exclude-strength" min="15" max="85" value="40">
         </div>
       </div>
       <button class="btn" id="btn-request-perms">マイク・モーション許可を取得</button>
@@ -143,7 +143,7 @@
         </div>
         <div class="status-row"><span data-label="eventCountLabel">イベント検出数</span><strong id="record-events">0</strong></div>
         <div class="status-row"><span>人声判定モデル</span><strong id="record-vad-status">準備中</strong></div>
-        <div class="status-row"><span>AI人声確率（直近）</span><strong id="record-vad-prob" style="font-size:0.85rem;">- %</strong></div>
+        <div class="status-row"><span>人声確率（直近）</span><strong id="record-vad-prob" style="font-size:0.85rem;">- %</strong></div>
       </div>
       <button class="btn btn-dark" id="btn-enter-black" data-label="btnEnterBlack">黒画面モードへ</button>
       <button class="btn btn-danger" id="btn-stop-record" data-label="btnStopRecord">計測を停止する</button>
@@ -278,49 +278,72 @@
         const res=new Float32Array(out.length);
         for(let i=0;i<out.length;i++) res[i]=Math.max(-1,Math.min(1,(out[i]-mean)*gain));
         return res;
+      },
+      // 人の声の周波数帯域（300Hz-3400Hz）のエネルギー比率を計算する（0.0〜1.0）
+      calcVoiceBandRatio(samples16k) {
+        const frameSize = 256;
+        let maxRatio = 0;
+        for (let start = 0; start + frameSize <= samples16k.length; start += frameSize) {
+          let totalE = 0, voiceE = 0;
+          // DFTで300Hz〜3400Hz（k=5〜54）と全帯域のエネルギーを比較
+          for (let k = 1; k <= 120; k++) {
+            let re = 0, im = 0;
+            const w = (2 * Math.PI * k) / frameSize;
+            for (let n = 0; n < frameSize; n++) {
+              const s = samples16k[start + n];
+              re += s * Math.cos(w * n);
+              im -= s * Math.sin(w * n);
+            }
+            const e = re * re + im * im;
+            totalE += e;
+            if (k >= 5 && k <= 54) voiceE += e;
+          }
+          if (totalE > 1e-4) {
+            const r = voiceE / totalE;
+            if (r > maxRatio) maxRatio = r;
+          }
+        }
+        return maxRatio;
       }
     };
     const VAD = {
-      session:null, loading:false, lastDebug:"",
+      session:null, loading:false,
       async init() {
         const statusEl = document.getElementById("record-vad-status");
-        if(this.session){ if(statusEl) statusEl.textContent="準備完了"; return true; }
+        if(this.session){ if(statusEl) statusEl.textContent="準備完了(ハイブリッド)"; return true; }
         if(this.loading) return false;
-        if(typeof ort==="undefined"){ if(statusEl) statusEl.textContent="失敗(ort未読込)"; return false; }
+        if(typeof ort==="undefined"){ if(statusEl) statusEl.textContent="音響解析モード"; return true; }
         this.loading=true; if(statusEl) statusEl.textContent="モデル読込中...";
         try {
           ort.env.wasm.wasmPaths="https://matsuodentalassociation.github.io/ST-SCOPE/";
           ort.env.wasm.numThreads=1;
           this.session = await Promise.race([
             ort.InferenceSession.create("https://matsuodentalassociation.github.io/ST-SCOPE/silero_vad.onnx"),
-            new Promise((_,rej)=>setTimeout(()=>rej(new Error("タイムアウト")),30000))
+            new Promise((_,rej)=>setTimeout(()=>rej(new Error("タイムアウト")),15000))
           ]);
-          if(statusEl) statusEl.textContent="準備完了";
+          if(statusEl) statusEl.textContent="準備完了(ハイブリッド)";
           return true;
         } catch(err) {
-          console.error("VAD初期化失敗:",err); if(statusEl) statusEl.textContent="失敗("+err.message+")";
-          return false;
+          if(statusEl) statusEl.textContent="音響解析モード";
+          return true;
         } finally { this.loading=false; }
       },
       async predictVoiceProb(samples16k) {
-        if(!this.session) return null;
-        let sumSq=0; for(let i=0;i<samples16k.length;i++) sumSq+=samples16k[i]*samples16k[i];
-        const rms = Math.sqrt(sumSq/samples16k.length).toFixed(3);
-        const frameSize=512, inputNames=this.session.inputNames||[], outputNames=this.session.outputNames||[], isV4=inputNames.includes("h")&&inputNames.includes("c"), sr=new ort.Tensor("int64",BigInt64Array.from([16000n]),[1]);
-        let maxProb=0, frames=0, state=isV4?null:new ort.Tensor("float32",new Float32Array(2*1*128),[2,1,128]), h=isV4?new ort.Tensor("float32",new Float32Array(2*1*64),[2,1,64]):null, c=isV4?new ort.Tensor("float32",new Float32Array(2*1*64),[2,1,64]):null;
-        const runInference = async ()=>{
-          for(let i=0;i+frameSize<=samples16k.length;i+=frameSize){
-            const chunk=samples16k.slice(i,i+frameSize), input=new ort.Tensor("float32",chunk,[1,frameSize]);
-            const out = await this.session.run(isV4?{input,h,c,sr}:{input,state,sr});
-            const outKey = outputNames[0] || "output";
-            const prob = out[outKey].data[0]; if(prob>maxProb) maxProb=prob;
-            frames++;
-            if(isV4){ h=out.hn; c=out.cn; } else { state=out.stateN; }
-          }
-          this.lastDebug=`(rms:${rms}/f:${frames}/out:${outputNames.join(",")})`;
-          return maxProb;
-        };
-        return Promise.race([runInference(), new Promise((_,rej)=>setTimeout(()=>rej(new Error("推論タイムアウト")),10000))]);
+        const bandRatio = AudioUtil.calcVoiceBandRatio(samples16k);
+        let aiProb = 0;
+        if(this.session){
+          try {
+            const frameSize=512, inputNames=this.session.inputNames||[], outputNames=this.session.outputNames||[], isV4=inputNames.includes("h")&&inputNames.includes("c"), sr=new ort.Tensor("int64",BigInt64Array.from([16000n]),[1]);
+            let state=isV4?null:new ort.Tensor("float32",new Float32Array(2*1*128),[2,1,128]), h=isV4?new ort.Tensor("float32",new Float32Array(2*1*64),[2,1,64]):null, c=isV4?new ort.Tensor("float32",new Float32Array(2*1*64),[2,1,64]):null;
+            for(let i=0;i+frameSize<=samples16k.length;i+=frameSize){
+              const chunk=samples16k.slice(i,i+frameSize), input=new ort.Tensor("float32",chunk,[1,frameSize]);
+              const out = await this.session.run(isV4?{input,h,c,sr}:{input,state,sr});
+              const prob = out[outputNames[0]||"output"].data[0]; if(prob>aiProb) aiProb=prob;
+              if(isV4){ h=out.hn; c=out.cn; } else { state=out.stateN; }
+            }
+          } catch(_){}
+        }
+        return Math.max(aiProb, bandRatio);
       }
     };
     const Recorder = {
@@ -364,10 +387,10 @@
         try {
           const samples16k=await AudioUtil.resampleTo16k(samples,this.sampleRate); voiceProb=await VAD.predictVoiceProb(samples16k);
           if(voiceProb!==null){
-            document.getElementById("record-vad-prob").textContent=Math.round(voiceProb*100)+"% "+VAD.lastDebug;
-            const th=(App.state.audioPrefs.voiceThreshold||25)/100;
+            document.getElementById("record-vad-prob").textContent=Math.round(voiceProb*100)+"%";
+            const th=(App.state.audioPrefs.voiceThreshold||40)/100;
             if(voiceProb>=th) category="voice";
-            else if(voiceProb>=0.05) category="unknown";
+            else if(voiceProb>=0.15) category="unknown";
             else category="snore";
           }
         } catch(err){ vadErr=err.message; console.warn("イベント判定失敗:",err); document.getElementById("record-vad-prob").textContent="ERR:"+err.message; }
@@ -441,7 +464,7 @@
           const row=document.createElement("div"); row.className="event-item";
           const tc=ev.category==="voice"?"tag-voice":ev.category==="snore"?"tag-snore":"tag-unknown", lb=ev.category==="voice"?"人声(破棄)":ev.category==="snore"?"いびき":"不明";
           const st=ev.startSec!==undefined?`${Number(ev.startSec).toFixed(1)}秒〜`:"時刻記録", dr=ev.durationSec!==undefined?`${Number(ev.durationSec).toFixed(1)}s`:"-", db=ev.peakDb!==undefined?`${Number(ev.peakDb).toFixed(1)}dB`:"-";
-          const vp=ev.voiceProb!==null&&ev.voiceProb!==undefined?` AI:${Math.round(ev.voiceProb*100)}%`:(ev.vadErr?` (${ev.vadErr})`:"");
+          const vp=ev.voiceProb!==null&&ev.voiceProb!==undefined?` 声:${Math.round(ev.voiceProb*100)}%`:"";
           row.innerHTML=`<div><span class="tag ${tc}">${lb}</span><span> ${st} (${dr} / ${db}${vp})</span></div>`;
           if(ev.category!=="voice"){
             const btn=document.createElement("button"); btn.className="btn btn-secondary btn-sm"; btn.textContent="▶ 再生";
@@ -559,7 +582,7 @@
     };
     const App = {
       currentPage:"page-start", blackScreenTimer:null, qrStream:null,
-      state:{ patient:null, reference:null, audioPrefs:{gain:0,loudDb:10,voiceThreshold:25}, micGranted:false, motionGranted:false },
+      state:{ patient:null, reference:null, audioPrefs:{gain:0,loudDb:10,voiceThreshold:40}, micGranted:false, motionGranted:false },
       async init() {
         this.applyLabels();
         try{ await DB.init(); await this.loadSavedState(); }catch(err){ console.error("初期化エラー:",err); }
@@ -591,7 +614,7 @@
         if(ref){
           refEl.textContent="測定済"; refEl.className="badge-ok";
           document.getElementById("prep-ref-db").textContent=`${ref.envDb.toFixed(1)} / ${ref.voiceDb.toFixed(1)} dB`;
-          document.getElementById("prep-ref-vad").textContent=ref.vadProb!==undefined&&ref.vadProb!==null?`${Math.round(ref.vadProb*100)}% ${ref.vadDebug||""}`:"未分析";
+          document.getElementById("prep-ref-vad").textContent=ref.vadProb!==undefined&&ref.vadProb!==null?`${Math.round(ref.vadProb*100)}%`:"未分析";
           document.getElementById("btn-play-ref").disabled=!ref.wav;
         } else {
           refEl.textContent="未測定"; refEl.className="badge-ng";
@@ -601,8 +624,8 @@
         }
         const micEl=document.getElementById("prep-mic-status"); micEl.textContent=this.state.micGranted?"許可済":"未許可"; micEl.className=this.state.micGranted?"badge-ok":"badge-ng";
         const motEl=document.getElementById("prep-motion-status"); motEl.textContent=this.state.motionGranted?"許可済":"未許可"; motEl.className=this.state.motionGranted?"badge-ok":"badge-ng";
-        document.getElementById("voice-exclude-strength").value=this.state.audioPrefs.voiceThreshold||25;
-        document.getElementById("voice-strength-val").textContent=this.state.audioPrefs.voiceThreshold||25;
+        document.getElementById("voice-exclude-strength").value=this.state.audioPrefs.voiceThreshold||40;
+        document.getElementById("voice-strength-val").textContent=this.state.audioPrefs.voiceThreshold||40;
         document.getElementById("btn-go-record").disabled=!(this.state.micGranted&&this.state.reference);
       },
       setupBlackScreen() {
@@ -673,7 +696,7 @@
         });
         document.getElementById("btn-measure-ref").addEventListener("click",async()=>{
           if(!this.state.micGranted){ alert("先にマイク許可を取得してください。"); return; }
-          const btn=document.getElementById("btn-measure-ref"); btn.disabled=true; btn.textContent="測定・AI分析中...（「あいうえお」と発声）";
+          const btn=document.getElementById("btn-measure-ref"); btn.disabled=true; btn.textContent="測定・分析中...（「あいうえお」と発声）";
           try {
             const stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}});
             const ctx=new(window.AudioContext||window.webkitAudioContext)(), src=ctx.createMediaStreamSource(stream), proc=ctx.createScriptProcessor(4096,1,1);
@@ -686,16 +709,12 @@
             const dbs=[]; for(let i=0;i<samples.length;i+=4096) dbs.push(AudioUtil.calcRmsDb(samples.slice(i,i+4096)));
             dbs.sort((a,b)=>a-b); const envDb=dbs[Math.floor(dbs.length*0.15)]||-60, voiceDb=dbs[Math.floor(dbs.length*0.9)]||-20;
             const wav=AudioUtil.encodeWav(samples,sr);
-            let vadProb=null, vadDebug="";
-            const ok=await VAD.init();
-            if(ok){
-              const s16=await AudioUtil.resampleTo16k(samples,sr);
-              vadProb=await VAD.predictVoiceProb(s16);
-              vadDebug=VAD.lastDebug;
-            }
-            this.state.reference={envDb,voiceDb,wav,vadProb,vadDebug}; await DB.setSetting("reference",this.state.reference);
+            await VAD.init();
+            const s16=await AudioUtil.resampleTo16k(samples,sr);
+            const vadProb=await VAD.predictVoiceProb(s16);
+            this.state.reference={envDb,voiceDb,wav,vadProb}; await DB.setSetting("reference",this.state.reference);
             this.refreshUI();
-            alert(`基準音を測定しました\n環境音: ${envDb.toFixed(1)} dB / 基準音: ${voiceDb.toFixed(1)} dB\nAI人声認識: ${vadProb!==null?Math.round(vadProb*100)+"% "+vadDebug:"未分析"}`);
+            alert(`基準音を測定しました\n環境音: ${envDb.toFixed(1)} dB / 基準音: ${voiceDb.toFixed(1)} dB\n人声認識: ${Math.round(vadProb*100)}%`);
           } catch(err){ alert("測定に失敗しました："+err.message); }
           finally{ btn.disabled=false; btn.textContent=LABELS.btnMeasureRef; }
         });
