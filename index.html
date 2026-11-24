@@ -139,7 +139,7 @@
       font-size: 0.95rem;
     }
 
-    /* モーションセンサー表示バー */
+    /* 音圧・モーションセンサー表示バー */
     .meter-wrap {
       padding: 8px 0;
       border-bottom: 1px solid var(--border);
@@ -163,6 +163,9 @@
       background: var(--primary);
       border-radius: 999px;
       transition: width 0.08s linear;
+    }
+    .meter-fill.sound {
+      background: var(--success);
     }
 
     #qr-video-container {
@@ -219,7 +222,7 @@
   <div class="app-container">
     <header>
       <h1 data-label="appTitle">SomnoLog</h1>
-      <span class="version-badge" id="app-version">v1.0.0-step3.1</span>
+      <span class="version-badge" id="app-version">v1.0.0-step3.2</span>
     </header>
 
     <!-- 1. 開始画面 -->
@@ -313,7 +316,15 @@
         <h2 data-label="recordTitle">波形・音圧モニタリング中</h2>
         <div class="status-row"><span data-label="recordStateLabel">状態</span><strong id="record-state">待機</strong></div>
         <div class="status-row"><span data-label="elapsedLabel">経過時間</span><strong id="record-elapsed">00:00:00</strong></div>
-        <div class="status-row"><span>現在の音圧</span><strong id="record-db">- dB</strong></div>
+        <div class="meter-wrap">
+          <div class="meter-header">
+            <span>現在の音圧</span>
+            <strong id="record-db">- dB</strong>
+          </div>
+          <div class="meter-track">
+            <div class="meter-fill sound" id="record-db-bar"></div>
+          </div>
+        </div>
         <div class="meter-wrap">
           <div class="meter-header">
             <span>モーションセンサー（体動）</span>
@@ -599,6 +610,8 @@
         document.getElementById("record-state").textContent = "記録中";
         document.getElementById("record-events").textContent = "0";
         document.getElementById("record-elapsed").textContent = "00:00:00";
+        document.getElementById("record-db").textContent = "- dB";
+        document.getElementById("record-db-bar").style.width = "0%";
         document.getElementById("record-motion-val").textContent = "-";
         document.getElementById("record-motion-bar").style.width = "0%";
 
@@ -640,6 +653,8 @@
             const db = AudioUtil.calcRmsDb(input);
             this.lastWindowDb = db;
             document.getElementById("record-db").textContent = db.toFixed(1) + " dB";
+            const dbPct = Math.max(0, Math.min(100, ((db + 80) / 80) * 100));
+            document.getElementById("record-db-bar").style.width = dbPct.toFixed(1) + "%";
 
             if (db >= thresholdDb) {
               if (!this.inEvent) {
