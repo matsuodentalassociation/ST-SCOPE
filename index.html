@@ -193,7 +193,7 @@
   <div class="app-container">
     <header>
       <h1 data-label="appTitle">SomnoLog</h1>
-      <span class="version-badge" id="app-version">v1.0.0-step2.2</span>
+      <span class="version-badge" id="app-version">v1.0.0-step3</span>
     </header>
 
     <!-- 1. 開始画面 -->
@@ -277,7 +277,7 @@
       <button class="btn" id="btn-request-perms">マイク・モーション許可を取得</button>
       <button class="btn" id="btn-measure-ref" data-label="btnMeasureRef">基準音を測定する（3秒間）</button>
       <button class="btn btn-secondary" id="btn-play-ref" disabled>基準音を再生する</button>
-      <button class="btn btn-dark" id="btn-go-record" onclick="App.navigate('page-record')" disabled data-label="btnStartRecord">計測を開始する</button>
+      <button class="btn btn-dark" id="btn-go-record" disabled data-label="btnStartRecord">計測を開始する</button>
       <button class="btn btn-secondary" onclick="App.navigate('page-start')" data-label="btnBack">戻る</button>
     </section>
 
@@ -287,10 +287,13 @@
         <h2 data-label="recordTitle">波形・音圧モニタリング中</h2>
         <div class="status-row"><span data-label="recordStateLabel">状態</span><strong id="record-state">待機</strong></div>
         <div class="status-row"><span data-label="elapsedLabel">経過時間</span><strong id="record-elapsed">00:00:00</strong></div>
+        <div class="status-row"><span>現在の音圧</span><strong id="record-db">- dB</strong></div>
         <div class="status-row"><span data-label="eventCountLabel">イベント検出数</span><strong id="record-events">0</strong></div>
+        <div class="status-row"><span>人声判定モデル</span><strong id="record-vad-status">準備中</strong></div>
       </div>
       <button class="btn btn-dark" id="btn-enter-black" data-label="btnEnterBlack">黒画面モードへ</button>
-      <button class="btn btn-danger" id="btn-stop-record" onclick="App.navigate('page-start')" data-label="btnStopRecord">計測を停止する</button>
+      <button class="btn btn-danger" id="btn-stop-record" data-label="btnStopRecord">計測を停止する</button>
+      <button class="btn" id="btn-retry-save" style="display:none;">保存を再試行</button>
     </section>
 
     <!-- 5. カレンダー画面 -->
@@ -406,6 +409,22 @@
           req.onsuccess = () => resolve();
           req.onerror = () => reject(req.error);
         });
+      },
+      async saveClip(clipObj) {
+        return new Promise((resolve, reject) => {
+          const tx = this.instance.transaction("clips", "readwrite");
+          const req = tx.objectStore("clips").put(clipObj);
+          req.onsuccess = () => resolve();
+          req.onerror = () => reject(req.error);
+        });
+      },
+      async saveRecord(recordObj) {
+        return new Promise((resolve, reject) => {
+          const tx = this.instance.transaction("records", "readwrite");
+          const req = tx.objectStore("records").put(recordObj);
+          req.onsuccess = () => resolve();
+          req.onerror = () => reject(req.error);
+        });
       }
     };
 
@@ -443,6 +462,281 @@
           offset += 2;
         }
         return new Blob([buffer], { type: "audio/wav" });
+      },
+      async resampleTo16k(samples, sourceRate) {
+        if (sourceRate === 16000) return samples;
+        const targetLen = Math.max(1, Math.round(samples.length * 16000 / sourceRate));
+        const offlineCtx = new OfflineAudioContext(1, targetLen, 16000);
+        const buffer = offlineCtx.createBuffer(1, samples.length, sourceRate);
+        buffer.copyToChannel(samples, 0);
+        const src = offlineCtx.createBufferSource();
+        src.buffer = buffer;
+        src.connect(offlineCtx.destination);
+        src.start(0);
+        const rendered = await offlineCtx.startRendering();
+        return rendered.getChannelData(0);
+      }
+    };
+
+    const VAD = {
+      session: null,
+      loading: false,
+      async init() {
+        if (this.session || this.loading || typeof ort === "undefined") return;
+        this.loading = true;
+        try {
+          const modelUrl = "https://matsuodentalassociation.github.io/ST-SCOPE/silero_vad.onnx";
+          this.session = await Promise.race([
+            ort.InferenceSession.create(modelUrl),
+            new Promise((_, rej) => setTimeout(() => rej(new Error("VAD読込タイムアウト")), 10000))
+          ]);
+          document.getElementById("record-vad-status").textContent = "準備完了";
+        } catch (err) {
+          console.warn("VAD初期化失敗:", err);
+          document.getElementById("record-vad-status").textContent = "未読込（unknown扱い）";
+        } finally {
+          this.loading = false;
+        }
+      },
+      async predictVoiceProb(samples16k) {
+        if (!this.session) return null;
+        const frameSize = 512;
+        let state = new ort.Tensor("float32", new Float32Array(2 * 1 * 128), [2, 1, 128]);
+        const sr = new ort.Tensor("int64", BigInt64Array.from([16000n]), [1]);
+        let maxProb = 0;
+
+        const runInference = async () => {
+          for (let i = 0; i + frameSize <= samples16k.length; i += frameSize) {
+            const chunk = samples16k.slice(i, i + frameSize);
+            const input = new ort.Tensor("float32", chunk, [1, frameSize]);
+            const out = await this.session.run({ input, state, sr });
+            const prob = out.output.data[0];
+            if (prob > maxProb) maxProb = prob;
+            state = out.stateN;
+          }
+          return maxProb;
+        };
+
+        return Promise.race([
+          runInference(),
+          new Promise((_, rej) => setTimeout(() => rej(new Error("VAD推論タイムアウト")), 10000))
+        ]);
+      }
+    };
+
+    const Recorder = {
+      active: false,
+      wakeLock: null,
+      stream: null,
+      ctx: null,
+      proc: null,
+      timerId: null,
+      timelineTimerId: null,
+      motionHandler: null,
+      currentMotion: null,
+      recordId: null,
+      startedAt: 0,
+      sampleRate: 44100,
+      timeline: [],
+      events: [],
+      pendingChunks: [],
+      inEvent: false,
+      eventChunks: [],
+      eventStartOffset: 0,
+      silenceCount: 0,
+      lastWindowDb: -120,
+      pendingSaveRecord: null,
+
+      async start() {
+        if (this.active) return;
+        this.active = true;
+        this.recordId = "rec_" + Date.now();
+        this.startedAt = Date.now();
+        this.timeline = [];
+        this.events = [];
+        this.inEvent = false;
+        this.eventChunks = [];
+        this.silenceCount = 0;
+        this.pendingSaveRecord = null;
+
+        document.getElementById("btn-retry-save").style.display = "none";
+        document.getElementById("record-state").textContent = "記録中";
+        document.getElementById("record-events").textContent = "0";
+        document.getElementById("record-elapsed").textContent = "00:00:00";
+
+        if ("wakeLock" in navigator) {
+          try {
+            this.wakeLock = await navigator.wakeLock.request("screen");
+          } catch (_) {}
+        }
+
+        VAD.init();
+
+        this.motionHandler = (e) => {
+          const acc = e.acceleration || e.accelerationIncludingGravity;
+          if (acc && acc.x !== null) {
+            this.currentMotion = Math.sqrt(acc.x * acc.x + acc.y * acc.y + acc.z * acc.z);
+          }
+        };
+        window.addEventListener("devicemotion", this.motionHandler);
+
+        try {
+          this.stream = await navigator.mediaDevices.getUserMedia({
+            audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }
+          });
+          this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+          this.sampleRate = this.ctx.sampleRate;
+          const src = this.ctx.createMediaStreamSource(this.stream);
+          this.proc = this.ctx.createScriptProcessor(4096, 1, 1);
+
+          const envDb = App.state.reference ? App.state.reference.envDb : -60;
+          const thresholdDb = envDb + (App.state.audioPrefs.loudDb || 10);
+
+          this.proc.onaudioprocess = (e) => {
+            if (!this.active) return;
+            const input = new Float32Array(e.inputBuffer.getChannelData(0));
+            const db = AudioUtil.calcRmsDb(input);
+            this.lastWindowDb = db;
+            document.getElementById("record-db").textContent = db.toFixed(1) + " dB";
+
+            if (db >= thresholdDb) {
+              if (!this.inEvent) {
+                this.inEvent = true;
+                this.eventStartOffset = (Date.now() - this.startedAt) / 1000;
+                this.eventChunks = [];
+              }
+              this.eventChunks.push(input);
+              this.silenceCount = 0;
+            } else if (this.inEvent) {
+              this.eventChunks.push(input);
+              this.silenceCount++;
+              if (this.silenceCount >= 5) {
+                const captured = this.eventChunks;
+                const startSec = this.eventStartOffset;
+                this.inEvent = false;
+                this.eventChunks = [];
+                this.silenceCount = 0;
+                this.processEvent(captured, startSec);
+              }
+            }
+          };
+
+          src.connect(this.proc);
+          this.proc.connect(this.ctx.destination);
+
+          this.timerId = setInterval(() => {
+            const sec = Math.floor((Date.now() - this.startedAt) / 1000);
+            const h = String(Math.floor(sec / 3600)).padStart(2, "0");
+            const m = String(Math.floor((sec % 3600) / 60)).padStart(2, "0");
+            const s = String(sec % 60).padStart(2, "0");
+            document.getElementById("record-elapsed").textContent = `${h}:${m}:${s}`;
+          }, 1000);
+
+          this.timelineTimerId = setInterval(() => {
+            this.timeline.push({
+              t: Math.floor((Date.now() - this.startedAt) / 1000),
+              db: Number(this.lastWindowDb.toFixed(1)),
+              motion: this.currentMotion !== null ? Number(this.currentMotion.toFixed(3)) : null
+            });
+            this.currentMotion = null;
+          }, 5000);
+
+        } catch (err) {
+          alert("録音の開始に失敗しました：" + err.message);
+          this.stop(false);
+        }
+      },
+
+      async processEvent(chunks, startSec) {
+        const totalLen = chunks.reduce((a, c) => a + c.length, 0);
+        const samples = new Float32Array(totalLen);
+        let offset = 0;
+        for (const c of chunks) {
+          samples.set(c, offset);
+          offset += c.length;
+        }
+        const durationSec = totalLen / this.sampleRate;
+        if (durationSec < 0.3) return;
+
+        const peakDb = AudioUtil.calcRmsDb(samples);
+        const clipId = "clip_" + Date.now() + "_" + Math.floor(Math.random() * 1000);
+        const wavBlob = AudioUtil.encodeWav(samples, this.sampleRate);
+
+        let category = "unknown";
+        let voiceProb = null;
+        try {
+          const samples16k = await AudioUtil.resampleTo16k(samples, this.sampleRate);
+          voiceProb = await VAD.predictVoiceProb(samples16k);
+          if (voiceProb !== null) {
+            const threshold = (App.state.audioPrefs.voiceThreshold || 65) / 100;
+            category = voiceProb >= threshold ? "voice" : "snore";
+          }
+        } catch (err) {
+          console.warn("イベント判定失敗:", err);
+        }
+
+        const eventMeta = {
+          id: clipId,
+          startSec: Number(startSec.toFixed(2)),
+          durationSec: Number(durationSec.toFixed(2)),
+          peakDb: Number(peakDb.toFixed(1)),
+          category,
+          voiceProb: voiceProb !== null ? Number(voiceProb.toFixed(3)) : null
+        };
+        this.events.push(eventMeta);
+        document.getElementById("record-events").textContent = String(this.events.length);
+
+        try {
+          await DB.saveClip({
+            recordId: this.recordId,
+            id: clipId,
+            wav: wavBlob,
+            meta: eventMeta
+          });
+        } catch (err) {
+          console.error("クリップ保存失敗:", err);
+        }
+      },
+
+      async stop(save = true) {
+        this.active = false;
+        clearInterval(this.timerId);
+        clearInterval(this.timelineTimerId);
+        if (this.motionHandler) window.removeEventListener("devicemotion", this.motionHandler);
+
+        if (this.proc) { this.proc.disconnect(); this.proc = null; }
+        if (this.stream) { this.stream.getTracks().forEach((t) => t.stop()); this.stream = null; }
+        if (this.ctx) { await this.ctx.close().catch(() => {}); this.ctx = null; }
+        if (this.wakeLock) { await this.wakeLock.release().catch(() => {}); this.wakeLock = null; }
+
+        document.getElementById("record-state").textContent = "停止";
+        if (!save) return;
+
+        const recordObj = {
+          id: this.recordId,
+          startedAt: this.startedAt,
+          endedAt: Date.now(),
+          patient: App.state.patient,
+          reference: App.state.reference ? { envDb: App.state.reference.envDb, voiceDb: App.state.reference.voiceDb } : null,
+          timeline: this.timeline,
+          events: this.events
+        };
+        this.pendingSaveRecord = recordObj;
+        await this.trySaveRecord();
+      },
+
+      async trySaveRecord() {
+        if (!this.pendingSaveRecord) return;
+        try {
+          await DB.saveRecord(this.pendingSaveRecord);
+          this.pendingSaveRecord = null;
+          document.getElementById("btn-retry-save").style.display = "none";
+          alert("計測データを保存しました！");
+          App.navigate("page-start");
+        } catch (err) {
+          document.getElementById("btn-retry-save").style.display = "block";
+          alert("保存に失敗しました。「保存を再試行」を押してください：" + err.message);
+        }
       }
     };
 
@@ -469,6 +763,7 @@
         this.setupBlackScreen();
         this.setupUserEvents();
         this.setupPrepEvents();
+        this.setupRecordEvents();
         this.checkUrlHashRegistration();
         this.refreshUI();
       },
@@ -682,6 +977,15 @@
         document.getElementById("btn-request-perms").addEventListener("click", () => this.requestPermissions());
         document.getElementById("btn-measure-ref").addEventListener("click", () => this.measureReferenceSound());
         document.getElementById("btn-play-ref").addEventListener("click", () => this.playReferenceSound());
+        document.getElementById("btn-go-record").addEventListener("click", () => {
+          this.navigate("page-record");
+          Recorder.start();
+        });
+      },
+
+      setupRecordEvents() {
+        document.getElementById("btn-stop-record").addEventListener("click", () => Recorder.stop(true));
+        document.getElementById("btn-retry-save").addEventListener("click", () => Recorder.trySaveRecord());
       },
 
       async requestPermissions() {
