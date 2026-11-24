@@ -193,7 +193,7 @@
   <div class="app-container">
     <header>
       <h1 data-label="appTitle">SomnoLog</h1>
-      <span class="version-badge" id="app-version">v1.0.0-step2.1</span>
+      <span class="version-badge" id="app-version">v1.0.0-step2.2</span>
     </header>
 
     <!-- 1. 開始画面 -->
@@ -378,7 +378,7 @@
             const db = e.target.result;
             if (!db.objectStoreNames.contains("records")) db.createObjectStore("records", { keyPath: "id" });
             if (!db.objectStoreNames.contains("clips")) db.createObjectStore("clips", { keyPath: ["recordId", "id"] });
-            if (!db.objectStoreNames.contains("settings")) db.createObjectStore("settings", { keyPath: "key" });
+            if (!db.objectStoreNames.contains("settings")) db.createObjectStore("settings");
           };
           req.onsuccess = (e) => { this.instance = e.target.result; resolve(this.instance); };
           req.onerror = (e) => reject(e.target.error);
@@ -387,15 +387,22 @@
       async getSetting(key) {
         return new Promise((resolve, reject) => {
           const tx = this.instance.transaction("settings", "readonly");
-          const req = tx.objectStore("settings").get(key);
-          req.onsuccess = () => resolve(req.result ? req.result.value : null);
+          const store = tx.objectStore("settings");
+          const req = store.get(key);
+          req.onsuccess = () => {
+            const res = req.result;
+            if (res === undefined || res === null) return resolve(null);
+            if (store.keyPath && typeof res === "object" && "value" in res) return resolve(res.value);
+            resolve(res);
+          };
           req.onerror = () => reject(req.error);
         });
       },
       async setSetting(key, value) {
         return new Promise((resolve, reject) => {
           const tx = this.instance.transaction("settings", "readwrite");
-          const req = tx.objectStore("settings").put({ key, value });
+          const store = tx.objectStore("settings");
+          const req = store.keyPath ? store.put({ [store.keyPath]: key, value }) : store.put(value, key);
           req.onsuccess = () => resolve();
           req.onerror = () => reject(req.error);
         });
