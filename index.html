@@ -5,12 +5,12 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
 <meta name="theme-color" content="#000000">
 <meta http-equiv="Cache-Control" content="no-cache">
-<title>SomnoLog 基準音圧版 V425</title>
+<title>SomnoLog 基準音圧版 V426</title>
 <script>
 /* 更新は別の文書環境で起動する。失敗時は元のURLへ戻す。 */
 (function () {
   "use strict";
-  var baseVersion = 425;
+  var baseVersion = 426;
   var htmlKey = "sl_boot_html";
   var versionKey = "sl_boot_ver";
   var attemptKey = "sl_boot_attempt";
@@ -204,7 +204,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 
 <main id="page-start" class="page">
   <header class="head">
-    <h1 class="app-name">SomnoLog V425</h1>
+    <h1 class="app-name">SomnoLog V426</h1>
     <span class="tag">患者情報確認</span>
   </header>
   <p id="boot-status" class="muted" role="status">アプリを起動しています…</p>
@@ -212,7 +212,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
   <div id="scan-msg" class="err" role="alert" hidden></div>
   <button id="upd-reload" class="sub" disabled>アプリの更新</button>
   <p id="upd-msg" class="muted" hidden aria-live="polite"></p>
-  <p id="ver-text" class="muted">現在のバージョン：SomnoLog V425</p>
+  <p id="ver-text" class="muted">現在のバージョン：SomnoLog V426</p>
   <section class="card">
     <button id="usage-btn" class="warnbtn">使い方を見る</button>
     <button id="cam-btn">QRコードを読む</button>
@@ -253,7 +253,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 
 <main id="page-record" class="page" hidden>
   <header class="head">
-    <h1 class="app-name">SomnoLog V425</h1>
+    <h1 class="app-name">SomnoLog V426</h1>
     <div style="display:flex;align-items:center;gap:10px">
       <button id="rec-back" class="sub mini" type="button">戻る</button>
       <span id="rec-badge" class="tag">待機中</span>
@@ -264,7 +264,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
     <h2>使い方</h2>
     <ol class="steps">
       <li>「記録の準備」でマイクとモーションセンサーを許可し、基準音を設定します。</li>
-      <li>「記録開始」を押すと記録が始まります。「停止」を2秒間長押しすると記録が終わります。</li>
+      <li>「記録開始」を押すと記録が始まります。「停止」を押すと記録が終わります。</li>
       <li>「黒画面に切り替え」を押すと、画面を暗くして記録を続けられます。</li>
       <li>記録は「記録カレンダーを見る」から確認できます。</li>
     </ol>
@@ -280,7 +280,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 
 <main id="page-prep" class="page" hidden>
   <header class="head">
-    <h1 class="app-name">SomnoLog V425</h1>
+    <h1 class="app-name">SomnoLog V426</h1>
     <button id="prep-back" class="sub mini" type="button">戻る</button>
   </header>
   <button id="prep-usage-btn" class="warnbtn">使い方を見る</button>
@@ -355,45 +355,45 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 </main>
 
 <main id="page-detail" class="page" hidden>
-  <header class="head">
-    <h1>記録の詳細</h1>
-    <button id="detail-back" class="sub mini" type="button">戻る</button>
-  </header>
+  <div class="sticky-bar">
+    <button id="detail-back" class="sub" type="button">カレンダーに戻る</button>
+  </div>
   <p id="detail-status" class="muted" role="status"></p>
-  <section id="detail-summary" class="card" aria-labelledby="detail-date" hidden>
-    <h2 id="detail-date">睡眠記録</h2>
-    <div class="kv"><span>開始</span><b id="detail-start">—</b></div>
-    <div class="kv"><span>終了</span><b id="detail-end">—</b></div>
-    <div class="kv"><span>記録時間</span><b id="detail-duration">—</b></div>
-    <div class="kv"><span>いびき</span><b id="detail-snore-count">—</b></div>
-    <div class="kv"><span>人声</span><b id="detail-voice-count">—</b></div>
-    <div class="kv"><span>体動</span><b id="detail-motion-count">—</b></div>
-  </section>
-  <section id="detail-chart-card" class="card" aria-labelledby="detail-chart-title" hidden>
-    <h2 id="detail-chart-title">記録グラフ</h2>
-    <p id="detail-chart-status" class="muted" role="status"></p>
-    <div id="detail-chart-filters" class="tagbar" aria-label="グラフの表示項目"></div>
-    <div id="detail-chart" class="chart"></div>
-    <p id="detail-chart-info" class="tl-info"></p>
-  </section>
-  <section id="detail-clips-card" class="card" aria-labelledby="detail-clips-title" hidden>
-    <div class="cal-sum-head">
-      <h2 id="detail-clips-title">音声イベント</h2>
-      <span id="detail-clip-count" class="tag"></span>
+  <section id="detail-card" class="card" hidden>
+    <div class="head">
+      <h2>タイムライン</h2>
+      <select id="tl-zoom" aria-label="タイムライン圧縮">
+        <option value="60">1分</option>
+        <option value="300">5分</option>
+        <option value="600">10分</option>
+        <option value="1800">30分</option>
+        <option value="3600">1時間</option>
+        <option value="0" selected>全体</option>
+      </select>
     </div>
-    <div id="detail-clip-filters" class="tagbar" aria-label="音声イベントの絞り込み"></div>
-    <p id="detail-clip-status" class="muted" role="status"></p>
-    <div id="detail-clips"></div>
-    <div id="detail-clip-pager" class="pager" hidden>
-      <button id="detail-clip-prev" class="sub mini" type="button">前へ</button>
-      <span id="detail-clip-page" class="muted" aria-live="polite"></span>
-      <button id="detail-clip-next" class="sub mini" type="button">次へ</button>
+    <p id="tl-info" class="tl-info"></p>
+    <div id="d-chart" class="chart tl-area"></div>
+    <div id="tl-legend" class="legend"></div>
+    <div id="tl-tags" class="tagbar"></div>
+    <div id="tl-motion-adj">
+      <div class="kv"><span>体動のしきい値</span><b id="tm-thresh-val">0.05 g</b></div>
+      <input id="tm-thresh" type="range" min="0" max="0.3" step="0.01" value="0.05">
+      <p class="muted">しきい値以上の体動を表示します。スライダーを右へ動かすと小さい動きは出なくなり、左へ動かすと小さい動きも出ます。設定は表示だけに使い、保存済みデータやカレンダーの評価は変えません。</p>
     </div>
-    <audio id="detail-audio" controls preload="none" hidden></audio>
+    <p id="tl-cur-text" class="tl-info"></p>
+    <label class="muted" for="tl-pos">表示位置（右へ動かすと終了時刻の方へ進みます）</label>
+    <input id="tl-pos" type="range" min="0" max="0" step="1" value="0">
+    <label class="muted" for="tl-cur">黄色い線（時刻の位置）</label>
+    <input id="tl-cur" type="range" min="0" max="0" step="1" value="0">
+    <button id="tl-listen" class="primary" type="button">タイムラインの音を聴く（棒1本分）</button>
+    <button id="tl-ref-play" class="sub" type="button">基準の「あ〜」を聴く</button>
+    <div id="tl-audio"></div>
+    <p id="tl-msg" class="muted"></p>
+    <button id="tl-save" class="primary" type="button" disabled>この音声を保存する（残す）</button>
+    <button id="detail-share" class="sub" type="button" disabled>共有画面に移行する</button>
+    <button id="tl-delete" class="danger" type="button">この記録を削除する</button>
   </section>
-  <section class="card">
-    <button id="detail-share" class="primary" type="button" disabled>共有の内容を確認</button>
-  </section>
+  <p class="muted">本アプリは診断を行うものではありません。医師の判断の参考資料です。</p>
 </main>
 
 <main id="page-share" class="page" hidden>
@@ -444,7 +444,7 @@ ol.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.9}
 "use strict";
 
 /* ===== 第4部：共通処理・端末内保存・旧記録の引き継ぎ ===== */
-const APP_VERSION = 425;
+const APP_VERSION = 426;
 const APP_NAME = `SomnoLog V${APP_VERSION}`;
 const $ = id => document.getElementById(id);
 const PAGE_IDS = [
@@ -2812,7 +2812,7 @@ const recorder = (() => {
       setMessage("errbox", warnings.filter(Boolean).join("\n"));
     } catch (error) {
       session.saveFailed = true;
-      setMessage("errbox", `記録を保存できませんでした：${errorText(error)}。「保存を再試行」を長押ししてください。`);
+      setMessage("errbox", `記録を保存できませんでした：${errorText(error)}。「保存を再試行」を押してください。`);
     } finally {
       session.saving = false;
       refresh();
@@ -2905,7 +2905,9 @@ const recorder = (() => {
     $("prep-btn").addEventListener("click", () => syncVoiceControl(appState.reference));
     $("start-btn").addEventListener("click", () => void start());
     $("btn-enter-black").addEventListener("click", enterBlack);
-    bindHold($("stop-btn"), () => void stop());
+    $("stop-btn").addEventListener("click", () => {
+      if (!$("stop-btn").disabled) void stop();
+    });
     bindHold($("black-exit"), () => {
       exitBlack();
       $("btn-enter-black").focus();
@@ -2946,8 +2948,21 @@ const recorder = (() => {
 /* ===== 第8部：記録カレンダーと詳細データの読み込み ===== */
 const recordBrowser = (() => {
   const weekdays = ["日", "月", "火", "水", "木", "金", "土"];
+  const ENV_QUIET_MAX = 0;
+  const ENV_CALM_MAX = 2;
+  const MOVE_TH = 0.3;
+  const LINK_SEC = 2;
+  const TURN_MIN = 3;
+  const TURN_PER_HOUR = 3;
+  const PERIOD_MIN = 6;
+  const PERIOD_TOL_RATE = 0.2;
+  const PERIOD_TOL_SEC = 2;
+  const REF_WORD_DB = 3;
+
   let month = null;
   let selectedDay = null;
+  let dayRecords = [];
+  let dayIndex = 0;
   let recordedDays = new Set();
   let monthGeneration = 0;
   let dayGeneration = 0;
@@ -2972,7 +2987,7 @@ const recordBrowser = (() => {
   function formatTime(ms) {
     return Number.isFinite(ms)
       ? new Date(ms).toLocaleTimeString("ja-JP", {
-          hour: "2-digit", minute: "2-digit"
+          hour: "2-digit", minute: "2-digit", second: "2-digit"
         })
       : "—";
   }
@@ -2982,8 +2997,7 @@ const recordBrowser = (() => {
     const seconds = Math.floor(ms / 1000);
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
-    const remainder = seconds % 60;
-    return `${hours ? `${hours}時間` : ""}${minutes}分${remainder}秒`;
+    return `${hours}時間${minutes}分`;
   }
 
   function monthBounds(date) {
@@ -2992,6 +3006,78 @@ const recordBrowser = (() => {
     return {
       first: localDayKey(new Date(year, monthIndex, 1)),
       last: localDayKey(new Date(year, monthIndex + 1, 0))
+    };
+  }
+
+  function wordOf(db, refDb) {
+    if (!Number.isFinite(db) || !Number.isFinite(refDb)) return "-";
+    const d = db - refDb;
+    if (d >= REF_WORD_DB) return "大きい音";
+    if (d <= -REF_WORD_DB) return "小さい音";
+    return "基準くらい";
+  }
+
+  function evalEnv(n) {
+    if (n <= ENV_QUIET_MAX) return "とても静かな環境でした";
+    if (n <= ENV_CALM_MAX) return "静かな環境でした";
+    return "やや騒がしい環境でした";
+  }
+
+  function longestPeriodicRun(starts) {
+    if (starts.length < 2) return starts.length;
+    const iv = [];
+    for (let i = 1; i < starts.length; i++) iv.push(starts[i] - starts[i - 1]);
+    let best = 2;
+    for (let i = 0; i < iv.length; i++) {
+      let lo = iv[i], hi = iv[i], n = 1;
+      for (let j = i + 1; j < iv.length; j++) {
+        lo = Math.min(lo, iv[j]);
+        hi = Math.max(hi, iv[j]);
+        if (hi - lo > Math.max(PERIOD_TOL_SEC, lo * PERIOD_TOL_RATE)) break;
+        n++;
+      }
+      best = Math.max(best, n + 1);
+    }
+    return best;
+  }
+
+  function analyzeMotion(record) {
+    const tl = Array.isArray(record.timeline) ? record.timeline : [];
+    const withMot = tl.filter(p => Number.isFinite(p.motion));
+    if (!withMot.length) return { status: "nodata" };
+    const envDb = record.reference?.envDb;
+    if (!Number.isFinite(envDb)) return { status: "nobase" };
+    const thr = envDb + 6;
+
+    const moves = [];
+    let cur = null;
+    for (const p of withMot) {
+      const sec = Math.floor((p.at - record.startedAt) / 1000);
+      if (p.motion >= MOVE_TH) {
+        if (cur && sec <= cur.end + 6) cur.end = sec;
+        else { cur = { start: sec, end: sec }; moves.push(cur); }
+      } else {
+        cur = null;
+      }
+    }
+
+    const turns = [], others = [];
+    for (const m of moves) {
+      const linked = tl.some(p => {
+        const sec = Math.floor((p.at - record.startedAt) / 1000);
+        return sec >= m.start - LINK_SEC && sec <= m.end + LINK_SEC &&
+          Number.isFinite(p.levelDb) && p.levelDb >= thr;
+      });
+      (linked ? turns : others).push(m);
+    }
+
+    const hours = Math.max(1, (record.durationMs || 0) / 3600000);
+    const perHour = turns.length / hours;
+    const run = longestPeriodicRun(others.map(m => m.start));
+    return {
+      status: "ok",
+      turnMany: turns.length >= TURN_MIN && perHour >= TURN_PER_HOUR,
+      periodic: run >= PERIOD_MIN
     };
   }
 
@@ -3038,7 +3124,14 @@ const recordBrowser = (() => {
       button.setAttribute("aria-pressed", String(isSelected));
       button.setAttribute("aria-label", `${formatDate(date)}${hasRecord ? "、記録あり" : ""}`);
       if (key === today) button.setAttribute("aria-current", "date");
-      button.addEventListener("click", () => void selectDay(key));
+      button.addEventListener("click", () => {
+        if (selectedDay === key && dayRecords.length) {
+          const rec = dayRecords[Math.min(dayIndex, dayRecords.length - 1)];
+          if (rec) void openDetail(rec.id);
+        } else {
+          void selectDay(key);
+        }
+      });
       fragment.append(button);
       if (key === focusedDay) nextFocus = button;
     }
@@ -3047,18 +3140,107 @@ const recordBrowser = (() => {
     nextFocus?.focus({ preventScroll: true });
   }
 
-  function renderRecords(records) {
-    const fragment = document.createDocumentFragment();
-    for (const record of records) {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = "sub";
-      button.style.marginBlock = "4px";
-      button.textContent = `${formatTime(record.startedAt)} 開始 ／ ${formatDuration(record.durationMs)}`;
-      button.addEventListener("click", () => void openDetail(record.id));
-      fragment.append(button);
+  function makeKv(k, v) {
+    const div = document.createElement("div");
+    div.className = "kv";
+    const s = document.createElement("span");
+    s.textContent = k;
+    const b = document.createElement("b");
+    b.textContent = v;
+    div.append(s, b);
+    return div;
+  }
+
+  async function renderDayPanel(records) {
+    const host = $("cal-records");
+    if (!records.length) {
+      host.replaceChildren();
+      $("cal-count").hidden = true;
+      return;
     }
-    $("cal-records").replaceChildren(fragment);
+    if (dayIndex >= records.length) dayIndex = records.length - 1;
+    const rec = records[dayIndex];
+    const evs = Array.isArray(rec.events) ? rec.events : [];
+    const snoreEvs = evs.filter(e => e.type === "snore");
+    const voiceEvs = evs.filter(e => e.type === "voice");
+    const envEvs = evs.filter(e => e.type === "env");
+    const refDb = rec.reference?.voiceDb ?? appState.reference?.voiceDb ?? null;
+    const peaks = snoreEvs.map(e => e.peakDb).filter(Number.isFinite);
+    const meanDb = peaks.length ? peaks.reduce((a, b) => a + b, 0) / peaks.length : null;
+    const maxDb = peaks.length ? Math.max(...peaks) : null;
+    const mo = analyzeMotion(rec);
+
+    const frag = document.createDocumentFragment();
+    if (records.length > 1) {
+      const pager = document.createElement("div");
+      pager.className = "pager";
+      const prev = document.createElement("button");
+      prev.type = "button";
+      prev.className = "sub mini";
+      prev.textContent = "▲";
+      prev.disabled = dayIndex === 0;
+      prev.onclick = () => { dayIndex = Math.max(0, dayIndex - 1); void renderDayPanel(dayRecords); };
+      const next = document.createElement("button");
+      next.type = "button";
+      next.className = "sub mini";
+      next.textContent = "▼";
+      next.disabled = dayIndex >= records.length - 1;
+      next.onclick = () => { dayIndex = Math.min(records.length - 1, dayIndex + 1); void renderDayPanel(dayRecords); };
+      const label = document.createElement("span");
+      label.className = "tag";
+      label.textContent = `${dayIndex + 1}件目/${records.length}件中`;
+      pager.append(prev, label, next);
+      frag.append(pager);
+    }
+
+    frag.append(
+      makeKv("開始", formatTime(rec.startedAt)),
+      makeKv("睡眠記録時間", formatDuration(rec.durationMs)),
+      makeKv("いびき検出", String(snoreEvs.length)),
+      makeKv("寝言・話し声として除外", String(voiceEvs.length)),
+      makeKv("環境音の変化", String(envEvs.length)),
+      makeKv("いびきの平均の大きさ", meanDb == null ? "-" : wordOf(meanDb, refDb)),
+      makeKv("いびきの最大の大きさ", maxDb == null ? "-" : wordOf(maxDb, refDb)),
+      makeKv("環境音", evalEnv(envEvs.length))
+    );
+
+    let moText = "体動は少ない";
+    if (mo.status === "nodata") moText = "体動データなし";
+    else if (mo.status === "nobase") moText = "判定できません（基準値がありません）";
+    else if (mo.turnMany) moText = "寝返りが多いみたいです";
+    else if (mo.periodic) moText = "定期的な振動がありました";
+    frag.append(makeKv("体動", moText));
+
+    const openBtn = document.createElement("button");
+    openBtn.type = "button";
+    openBtn.className = "primary";
+    openBtn.textContent = "詳細を見る";
+    openBtn.onclick = () => void openDetail(rec.id);
+    frag.append(openBtn);
+
+    const audioCard = document.createElement("div");
+    audioCard.className = "card";
+    const audioTitle = document.createElement("h2");
+    audioTitle.textContent = "この日の音声データ";
+    const audioInfo = document.createElement("p");
+    audioInfo.className = "muted";
+    let totalClips = 0, savedClips = 0, delClips = 0, totalBytes = 0, delBytes = 0;
+    for (const r of records) {
+      for (const e of (r.events || [])) {
+        if (!e.hasClip) continue;
+        totalClips++;
+        const estBytes = Math.round((e.durationMs || 1000) / 1000 * 32000);
+        totalBytes += estBytes;
+        if (e.saved) savedClips++;
+        else { delClips++; delBytes += estBytes; }
+      }
+    }
+    const mb = b => (b / 1048576).toFixed(1) + " MB";
+    audioInfo.textContent = `全体 ${totalClips}件（約 ${mb(totalBytes)}）／保存して残す音声 ${savedClips}件／削除できる音声 ${delClips}件（約 ${mb(delBytes)}）`;
+    audioCard.append(audioTitle, audioInfo);
+    frag.append(audioCard);
+
+    host.replaceChildren(frag);
     $("cal-count").textContent = `${records.length}件`;
     $("cal-count").hidden = false;
   }
@@ -3066,6 +3248,7 @@ const recordBrowser = (() => {
   async function selectDay(key) {
     const token = ++dayGeneration;
     selectedDay = key;
+    dayIndex = 0;
     renderMonth();
     $("cal-selected").textContent = formatDate(dateFromKey(key));
     $("cal-records").replaceChildren();
@@ -3075,7 +3258,8 @@ const recordBrowser = (() => {
     try {
       const records = await storage.listRecordsByDay(key);
       if (token !== dayGeneration) return;
-      renderRecords(records);
+      dayRecords = records;
+      await renderDayPanel(records);
       setMessage("cal-status", records.length ? "" : "この日の記録はありません。");
     } catch (error) {
       if (token === dayGeneration) {
@@ -3139,9 +3323,7 @@ const recordBrowser = (() => {
     if (!appState.patient || appState.recording) return;
     const token = ++detailGeneration;
     appState.selectedRecord = null;
-    $("detail-summary").hidden = true;
-    $("detail-chart-card").hidden = true;
-    $("detail-clips-card").hidden = true;
+    $("detail-card").hidden = true;
     $("detail-share").disabled = true;
     setMessage("detail-status", "記録を読み込んでいます…");
     showPage("page-detail");
@@ -3205,276 +3387,381 @@ const recordBrowser = (() => {
   });
 })();
 
-/* ===== 第8部ここまで：scriptタグは閉じない ===== *//* ===== 第9部：詳細グラフ・音声イベント一覧 ===== */
+/* ===== 第8部ここまで：scriptタグは閉じない ===== *//* ===== 第9部：詳細タイムライン（V113踏襲） ===== */
 const recordDetail = (() => {
-  const labels = { snore: "いびき", voice: "人声", unknown: "未判定" };
-  let playbackGeneration = 0;
+  const TL_W = 480, TL_H = 220, TL_PL = 62, TL_PR = 8, TL_PT = 8, TL_PB = 22, TL_BINS = 60;
+  const TAG_ORDER = ["snore", "unknown", "env", "voice"];
+  const TAG_COLOR = { snore: "#4a90d9", unknown: "#ff9f43", env: "#4caf7a", voice: "#9aa5b1", motion: "#e04848" };
+  const TAG_NAME = { snore: "いびき", unknown: "判定不能", env: "環境音", voice: "人声", motion: "体動" };
+  const SAVED_BAR_COLOR = "#ffffff";
+
+  const tl = {
+    record: null, total: 60, winStart: 0, winLen: 60, cursor: 0, zoomSec: 0,
+    scale: { refDb: -40, envDb: -52, topDb: -40 },
+    tags: { snore: true, unknown: false, env: false, voice: false, motion: false },
+    motionThresh: 0.05, motionCeil: 0.3,
+    playingList: []
+  };
+
+  let blobUrls = [];
   let activeAudio = null;
-  let activeURL = null;
-  let activeButton = null;
   let saving = false;
 
+  const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+  const round1 = v => Math.round(v * 10) / 10;
+  const fmtTime = ms => {
+    const s = Math.max(0, Math.floor(ms / 1000));
+    const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+    const pad = n => String(n).padStart(2, "0");
+    return h ? `${h}:${pad(m)}:${pad(sec)}` : `${m}:${pad(sec)}`;
+  };
+
   function stopPlayback() {
-    ++playbackGeneration;
-    if (activeButton) activeButton.textContent = "再生";
-    activeButton = null;
     if (activeAudio) {
       activeAudio.pause();
       activeAudio.removeAttribute("src");
       activeAudio.load();
       activeAudio = null;
     }
-    if (activeURL) URL.revokeObjectURL(activeURL);
-    activeURL = null;
+    blobUrls.forEach(u => URL.revokeObjectURL(u));
+    blobUrls = [];
   }
 
-  function drawChart(record, host) {
-    const ns = "http://www.w3.org/2000/svg";
-    const svg = document.createElementNS(ns, "svg");
-    const width = 720;
-    const x0 = 56;
-    const x1 = 702;
-    const start = record.startedAt;
-    const end = Math.max(start + 1, record.endedAt ?? start + (record.durationMs || 0));
-    const points = record.timeline
-      .filter(point => point.at >= start && point.at <= end)
-      .sort((a, b) => a.at - b.at);
-    if (!points.some(p => Number.isFinite(p.levelDb) || Number.isFinite(p.motion))) {
-      host.textContent = "表示できる音量・体動データはありません。";
+  function selectedTag() {
+    return TAG_ORDER.find(t => tl.tags[t]) || "snore";
+  }
+
+  function nightScale(record) {
+    const refDb = Number.isFinite(record.reference?.voiceDb) ? record.reference.voiceDb
+      : (Number.isFinite(appState.reference?.voiceDb) ? appState.reference.voiceDb : -40);
+    const envDb = Number.isFinite(record.reference?.envDb) ? record.reference.envDb
+      : (Number.isFinite(appState.reference?.envDb) ? appState.reference.envDb : refDb - 12);
+    let topDb = refDb;
+    for (const e of record.events) {
+      if (Number.isFinite(e.peakDb) && e.peakDb > topDb) topDb = e.peakDb;
+    }
+    return { refDb, envDb, topDb };
+  }
+
+  function renderTagBar() {
+    const box = $("tl-tags");
+    box.innerHTML = "";
+    if (!tl.record) return;
+    const cnt = {}, aud = {};
+    for (const t of TAG_ORDER) { cnt[t] = 0; aud[t] = 0; }
+    for (const e of tl.record.events) {
+      const t = cnt[e.type] != null ? e.type : "unknown";
+      cnt[t]++;
+      if (e.hasClip) aud[t]++;
+    }
+    for (const t of TAG_ORDER) {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "tagbtn" + (tl.tags[t] ? "" : " off");
+      b.innerHTML = `<i style="background:${TAG_COLOR[t]}"></i>${TAG_NAME[t]} <small>${cnt[t]}${aud[t] !== cnt[t] ? `（音声${aud[t]}）` : ""}</small>`;
+      b.onclick = () => {
+        for (const k of TAG_ORDER) tl.tags[k] = false;
+        tl.tags.motion = false;
+        tl.tags[t] = true;
+        tl.playingList = [];
+        $("tl-audio").innerHTML = "";
+        $("tl-save").disabled = true;
+        renderTimeline();
+      };
+      box.appendChild(b);
+    }
+    let mCnt = 0;
+    for (const p of tl.record.timeline) {
+      if (Number.isFinite(p.motion) && p.motion >= tl.motionThresh) mCnt++;
+    }
+    const mb = document.createElement("button");
+    mb.type = "button";
+    mb.className = "tagbtn" + (tl.tags.motion ? "" : " off");
+    mb.innerHTML = `<i style="background:${TAG_COLOR.motion}"></i>${TAG_NAME.motion} <small>${mCnt}回</small>`;
+    mb.onclick = () => {
+      for (const k of TAG_ORDER) tl.tags[k] = false;
+      tl.tags.motion = true;
+      tl.playingList = [];
+      $("tl-audio").innerHTML = "";
+      $("tl-save").disabled = true;
+      renderTimeline();
+    };
+    box.appendChild(mb);
+  }
+
+  function tagGraphSvg(tag, t0, t1) {
+    const NB = TL_BINS;
+    const binSec = tl.winLen / NB;
+    const plotW = TL_W - TL_PL - TL_PR;
+    const plotH = TL_H - TL_PT - TL_PB;
+    const bw = plotW / NB;
+    const sc = tl.scale;
+    const startMs = tl.record.startedAt;
+
+    const bins = new Array(NB).fill(null);
+    for (const e of tl.record.events) {
+      const et = TAG_ORDER.includes(e.type) ? e.type : "unknown";
+      if (et !== tag) continue;
+      const s = (e.startedAt - startMs) / 1000;
+      if (s < t0 || s > t1) continue;
+      const db = Number.isFinite(e.peakDb) ? e.peakDb : sc.refDb;
+      const i = Math.min(NB - 1, Math.floor((s - t0) / binSec));
+      if (!bins[i]) bins[i] = { db, saved: !!e.saved };
+      else {
+        if (db > bins[i].db) bins[i].db = db;
+        if (e.saved) bins[i].saved = true;
+      }
+    }
+
+    const rTop = Math.pow(2, (sc.topDb - sc.refDb) / 10);
+    const LADDER = [1.5, 2, 2.5, 3, 4, 5, 6, 8, 10, 12, 16, 20, 24, 32, 40, 48, 64, 80, 96, 128];
+    let ceilR = 2;
+    for (const L of LADDER) { if (L >= rTop * 1.08) { ceilR = L; break; } ceilR = L; }
+    const ahPos = Math.min(0.5, Math.max(0.125, 1.0 / ceilR));
+    const posOfR = r => r <= 1 ? ahPos * r : ahPos + (r - 1) / Math.max(ceilR - 1, 0.5) * (1 - ahPos);
+    const posOf = db => Math.min(1, Math.max(0, posOfR(Math.pow(2, (db - sc.refDb) / 10))));
+    const yOfMult = m => TL_PT + plotH - posOfR(m) * (plotH - 4);
+    const lineMults = (ceilR <= 8 ? [1, 2, 3, 4, 6, 8] : [1, 2, 4, 8, 16, 32, 64]).filter(m => m <= ceilR);
+
+    let g = `<rect x="${TL_PL}" y="${TL_PT}" width="${plotW}" height="${plotH}" fill="none" stroke="#2a3643"/>`;
+
+    const mBins = new Array(NB).fill(null);
+    for (const p of tl.record.timeline) {
+      if (!Number.isFinite(p.motion) || p.motion < tl.motionThresh) continue;
+      const s = (p.at - startMs) / 1000;
+      if (s < t0 || s > t1) continue;
+      const i = Math.min(NB - 1, Math.floor((s - t0) / binSec));
+      if (mBins[i] == null || p.motion > mBins[i]) mBins[i] = p.motion;
+    }
+    for (let i = 0; i < NB; i++) {
+      const v = mBins[i];
+      if (v == null) continue;
+      const h = Math.max(2, Math.min(plotH, v / tl.motionCeil * plotH));
+      g += `<rect x="${(TL_PL + i * bw + 0.5).toFixed(1)}" y="${TL_PT}" width="${Math.max(1, bw - 1).toFixed(1)}" height="${h.toFixed(1)}" fill="${TAG_COLOR.motion}" opacity="0.85"/>`;
+    }
+
+    for (const m of lineMults) {
+      const y = yOfMult(m);
+      g += `<line x1="${TL_PL}" x2="${TL_PL + plotW}" y1="${y.toFixed(1)}" y2="${y.toFixed(1)}" stroke="#ffd54a" stroke-opacity="0.55" stroke-width="1" stroke-dasharray="5 4"/>`;
+    }
+
+    let any = false;
+    for (let i = 0; i < NB; i++) {
+      const item = bins[i];
+      if (!item) continue;
+      any = true;
+      const pos = posOf(item.db);
+      const h = Math.max(3, pos * (plotH - 4));
+      const color = item.saved ? SAVED_BAR_COLOR : TAG_COLOR[tag];
+      g += `<rect x="${(TL_PL + i * bw + 0.5).toFixed(1)}" y="${(TL_PT + plotH - h).toFixed(1)}" width="${Math.max(1, bw - 1).toFixed(1)}" height="${h.toFixed(1)}" fill="${color}"/>`;
+    }
+    if (!any) {
+      g += `<text x="${TL_PL + 8}" y="${TL_PT + plotH / 2 + 30}" font-size="12" fill="#aebbc9">この種類の音はありません</text>`;
+    }
+    for (const m of lineMults) {
+      const label = m === 1 ? "あ〜の音量" : `あ〜の${m}倍`;
+      g += `<text x="${TL_PL + 4}" y="${(yOfMult(m) - 3).toFixed(1)}" font-size="9" fill="${m === 1 ? "#f3e7c9" : "#e8e4d8"}">${label}</text>`;
+    }
+    g += `<text x="${TL_PL + 4}" y="${TL_PT + plotH - 4}" font-size="9" fill="#aebbc9">室内の環境音</text>`;
+    g += `<text x="${TL_PL + 4}" y="${TL_PT + 12}" font-size="11" fill="${TAG_COLOR[tag]}">${TAG_NAME[tag]}（棒1本＝${round1(binSec)}秒）</text>`;
+    return g;
+  }
+
+  function motionGraphSvg(t0, t1) {
+    const NB = TL_BINS;
+    const binSec = tl.winLen / NB;
+    const plotW = TL_W - TL_PL - TL_PR;
+    const plotH = TL_H - TL_PT - TL_PB;
+    const bw = plotW / NB;
+    const startMs = tl.record.startedAt;
+    const bins = new Array(NB).fill(null);
+    let clipped = false;
+    for (const p of tl.record.timeline) {
+      if (!Number.isFinite(p.motion) || p.motion < tl.motionThresh) continue;
+      const s = (p.at - startMs) / 1000;
+      if (s < t0 || s > t1) continue;
+      if (p.motion > tl.motionCeil) clipped = true;
+      const i = Math.min(NB - 1, Math.floor((s - t0) / binSec));
+      if (bins[i] == null || p.motion > bins[i]) bins[i] = p.motion;
+    }
+    let g = `<rect x="${TL_PL}" y="${TL_PT}" width="${plotW}" height="${plotH}" fill="none" stroke="#2a3643"/>`;
+    let any = false;
+    for (let i = 0; i < NB; i++) {
+      const v = bins[i];
+      if (v == null) continue;
+      any = true;
+      const h = Math.max(2, Math.min(plotH, v / tl.motionCeil * plotH));
+      g += `<rect x="${(TL_PL + i * bw + 0.5).toFixed(1)}" y="${(TL_PT + plotH - h).toFixed(1)}" width="${Math.max(1, bw - 1).toFixed(1)}" height="${h.toFixed(1)}" fill="${TAG_COLOR.motion}"/>`;
+    }
+    g += `<text x="${TL_PL + 2}" y="${TL_PT + 12}" font-size="10" fill="#aebbc9">${Math.round(tl.motionCeil * 100) / 100}</text>`;
+    g += `<text x="${TL_PL + 2}" y="${TL_PT + plotH - 3}" font-size="10" fill="#aebbc9">0</text>`;
+    g += `<text x="${TL_PL + 30}" y="${TL_PT + 12}" font-size="11" fill="${TAG_COLOR.motion}">体動 g（棒内の最大値）</text>`;
+    if (clipped) g += `<text x="${TL_PL + 30}" y="${TL_PT + 26}" font-size="11" fill="${TAG_COLOR.motion}">上端を超えた値あり</text>`;
+    if (!any) g += `<text x="${TL_PL + 8}" y="${TL_PT + plotH / 2 + 30}" font-size="12" fill="#aebbc9">しきい値以上の体動がありません</text>`;
+    return g;
+  }
+
+  function renderTimeline() {
+    if (!tl.record) return;
+    tl.winLen = tl.zoomSec > 0 ? Math.min(tl.zoomSec, tl.total) : tl.total;
+    tl.winStart = clamp(tl.winStart, 0, Math.max(0, tl.total - tl.winLen));
+    tl.cursor = clamp(tl.cursor, tl.winStart, tl.winStart + tl.winLen);
+    renderTagBar();
+
+    $("tl-pos").max = String(Math.round(tl.total - tl.winLen));
+    $("tl-pos").value = String(Math.round(tl.winStart));
+    $("tl-cur").min = String(Math.round(tl.winStart));
+    $("tl-cur").max = String(Math.round(tl.winStart + tl.winLen));
+    $("tl-cur").value = String(Math.round(tl.cursor));
+
+    const t0 = tl.winStart, t1 = tl.winStart + tl.winLen;
+    const X = t => TL_PL + (t - t0) / tl.winLen * (TL_W - TL_PL - TL_PR);
+    const cursorLine = `<line x1="${X(tl.cursor).toFixed(1)}" x2="${X(tl.cursor).toFixed(1)}" y1="${TL_PT}" y2="${TL_H - TL_PB}" stroke="#ffd54a" stroke-width="2"/>`;
+    const axisText = `<text x="${TL_PL}" y="${TL_H - 6}" font-size="10" fill="#aebbc9">${fmtTime(t0 * 1000)}</text>` +
+      `<text x="${TL_W - TL_PR}" y="${TL_H - 6}" font-size="10" fill="#aebbc9" text-anchor="end">${fmtTime(t1 * 1000)}</text>`;
+
+    const tag = selectedTag();
+    const isMotion = !!tl.tags.motion;
+    $("d-chart").innerHTML = `<svg viewBox="0 0 ${TL_W} ${TL_H}" xmlns="http://www.w3.org/2000/svg">` +
+      (isMotion ? motionGraphSvg(t0, t1) : tagGraphSvg(tag, t0, t1)) + cursorLine + axisText + "</svg>";
+
+    $("tl-legend").innerHTML = isMotion ? ""
+      : `<span><i style="background:${TAG_COLOR[tag]}"></i>${TAG_NAME[tag]}</span>` +
+        `<span><i style="background:${SAVED_BAR_COLOR}"></i>保存した音声</span>` +
+        `<span><i style="background:${TAG_COLOR.motion}"></i>体動（上から）</span>`;
+
+    $("tm-thresh").value = String(tl.motionThresh);
+    $("tm-thresh-val").textContent = `${Math.round(tl.motionThresh * 100) / 100} g`;
+    $("tl-listen").disabled = isMotion;
+    $("tl-info").textContent = `表示：${fmtTime(t0 * 1000)} 〜 ${fmtTime(t1 * 1000)}（記録の終了 ${fmtTime(tl.total * 1000)}）　` +
+      (isMotion ? "体動：しきい値以上の区間" : "下端＝室内の環境音、高さ＝「あ〜」の何倍か");
+    $("tl-cur-text").textContent = `黄色い線：記録から ${fmtTime(tl.cursor * 1000)}（${recordBrowser.formatTime(tl.record.startedAt + tl.cursor * 1000)}）`;
+  }
+
+  async function listenAtCursor() {
+    if (!tl.record || tl.tags.motion) return;
+    stopPlayback();
+    $("tl-audio").innerHTML = "";
+    tl.playingList = [];
+    $("tl-save").disabled = true;
+
+    const tag = selectedTag();
+    const binSec = tl.winLen / TL_BINS;
+    const idx = clamp(Math.floor((tl.cursor - tl.winStart) / binSec), 0, TL_BINS - 1);
+    const binStart = tl.winStart + idx * binSec;
+    const binEnd = Math.min(tl.winStart + tl.winLen, binStart + binSec);
+    const startMs = tl.record.startedAt;
+    const inBin = tl.record.events.filter(e => {
+      const et = TAG_ORDER.includes(e.type) ? e.type : "unknown";
+      const s = (e.startedAt - startMs) / 1000;
+      return et === tag && e.hasClip && s >= binStart && s < binEnd;
+    }).sort((a, b) => a.startedAt - b.startedAt);
+
+    if (!inBin.length) {
+      $("tl-msg").textContent = `音なし（この棒には${TAG_NAME[tag]}の音声がありません）`;
       return;
     }
-    svg.setAttribute("viewBox", `0 0 ${width} 236`);
-    svg.setAttribute("role", "img");
-    svg.setAttribute("aria-label", "記録中の音量と体動の推移");
-    svg.style.display = "block";
-    svg.style.width = "100%";
 
-    function node(name, attributes, text) {
-      const el = document.createElementNS(ns, name);
-      for (const [key, value] of Object.entries(attributes)) el.setAttribute(key, value);
-      if (text !== undefined) el.textContent = text;
-      svg.append(el);
-      return el;
-    }
-
-    const x = time => x0 + (x1 - x0) * (time - start) / (end - start);
-    function track(key, top, bottom, min, max, ticks, title, color) {
-      const y = value => bottom - (bottom - top) *
-        Math.max(0, Math.min(1, (value - min) / (max - min)));
-      node("text", { x: x0, y: top - 7, fill: "currentColor", "font-size": 12 }, title);
-      for (const tick of ticks) {
-        node("line", {
-          x1: x0, x2: x1, y1: y(tick), y2: y(tick),
-          stroke: "currentColor", "stroke-opacity": 0.22
-        });
-        node("text", {
-          x: x0 - 6, y: y(tick) + 4, fill: "currentColor",
-          "text-anchor": "end", "font-size": 11
-        }, String(tick));
+    $("tl-msg").textContent = "読み込み中…";
+    try {
+      const blobs = [];
+      for (const e of inBin) {
+        const b = await recordBrowser.loadEventClip(tl.record, e);
+        if (b) blobs.push(b);
       }
-      const commands = [];
-      let previous = null;
-      for (const point of points) {
-        if (!Number.isFinite(point[key])) {
-          previous = null;
-          continue;
-        }
-        const px = x(point.at).toFixed(1);
-        const py = y(point[key]).toFixed(1);
-        if (previous === null || point.at - previous > 12000) {
-          commands.push(`M${px},${py}l0.01,0`);
-        } else {
-          commands.push(`L${px},${py}`);
-        }
-        previous = point.at;
-      }
-      if (commands.length) {
-        node("path", {
-          d: commands.join(" "), stroke: color, "stroke-width": 2,
-          "stroke-linecap": "round", "stroke-linejoin": "round", fill: "none"
-        });
-      } else {
-        node("text", {
-          x: (x0 + x1) / 2, y: (top + bottom) / 2,
-          "text-anchor": "middle", fill: "currentColor", "font-size": 12
-        }, "データなし");
-      }
-    }
-
-    let motionMax = 1;
-    for (const point of points) {
-      if (Number.isFinite(point.motion)) motionMax = Math.max(motionMax, Math.ceil(point.motion));
-    }
-    track("levelDb", 24, 98, -120, 0, [-120, -60, 0], "音量（dBFS）", "#3889dc");
-    track("motion", 130, 204, 0, motionMax, [0, motionMax], "体動（m/s²）", "#21a17b");
-    node("text", { x: x0, y: 224, fill: "currentColor", "font-size": 12 },
-      recordBrowser.formatTime(start));
-    node("text", {
-      x: x1, y: 224, fill: "currentColor", "text-anchor": "end", "font-size": 12
-    }, recordBrowser.formatTime(end));
-    host.replaceChildren(svg);
-  }
-
-  function makeButton(label, action) {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "sub";
-    button.textContent = label;
-    button.addEventListener("click", action);
-    return button;
-  }
-
-  function makePlayButton(load, isCurrent) {
-    const button = makeButton("再生", async () => {
-      if (!isCurrent()) return;
-      if (activeButton === button) {
-        stopPlayback();
+      if (!blobs.length) {
+        $("tl-msg").textContent = "再生できる音声がありません。";
         return;
       }
-      stopPlayback();
-      const token = playbackGeneration;
-      activeButton = button;
-      button.textContent = "読み込みを中止";
-      setMessage("detail-status", "");
-      try {
-        const blob = await load();
-        if (token !== playbackGeneration) return;
-        if (!isCurrent()) {
-          stopPlayback();
-          return;
-        }
-        if (!blob) throw new Error("音声ファイルが見つかりません。");
-        activeURL = URL.createObjectURL(blob);
-        const audio = new Audio(activeURL);
-        activeAudio = audio;
-        audio.addEventListener("ended", () => {
-          if (token === playbackGeneration) stopPlayback();
-        }, { once: true });
-        audio.addEventListener("error", () => {
-          if (token !== playbackGeneration) return;
-          stopPlayback();
-          if (isCurrent()) setMessage("detail-status", "音声を再生できませんでした。");
-        }, { once: true });
-        await audio.play();
-        if (token === playbackGeneration && isCurrent()) button.textContent = "停止";
-      } catch (error) {
-        if (token !== playbackGeneration) return;
-        stopPlayback();
-        if (isCurrent()) setMessage("detail-status", `音声を再生できませんでした：${errorText(error)}`);
-      }
-    });
-    return button;
+      const au = document.createElement("audio");
+      au.controls = true;
+      au.preload = "auto";
+      $("tl-audio").appendChild(au);
+      activeAudio = au;
+      let i = 0;
+      const playNext = () => {
+        if (i >= blobs.length) return;
+        const url = URL.createObjectURL(blobs[i++]);
+        blobUrls.push(url);
+        au.src = url;
+        au.play().catch(() => {});
+      };
+      au.onended = playNext;
+      playNext();
+
+      tl.playingList = inBin;
+      const unsaved = inBin.filter(e => !e.saved).length;
+      $("tl-save").disabled = unsaved === 0;
+      $("tl-msg").textContent = `${TAG_NAME[tag]}の棒1本分（${round1(binSec)}秒）を再生します。音声 ${blobs.length}件。` +
+        (unsaved ? "残したい場合は「この音声を保存する」を押してください。" : "この棒の音声はすべて保存済みです。");
+    } catch (error) {
+      $("tl-msg").textContent = `読み込めませんでした：${errorText(error)}`;
+    }
   }
 
-  function renderClips(record, host, isCurrent) {
-    const list = document.createDocumentFragment();
-    if (record.reference?.clipId) {
-      const row = document.createElement("p");
-      row.append("基準音（分析用） ", makePlayButton(
-        () => recordBrowser.loadReferenceClip(record), isCurrent
-      ));
-      list.append(row);
+  async function savePlayedAudio() {
+    if (saving || !tl.record || !tl.playingList.length) return;
+    const targets = tl.playingList.filter(e => !e.saved);
+    if (!targets.length) return;
+    saving = true;
+    $("tl-save").disabled = true;
+    try {
+      const targetSet = new Set(targets);
+      const updated = {
+        ...tl.record,
+        events: tl.record.events.map(e => targetSet.has(e) ? { ...e, saved: true } : e)
+      };
+      await storage.putRecord(updated);
+      for (const e of targets) e.saved = true;
+      tl.record = updated;
+      appState.selectedRecord = updated;
+      $("tl-msg").textContent = `この棒の音声を保存しました（${targets.length}件）。白い棒で表示されます。`;
+      renderTimeline();
+    } catch (error) {
+      $("tl-msg").textContent = `保存できませんでした：${errorText(error)}`;
+      $("tl-save").disabled = false;
+    } finally {
+      saving = false;
     }
-    if (!record.events.length) {
-      const empty = document.createElement("p");
-      empty.textContent = "音声イベントはありません。";
-      list.append(empty);
-    }
-    for (const event of record.events) {
-      const row = document.createElement("div");
-      const type = Object.hasOwn(labels, event.type) ? labels[event.type] : labels.unknown;
-      const info = document.createElement("p");
-      info.textContent = [
-        recordBrowser.formatTime(event.startedAt), type,
-        recordBrowser.formatDuration(event.durationMs),
-        event.hasClip ? "" : "音声なし"
-      ].filter(Boolean).join(" ／ ");
-      row.append(info);
-      if (event.hasClip) {
-        row.append(makePlayButton(() => recordBrowser.loadEventClip(record, event), isCurrent));
-      }
-      if (event.type === "voice" && event.hasClip) {
-        const toggle = makeButton("", async () => {
-          if (saving || !isCurrent()) return;
-          saving = true;
-          toggle.disabled = true;
-          $("detail-share").disabled = true;
-          const next = !event.saved;
-          const updated = {
-            ...record,
-            events: record.events.map(item => item === event ? { ...item, saved: next } : item)
-          };
-          try {
-            await storage.putRecord(updated);
-            event.saved = next;
-            updateLabel();
-            if (isCurrent()) setMessage("detail-status", "");
-          } catch (error) {
-            if (isCurrent()) setMessage("detail-status", `保存指定を変更できませんでした：${errorText(error)}`);
-          } finally {
-            saving = false;
-            toggle.disabled = false;
-            if (isCurrent()) $("detail-share").disabled = false;
-          }
-        });
-        function updateLabel() {
-          toggle.textContent = event.saved ? "保存指定を解除" : "保存済みにする";
-          toggle.setAttribute("aria-pressed", String(Boolean(event.saved)));
-        }
-        updateLabel();
-        row.append(" ", toggle);
-      }
-      list.append(row);
-    }
-    host.replaceChildren(list);
   }
 
-  function bodyOf(card, heading, key) {
-    let body = card.querySelector(`[data-v423-detail="${key}"]`);
-    if (!body) {
-      const title = document.createElement("h3");
-      title.textContent = heading;
-      body = document.createElement("div");
-      body.dataset.v423Detail = key;
-      card.replaceChildren(title, body);
+  async function playRef() {
+    if (!tl.record) return;
+    stopPlayback();
+    try {
+      const blob = await recordBrowser.loadReferenceClip(tl.record) || appState.reference?.wav;
+      if (!blob) {
+        $("tl-msg").textContent = "基準の音は保存されていません。";
+        return;
+      }
+      const url = URL.createObjectURL(blob);
+      blobUrls.push(url);
+      const au = new Audio(url);
+      activeAudio = au;
+      await au.play();
+    } catch (error) {
+      $("tl-msg").textContent = `基準音を再生できませんでした：${errorText(error)}`;
     }
-    return body;
   }
 
   async function render(record, isCurrent) {
     stopPlayback();
-    const summary = $("detail-summary");
-    const chart = $("detail-chart-card");
-    const clips = $("detail-clips-card");
-    const date = new Date(record.startedAt).toLocaleDateString("ja-JP");
-    const snoreCount = record.events.filter(event => event.type === "snore").length;
-    bodyOf(summary, "記録の概要", "summary").textContent = [
-      `${date} ${recordBrowser.formatTime(record.startedAt)} 開始`,
-      `記録時間：${recordBrowser.formatDuration(record.durationMs)}`,
-      `音声イベント：${record.events.length}件（いびき判定：${snoreCount}件）`
-    ].join(" ／ ");
-    drawChart(record, bodyOf(chart, "音量・体動グラフ", "chart"));
-    summary.hidden = false;
-    chart.hidden = false;
-
-    // グラフの描画機会を確保してから一覧を組み立てる。
-    await new Promise(resolve => {
-      if (document.hidden) {
-        setTimeout(resolve, 0);
-        return;
-      }
-      const fallback = setTimeout(resolve, 120);
-      requestAnimationFrame(() => {
-        setTimeout(() => {
-          clearTimeout(fallback);
-          resolve();
-        }, 0);
-      });
-    });
     if (!isCurrent()) return;
-    renderClips(record, bodyOf(clips, "音声イベント", "clips"), isCurrent);
-    clips.hidden = false;
+    tl.record = record;
+    tl.scale = nightScale(record);
+    tl.total = Math.max(60, Math.ceil((record.durationMs || 0) / 1000));
+    tl.zoomSec = 0;
+    tl.winStart = 0;
+    tl.cursor = 0;
+    tl.tags = { snore: true, unknown: false, env: false, voice: false, motion: false };
+    tl.playingList = [];
+    $("tl-zoom").value = "0";
+    $("tl-audio").innerHTML = "";
+    $("tl-msg").textContent = "";
+    $("tl-save").disabled = true;
+    $("detail-card").hidden = false;
     $("detail-share").disabled = false;
+    renderTimeline();
   }
 
   let bound = false;
@@ -3484,6 +3771,26 @@ const recordDetail = (() => {
     recordBrowser.setDetailRenderer(render);
     $("detail-back").addEventListener("click", stopPlayback);
     $("detail-share").addEventListener("click", stopPlayback);
+    $("tl-zoom").addEventListener("change", e => {
+      if (!tl.record) return;
+      tl.zoomSec = Number(e.target.value);
+      const len = tl.zoomSec > 0 ? Math.min(tl.zoomSec, tl.total) : tl.total;
+      tl.winStart = tl.cursor - len / 2;
+      renderTimeline();
+    });
+    $("tl-pos").addEventListener("input", e => { tl.winStart = Number(e.target.value); renderTimeline(); });
+    $("tl-cur").addEventListener("input", e => { tl.cursor = Number(e.target.value); renderTimeline(); });
+    $("tm-thresh").addEventListener("input", e => {
+      tl.motionThresh = Number(e.target.value);
+      tl.motionCeil = Math.max(0.1, tl.motionThresh * 6);
+      renderTimeline();
+    });
+    $("tl-listen").addEventListener("click", () => void listenAtCursor());
+    $("tl-ref-play").addEventListener("click", () => void playRef());
+    $("tl-save").addEventListener("click", () => void savePlayedAudio());
+    $("tl-delete").addEventListener("click", () => {
+      $("tl-msg").textContent = "この記録の削除機能は現在無効です（V425の保存形式を維持）。";
+    });
     window.addEventListener("pagehide", stopPlayback);
   }
 
