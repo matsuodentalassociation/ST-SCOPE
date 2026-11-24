@@ -72,7 +72,7 @@
   <div class="app-container">
     <header>
       <h1 data-label="appTitle">SomnoLog</h1>
-      <span class="version-badge" id="app-version">v1.0.9-vad-debug</span>
+      <span class="version-badge" id="app-version">v1.0.10-safe-vad</span>
     </header>
     <section id="page-start" class="page active">
       <div class="card">
@@ -117,8 +117,8 @@
       </div>
       <div class="card">
         <div class="input-group">
-          <label for="voice-exclude-strength">人声を除外する強さ: <strong id="voice-strength-val">65</strong>%</label>
-          <input type="range" id="voice-exclude-strength" min="20" max="95" value="65">
+          <label for="voice-exclude-strength">人声とみなす確率しきい値: <strong id="voice-strength-val">35</strong>%</label>
+          <input type="range" id="voice-exclude-strength" min="10" max="90" value="35">
         </div>
       </div>
       <button class="btn" id="btn-request-perms">マイク・モーション許可を取得</button>
@@ -263,15 +263,10 @@
         return new Blob([buffer],{type:"audio/wav"});
       },
       resampleTo16k(samples,sourceRate) {
-        let mean=0;
-        for(let i=0;i<samples.length;i++) mean+=samples[i];
-        mean/=samples.length;
-        let peak=0;
-        for(let i=0;i<samples.length;i++){
-          const a=Math.abs(samples[i]-mean);
-          if(a>peak) peak=a;
-        }
-        const gain = peak>1e-4 ? Math.min(20, 0.5/peak) : 1;
+        let mean=0; for(let i=0;i<samples.length;i++) mean+=samples[i]; mean/=samples.length;
+        let sumSq=0; for(let i=0;i<samples.length;i++){ const d=samples[i]-mean; sumSq+=d*d; }
+        const rms=Math.sqrt(sumSq/samples.length);
+        const gain = rms>1e-4 ? Math.min(25, 0.15/rms) : 1;
         if(sourceRate===16000){
           const out=new Float32Array(samples.length);
           for(let i=0;i<samples.length;i++) out[i]=Math.max(-1,Math.min(1,(samples[i]-mean)*gain));
@@ -318,7 +313,7 @@
             frames++;
             if(isV4){ h=out.hn; c=out.cn; } else { state=out.stateN; }
           }
-          this.lastDebug=`[${inputNames.join(",")} / f:${frames}]`;
+          this.lastDebug=`[f:${frames}]`;
           return maxProb;
         };
         return Promise.race([runInference(), new Promise((_,rej)=>setTimeout(()=>rej(new Error("推論タイムアウト")),10000))]);
@@ -366,7 +361,10 @@
           const samples16k=AudioUtil.resampleTo16k(samples,this.sampleRate); voiceProb=await VAD.predictVoiceProb(samples16k);
           if(voiceProb!==null){
             document.getElementById("record-vad-prob").textContent=Math.round(voiceProb*100)+"% "+VAD.lastDebug;
-            const th=(App.state.audioPrefs.voiceThreshold||65)/100; category=voiceProb>=th?"voice":"snore";
+            const th=(App.state.audioPrefs.voiceThreshold||35)/100;
+            if(voiceProb>=th) category="voice";
+            else if(voiceProb>=0.10) category="unknown";
+            else category="snore";
           }
         } catch(err){ vadErr=err.message; console.warn("イベント判定失敗:",err); document.getElementById("record-vad-prob").textContent="ERR:"+err.message; }
         const eventMeta={id:clipId,startSec:Number(startSec.toFixed(2)),durationSec:Number(durationSec.toFixed(2)),peakDb:Number(peakDb.toFixed(1)),category,voiceProb:voiceProb!==null?Number(voiceProb.toFixed(3)):null,vadErr};
@@ -557,7 +555,7 @@
     };
     const App = {
       currentPage:"page-start", blackScreenTimer:null, qrStream:null,
-      state:{ patient:null, reference:null, audioPrefs:{gain:0,loudDb:10,voiceThreshold:65}, micGranted:false, motionGranted:false },
+      state:{ patient:null, reference:null, audioPrefs:{gain:0,loudDb:10,voiceThreshold:35}, micGranted:false, motionGranted:false },
       async init() {
         this.applyLabels();
         try{ await DB.init(); await this.loadSavedState(); }catch(err){ console.error("初期化エラー:",err); }
@@ -590,8 +588,8 @@
         else { refEl.textContent="未測定"; refEl.className="badge-ng"; document.getElementById("prep-ref-db").textContent="- / -"; document.getElementById("btn-play-ref").disabled=true; }
         const micEl=document.getElementById("prep-mic-status"); micEl.textContent=this.state.micGranted?"許可済":"未許可"; micEl.className=this.state.micGranted?"badge-ok":"badge-ng";
         const motEl=document.getElementById("prep-motion-status"); motEl.textContent=this.state.motionGranted?"許可済":"未許可"; motEl.className=this.state.motionGranted?"badge-ok":"badge-ng";
-        document.getElementById("voice-exclude-strength").value=this.state.audioPrefs.voiceThreshold||65;
-        document.getElementById("voice-strength-val").textContent=this.state.audioPrefs.voiceThreshold||65;
+        document.getElementById("voice-exclude-strength").value=this.state.audioPrefs.voiceThreshold||35;
+        document.getElementById("voice-strength-val").textContent=this.state.audioPrefs.voiceThreshold||35;
         document.getElementById("btn-go-record").disabled=!(this.state.micGranted&&this.state.reference);
       },
       setupBlackScreen() {
