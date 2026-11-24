@@ -72,7 +72,7 @@
   <div class="app-container">
     <header>
       <h1 data-label="appTitle">SomnoLog</h1>
-      <span class="version-badge" id="app-version">v1.0.2-vadfix</span>
+      <span class="version-badge" id="app-version">v1.0.3-debug</span>
     </header>
     <section id="page-start" class="page active">
       <div class="card">
@@ -340,12 +340,12 @@
         for(const c of chunks){ samples.set(c,offset); offset+=c.length; }
         const durationSec=totalLen/this.sampleRate; if(durationSec<0.3) return;
         const peakDb=AudioUtil.calcRmsDb(samples), clipId="clip_"+Date.now()+"_"+Math.floor(Math.random()*1000), wavBlob=AudioUtil.encodeWav(samples,this.sampleRate);
-        let category="unknown", voiceProb=null;
+        let category="unknown", voiceProb=null, vadErr=null;
         try {
           const samples16k=await AudioUtil.resampleTo16k(samples,this.sampleRate); voiceProb=await VAD.predictVoiceProb(samples16k);
           if(voiceProb!==null){ const th=(App.state.audioPrefs.voiceThreshold||65)/100; category=voiceProb>=th?"voice":"snore"; }
-        } catch(err){ console.warn("イベント判定失敗:",err); }
-        const eventMeta={id:clipId,startSec:Number(startSec.toFixed(2)),durationSec:Number(durationSec.toFixed(2)),peakDb:Number(peakDb.toFixed(1)),category,voiceProb:voiceProb!==null?Number(voiceProb.toFixed(3)):null};
+        } catch(err){ vadErr=err.message; console.warn("イベント判定失敗:",err); }
+        const eventMeta={id:clipId,startSec:Number(startSec.toFixed(2)),durationSec:Number(durationSec.toFixed(2)),peakDb:Number(peakDb.toFixed(1)),category,voiceProb:voiceProb!==null?Number(voiceProb.toFixed(3)):null,vadErr};
         this.events.push(eventMeta); document.getElementById("record-events").textContent=String(this.events.length);
         try{ await DB.saveClip({recordId:this.recordId,id:clipId,wav:wavBlob,meta:eventMeta}); }catch(err){ console.error("クリップ保存失敗:",err); }
       },
@@ -413,7 +413,8 @@
           const row=document.createElement("div"); row.className="event-item";
           const tc=ev.category==="voice"?"tag-voice":ev.category==="snore"?"tag-snore":"tag-unknown", lb=ev.category==="voice"?"人声":ev.category==="snore"?"いびき":"不明";
           const st=ev.startSec!==undefined?`${Number(ev.startSec).toFixed(1)}秒〜`:"時刻記録", dr=ev.durationSec!==undefined?`${Number(ev.durationSec).toFixed(1)}s`:"-", db=ev.peakDb!==undefined?`${Number(ev.peakDb).toFixed(1)}dB`:"-";
-          row.innerHTML=`<div><span class="tag ${tc}">${lb}</span><span> ${st} (${dr} / ${db})</span></div>`;
+          const vp=ev.voiceProb!==null&&ev.voiceProb!==undefined?` AI:${Math.round(ev.voiceProb*100)}%`:(ev.vadErr?` (${ev.vadErr})`:"");
+          row.innerHTML=`<div><span class="tag ${tc}">${lb}</span><span> ${st} (${dr} / ${db}${vp})</span></div>`;
           const btn=document.createElement("button"); btn.className="btn btn-secondary btn-sm"; btn.textContent="▶ 再生";
           btn.addEventListener("click",async()=>{ const clip=await DB.getClip(record.id,ev.id); if(!clip||!clip.wav){alert("音声クリップが見つかりません。");return;} const u=URL.createObjectURL(clip.wav), a=new Audio(u); a.onended=()=>URL.revokeObjectURL(u); a.play(); });
           row.appendChild(btn); listEl.appendChild(row);
@@ -638,7 +639,7 @@
         ov.addEventListener("touchstart",sh,{passive:false}); ov.addEventListener("touchend",ch); ov.addEventListener("touchcancel",ch); ov.addEventListener("mousedown",sh); ov.addEventListener("mouseup",ch); ov.addEventListener("mouseleave",ch);
       },
       enterBlackScreen(){ document.documentElement.classList.add("is-black-screen"); document.body.classList.add("is-black-screen"); document.getElementById("black-screen").classList.add("active"); if(document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(()=>{}); },
-      exitBlackScreen(){ document.getElementById("black-screen").classList.remove("active"); document.documentElement.classList.remove("is-black-screen"); document.body.classList.remove("is-black-screen"); if(document.fullscreenElement&&document.exitFullscreen) document.exitFullscreen().catch(()=>{}); }
+      exitBlackScreen(){ document.documentElement.classList.remove("is-black-screen"); document.body.classList.remove("is-black-screen"); document.getElementById("black-screen").classList.remove("active"); if(document.fullscreenElement&&document.exitFullscreen) document.exitFullscreen().catch(()=>{}); }
     };
     window.addEventListener("DOMContentLoaded",()=>App.init());
   </script>
