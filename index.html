@@ -15,6 +15,7 @@
       --primary: #2563eb;
       --danger: #dc2626;
       --success: #16a34a;
+      --warning: #d97706;
       --border: #e2e8f0;
     }
 
@@ -109,6 +110,12 @@
     .btn-secondary { background: #e2e8f0; color: var(--text-main); }
     .btn-danger { background: var(--danger); color: #ffffff; }
     .btn-dark { background: #0f172a; color: #ffffff; }
+    .btn-sm {
+      width: auto;
+      padding: 6px 12px;
+      font-size: 0.85rem;
+      margin-bottom: 0;
+    }
 
     .status-row {
       display: flex;
@@ -139,7 +146,6 @@
       font-size: 0.95rem;
     }
 
-    /* 音圧・モーションセンサー表示バー */
     .meter-wrap {
       padding: 8px 0;
       border-bottom: 1px solid var(--border);
@@ -164,9 +170,93 @@
       border-radius: 999px;
       transition: width 0.08s linear;
     }
-    .meter-fill.sound {
-      background: var(--success);
+    .meter-fill.sound { background: var(--success); }
+
+    /* カレンダー */
+    .cal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
     }
+    .cal-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 4px;
+      text-align: center;
+    }
+    .cal-dow {
+      font-size: 0.75rem;
+      color: var(--text-sub);
+      padding: 4px 0;
+    }
+    .cal-day {
+      padding: 8px 2px;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      cursor: pointer;
+      position: relative;
+      border: 1px solid transparent;
+    }
+    .cal-day.has-record {
+      background: #eff6ff;
+      border-color: #bfdbfe;
+      font-weight: 700;
+      color: var(--primary);
+    }
+    .cal-day.selected {
+      background: var(--primary);
+      color: #ffffff;
+    }
+    .cal-dot {
+      display: block;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--primary);
+      margin: 2px auto 0;
+    }
+    .cal-day.selected .cal-dot { background: #ffffff; }
+
+    /* グラフ・イベント一覧 */
+    #detail-canvas {
+      width: 100%;
+      height: 220px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #ffffff;
+      display: block;
+    }
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      font-size: 0.75rem;
+      color: var(--text-sub);
+      margin-top: 8px;
+    }
+    .legend-item { display: inline-flex; align-items: center; gap: 4px; }
+    .legend-color { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+
+    .event-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.85rem;
+    }
+    .event-item:last-child { border-bottom: none; }
+    .tag {
+      display: inline-block;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .tag-snore { background: #dcfce7; color: #166534; }
+    .tag-voice { background: #fee2e2; color: #991b1b; }
+    .tag-unknown { background: #fef3c7; color: #92400e; }
 
     #qr-video-container {
       display: none;
@@ -175,7 +265,6 @@
       overflow: hidden;
       background: #000;
     }
-
     #qr-video {
       width: 100%;
       max-height: 280px;
@@ -222,7 +311,7 @@
   <div class="app-container">
     <header>
       <h1 data-label="appTitle">SomnoLog</h1>
-      <span class="version-badge" id="app-version">v1.0.0-step3.2</span>
+      <span class="version-badge" id="app-version">v1.0.0-step4</span>
     </header>
 
     <!-- 1. 開始画面 -->
@@ -345,10 +434,19 @@
     <!-- 5. カレンダー画面 -->
     <section id="page-calendar" class="page">
       <div class="card">
-        <h2 data-label="calendarTitle">セッションログ一覧</h2>
-        <p style="color: var(--text-sub); font-size: 0.9rem;">ここに月別カレンダーと日別評価が表示されます。</p>
+        <div class="cal-header">
+          <button class="btn btn-secondary btn-sm" id="btn-cal-prev">◀</button>
+          <strong id="cal-month-label">2026年11月</strong>
+          <button class="btn btn-secondary btn-sm" id="btn-cal-next">▶</button>
+        </div>
+        <div class="cal-grid" id="cal-grid"></div>
       </div>
-      <button class="btn" onclick="App.navigate('page-detail')" data-label="btnOpenDetail">詳細表示（サンプル）</button>
+
+      <div class="card">
+        <h2 id="cal-day-title">選択した日の記録</h2>
+        <div id="cal-day-list" style="font-size: 0.9rem; color: var(--text-sub);">日付を選択してください。</div>
+      </div>
+
       <button class="btn btn-secondary" onclick="App.navigate('page-start')" data-label="btnBack">戻る</button>
     </section>
 
@@ -356,8 +454,35 @@
     <section id="page-detail" class="page">
       <div class="card">
         <h2 data-label="detailTitle">音響解析詳細</h2>
-        <p style="color: var(--text-sub); font-size: 0.9rem;">ここにタイムライン・体動・外部ログ（心拍・SpO2・筋電）の重ね合わせが表示されます。</p>
+        <div class="status-row"><span>計測日時</span><strong id="detail-date">-</strong></div>
+        <div class="status-row"><span>計測時間</span><strong id="detail-duration">-</strong></div>
+        <div class="status-row"><span>イベント内訳</span><strong id="detail-summary">-</strong></div>
       </div>
+
+      <div class="card">
+        <h2>タイムライン・重ね合わせ</h2>
+        <canvas id="detail-canvas" width="540" height="220"></canvas>
+        <div class="legend">
+          <span class="legend-item"><span class="legend-color" style="background:#16a34a;"></span>音圧(dB)</span>
+          <span class="legend-item"><span class="legend-color" style="background:#2563eb;"></span>体動</span>
+          <span class="legend-item"><span class="legend-color" style="background:#dc2626;"></span>心拍/人声</span>
+          <span class="legend-item"><span class="legend-color" style="background:#d97706;"></span>筋電/SpO2</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>外部ログ重ね合わせ（JSON / CSV）</h2>
+        <p style="font-size:0.8rem; color:var(--text-sub); margin-top:0;">統一JSON（somnolog-external-v1）や食いしばりCSVを読み込めます。</p>
+        <button class="btn btn-secondary" id="btn-import-external">外部ファイルを選択</button>
+        <input type="file" id="external-file-input" accept=".json,.csv" style="display:none;">
+        <div id="external-status" style="font-size:0.85rem; color:var(--text-sub); margin-top:6px;">外部データ未読込</div>
+      </div>
+
+      <div class="card">
+        <h2>検出イベント一覧</h2>
+        <div id="detail-event-list" style="font-size:0.85rem; color:var(--text-sub);">イベントはありません。</div>
+      </div>
+
       <button class="btn" onclick="App.navigate('page-share')" data-label="btnGoShare">共有へ進む</button>
       <button class="btn btn-secondary" onclick="App.navigate('page-calendar')" data-label="btnBack">戻る</button>
       <p class="footnote" data-label="detailFootnote">本アプリは一般的な音響・体動モニタリングツールです。</p>
@@ -407,7 +532,6 @@
       btnEnterBlack: "黒画面モードへ",
       btnStopRecord: "計測を停止する",
       calendarTitle: "セッションログ一覧",
-      btnOpenDetail: "詳細表示（サンプル）",
       detailTitle: "音響解析詳細",
       btnGoShare: "共有へ進む",
       detailFootnote: "本アプリは一般的な音響・体動モニタリングツールです。",
@@ -464,11 +588,27 @@
           req.onerror = () => reject(req.error);
         });
       },
+      async getClip(recordId, clipId) {
+        return new Promise((resolve, reject) => {
+          const tx = this.instance.transaction("clips", "readonly");
+          const req = tx.objectStore("clips").get([recordId, clipId]);
+          req.onsuccess = () => resolve(req.result || null);
+          req.onerror = () => reject(req.error);
+        });
+      },
       async saveRecord(recordObj) {
         return new Promise((resolve, reject) => {
           const tx = this.instance.transaction("records", "readwrite");
           const req = tx.objectStore("records").put(recordObj);
           req.onsuccess = () => resolve();
+          req.onerror = () => reject(req.error);
+        });
+      },
+      async getAllRecords() {
+        return new Promise((resolve, reject) => {
+          const tx = this.instance.transaction("records", "readonly");
+          const req = tx.objectStore("records").getAll();
+          req.onsuccess = () => resolve(req.result || []);
           req.onerror = () => reject(req.error);
         });
       }
@@ -538,7 +678,6 @@
           ]);
           document.getElementById("record-vad-status").textContent = "準備完了";
         } catch (err) {
-          console.warn("VAD初期化失敗:", err);
           document.getElementById("record-vad-status").textContent = "未読込（unknown扱い）";
         } finally {
           this.loading = false;
@@ -550,7 +689,6 @@
         let state = new ort.Tensor("float32", new Float32Array(2 * 1 * 128), [2, 1, 128]);
         const sr = new ort.Tensor("int64", BigInt64Array.from([16000n]), [1]);
         let maxProb = 0;
-
         const runInference = async () => {
           for (let i = 0; i + frameSize <= samples16k.length; i += frameSize) {
             const chunk = samples16k.slice(i, i + frameSize);
@@ -562,7 +700,6 @@
           }
           return maxProb;
         };
-
         return Promise.race([
           runInference(),
           new Promise((_, rej) => setTimeout(() => rej(new Error("VAD推論タイムアウト")), 10000))
@@ -585,7 +722,6 @@
       sampleRate: 44100,
       timeline: [],
       events: [],
-      pendingChunks: [],
       inEvent: false,
       eventChunks: [],
       eventStartOffset: 0,
@@ -616,11 +752,8 @@
         document.getElementById("record-motion-bar").style.width = "0%";
 
         if ("wakeLock" in navigator) {
-          try {
-            this.wakeLock = await navigator.wakeLock.request("screen");
-          } catch (_) {}
+          try { this.wakeLock = await navigator.wakeLock.request("screen"); } catch (_) {}
         }
-
         VAD.init();
 
         this.motionHandler = (e) => {
@@ -708,10 +841,7 @@
         const totalLen = chunks.reduce((a, c) => a + c.length, 0);
         const samples = new Float32Array(totalLen);
         let offset = 0;
-        for (const c of chunks) {
-          samples.set(c, offset);
-          offset += c.length;
-        }
+        for (const c of chunks) { samples.set(c, offset); offset += c.length; }
         const durationSec = totalLen / this.sampleRate;
         if (durationSec < 0.3) return;
 
@@ -728,9 +858,7 @@
             const threshold = (App.state.audioPrefs.voiceThreshold || 65) / 100;
             category = voiceProb >= threshold ? "voice" : "snore";
           }
-        } catch (err) {
-          console.warn("イベント判定失敗:", err);
-        }
+        } catch (_) {}
 
         const eventMeta = {
           id: clipId,
@@ -744,12 +872,7 @@
         document.getElementById("record-events").textContent = String(this.events.length);
 
         try {
-          await DB.saveClip({
-            recordId: this.recordId,
-            id: clipId,
-            wav: wavBlob,
-            meta: eventMeta
-          });
+          await DB.saveClip({ recordId: this.recordId, id: clipId, wav: wavBlob, meta: eventMeta });
         } catch (err) {
           console.error("クリップ保存失敗:", err);
         }
@@ -797,6 +920,275 @@
       }
     };
 
+    /**
+     * カレンダー・詳細・外部データ解析モジュール
+     */
+    const Viewer = {
+      calYear: new Date().getFullYear(),
+      calMonth: new Date().getMonth(),
+      allRecords: [],
+      selectedDateStr: null,
+      currentRecord: null,
+      externalData: null,
+
+      async loadCalendar() {
+        this.allRecords = await DB.getAllRecords();
+        this.renderCalendar();
+      },
+
+      renderCalendar() {
+        const label = document.getElementById("cal-month-label");
+        label.textContent = `${this.calYear}年${this.calMonth + 1}月`;
+
+        const grid = document.getElementById("cal-grid");
+        grid.innerHTML = "";
+
+        const dows = ["日", "月", "火", "水", "木", "金", "土"];
+        dows.forEach((d) => {
+          const el = document.createElement("div");
+          el.className = "cal-dow";
+          el.textContent = d;
+          grid.appendChild(el);
+        });
+
+        const firstDay = new Date(this.calYear, this.calMonth, 1).getDay();
+        const daysInMonth = new Date(this.calYear, this.calMonth + 1, 0).getDate();
+
+        for (let i = 0; i < firstDay; i++) {
+          grid.appendChild(document.createElement("div"));
+        }
+
+        const recordMap = {};
+        this.allRecords.forEach((r) => {
+          const d = new Date(r.startedAt);
+          const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+          if (!recordMap[key]) recordMap[key] = [];
+          recordMap[key].push(r);
+        });
+
+        for (let day = 1; day <= daysInMonth; day++) {
+          const cell = document.createElement("div");
+          cell.className = "cal-day";
+          const key = `${this.calYear}-${this.calMonth}-${day}`;
+          const recs = recordMap[key] || [];
+          if (recs.length > 0) cell.classList.add("has-record");
+          if (this.selectedDateStr === key) cell.classList.add("selected");
+
+          cell.textContent = day;
+          if (recs.length > 0) {
+            const dot = document.createElement("span");
+            dot.className = "cal-dot";
+            cell.appendChild(dot);
+          }
+
+          cell.addEventListener("click", () => {
+            this.selectedDateStr = key;
+            this.renderCalendar();
+            this.renderDayList(day, recs);
+          });
+          grid.appendChild(cell);
+        }
+      },
+
+      renderDayList(day, recs) {
+        document.getElementById("cal-day-title").textContent = `${this.calMonth + 1}月${day}日の記録`;
+        const listEl = document.getElementById("cal-day-list");
+        if (recs.length === 0) {
+          listEl.textContent = "この日の記録はありません。";
+          return;
+        }
+        listEl.innerHTML = "";
+        recs.sort((a, b) => b.startedAt - a.startedAt).forEach((r) => {
+          const d = new Date(r.startedAt);
+          const timeStr = d.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" });
+          const durMin = Math.round(((r.endedAt || r.startedAt) - r.startedAt) / 60000);
+          const row = document.createElement("div");
+          row.className = "status-row";
+          row.innerHTML = `<span>${timeStr} 開始 (${durMin}分 / ${(r.events || []).length}件)</span>`;
+          const btn = document.createElement("button");
+          btn.className = "btn btn-sm";
+          btn.textContent = "詳細";
+          btn.addEventListener("click", () => this.openDetail(r));
+          row.appendChild(btn);
+          listEl.appendChild(row);
+        });
+      },
+
+      openDetail(record) {
+        this.currentRecord = record;
+        this.externalData = null;
+        document.getElementById("external-status").textContent = "外部データ未読込";
+
+        const d = new Date(record.startedAt);
+        document.getElementById("detail-date").textContent = d.toLocaleString("ja-JP");
+        const durSec = Math.max(1, Math.round(((record.endedAt || record.startedAt) - record.startedAt) / 1000));
+        const h = Math.floor(durSec / 3600);
+        const m = Math.floor((durSec % 3600) / 60);
+        const s = durSec % 60;
+        document.getElementById("detail-duration").textContent = `${h}時間${m}分${s}秒`;
+
+        const events = record.events || [];
+        const snore = events.filter((e) => e.category === "snore").length;
+        const voice = events.filter((e) => e.category === "voice").length;
+        const unk = events.filter((e) => e.category === "unknown").length;
+        document.getElementById("detail-summary").textContent = `いびき:${snore} / 人声:${voice} / 不明:${unk}`;
+
+        this.renderEventList(record);
+        App.navigate("page-detail");
+        setTimeout(() => this.drawTimeline(), 50);
+      },
+
+      renderEventList(record) {
+        const listEl = document.getElementById("detail-event-list");
+        const events = record.events || [];
+        if (events.length === 0) {
+          listEl.textContent = "イベントはありません。";
+          return;
+        }
+        listEl.innerHTML = "";
+        events.forEach((ev) => {
+          const row = document.createElement("div");
+          row.className = "event-item";
+          const tagClass = ev.category === "voice" ? "tag-voice" : ev.category === "snore" ? "tag-snore" : "tag-unknown";
+          const label = ev.category === "voice" ? "人声" : ev.category === "snore" ? "いびき" : "不明";
+          row.innerHTML = `
+            <div>
+              <span class="tag ${tagClass}">${label}</span>
+              <span> ${ev.startSec}秒〜 (${ev.durationSec}s / ${ev.peakDb}dB)</span>
+            </div>
+          `;
+          const btn = document.createElement("button");
+          btn.className = "btn btn-secondary btn-sm";
+          btn.textContent = "▶ 再生";
+          btn.addEventListener("click", async () => {
+            const clip = await DB.getClip(record.id, ev.id);
+            if (!clip || !clip.wav) {
+              alert("音声クリップが見つかりません。");
+              return;
+            }
+            const url = URL.createObjectURL(clip.wav);
+            const audio = new Audio(url);
+            audio.onended = () => URL.revokeObjectURL(url);
+            audio.play();
+          });
+          row.appendChild(btn);
+          listEl.appendChild(row);
+        });
+      },
+
+      drawTimeline() {
+        const canvas = document.getElementById("detail-canvas");
+        const ctx = canvas.getContext("2d");
+        const w = canvas.width;
+        const h = canvas.height;
+        ctx.clearRect(0, 0, w, h);
+
+        ctx.fillStyle = "#f8fafc";
+        ctx.fillRect(0, 0, w, h);
+
+        const rec = this.currentRecord;
+        if (!rec) return;
+        const tl = rec.timeline || [];
+        const totalSec = Math.max(10, ((rec.endedAt || rec.startedAt) - rec.startedAt) / 1000);
+
+        // グリッド線
+        ctx.strokeStyle = "#e2e8f0";
+        ctx.lineWidth = 1;
+        for (let i = 1; i < 4; i++) {
+          const y = (h / 4) * i;
+          ctx.beginPath();
+          ctx.moveTo(0, y);
+          ctx.lineTo(w, y);
+          ctx.stroke();
+        }
+
+        // 音圧 (緑)
+        if (tl.length > 0) {
+          ctx.strokeStyle = "#16a34a";
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          tl.forEach((pt, idx) => {
+            const x = (pt.t / totalSec) * w;
+            const normDb = Math.max(0, Math.min(1, (pt.db + 80) / 80));
+            const y = h - normDb * (h - 20) - 10;
+            if (idx === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+          });
+          ctx.stroke();
+
+          // 体動 (青)
+          ctx.strokeStyle = "#2563eb";
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          let started = false;
+          tl.forEach((pt) => {
+            if (pt.motion === null || pt.motion === undefined) return;
+            const x = (pt.t / totalSec) * w;
+            const normM = Math.max(0, Math.min(1, pt.motion / 15));
+            const y = h - normM * (h - 20) - 10;
+            if (!started) { ctx.moveTo(x, y); started = true; }
+            else ctx.lineTo(x, y);
+          });
+          ctx.stroke();
+        }
+
+        // 外部データ重ね合わせ
+        if (this.externalData && this.externalData.points) {
+          ctx.fillStyle = "#d97706";
+          this.externalData.points.forEach((pt) => {
+            const relSec = (pt.at - rec.startedAt) / 1000;
+            if (relSec < 0 || relSec > totalSec) return;
+            const x = (relSec / totalSec) * w;
+            if (pt.hr) {
+              const y = h - Math.min(1, pt.hr / 140) * (h - 20) - 10;
+              ctx.fillStyle = "#dc2626";
+              ctx.fillRect(x - 1.5, y - 1.5, 3, 3);
+            }
+            if (pt.emg) {
+              ctx.fillStyle = "#d97706";
+              ctx.fillRect(x - 1, 4, 2, 16);
+            }
+          });
+        }
+      },
+
+      async handleExternalFile(file) {
+        try {
+          const buf = await file.arrayBuffer();
+          if (file.name.toLowerCase().endsWith(".json")) {
+            const text = new TextDecoder("utf-8").decode(buf);
+            const json = JSON.parse(text);
+            if (json.schema !== "somnolog-external-v1" || !Array.isArray(json.points)) {
+              throw new Error("統一JSON形式（somnolog-external-v1）ではありません");
+            }
+            this.externalData = json;
+            document.getElementById("external-status").textContent = `読込完了：${json.source || "JSON"} (${json.points.length}点)`;
+          } else {
+            // 食いしばりCSV (Shift-JIS / UTF-8)
+            let text = new TextDecoder("shift_jis").decode(buf);
+            if (!text.includes("Phasic") && !text.includes("Tonic")) {
+              text = new TextDecoder("utf-8").decode(buf);
+            }
+            const lines = text.split(/\r?\n/).filter((l) => l.trim());
+            const points = [];
+            lines.forEach((line) => {
+              const cols = line.split(",");
+              const timeMatch = line.match(/(\d{4}[\/\-]\d{1,2}[\/\-]\d{1,2}\s+\d{1,2}:\d{2}:\d{2})/);
+              if (timeMatch) {
+                const ts = new Date(timeMatch[1].replace(/\//g, "-")).getTime();
+                if (!isNaN(ts)) points.push({ at: ts, emg: 1 });
+              }
+            });
+            this.externalData = { schema: "somnolog-external-v1", source: "emg-csv", points };
+            document.getElementById("external-status").textContent = `CSV読込完了：${points.length}件のイベント`;
+          }
+          this.drawTimeline();
+        } catch (err) {
+          alert("外部データの読み込みに失敗しました：" + err.message);
+        }
+      }
+    };
+
     const App = {
       currentPage: "page-start",
       blackScreenTimer: null,
@@ -821,6 +1213,7 @@
         this.setupUserEvents();
         this.setupPrepEvents();
         this.setupRecordEvents();
+        this.setupViewerEvents();
         this.checkUrlHashRegistration();
         this.refreshUI();
       },
@@ -848,6 +1241,7 @@
           this.currentPage = pageId;
           window.scrollTo(0, 0);
         }
+        if (pageId === "page-calendar") Viewer.loadCalendar();
         this.refreshUI();
       },
 
@@ -966,11 +1360,8 @@
             const bitmap = await createImageBitmap(file);
             const detector = new BarcodeDetector({ formats: ["qr_code"] });
             const codes = await detector.detect(bitmap);
-            if (codes.length > 0) {
-              await this.parseAndSavePatientCode(codes[0].rawValue);
-            } else {
-              alert("画像からQRコードが見つかりませんでした。");
-            }
+            if (codes.length > 0) await this.parseAndSavePatientCode(codes[0].rawValue);
+            else alert("画像からQRコードが見つかりませんでした。");
           } catch (err) {
             alert("画像の読み取りに失敗しました：" + err.message);
           } finally {
@@ -1043,6 +1434,28 @@
       setupRecordEvents() {
         document.getElementById("btn-stop-record").addEventListener("click", () => Recorder.stop(true));
         document.getElementById("btn-retry-save").addEventListener("click", () => Recorder.trySaveRecord());
+      },
+
+      setupViewerEvents() {
+        document.getElementById("btn-cal-prev").addEventListener("click", () => {
+          Viewer.calMonth--;
+          if (Viewer.calMonth < 0) { Viewer.calMonth = 11; Viewer.calYear--; }
+          Viewer.renderCalendar();
+        });
+        document.getElementById("btn-cal-next").addEventListener("click", () => {
+          Viewer.calMonth++;
+          if (Viewer.calMonth > 11) { Viewer.calMonth = 0; Viewer.calYear++; }
+          Viewer.renderCalendar();
+        });
+
+        const extBtn = document.getElementById("btn-import-external");
+        const extInput = document.getElementById("external-file-input");
+        extBtn.addEventListener("click", () => extInput.click());
+        extInput.addEventListener("change", (e) => {
+          const file = e.target.files[0];
+          if (file) Viewer.handleExternalFile(file);
+          extInput.value = "";
+        });
       },
 
       async requestPermissions() {
