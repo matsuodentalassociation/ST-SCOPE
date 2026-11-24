@@ -72,7 +72,7 @@
   <div class="app-container">
     <header>
       <h1 data-label="appTitle">SomnoLog</h1>
-      <span class="version-badge" id="app-version">v1.0.8-vad-dcfix</span>
+      <span class="version-badge" id="app-version">v1.0.9-vad-debug</span>
     </header>
     <section id="page-start" class="page active">
       <div class="card">
@@ -142,7 +142,7 @@
         </div>
         <div class="status-row"><span data-label="eventCountLabel">イベント検出数</span><strong id="record-events">0</strong></div>
         <div class="status-row"><span>人声判定モデル</span><strong id="record-vad-status">準備中</strong></div>
-        <div class="status-row"><span>AI人声確率（直近）</span><strong id="record-vad-prob">- %</strong></div>
+        <div class="status-row"><span>AI人声確率（直近）</span><strong id="record-vad-prob" style="font-size:0.85rem;">- %</strong></div>
       </div>
       <button class="btn btn-dark" id="btn-enter-black" data-label="btnEnterBlack">黒画面モードへ</button>
       <button class="btn btn-danger" id="btn-stop-record" data-label="btnStopRecord">計測を停止する</button>
@@ -287,7 +287,7 @@
       }
     };
     const VAD = {
-      session:null, loading:false,
+      session:null, loading:false, lastDebug:"",
       async init() {
         const statusEl = document.getElementById("record-vad-status");
         if(this.session){ statusEl.textContent="準備完了"; return; }
@@ -309,14 +309,16 @@
       async predictVoiceProb(samples16k) {
         if(!this.session) return null;
         const frameSize=512, inputNames=this.session.inputNames||[], isV4=inputNames.includes("h")&&inputNames.includes("c"), sr=new ort.Tensor("int64",BigInt64Array.from([16000n]),[1]);
-        let maxProb=0, state=isV4?null:new ort.Tensor("float32",new Float32Array(2*1*128),[2,1,128]), h=isV4?new ort.Tensor("float32",new Float32Array(2*1*64),[2,1,64]):null, c=isV4?new ort.Tensor("float32",new Float32Array(2*1*64),[2,1,64]):null;
+        let maxProb=0, frames=0, state=isV4?null:new ort.Tensor("float32",new Float32Array(2*1*128),[2,1,128]), h=isV4?new ort.Tensor("float32",new Float32Array(2*1*64),[2,1,64]):null, c=isV4?new ort.Tensor("float32",new Float32Array(2*1*64),[2,1,64]):null;
         const runInference = async ()=>{
           for(let i=0;i+frameSize<=samples16k.length;i+=frameSize){
             const chunk=samples16k.slice(i,i+frameSize), input=new ort.Tensor("float32",chunk,[1,frameSize]);
             const out = await this.session.run(isV4?{input,h,c,sr}:{input,state,sr});
             const prob = out.output.data[0]; if(prob>maxProb) maxProb=prob;
+            frames++;
             if(isV4){ h=out.hn; c=out.cn; } else { state=out.stateN; }
           }
+          this.lastDebug=`[${inputNames.join(",")} / f:${frames}]`;
           return maxProb;
         };
         return Promise.race([runInference(), new Promise((_,rej)=>setTimeout(()=>rej(new Error("推論タイムアウト")),10000))]);
@@ -363,10 +365,10 @@
         try {
           const samples16k=AudioUtil.resampleTo16k(samples,this.sampleRate); voiceProb=await VAD.predictVoiceProb(samples16k);
           if(voiceProb!==null){
-            document.getElementById("record-vad-prob").textContent=Math.round(voiceProb*100)+" %";
+            document.getElementById("record-vad-prob").textContent=Math.round(voiceProb*100)+"% "+VAD.lastDebug;
             const th=(App.state.audioPrefs.voiceThreshold||65)/100; category=voiceProb>=th?"voice":"snore";
           }
-        } catch(err){ vadErr=err.message; console.warn("イベント判定失敗:",err); }
+        } catch(err){ vadErr=err.message; console.warn("イベント判定失敗:",err); document.getElementById("record-vad-prob").textContent="ERR:"+err.message; }
         const eventMeta={id:clipId,startSec:Number(startSec.toFixed(2)),durationSec:Number(durationSec.toFixed(2)),peakDb:Number(peakDb.toFixed(1)),category,voiceProb:voiceProb!==null?Number(voiceProb.toFixed(3)):null,vadErr};
         this.events.push(eventMeta); document.getElementById("record-events").textContent=String(this.events.length);
         if(category==="voice") return;
