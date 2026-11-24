@@ -72,7 +72,7 @@
   <div class="app-container">
     <header>
       <h1 data-label="appTitle">SomnoLog</h1>
-      <span class="version-badge" id="app-version">v1.0.3-debug</span>
+      <span class="version-badge" id="app-version">v1.0.4-norm</span>
     </header>
     <section id="page-start" class="page active">
       <div class="card">
@@ -261,11 +261,21 @@
         let o=44; for(let i=0;i<samples.length;i++){ const s=Math.max(-1,Math.min(1,samples[i])); view.setInt16(o,s<0?s*0x8000:s*0x7fff,true); o+=2; }
         return new Blob([buffer],{type:"audio/wav"});
       },
-      async resampleTo16k(samples,sourceRate) {
-        if(sourceRate===16000) return samples;
-        const targetLen=Math.max(1,Math.round(samples.length*16000/sourceRate)), offlineCtx=new OfflineAudioContext(1,targetLen,16000), buffer=offlineCtx.createBuffer(1,samples.length,sourceRate);
-        buffer.copyToChannel(samples,0); const src=offlineCtx.createBufferSource(); src.buffer=buffer; src.connect(offlineCtx.destination); src.start(0);
-        return (await offlineCtx.startRendering()).getChannelData(0);
+      resampleTo16k(samples,sourceRate) {
+        let peak=0; for(let i=0;i<samples.length;i++){ const a=Math.abs(samples[i]); if(a>peak) peak=a; }
+        const gain = peak>1e-4 ? Math.min(20, 0.5/peak) : 1;
+        if(sourceRate===16000){
+          const out=new Float32Array(samples.length);
+          for(let i=0;i<samples.length;i++) out[i]=Math.max(-1,Math.min(1,samples[i]*gain));
+          return out;
+        }
+        const ratio=sourceRate/16000, targetLen=Math.max(1,Math.floor(samples.length/ratio)), out=new Float32Array(targetLen);
+        for(let i=0;i<targetLen;i++){
+          const pos=i*ratio, idx=Math.floor(pos), frac=pos-idx;
+          const s0=samples[idx]||0, s1=samples[idx+1]!==undefined?samples[idx+1]:s0;
+          out[i]=Math.max(-1,Math.min(1,(s0+(s1-s0)*frac)*gain));
+        }
+        return out;
       }
     };
     const VAD = {
@@ -342,7 +352,7 @@
         const peakDb=AudioUtil.calcRmsDb(samples), clipId="clip_"+Date.now()+"_"+Math.floor(Math.random()*1000), wavBlob=AudioUtil.encodeWav(samples,this.sampleRate);
         let category="unknown", voiceProb=null, vadErr=null;
         try {
-          const samples16k=await AudioUtil.resampleTo16k(samples,this.sampleRate); voiceProb=await VAD.predictVoiceProb(samples16k);
+          const samples16k=AudioUtil.resampleTo16k(samples,this.sampleRate); voiceProb=await VAD.predictVoiceProb(samples16k);
           if(voiceProb!==null){ const th=(App.state.audioPrefs.voiceThreshold||65)/100; category=voiceProb>=th?"voice":"snore"; }
         } catch(err){ vadErr=err.message; console.warn("イベント判定失敗:",err); }
         const eventMeta={id:clipId,startSec:Number(startSec.toFixed(2)),durationSec:Number(durationSec.toFixed(2)),peakDb:Number(peakDb.toFixed(1)),category,voiceProb:voiceProb!==null?Number(voiceProb.toFixed(3)):null,vadErr};
