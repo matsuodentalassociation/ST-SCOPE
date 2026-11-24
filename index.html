@@ -72,7 +72,7 @@
   <div class="app-container">
     <header>
       <h1 data-label="appTitle">SomnoLog</h1>
-      <span class="version-badge" id="app-version">v1.0.15-hybrid</span>
+      <span class="version-badge" id="app-version">v1.0.16-band-avg</span>
     </header>
     <section id="page-start" class="page active">
       <div class="card">
@@ -118,8 +118,8 @@
       </div>
       <div class="card">
         <div class="input-group">
-          <label for="voice-exclude-strength">人声とみなす確率しきい値: <strong id="voice-strength-val">40</strong>%</label>
-          <input type="range" id="voice-exclude-strength" min="15" max="85" value="40">
+          <label for="voice-exclude-strength">人声とみなす確率しきい値: <strong id="voice-strength-val">70</strong>%</label>
+          <input type="range" id="voice-exclude-strength" min="20" max="99" value="70">
         </div>
       </div>
       <button class="btn" id="btn-request-perms">マイク・モーション許可を取得</button>
@@ -279,13 +279,11 @@
         for(let i=0;i<out.length;i++) res[i]=Math.max(-1,Math.min(1,(out[i]-mean)*gain));
         return res;
       },
-      // 人の声の周波数帯域（300Hz-3400Hz）のエネルギー比率を計算する（0.0〜1.0）
       calcVoiceBandRatio(samples16k) {
         const frameSize = 256;
-        let maxRatio = 0;
+        let sumRatio = 0, activeFrames = 0;
         for (let start = 0; start + frameSize <= samples16k.length; start += frameSize) {
           let totalE = 0, voiceE = 0;
-          // DFTで300Hz〜3400Hz（k=5〜54）と全帯域のエネルギーを比較
           for (let k = 1; k <= 120; k++) {
             let re = 0, im = 0;
             const w = (2 * Math.PI * k) / frameSize;
@@ -298,19 +296,19 @@
             totalE += e;
             if (k >= 5 && k <= 54) voiceE += e;
           }
-          if (totalE > 1e-4) {
-            const r = voiceE / totalE;
-            if (r > maxRatio) maxRatio = r;
+          if (totalE > 0.5) {
+            sumRatio += (voiceE / totalE);
+            activeFrames++;
           }
         }
-        return maxRatio;
+        return activeFrames > 0 ? (sumRatio / activeFrames) : 0;
       }
     };
     const VAD = {
       session:null, loading:false,
       async init() {
         const statusEl = document.getElementById("record-vad-status");
-        if(this.session){ if(statusEl) statusEl.textContent="準備完了(ハイブリッド)"; return true; }
+        if(this.session){ if(statusEl) statusEl.textContent="準備完了(平均帯域)"; return true; }
         if(this.loading) return false;
         if(typeof ort==="undefined"){ if(statusEl) statusEl.textContent="音響解析モード"; return true; }
         this.loading=true; if(statusEl) statusEl.textContent="モデル読込中...";
@@ -321,7 +319,7 @@
             ort.InferenceSession.create("https://matsuodentalassociation.github.io/ST-SCOPE/silero_vad.onnx"),
             new Promise((_,rej)=>setTimeout(()=>rej(new Error("タイムアウト")),15000))
           ]);
-          if(statusEl) statusEl.textContent="準備完了(ハイブリッド)";
+          if(statusEl) statusEl.textContent="準備完了(平均帯域)";
           return true;
         } catch(err) {
           if(statusEl) statusEl.textContent="音響解析モード";
@@ -388,9 +386,9 @@
           const samples16k=await AudioUtil.resampleTo16k(samples,this.sampleRate); voiceProb=await VAD.predictVoiceProb(samples16k);
           if(voiceProb!==null){
             document.getElementById("record-vad-prob").textContent=Math.round(voiceProb*100)+"%";
-            const th=(App.state.audioPrefs.voiceThreshold||40)/100;
+            const th=(App.state.audioPrefs.voiceThreshold||70)/100;
             if(voiceProb>=th) category="voice";
-            else if(voiceProb>=0.15) category="unknown";
+            else if(voiceProb>=0.30) category="unknown";
             else category="snore";
           }
         } catch(err){ vadErr=err.message; console.warn("イベント判定失敗:",err); document.getElementById("record-vad-prob").textContent="ERR:"+err.message; }
@@ -582,7 +580,7 @@
     };
     const App = {
       currentPage:"page-start", blackScreenTimer:null, qrStream:null,
-      state:{ patient:null, reference:null, audioPrefs:{gain:0,loudDb:10,voiceThreshold:40}, micGranted:false, motionGranted:false },
+      state:{ patient:null, reference:null, audioPrefs:{gain:0,loudDb:10,voiceThreshold:70}, micGranted:false, motionGranted:false },
       async init() {
         this.applyLabels();
         try{ await DB.init(); await this.loadSavedState(); }catch(err){ console.error("初期化エラー:",err); }
@@ -624,8 +622,8 @@
         }
         const micEl=document.getElementById("prep-mic-status"); micEl.textContent=this.state.micGranted?"許可済":"未許可"; micEl.className=this.state.micGranted?"badge-ok":"badge-ng";
         const motEl=document.getElementById("prep-motion-status"); motEl.textContent=this.state.motionGranted?"許可済":"未許可"; motEl.className=this.state.motionGranted?"badge-ok":"badge-ng";
-        document.getElementById("voice-exclude-strength").value=this.state.audioPrefs.voiceThreshold||40;
-        document.getElementById("voice-strength-val").textContent=this.state.audioPrefs.voiceThreshold||40;
+        document.getElementById("voice-exclude-strength").value=this.state.audioPrefs.voiceThreshold||70;
+        document.getElementById("voice-strength-val").textContent=this.state.audioPrefs.voiceThreshold||70;
         document.getElementById("btn-go-record").disabled=!(this.state.micGranted&&this.state.reference);
       },
       setupBlackScreen() {
