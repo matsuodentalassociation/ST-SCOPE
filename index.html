@@ -109,13 +109,23 @@
     .btn:disabled { opacity: 0.45; cursor: not-allowed; }
     .btn-secondary { background: #e2e8f0; color: var(--text-main); }
     .btn-danger { background: var(--danger); color: #ffffff; }
+    .btn-success { background: var(--success); color: #ffffff; }
     .btn-dark { background: #0f172a; color: #ffffff; }
     .btn-sm {
       width: auto;
-      padding: 6px 12px;
-      font-size: 0.85rem;
+      padding: 6px 10px;
+      font-size: 0.8rem;
       margin-bottom: 0;
       white-space: nowrap;
+    }
+
+    .btn-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    .btn-row .btn {
+      margin-bottom: 0;
     }
 
     .status-row {
@@ -311,7 +321,7 @@
   <div class="app-container">
     <header>
       <h1 data-label="appTitle">SomnoLog</h1>
-      <span class="version-badge" id="app-version">v1.0.0-step4.1</span>
+      <span class="version-badge" id="app-version">v1.0.0-complete</span>
     </header>
 
     <!-- 1. 開始画面 -->
@@ -485,7 +495,7 @@
         <div id="detail-event-list" style="font-size:0.85rem; color:var(--text-sub);">イベントはありません。</div>
       </div>
 
-      <button class="btn" onclick="App.navigate('page-share')" data-label="btnGoShare">共有へ進む</button>
+      <button class="btn" id="btn-go-share" data-label="btnGoShare">共有へ進む</button>
       <button class="btn btn-secondary" onclick="App.navigate('page-calendar')" data-label="btnBack">戻る</button>
       <p class="footnote" data-label="detailFootnote">本アプリは一般的な音響・体動モニタリングツールです。</p>
     </section>
@@ -494,9 +504,26 @@
     <section id="page-share" class="page">
       <div class="card">
         <h2 data-label="shareTitle">データの書き出し・共有</h2>
-        <p style="color: var(--text-sub); font-size: 0.9rem;">人声イベントの3択確認後、ZIPファイルを作成します。</p>
+        <p style="color: var(--text-sub); font-size: 0.85rem; margin-top:0;">
+          プライバシー保護のため、人声・不明と判定された音声を共有に含めるか確認してください。
+        </p>
+        <div class="status-row">
+          <span>確認対象（人声・不明）</span>
+          <strong id="share-target-count">0件</strong>
+        </div>
+        <div class="btn-row" style="margin-top:8px;">
+          <button class="btn btn-success btn-sm" id="btn-share-all-ok" style="flex:1;">まとめてOK</button>
+          <button class="btn btn-danger btn-sm" id="btn-share-all-ng" style="flex:1;">すべてダメ（除外）</button>
+        </div>
       </div>
+
+      <div class="card" id="share-review-card">
+        <h2>一つずつ確認</h2>
+        <div id="share-review-list" style="font-size:0.85rem; color:var(--text-sub);">確認が必要な音声はありません。</div>
+      </div>
+
       <button class="btn" id="btn-create-zip" data-label="btnCreateZip">ZIPを作成する</button>
+      <button class="btn btn-secondary" id="btn-open-mail" disabled>メールアプリを起動する</button>
       <button class="btn btn-secondary" onclick="App.navigate('page-detail')" data-label="btnBack">戻る</button>
     </section>
   </div>
@@ -953,9 +980,7 @@
         const firstDay = new Date(this.calYear, this.calMonth, 1).getDay();
         const daysInMonth = new Date(this.calYear, this.calMonth + 1, 0).getDate();
 
-        for (let i = 0; i < firstDay; i++) {
-          grid.appendChild(document.createElement("div"));
-        }
+        for (let i = 0; i < firstDay; i++) grid.appendChild(document.createElement("div"));
 
         const recordMap = {};
         this.allRecords.forEach((r) => {
@@ -1064,10 +1089,7 @@
           btn.textContent = "▶ 再生";
           btn.addEventListener("click", async () => {
             const clip = await DB.getClip(record.id, ev.id);
-            if (!clip || !clip.wav) {
-              alert("音声クリップが見つかりません。");
-              return;
-            }
+            if (!clip || !clip.wav) { alert("音声クリップが見つかりません。"); return; }
             const url = URL.createObjectURL(clip.wav);
             const audio = new Audio(url);
             audio.onended = () => URL.revokeObjectURL(url);
@@ -1104,7 +1126,6 @@
         }
 
         if (tl.length > 0) {
-          // 1. 音圧 (緑)
           ctx.strokeStyle = "#16a34a";
           ctx.lineWidth = 2;
           ctx.beginPath();
@@ -1117,7 +1138,6 @@
           });
           ctx.stroke();
 
-          // 2. 体動 (青)
           ctx.strokeStyle = "#2563eb";
           ctx.lineWidth = 1.5;
           ctx.beginPath();
@@ -1133,7 +1153,6 @@
           ctx.stroke();
         }
 
-        // 3. 人声イベント単独表示 (ピンク)
         (rec.events || []).forEach((ev) => {
           if (ev.category === "voice" && ev.startSec !== undefined) {
             const x = (ev.startSec / totalSec) * w;
@@ -1142,7 +1161,6 @@
           }
         });
 
-        // 4. 外部データ単独表示 (心拍:赤 / SpO2:紫 / 筋電:オレンジ)
         if (this.externalData && this.externalData.points) {
           this.externalData.points.forEach((pt) => {
             const relSec = (pt.at - rec.startedAt) / 1000;
@@ -1202,6 +1220,212 @@
       }
     };
 
+    /**
+     * 共有・プライバシー確認・単体ZIP生成モジュール
+     */
+    const Sharer = {
+      decisions: {},
+      targetEvents: [],
+
+      openShare() {
+        const rec = Viewer.currentRecord;
+        if (!rec) return;
+        this.decisions = {};
+        const events = rec.events || [];
+        this.targetEvents = events.filter((e) => e.category !== "snore");
+
+        document.getElementById("share-target-count").textContent = `${this.targetEvents.length}件`;
+        document.getElementById("btn-open-mail").disabled = true;
+        this.renderReviewList(rec);
+        App.navigate("page-share");
+      },
+
+      renderReviewList(rec) {
+        const listEl = document.getElementById("share-review-list");
+        if (this.targetEvents.length === 0) {
+          listEl.textContent = "確認が必要な音声はありません。";
+          return;
+        }
+        listEl.innerHTML = "";
+        this.targetEvents.forEach((ev) => {
+          const row = document.createElement("div");
+          row.className = "event-item";
+          const startStr = ev.startSec !== undefined ? `${Number(ev.startSec).toFixed(1)}秒〜` : "時刻記録";
+          const st = this.decisions[ev.id];
+          const statusLabel = st === true ? " [OK]" : st === false ? " [除外]" : " [未確認]";
+
+          const info = document.createElement("div");
+          info.textContent = `${startStr}${statusLabel}`;
+          row.appendChild(info);
+
+          const btnGroup = document.createElement("div");
+          btnGroup.style.display = "flex";
+          btnGroup.style.gap = "4px";
+
+          const btnPlay = document.createElement("button");
+          btnPlay.className = "btn btn-secondary btn-sm";
+          btnPlay.textContent = "▶";
+          btnPlay.addEventListener("click", async () => {
+            const clip = await DB.getClip(rec.id, ev.id);
+            if (!clip || !clip.wav) return;
+            const url = URL.createObjectURL(clip.wav);
+            const audio = new Audio(url);
+            audio.onended = () => URL.revokeObjectURL(url);
+            audio.play();
+          });
+
+          const btnOk = document.createElement("button");
+          btnOk.className = "btn btn-success btn-sm";
+          btnOk.textContent = "OK";
+          btnOk.addEventListener("click", () => {
+            this.decisions[ev.id] = true;
+            this.renderReviewList(rec);
+          });
+
+          const btnNg = document.createElement("button");
+          btnNg.className = "btn btn-danger btn-sm";
+          btnNg.textContent = "ダメ";
+          btnNg.addEventListener("click", () => {
+            this.decisions[ev.id] = false;
+            this.renderReviewList(rec);
+          });
+
+          btnGroup.appendChild(btnPlay);
+          btnGroup.appendChild(btnOk);
+          btnGroup.appendChild(btnNg);
+          row.appendChild(btnGroup);
+          listEl.appendChild(row);
+        });
+      },
+
+      setAll(allow) {
+        this.targetEvents.forEach((ev) => { this.decisions[ev.id] = allow; });
+        this.renderReviewList(Viewer.currentRecord);
+      },
+
+      async createZip() {
+        const rec = Viewer.currentRecord;
+        if (!rec) return;
+
+        const undecided = this.targetEvents.filter((ev) => this.decisions[ev.id] === undefined);
+        if (undecided.length > 0) {
+          alert(`未確認の音声が ${undecided.length} 件あります。「まとめてOK」「すべてダメ」または個別に選択してください。`);
+          return;
+        }
+
+        const files = [];
+        const exportEvents = [];
+
+        for (const ev of (rec.events || [])) {
+          const allowed = ev.category === "snore" || this.decisions[ev.id] === true;
+          if (allowed) {
+            exportEvents.push(ev);
+            const clip = await DB.getClip(rec.id, ev.id);
+            if (clip && clip.wav) {
+              const buf = new Uint8Array(await clip.wav.arrayBuffer());
+              files.push({ name: `clips/${ev.id}.wav`, data: buf });
+            }
+          }
+        }
+
+        const metaJson = JSON.stringify({
+          id: rec.id,
+          startedAt: rec.startedAt,
+          endedAt: rec.endedAt,
+          patient: rec.patient,
+          reference: rec.reference,
+          timeline: rec.timeline,
+          events: exportEvents
+        }, null, 2);
+        files.push({ name: "record.json", data: new TextEncoder().encode(metaJson) });
+
+        const zipBlob = this.buildStoreZip(files);
+        const url = URL.createObjectURL(zipBlob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `somnolog_${rec.id}.zip`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+
+        document.getElementById("btn-open-mail").disabled = false;
+        alert(`ZIPファイルを作成しました（含まれる音声：${files.length - 1}件）`);
+      },
+
+      buildStoreZip(files) {
+        const crcTable = new Uint32Array(256);
+        for (let i = 0; i < 256; i++) {
+          let c = i;
+          for (let k = 0; k < 8; k++) c = (c & 1) ? (0xedb88320 ^ (c >>> 1)) : (c >>> 1);
+          crcTable[i] = c;
+        }
+        const crc32 = (buf) => {
+          let c = 0xffffffff;
+          for (let i = 0; i < buf.length; i++) c = crcTable[(c ^ buf[i]) & 0xff] ^ (c >>> 8);
+          return (c ^ 0xffffffff) >>> 0;
+        };
+
+        const localParts = [];
+        const centralParts = [];
+        let offset = 0;
+
+        files.forEach((f) => {
+          const nameBytes = new TextEncoder().encode(f.name);
+          const crc = crc32(f.data);
+          const size = f.data.length;
+
+          const lh = new ArrayBuffer(30 + nameBytes.length);
+          const lv = new DataView(lh);
+          lv.setUint32(0, 0x04034b50, true);
+          lv.setUint16(4, 20, true);
+          lv.setUint16(8, 0, true);
+          lv.setUint32(14, crc, true);
+          lv.setUint32(18, size, true);
+          lv.setUint32(22, size, true);
+          lv.setUint16(26, nameBytes.length, true);
+          new Uint8Array(lh, 30).set(nameBytes);
+
+          localParts.push(new Uint8Array(lh), f.data);
+
+          const ch = new ArrayBuffer(46 + nameBytes.length);
+          const cv = new DataView(ch);
+          cv.setUint32(0, 0x02014b50, true);
+          cv.setUint16(4, 20, true);
+          cv.setUint16(6, 20, true);
+          cv.setUint16(10, 0, true);
+          cv.setUint32(16, crc, true);
+          cv.setUint32(20, size, true);
+          cv.setUint32(24, size, true);
+          cv.setUint16(28, nameBytes.length, true);
+          cv.setUint32(42, offset, true);
+          new Uint8Array(ch, 46).set(nameBytes);
+
+          centralParts.push(new Uint8Array(ch));
+          offset += 30 + nameBytes.length + size;
+        });
+
+        const centralSize = centralParts.reduce((a, b) => a + b.length, 0);
+        const eocd = new ArrayBuffer(22);
+        const ev = new DataView(eocd);
+        ev.setUint32(0, 0x06054b50, true);
+        ev.setUint16(8, files.length, true);
+        ev.setUint16(10, files.length, true);
+        ev.setUint32(12, centralSize, true);
+        ev.setUint32(16, offset, true);
+
+        return new Blob([...localParts, ...centralParts, new Uint8Array(eocd)], { type: "application/zip" });
+      },
+
+      openMail() {
+        const to = (App.state.patient && App.state.patient.email) ? App.state.patient.email : "";
+        const name = (App.state.patient && App.state.patient.name) ? App.state.patient.name : "計測者";
+        const subject = encodeURIComponent(`SomnoLog 計測データ (${name})`);
+        const body = encodeURIComponent(`ダウンロードしたZIPファイルを添付して送信してください。`);
+        window.location.href = `mailto:${to}?subject=${subject}&body=${body}`;
+      }
+    };
+
     const App = {
       currentPage: "page-start",
       blackScreenTimer: null,
@@ -1227,6 +1451,7 @@
         this.setupPrepEvents();
         this.setupRecordEvents();
         this.setupViewerEvents();
+        this.setupShareEvents();
         this.checkUrlHashRegistration();
         this.refreshUI();
       },
@@ -1469,6 +1694,15 @@
           if (file) Viewer.handleExternalFile(file);
           extInput.value = "";
         });
+
+        document.getElementById("btn-go-share").addEventListener("click", () => Sharer.openShare());
+      },
+
+      setupShareEvents() {
+        document.getElementById("btn-share-all-ok").addEventListener("click", () => Sharer.setAll(true));
+        document.getElementById("btn-share-all-ng").addEventListener("click", () => Sharer.setAll(false));
+        document.getElementById("btn-create-zip").addEventListener("click", () => Sharer.createZip());
+        document.getElementById("btn-open-mail").addEventListener("click", () => Sharer.openMail());
       },
 
       async requestPermissions() {
