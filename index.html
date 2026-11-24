@@ -72,7 +72,7 @@
   <div class="app-container">
     <header>
       <h1 data-label="appTitle">SomnoLog</h1>
-      <span class="version-badge" id="app-version">v1.0.7-realtime-vad</span>
+      <span class="version-badge" id="app-version">v1.0.8-vad-dcfix</span>
     </header>
     <section id="page-start" class="page active">
       <div class="card">
@@ -263,17 +263,24 @@
         return new Blob([buffer],{type:"audio/wav"});
       },
       resampleTo16k(samples,sourceRate) {
-        let peak=0; for(let i=0;i<samples.length;i++){ const a=Math.abs(samples[i]); if(a>peak) peak=a; }
+        let mean=0;
+        for(let i=0;i<samples.length;i++) mean+=samples[i];
+        mean/=samples.length;
+        let peak=0;
+        for(let i=0;i<samples.length;i++){
+          const a=Math.abs(samples[i]-mean);
+          if(a>peak) peak=a;
+        }
         const gain = peak>1e-4 ? Math.min(20, 0.5/peak) : 1;
         if(sourceRate===16000){
           const out=new Float32Array(samples.length);
-          for(let i=0;i<samples.length;i++) out[i]=Math.max(-1,Math.min(1,samples[i]*gain));
+          for(let i=0;i<samples.length;i++) out[i]=Math.max(-1,Math.min(1,(samples[i]-mean)*gain));
           return out;
         }
         const ratio=sourceRate/16000, targetLen=Math.max(1,Math.floor(samples.length/ratio)), out=new Float32Array(targetLen);
         for(let i=0;i<targetLen;i++){
           const pos=i*ratio, idx=Math.floor(pos), frac=pos-idx;
-          const s0=samples[idx]||0, s1=samples[idx+1]!==undefined?samples[idx+1]:s0;
+          const s0=(samples[idx]||0)-mean, s1=(samples[idx+1]!==undefined?samples[idx+1]:(samples[idx]||0))-mean;
           out[i]=Math.max(-1,Math.min(1,(s0+(s1-s0)*frac)*gain));
         }
         return out;
@@ -556,4 +563,147 @@
         this.checkUrlHashRegistration(); this.refreshUI();
       },
       applyLabels(){ document.querySelectorAll("[data-label]").forEach(el=>{ const k=el.getAttribute("data-label"); if(LABELS[k]) el.textContent=LABELS[k]; }); },
-      async load
+      async loadSavedState() {
+        const patient=await DB.getSetting("patient"), reference=await DB.getSetting("reference"), audioPrefs=await DB.getSetting("audioPrefs");
+        if(patient) this.state.patient=patient;
+        if(reference) this.state.reference=reference;
+        if(audioPrefs) this.state.audioPrefs=Object.assign(this.state.audioPrefs,audioPrefs);
+      },
+      navigate(pageId) {
+        document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));
+        const target=document.getElementById(pageId);
+        if(target){ target.classList.add("active"); this.currentPage=pageId; }
+        if(pageId==="page-calendar") Viewer.loadCalendar();
+        this.refreshUI();
+      },
+      refreshUI() {
+        const p=this.state.patient;
+        document.getElementById("start-user-status").textContent=p?`${p.name||"登録済"} (${p.chart||"-"})`:"未登録";
+        document.getElementById("user-issuer").textContent=p?(p.issuer||"-"):"-";
+        document.getElementById("user-chart").textContent=p?(p.chart||"-"):"-";
+        document.getElementById("user-name").textContent=p?(p.name||"-"):"-";
+        document.getElementById("user-serial").textContent=p?(p.serial||"-"):"-";
+        const ref=this.state.reference, refEl=document.getElementById("prep-ref-status");
+        if(ref){ refEl.textContent="測定済"; refEl.className="badge-ok"; document.getElementById("prep-ref-db").textContent=`${ref.envDb.toFixed(1)} / ${ref.voiceDb.toFixed(1)} dB`; document.getElementById("btn-play-ref").disabled=!ref.wav; }
+        else { refEl.textContent="未測定"; refEl.className="badge-ng"; document.getElementById("prep-ref-db").textContent="- / -"; document.getElementById("btn-play-ref").disabled=true; }
+        const micEl=document.getElementById("prep-mic-status"); micEl.textContent=this.state.micGranted?"許可済":"未許可"; micEl.className=this.state.micGranted?"badge-ok":"badge-ng";
+        const motEl=document.getElementById("prep-motion-status"); motEl.textContent=this.state.motionGranted?"許可済":"未許可"; motEl.className=this.state.motionGranted?"badge-ok":"badge-ng";
+        document.getElementById("voice-exclude-strength").value=this.state.audioPrefs.voiceThreshold||65;
+        document.getElementById("voice-strength-val").textContent=this.state.audioPrefs.voiceThreshold||65;
+        document.getElementById("btn-go-record").disabled=!(this.state.micGranted&&this.state.reference);
+      },
+      setupBlackScreen() {
+        const bs=document.getElementById("black-screen");
+        const startHold=(e)=>{ e.preventDefault(); this.blackScreenTimer=setTimeout(()=>{ bs.classList.remove("active"); document.documentElement.classList.remove("is-black-screen"); document.body.classList.remove("is-black-screen"); },1500); };
+        const endHold=()=>{ if(this.blackScreenTimer){ clearTimeout(this.blackScreenTimer); this.blackScreenTimer=null; } };
+        bs.addEventListener("touchstart",startHold,{passive:false}); bs.addEventListener("touchend",endHold); bs.addEventListener("touchcancel",endHold);
+        bs.addEventListener("mousedown",startHold); bs.addEventListener("mouseup",endHold); bs.addEventListener("mouseleave",endHold);
+      },
+      setupUserEvents() {
+        document.getElementById("btn-demo-user").addEventListener("click",async()=>{
+          this.state.patient={issuer:"テスト医院",chart:"0001",name:"テスト計測者",serial:"DEMO-001",email:""};
+          await DB.setSetting("patient",this.state.patient); this.refreshUI(); alert("テスト用計測者を登録しました。");
+        });
+        document.getElementById("btn-apply-manual-qr").addEventListener("click",()=>{
+          const val=document.getElementById("qr-manual-input").value.trim();
+          if(val) this.parseQrString(val);
+        });
+        document.getElementById("btn-scan-qr").addEventListener("click",async()=>{
+          const vc=document.getElementById("qr-video-container"), video=document.getElementById("qr-video");
+          if(this.qrStream){ this.qrStream.getTracks().forEach(t=>t.stop()); this.qrStream=null; vc.style.display="none"; return; }
+          try {
+            this.qrStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment"}});
+            video.srcObject=this.qrStream; vc.style.display="block";
+            if("BarcodeDetector"in window){
+              const det=new BarcodeDetector({formats:["qr_code"]});
+              const scan=async()=>{
+                if(!this.qrStream) return;
+                try{ const codes=await det.detect(video); if(codes.length>0){ this.parseQrString(codes[0].rawValue); this.qrStream.getTracks().forEach(t=>t.stop()); this.qrStream=null; vc.style.display="none"; return; } }catch(_){}
+                requestAnimationFrame(scan);
+              };
+              requestAnimationFrame(scan);
+            }
+          } catch(err){ alert("カメラの起動に失敗しました："+err.message); }
+        });
+        document.getElementById("btn-qr-file").addEventListener("click",()=>document.getElementById("qr-file-input").click());
+        document.getElementById("qr-file-input").addEventListener("change",async(e)=>{
+          const file=e.target.files[0]; if(!file) return;
+          if("BarcodeDetector"in window){
+            try{ const bmp=await createImageBitmap(file), det=new BarcodeDetector({formats:["qr_code"]}), codes=await det.detect(bmp); if(codes.length>0) this.parseQrString(codes[0].rawValue); else alert("QRコードが見つかりませんでした。"); }
+            catch(err){ alert("画像の読み取りに失敗しました："+err.message); }
+          } else { alert("このブラウザは画像からのQR自動読取に対応していません。URLを直接貼り付けてください。"); }
+        });
+        document.getElementById("btn-check-update").addEventListener("click",()=>location.reload(true));
+      },
+      checkUrlHashRegistration() { if(location.hash.includes("slp=")) this.parseQrString(location.href); },
+      async parseQrString(str) {
+        try {
+          const m=str.match(/slp=([^&]+)/); if(!m) throw new Error("有効なコードではありません");
+          const b64=m[1].replace(/-/g,"+").replace(/_/g,"/"), bin=atob(b64), bytes=new Uint8Array(bin.length);
+          for(let i=0;i<bin.length;i++) bytes[i]=bin.charCodeAt(i);
+          const data=JSON.parse(new TextDecoder("utf-8").decode(bytes));
+          this.state.patient=data; await DB.setSetting("patient",data); this.refreshUI(); alert("計測者情報を登録しました！");
+        } catch(err){ alert("コードの解析に失敗しました："+err.message); }
+      },
+      setupPrepEvents() {
+        document.getElementById("voice-exclude-strength").addEventListener("input",async(e)=>{
+          const v=Number(e.target.value); document.getElementById("voice-strength-val").textContent=v;
+          this.state.audioPrefs.voiceThreshold=v; await DB.setSetting("audioPrefs",this.state.audioPrefs);
+        });
+        document.getElementById("btn-request-perms").addEventListener("click",async()=>{
+          try { const s=await navigator.mediaDevices.getUserMedia({audio:true}); s.getTracks().forEach(t=>t.stop()); this.state.micGranted=true; }
+          catch(err){ alert("マイク許可に失敗しました："+err.message); }
+          if(typeof DeviceMotionEvent!=="undefined"&&typeof DeviceMotionEvent.requestPermission==="function"){
+            try{ const r=await DeviceMotionEvent.requestPermission(); this.state.motionGranted=(r==="granted"); }catch(_){}
+          } else { this.state.motionGranted=true; }
+          this.refreshUI();
+        });
+        document.getElementById("btn-measure-ref").addEventListener("click",async()=>{
+          if(!this.state.micGranted){ alert("先にマイク許可を取得してください。"); return; }
+          const btn=document.getElementById("btn-measure-ref"); btn.disabled=true; btn.textContent="測定中...（「あいうえお」と発声）";
+          try {
+            const stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}});
+            const ctx=new(window.AudioContext||window.webkitAudioContext)(), src=ctx.createMediaStreamSource(stream), proc=ctx.createScriptProcessor(4096,1,1);
+            const chunks=[]; proc.onaudioprocess=(e)=>chunks.push(new Float32Array(e.inputBuffer.getChannelData(0)));
+            src.connect(proc); proc.connect(ctx.destination);
+            await new Promise(r=>setTimeout(r,3000));
+            proc.disconnect(); stream.getTracks().forEach(t=>t.stop()); const sr=ctx.sampleRate; await ctx.close();
+            const total=chunks.reduce((a,c)=>a+c.length,0), samples=new Float32Array(total); let off=0;
+            for(const c of chunks){ samples.set(c,off); off+=c.length; }
+            const dbs=[]; for(let i=0;i<samples.length;i+=4096) dbs.push(AudioUtil.calcRmsDb(samples.slice(i,i+4096)));
+            dbs.sort((a,b)=>a-b); const envDb=dbs[Math.floor(dbs.length*0.15)]||-60, voiceDb=dbs[Math.floor(dbs.length*0.9)]||-20;
+            const wav=AudioUtil.encodeWav(samples,sr);
+            this.state.reference={envDb,voiceDb,wav}; await DB.setSetting("reference",this.state.reference);
+            this.refreshUI(); alert(`基準音を測定しました\n環境音: ${envDb.toFixed(1)} dB / 基準音: ${voiceDb.toFixed(1)} dB`);
+          } catch(err){ alert("測定に失敗しました："+err.message); }
+          finally{ btn.disabled=false; btn.textContent=LABELS.btnMeasureRef; }
+        });
+        document.getElementById("btn-play-ref").addEventListener("click",()=>{
+          if(!this.state.reference||!this.state.reference.wav) return;
+          const u=URL.createObjectURL(this.state.reference.wav), a=new Audio(u); a.onended=()=>URL.revokeObjectURL(u); a.play();
+        });
+        document.getElementById("btn-go-record").addEventListener("click",()=>{ this.navigate("page-record"); Recorder.start(); });
+      },
+      setupRecordEvents() {
+        document.getElementById("btn-enter-black").addEventListener("click",()=>{ document.getElementById("black-screen").classList.add("active"); document.documentElement.classList.add("is-black-screen"); document.body.classList.add("is-black-screen"); });
+        document.getElementById("btn-stop-record").addEventListener("click",()=>{ if(confirm("計測を停止して保存しますか？")) Recorder.stop(true); });
+        document.getElementById("btn-retry-save").addEventListener("click",()=>Recorder.trySaveRecord());
+      },
+      setupViewerEvents() {
+        document.getElementById("btn-cal-prev").addEventListener("click",()=>{ Viewer.calMonth--; if(Viewer.calMonth<0){Viewer.calMonth=11;Viewer.calYear--;} Viewer.renderCalendar(); });
+        document.getElementById("btn-cal-next").addEventListener("click",()=>{ Viewer.calMonth++; if(Viewer.calMonth>11){Viewer.calMonth=0;Viewer.calYear++;} Viewer.renderCalendar(); });
+        document.getElementById("btn-import-external").addEventListener("click",()=>document.getElementById("external-file-input").click());
+        document.getElementById("external-file-input").addEventListener("change",(e)=>{ if(e.target.files[0]) Viewer.handleExternalFile(e.target.files[0]); });
+        document.getElementById("btn-go-share").addEventListener("click",()=>Sharer.openShare());
+      },
+      setupShareEvents() {
+        document.getElementById("btn-share-all-ok").addEventListener("click",()=>Sharer.setAll(true));
+        document.getElementById("btn-share-all-ng").addEventListener("click",()=>Sharer.setAll(false));
+        document.getElementById("btn-create-zip").addEventListener("click",()=>Sharer.createZip());
+        document.getElementById("btn-open-mail").addEventListener("click",()=>Sharer.openMail());
+      }
+    };
+    window.addEventListener("DOMContentLoaded",()=>App.init());
+  </script>
+</body>
+</html>
