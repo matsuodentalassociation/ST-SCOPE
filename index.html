@@ -115,6 +115,7 @@
       padding: 6px 12px;
       font-size: 0.85rem;
       margin-bottom: 0;
+      white-space: nowrap;
     }
 
     .status-row {
@@ -172,7 +173,6 @@
     }
     .meter-fill.sound { background: var(--success); }
 
-    /* カレンダー */
     .cal-header {
       display: flex;
       justify-content: space-between;
@@ -218,7 +218,6 @@
     }
     .cal-day.selected .cal-dot { background: #ffffff; }
 
-    /* グラフ・イベント一覧 */
     #detail-canvas {
       width: 100%;
       height: 220px;
@@ -242,6 +241,7 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
+      gap: 8px;
       padding: 8px 0;
       border-bottom: 1px solid var(--border);
       font-size: 0.85rem;
@@ -255,7 +255,7 @@
       font-weight: 600;
     }
     .tag-snore { background: #dcfce7; color: #166534; }
-    .tag-voice { background: #fee2e2; color: #991b1b; }
+    .tag-voice { background: #fce7f3; color: #9d174d; }
     .tag-unknown { background: #fef3c7; color: #92400e; }
 
     #qr-video-container {
@@ -311,7 +311,7 @@
   <div class="app-container">
     <header>
       <h1 data-label="appTitle">SomnoLog</h1>
-      <span class="version-badge" id="app-version">v1.0.0-step4</span>
+      <span class="version-badge" id="app-version">v1.0.0-step4.1</span>
     </header>
 
     <!-- 1. 開始画面 -->
@@ -465,8 +465,10 @@
         <div class="legend">
           <span class="legend-item"><span class="legend-color" style="background:#16a34a;"></span>音圧(dB)</span>
           <span class="legend-item"><span class="legend-color" style="background:#2563eb;"></span>体動</span>
-          <span class="legend-item"><span class="legend-color" style="background:#dc2626;"></span>心拍/人声</span>
-          <span class="legend-item"><span class="legend-color" style="background:#d97706;"></span>筋電/SpO2</span>
+          <span class="legend-item"><span class="legend-color" style="background:#dc2626;"></span>心拍(HR)</span>
+          <span class="legend-item"><span class="legend-color" style="background:#9333ea;"></span>SpO2</span>
+          <span class="legend-item"><span class="legend-color" style="background:#d97706;"></span>筋電(EMG)</span>
+          <span class="legend-item"><span class="legend-color" style="background:#db2777;"></span>人声</span>
         </div>
       </div>
 
@@ -920,9 +922,6 @@
       }
     };
 
-    /**
-     * カレンダー・詳細・外部データ解析モジュール
-     */
     const Viewer = {
       calYear: new Date().getFullYear(),
       calMonth: new Date().getMonth(),
@@ -1030,7 +1029,7 @@
         const events = record.events || [];
         const snore = events.filter((e) => e.category === "snore").length;
         const voice = events.filter((e) => e.category === "voice").length;
-        const unk = events.filter((e) => e.category === "unknown").length;
+        const unk = events.filter((e) => !e.category || e.category === "unknown").length;
         document.getElementById("detail-summary").textContent = `いびき:${snore} / 人声:${voice} / 不明:${unk}`;
 
         this.renderEventList(record);
@@ -1051,10 +1050,13 @@
           row.className = "event-item";
           const tagClass = ev.category === "voice" ? "tag-voice" : ev.category === "snore" ? "tag-snore" : "tag-unknown";
           const label = ev.category === "voice" ? "人声" : ev.category === "snore" ? "いびき" : "不明";
+          const startStr = ev.startSec !== undefined ? `${Number(ev.startSec).toFixed(1)}秒〜` : "時刻記録";
+          const durStr = ev.durationSec !== undefined ? `${Number(ev.durationSec).toFixed(1)}s` : "-";
+          const dbStr = ev.peakDb !== undefined ? `${Number(ev.peakDb).toFixed(1)}dB` : "-";
           row.innerHTML = `
             <div>
               <span class="tag ${tagClass}">${label}</span>
-              <span> ${ev.startSec}秒〜 (${ev.durationSec}s / ${ev.peakDb}dB)</span>
+              <span> ${startStr} (${durStr} / ${dbStr})</span>
             </div>
           `;
           const btn = document.createElement("button");
@@ -1091,7 +1093,6 @@
         const tl = rec.timeline || [];
         const totalSec = Math.max(10, ((rec.endedAt || rec.startedAt) - rec.startedAt) / 1000);
 
-        // グリッド線
         ctx.strokeStyle = "#e2e8f0";
         ctx.lineWidth = 1;
         for (let i = 1; i < 4; i++) {
@@ -1102,8 +1103,8 @@
           ctx.stroke();
         }
 
-        // 音圧 (緑)
         if (tl.length > 0) {
+          // 1. 音圧 (緑)
           ctx.strokeStyle = "#16a34a";
           ctx.lineWidth = 2;
           ctx.beginPath();
@@ -1116,7 +1117,7 @@
           });
           ctx.stroke();
 
-          // 体動 (青)
+          // 2. 体動 (青)
           ctx.strokeStyle = "#2563eb";
           ctx.lineWidth = 1.5;
           ctx.beginPath();
@@ -1132,16 +1133,30 @@
           ctx.stroke();
         }
 
-        // 外部データ重ね合わせ
+        // 3. 人声イベント単独表示 (ピンク)
+        (rec.events || []).forEach((ev) => {
+          if (ev.category === "voice" && ev.startSec !== undefined) {
+            const x = (ev.startSec / totalSec) * w;
+            ctx.fillStyle = "#db2777";
+            ctx.fillRect(x - 1, 20, 2, h - 40);
+          }
+        });
+
+        // 4. 外部データ単独表示 (心拍:赤 / SpO2:紫 / 筋電:オレンジ)
         if (this.externalData && this.externalData.points) {
-          ctx.fillStyle = "#d97706";
           this.externalData.points.forEach((pt) => {
             const relSec = (pt.at - rec.startedAt) / 1000;
             if (relSec < 0 || relSec > totalSec) return;
             const x = (relSec / totalSec) * w;
-            if (pt.hr) {
+            if (pt.hr !== null && pt.hr !== undefined) {
               const y = h - Math.min(1, pt.hr / 140) * (h - 20) - 10;
               ctx.fillStyle = "#dc2626";
+              ctx.fillRect(x - 1.5, y - 1.5, 3, 3);
+            }
+            if (pt.spo2 !== null && pt.spo2 !== undefined) {
+              const normSpo2 = Math.max(0, Math.min(1, (pt.spo2 - 80) / 20));
+              const y = h - normSpo2 * (h - 20) - 10;
+              ctx.fillStyle = "#9333ea";
               ctx.fillRect(x - 1.5, y - 1.5, 3, 3);
             }
             if (pt.emg) {
@@ -1164,7 +1179,6 @@
             this.externalData = json;
             document.getElementById("external-status").textContent = `読込完了：${json.source || "JSON"} (${json.points.length}点)`;
           } else {
-            // 食いしばりCSV (Shift-JIS / UTF-8)
             let text = new TextDecoder("shift_jis").decode(buf);
             if (!text.includes("Phasic") && !text.includes("Tonic")) {
               text = new TextDecoder("utf-8").decode(buf);
@@ -1172,7 +1186,6 @@
             const lines = text.split(/\r?\n/).filter((l) => l.trim());
             const points = [];
             lines.forEach((line) => {
-              const cols = line.split(",");
               const timeMatch = line.match(/(\d{4}[\/\-]\d{1,2}[\/\-]\d{1,2}\s+\d{1,2}:\d{2}:\d{2})/);
               if (timeMatch) {
                 const ts = new Date(timeMatch[1].replace(/\//g, "-")).getTime();
