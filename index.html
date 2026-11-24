@@ -72,7 +72,7 @@
   <div class="app-container">
     <header>
       <h1 data-label="appTitle">SomnoLog</h1>
-      <span class="version-badge" id="app-version">v1.0.13-calib</span>
+      <span class="version-badge" id="app-version">v1.0.14-vad-check</span>
     </header>
     <section id="page-start" class="page active">
       <div class="card">
@@ -112,7 +112,7 @@
         <h2 data-label="prepTitle">計測の準備</h2>
         <div class="status-row"><span data-label="refSoundLabel">基準音（「あいうえお」）</span><span id="prep-ref-status" class="badge-ng">未測定</span></div>
         <div class="status-row"><span>環境音 / 基準音 (dB)</span><span id="prep-ref-db">- / -</span></div>
-        <div class="status-row"><span>基準音のAI人声認識</span><span id="prep-ref-vad">-</span></div>
+        <div class="status-row"><span>基準音のAI人声認識</span><span id="prep-ref-vad" style="font-size:0.8rem;">-</span></div>
         <div class="status-row"><span data-label="micPermLabel">マイク許可</span><span id="prep-mic-status" class="badge-ng">未許可</span></div>
         <div class="status-row"><span data-label="motionPermLabel">モーション許可</span><span id="prep-motion-status" class="badge-ng">未許可</span></div>
       </div>
@@ -304,17 +304,20 @@
       },
       async predictVoiceProb(samples16k) {
         if(!this.session) return null;
-        const frameSize=512, inputNames=this.session.inputNames||[], isV4=inputNames.includes("h")&&inputNames.includes("c"), sr=new ort.Tensor("int64",BigInt64Array.from([16000n]),[1]);
+        let sumSq=0; for(let i=0;i<samples16k.length;i++) sumSq+=samples16k[i]*samples16k[i];
+        const rms = Math.sqrt(sumSq/samples16k.length).toFixed(3);
+        const frameSize=512, inputNames=this.session.inputNames||[], outputNames=this.session.outputNames||[], isV4=inputNames.includes("h")&&inputNames.includes("c"), sr=new ort.Tensor("int64",BigInt64Array.from([16000n]),[1]);
         let maxProb=0, frames=0, state=isV4?null:new ort.Tensor("float32",new Float32Array(2*1*128),[2,1,128]), h=isV4?new ort.Tensor("float32",new Float32Array(2*1*64),[2,1,64]):null, c=isV4?new ort.Tensor("float32",new Float32Array(2*1*64),[2,1,64]):null;
         const runInference = async ()=>{
           for(let i=0;i+frameSize<=samples16k.length;i+=frameSize){
             const chunk=samples16k.slice(i,i+frameSize), input=new ort.Tensor("float32",chunk,[1,frameSize]);
             const out = await this.session.run(isV4?{input,h,c,sr}:{input,state,sr});
-            const prob = out.output.data[0]; if(prob>maxProb) maxProb=prob;
+            const outKey = outputNames[0] || "output";
+            const prob = out[outKey].data[0]; if(prob>maxProb) maxProb=prob;
             frames++;
             if(isV4){ h=out.hn; c=out.cn; } else { state=out.stateN; }
           }
-          this.lastDebug=`[f:${frames}]`;
+          this.lastDebug=`(rms:${rms}/f:${frames}/out:${outputNames.join(",")})`;
           return maxProb;
         };
         return Promise.race([runInference(), new Promise((_,rej)=>setTimeout(()=>rej(new Error("推論タイムアウト")),10000))]);
@@ -588,7 +591,7 @@
         if(ref){
           refEl.textContent="測定済"; refEl.className="badge-ok";
           document.getElementById("prep-ref-db").textContent=`${ref.envDb.toFixed(1)} / ${ref.voiceDb.toFixed(1)} dB`;
-          document.getElementById("prep-ref-vad").textContent=ref.vadProb!==undefined&&ref.vadProb!==null?`${Math.round(ref.vadProb*100)}%`:"未分析";
+          document.getElementById("prep-ref-vad").textContent=ref.vadProb!==undefined&&ref.vadProb!==null?`${Math.round(ref.vadProb*100)}% ${ref.vadDebug||""}`:"未分析";
           document.getElementById("btn-play-ref").disabled=!ref.wav;
         } else {
           refEl.textContent="未測定"; refEl.className="badge-ng";
@@ -683,15 +686,16 @@
             const dbs=[]; for(let i=0;i<samples.length;i+=4096) dbs.push(AudioUtil.calcRmsDb(samples.slice(i,i+4096)));
             dbs.sort((a,b)=>a-b); const envDb=dbs[Math.floor(dbs.length*0.15)]||-60, voiceDb=dbs[Math.floor(dbs.length*0.9)]||-20;
             const wav=AudioUtil.encodeWav(samples,sr);
-            let vadProb=null;
+            let vadProb=null, vadDebug="";
             const ok=await VAD.init();
             if(ok){
               const s16=await AudioUtil.resampleTo16k(samples,sr);
               vadProb=await VAD.predictVoiceProb(s16);
+              vadDebug=VAD.lastDebug;
             }
-            this.state.reference={envDb,voiceDb,wav,vadProb}; await DB.setSetting("reference",this.state.reference);
+            this.state.reference={envDb,voiceDb,wav,vadProb,vadDebug}; await DB.setSetting("reference",this.state.reference);
             this.refreshUI();
-            alert(`基準音を測定しました\n環境音: ${envDb.toFixed(1)} dB / 基準音: ${voiceDb.toFixed(1)} dB\nAI人声認識: ${vadProb!==null?Math.round(vadProb*100)+"%":"未分析"}`);
+            alert(`基準音を測定しました\n環境音: ${envDb.toFixed(1)} dB / 基準音: ${voiceDb.toFixed(1)} dB\nAI人声認識: ${vadProb!==null?Math.round(vadProb*100)+"% "+vadDebug:"未分析"}`);
           } catch(err){ alert("測定に失敗しました："+err.message); }
           finally{ btn.disabled=false; btn.textContent=LABELS.btnMeasureRef; }
         });
