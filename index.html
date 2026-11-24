@@ -72,7 +72,7 @@
   <div class="app-container">
     <header>
       <h1 data-label="appTitle">SomnoLog</h1>
-      <span class="version-badge" id="app-version">v1.0.10-safe-vad</span>
+      <span class="version-badge" id="app-version">v1.0.11-hq-resample</span>
     </header>
     <section id="page-start" class="page active">
       <div class="card">
@@ -262,23 +262,21 @@
         let o=44; for(let i=0;i<samples.length;i++){ const s=Math.max(-1,Math.min(1,samples[i])); view.setInt16(o,s<0?s*0x8000:s*0x7fff,true); o+=2; }
         return new Blob([buffer],{type:"audio/wav"});
       },
-      resampleTo16k(samples,sourceRate) {
-        let mean=0; for(let i=0;i<samples.length;i++) mean+=samples[i]; mean/=samples.length;
-        let sumSq=0; for(let i=0;i<samples.length;i++){ const d=samples[i]-mean; sumSq+=d*d; }
-        const rms=Math.sqrt(sumSq/samples.length);
-        const gain = rms>1e-4 ? Math.min(25, 0.15/rms) : 1;
-        if(sourceRate===16000){
-          const out=new Float32Array(samples.length);
-          for(let i=0;i<samples.length;i++) out[i]=Math.max(-1,Math.min(1,(samples[i]-mean)*gain));
-          return out;
-        }
-        const ratio=sourceRate/16000, targetLen=Math.max(1,Math.floor(samples.length/ratio)), out=new Float32Array(targetLen);
-        for(let i=0;i<targetLen;i++){
-          const pos=i*ratio, idx=Math.floor(pos), frac=pos-idx;
-          const s0=(samples[idx]||0)-mean, s1=(samples[idx+1]!==undefined?samples[idx+1]:(samples[idx]||0))-mean;
-          out[i]=Math.max(-1,Math.min(1,(s0+(s1-s0)*frac)*gain));
-        }
-        return out;
+      async resampleTo16k(samples,sourceRate) {
+        const targetLen=Math.max(1,Math.ceil(samples.length*16000/sourceRate));
+        const offCtx=new OfflineAudioContext(1,targetLen,16000);
+        const buf=offCtx.createBuffer(1,samples.length,sourceRate);
+        buf.getChannelData(0).set(samples);
+        const src=offCtx.createBufferSource();
+        src.buffer=buf; src.connect(offCtx.destination); src.start(0);
+        const rendered=await offCtx.startRendering();
+        const out=rendered.getChannelData(0);
+        let mean=0; for(let i=0;i<out.length;i++) mean+=out[i]; mean/=out.length;
+        let sumSq=0; for(let i=0;i<out.length;i++){ const d=out[i]-mean; sumSq+=d*d; }
+        const rms=Math.sqrt(sumSq/out.length), gain=rms>1e-4?Math.min(25,0.15/rms):1;
+        const res=new Float32Array(out.length);
+        for(let i=0;i<out.length;i++) res[i]=Math.max(-1,Math.min(1,(out[i]-mean)*gain));
+        return res;
       }
     };
     const VAD = {
@@ -358,7 +356,7 @@
         const peakDb=AudioUtil.calcRmsDb(samples), clipId="clip_"+Date.now()+"_"+Math.floor(Math.random()*1000);
         let category="unknown", voiceProb=null, vadErr=null;
         try {
-          const samples16k=AudioUtil.resampleTo16k(samples,this.sampleRate); voiceProb=await VAD.predictVoiceProb(samples16k);
+          const samples16k=await AudioUtil.resampleTo16k(samples,this.sampleRate); voiceProb=await VAD.predictVoiceProb(samples16k);
           if(voiceProb!==null){
             document.getElementById("record-vad-prob").textContent=Math.round(voiceProb*100)+"% "+VAD.lastDebug;
             const th=(App.state.audioPrefs.voiceThreshold||35)/100;
