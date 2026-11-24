@@ -72,7 +72,7 @@
   <div class="app-container">
     <header>
       <h1 data-label="appTitle">SomnoLog</h1>
-      <span class="version-badge" id="app-version">v1.0.12-no-clip</span>
+      <span class="version-badge" id="app-version">v1.0.13-calib</span>
     </header>
     <section id="page-start" class="page active">
       <div class="card">
@@ -112,13 +112,14 @@
         <h2 data-label="prepTitle">計測の準備</h2>
         <div class="status-row"><span data-label="refSoundLabel">基準音（「あいうえお」）</span><span id="prep-ref-status" class="badge-ng">未測定</span></div>
         <div class="status-row"><span>環境音 / 基準音 (dB)</span><span id="prep-ref-db">- / -</span></div>
+        <div class="status-row"><span>基準音のAI人声認識</span><span id="prep-ref-vad">-</span></div>
         <div class="status-row"><span data-label="micPermLabel">マイク許可</span><span id="prep-mic-status" class="badge-ng">未許可</span></div>
         <div class="status-row"><span data-label="motionPermLabel">モーション許可</span><span id="prep-motion-status" class="badge-ng">未許可</span></div>
       </div>
       <div class="card">
         <div class="input-group">
-          <label for="voice-exclude-strength">人声とみなす確率しきい値: <strong id="voice-strength-val">35</strong>%</label>
-          <input type="range" id="voice-exclude-strength" min="10" max="90" value="35">
+          <label for="voice-exclude-strength">人声とみなす確率しきい値: <strong id="voice-strength-val">25</strong>%</label>
+          <input type="range" id="voice-exclude-strength" min="5" max="90" value="25">
         </div>
       </div>
       <button class="btn" id="btn-request-perms">マイク・モーション許可を取得</button>
@@ -273,7 +274,7 @@
         const out=rendered.getChannelData(0);
         let mean=0; for(let i=0;i<out.length;i++) mean+=out[i]; mean/=out.length;
         let peak=0; for(let i=0;i<out.length;i++){ const a=Math.abs(out[i]-mean); if(a>peak) peak=a; }
-        const gain=peak>1e-4?Math.min(5,0.8/peak):1;
+        const gain=peak>1e-4?Math.min(12,0.7/peak):1;
         const res=new Float32Array(out.length);
         for(let i=0;i<out.length;i++) res[i]=Math.max(-1,Math.min(1,(out[i]-mean)*gain));
         return res;
@@ -283,10 +284,10 @@
       session:null, loading:false, lastDebug:"",
       async init() {
         const statusEl = document.getElementById("record-vad-status");
-        if(this.session){ statusEl.textContent="準備完了"; return; }
-        if(this.loading) return;
-        if(typeof ort==="undefined"){ statusEl.textContent="失敗(ort未読込)"; return; }
-        this.loading=true; statusEl.textContent="モデル読込中...";
+        if(this.session){ if(statusEl) statusEl.textContent="準備完了"; return true; }
+        if(this.loading) return false;
+        if(typeof ort==="undefined"){ if(statusEl) statusEl.textContent="失敗(ort未読込)"; return false; }
+        this.loading=true; if(statusEl) statusEl.textContent="モデル読込中...";
         try {
           ort.env.wasm.wasmPaths="https://matsuodentalassociation.github.io/ST-SCOPE/";
           ort.env.wasm.numThreads=1;
@@ -294,9 +295,11 @@
             ort.InferenceSession.create("https://matsuodentalassociation.github.io/ST-SCOPE/silero_vad.onnx"),
             new Promise((_,rej)=>setTimeout(()=>rej(new Error("タイムアウト")),30000))
           ]);
-          statusEl.textContent="準備完了";
+          if(statusEl) statusEl.textContent="準備完了";
+          return true;
         } catch(err) {
-          console.error("VAD初期化失敗:",err); statusEl.textContent="失敗("+err.message+")";
+          console.error("VAD初期化失敗:",err); if(statusEl) statusEl.textContent="失敗("+err.message+")";
+          return false;
         } finally { this.loading=false; }
       },
       async predictVoiceProb(samples16k) {
@@ -359,9 +362,9 @@
           const samples16k=await AudioUtil.resampleTo16k(samples,this.sampleRate); voiceProb=await VAD.predictVoiceProb(samples16k);
           if(voiceProb!==null){
             document.getElementById("record-vad-prob").textContent=Math.round(voiceProb*100)+"% "+VAD.lastDebug;
-            const th=(App.state.audioPrefs.voiceThreshold||35)/100;
+            const th=(App.state.audioPrefs.voiceThreshold||25)/100;
             if(voiceProb>=th) category="voice";
-            else if(voiceProb>=0.10) category="unknown";
+            else if(voiceProb>=0.05) category="unknown";
             else category="snore";
           }
         } catch(err){ vadErr=err.message; console.warn("イベント判定失敗:",err); document.getElementById("record-vad-prob").textContent="ERR:"+err.message; }
@@ -379,7 +382,7 @@
         if(this.ctx){ await this.ctx.close().catch(()=>{}); this.ctx=null; }
         if(this.wakeLock){ await this.wakeLock.release().catch(()=>{}); this.wakeLock=null; }
         document.getElementById("record-state").textContent="停止"; if(!save) return;
-        this.pendingSaveRecord={id:this.recordId,startedAt:this.startedAt,endedAt:Date.now(),patient:App.state.patient,reference:App.state.reference?{envDb:App.state.reference.envDb,voiceDb:App.state.reference.voiceDb}:null,timeline:this.timeline,events:this.events};
+        this.pendingSaveRecord={id:this.recordId,startedAt:this.startedAt,endedAt:Date.now(),patient:App.state.patient,reference:App.state.reference?{envDb:App.state.reference.envDb,voiceDb:App.state.reference.voiceDb,vadProb:App.state.reference.vadProb}:null,timeline:this.timeline,events:this.events};
         await this.trySaveRecord();
       },
       async trySaveRecord() {
@@ -553,7 +556,7 @@
     };
     const App = {
       currentPage:"page-start", blackScreenTimer:null, qrStream:null,
-      state:{ patient:null, reference:null, audioPrefs:{gain:0,loudDb:10,voiceThreshold:35}, micGranted:false, motionGranted:false },
+      state:{ patient:null, reference:null, audioPrefs:{gain:0,loudDb:10,voiceThreshold:25}, micGranted:false, motionGranted:false },
       async init() {
         this.applyLabels();
         try{ await DB.init(); await this.loadSavedState(); }catch(err){ console.error("初期化エラー:",err); }
@@ -582,12 +585,21 @@
         document.getElementById("user-name").textContent=p?(p.name||"-"):"-";
         document.getElementById("user-serial").textContent=p?(p.serial||"-"):"-";
         const ref=this.state.reference, refEl=document.getElementById("prep-ref-status");
-        if(ref){ refEl.textContent="測定済"; refEl.className="badge-ok"; document.getElementById("prep-ref-db").textContent=`${ref.envDb.toFixed(1)} / ${ref.voiceDb.toFixed(1)} dB`; document.getElementById("btn-play-ref").disabled=!ref.wav; }
-        else { refEl.textContent="未測定"; refEl.className="badge-ng"; document.getElementById("prep-ref-db").textContent="- / -"; document.getElementById("btn-play-ref").disabled=true; }
+        if(ref){
+          refEl.textContent="測定済"; refEl.className="badge-ok";
+          document.getElementById("prep-ref-db").textContent=`${ref.envDb.toFixed(1)} / ${ref.voiceDb.toFixed(1)} dB`;
+          document.getElementById("prep-ref-vad").textContent=ref.vadProb!==undefined&&ref.vadProb!==null?`${Math.round(ref.vadProb*100)}%`:"未分析";
+          document.getElementById("btn-play-ref").disabled=!ref.wav;
+        } else {
+          refEl.textContent="未測定"; refEl.className="badge-ng";
+          document.getElementById("prep-ref-db").textContent="- / -";
+          document.getElementById("prep-ref-vad").textContent="-";
+          document.getElementById("btn-play-ref").disabled=true;
+        }
         const micEl=document.getElementById("prep-mic-status"); micEl.textContent=this.state.micGranted?"許可済":"未許可"; micEl.className=this.state.micGranted?"badge-ok":"badge-ng";
         const motEl=document.getElementById("prep-motion-status"); motEl.textContent=this.state.motionGranted?"許可済":"未許可"; motEl.className=this.state.motionGranted?"badge-ok":"badge-ng";
-        document.getElementById("voice-exclude-strength").value=this.state.audioPrefs.voiceThreshold||35;
-        document.getElementById("voice-strength-val").textContent=this.state.audioPrefs.voiceThreshold||35;
+        document.getElementById("voice-exclude-strength").value=this.state.audioPrefs.voiceThreshold||25;
+        document.getElementById("voice-strength-val").textContent=this.state.audioPrefs.voiceThreshold||25;
         document.getElementById("btn-go-record").disabled=!(this.state.micGranted&&this.state.reference);
       },
       setupBlackScreen() {
@@ -658,7 +670,7 @@
         });
         document.getElementById("btn-measure-ref").addEventListener("click",async()=>{
           if(!this.state.micGranted){ alert("先にマイク許可を取得してください。"); return; }
-          const btn=document.getElementById("btn-measure-ref"); btn.disabled=true; btn.textContent="測定中...（「あいうえお」と発声）";
+          const btn=document.getElementById("btn-measure-ref"); btn.disabled=true; btn.textContent="測定・AI分析中...（「あいうえお」と発声）";
           try {
             const stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}});
             const ctx=new(window.AudioContext||window.webkitAudioContext)(), src=ctx.createMediaStreamSource(stream), proc=ctx.createScriptProcessor(4096,1,1);
@@ -671,8 +683,15 @@
             const dbs=[]; for(let i=0;i<samples.length;i+=4096) dbs.push(AudioUtil.calcRmsDb(samples.slice(i,i+4096)));
             dbs.sort((a,b)=>a-b); const envDb=dbs[Math.floor(dbs.length*0.15)]||-60, voiceDb=dbs[Math.floor(dbs.length*0.9)]||-20;
             const wav=AudioUtil.encodeWav(samples,sr);
-            this.state.reference={envDb,voiceDb,wav}; await DB.setSetting("reference",this.state.reference);
-            this.refreshUI(); alert(`基準音を測定しました\n環境音: ${envDb.toFixed(1)} dB / 基準音: ${voiceDb.toFixed(1)} dB`);
+            let vadProb=null;
+            const ok=await VAD.init();
+            if(ok){
+              const s16=await AudioUtil.resampleTo16k(samples,sr);
+              vadProb=await VAD.predictVoiceProb(s16);
+            }
+            this.state.reference={envDb,voiceDb,wav,vadProb}; await DB.setSetting("reference",this.state.reference);
+            this.refreshUI();
+            alert(`基準音を測定しました\n環境音: ${envDb.toFixed(1)} dB / 基準音: ${voiceDb.toFixed(1)} dB\nAI人声認識: ${vadProb!==null?Math.round(vadProb*100)+"%":"未分析"}`);
           } catch(err){ alert("測定に失敗しました："+err.message); }
           finally{ btn.disabled=false; btn.textContent=LABELS.btnMeasureRef; }
         });
