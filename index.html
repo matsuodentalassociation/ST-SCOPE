@@ -76,7 +76,7 @@
   <div class="app-container">
     <header>
       <h1 data-label="appTitle">SomnoLog</h1>
-      <span class="version-badge" id="app-version">v1.0.19</span>
+      <span class="version-badge" id="app-version">v1.0.20</span>
     </header>
     <section id="page-start" class="page active">
       <div class="card">
@@ -230,7 +230,7 @@
   </div>
   <div id="black-screen"><div id="black-screen-hint">画面を長押し（1.5秒）で復帰</div></div>
   <script>
-    const APP_VERSION = "v1.0.19";
+    const APP_VERSION = "v1.0.20";
     const GITHUB_API_COMMITS = "https://api.github.com/repos/matsuodentalassociation/ST-SCOPE/commits/main";
     const LABELS = { appTitle:"SomnoLog", startTitle:"ホーム", userStatusLabel:"計測者ステータス", migrationStatusLabel:"学習データ", btnGoUser:"計測者情報の確認・登録", btnGoPrep:"計測の準備へ", btnGoCalendar:"セッションログ（カレンダー）", btnCheckUpdate:"更新の確認", userTitle:"計測者情報", issuerLabel:"発行元", idLabel:"管理番号", nameLabel:"氏名", btnScanQr:"カメラで二次元コードを読み取る", prepTitle:"計測の準備", refSoundLabel:"基準音（「あいうえお」）", micPermLabel:"マイク許可", motionPermLabel:"モーション許可", btnMeasureRef:"基準音を測定する（3秒間）", btnStartRecord:"計測を開始する", recordTitle:"波形・音圧モニタリング中", recordStateLabel:"状態", elapsedLabel:"経過時間", eventCountLabel:"イベント検出数", btnEnterBlack:"黒画面モードへ", btnStopRecord:"計測を停止する", calendarTitle:"セッションログ一覧", detailTitle:"音響解析詳細", btnGoShare:"共有へ進む", detailFootnote:"本アプリは一般的な音響・体動モニタリングツールです。", shareTitle:"データの書き出し・共有", btnCreateZip:"ZIPを作成する", btnBack:"戻る" };
     const DB = {
@@ -418,7 +418,6 @@
         const th = (App.state.learning && App.state.learning.learnedThreshold) ? App.state.learning.learnedThreshold : ((App.state.audioPrefs.voiceThreshold||70)/100);
         let category="snore", voiceProb=null, vadErr=null;
 
-        // 3秒未満の短い音は話し声ではないため、いびきとしてそのまま保存
         if (durationSec >= 3.0) {
           try {
             const samples16k=await AudioUtil.resampleTo16k(samples,this.sampleRate); voiceProb=await VAD.predictVoiceProb(samples16k);
@@ -457,6 +456,19 @@
     };
     const Viewer = {
       calYear:new Date().getFullYear(), calMonth:new Date().getMonth(), allRecords:[], selectedDateStr:null, currentRecord:null, externalData:null,
+      // 過去データも含めて表示時に最新ルール（3秒未満はいびき、基準音以下の不明は除外）を適用
+      normalizeRecordEvents(record) {
+        const refVoiceDb = (record.reference && record.reference.voiceDb !== undefined) ? record.reference.voiceDb : (App.state.reference ? App.state.reference.voiceDb : -30);
+        return (record.events || []).map(ev => {
+          const copy = Object.assign({}, ev);
+          if ((copy.durationSec || 0) < 3.0) {
+            copy.category = "snore";
+          } else if (copy.category === "unknown" && copy.peakDb !== undefined && copy.peakDb < refVoiceDb) {
+            copy.category = "voice";
+          }
+          return copy;
+        });
+      },
       async loadCalendar(){ this.allRecords=await DB.getAllRecords(); this.renderCalendar(); },
       renderCalendar() {
         document.getElementById("cal-month-label").textContent=`${this.calYear}年${this.calMonth+1}月`;
@@ -486,13 +498,14 @@
         });
       },
       openDetail(record) {
-        this.currentRecord=record; this.externalData=null; document.getElementById("external-status").textContent="外部データ未読込";
-        document.getElementById("detail-date").textContent=new Date(record.startedAt).toLocaleString("ja-JP");
-        const durSec=Math.max(1,Math.round(((record.endedAt||record.startedAt)-record.startedAt)/1000));
+        const normalized = Object.assign({}, record, { events: this.normalizeRecordEvents(record) });
+        this.currentRecord=normalized; this.externalData=null; document.getElementById("external-status").textContent="外部データ未読込";
+        document.getElementById("detail-date").textContent=new Date(normalized.startedAt).toLocaleString("ja-JP");
+        const durSec=Math.max(1,Math.round(((normalized.endedAt||normalized.startedAt)-normalized.startedAt)/1000));
         document.getElementById("detail-duration").textContent=`${Math.floor(durSec/3600)}時間${Math.floor((durSec%3600)/60)}分${durSec%60}秒`;
-        const evs=record.events||[], snore=evs.filter(e=>e.category==="snore").length, voice=evs.filter(e=>e.category==="voice").length, unk=evs.filter(e=>!e.category||e.category==="unknown").length;
+        const evs=normalized.events||[], snore=evs.filter(e=>e.category==="snore").length, voice=evs.filter(e=>e.category==="voice").length, unk=evs.filter(e=>!e.category||e.category==="unknown").length;
         document.getElementById("detail-summary").textContent=`いびき:${snore} / 人声:${voice} / 不明:${unk}`;
-        this.renderEventList(record); App.navigate("page-detail"); setTimeout(()=>this.drawTimeline(),50);
+        this.renderEventList(normalized); App.navigate("page-detail"); setTimeout(()=>this.drawTimeline(),50);
       },
       renderEventList(record) {
         const listEl=document.getElementById("detail-event-list"), evs=(record.events||[]).slice(0,100);
@@ -500,7 +513,7 @@
         listEl.innerHTML="";
         evs.forEach(ev=>{
           const row=document.createElement("div"); row.className="event-item";
-          const tc=ev.category==="voice"?"tag-voice":ev.category==="snore"?"tag-snore":"tag-unknown", lb=ev.category==="voice"?"人声(破棄)":ev.category==="snore"?"いびき":"不明";
+          const tc=ev.category==="voice"?"tag-voice":ev.category==="snore"?"tag-snore":"tag-unknown", lb=ev.category==="voice"?"人声(除外)":ev.category==="snore"?"いびき":"不明";
           const st=ev.startSec!==undefined?`${Number(ev.startSec).toFixed(1)}秒〜`:"時刻記録", dr=ev.durationSec!==undefined?`${Number(ev.durationSec).toFixed(1)}s`:"-", db=ev.peakDb!==undefined?`${Number(ev.peakDb).toFixed(1)}dB`:"-";
           const vp=ev.voiceProb!==null&&ev.voiceProb!==undefined?` 声:${Math.round(ev.voiceProb*100)}%`:"";
           row.innerHTML=`<div><span class="tag ${tc}">${lb}</span><span> ${st} (${dr} / ${db}${vp})</span></div>`;
