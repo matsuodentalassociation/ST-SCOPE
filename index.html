@@ -76,7 +76,7 @@
   <div class="app-container">
     <header>
       <h1 data-label="appTitle">SomnoLog</h1>
-      <span class="version-badge" id="app-version">v1.0.20</span>
+      <span class="version-badge" id="app-version">v1.0.21</span>
     </header>
     <section id="page-start" class="page active">
       <div class="card">
@@ -185,7 +185,6 @@
           <span class="legend-item"><span class="legend-color" style="background:#dc2626;"></span>心拍(HR)</span>
           <span class="legend-item"><span class="legend-color" style="background:#9333ea;"></span>SpO2</span>
           <span class="legend-item"><span class="legend-color" style="background:#d97706;"></span>筋電(EMG)</span>
-          <span class="legend-item"><span class="legend-color" style="background:#db2777;"></span>人声</span>
         </div>
       </div>
       <div class="card">
@@ -230,7 +229,7 @@
   </div>
   <div id="black-screen"><div id="black-screen-hint">画面を長押し（1.5秒）で復帰</div></div>
   <script>
-    const APP_VERSION = "v1.0.20";
+    const APP_VERSION = "v1.0.21";
     const GITHUB_API_COMMITS = "https://api.github.com/repos/matsuodentalassociation/ST-SCOPE/commits/main";
     const LABELS = { appTitle:"SomnoLog", startTitle:"ホーム", userStatusLabel:"計測者ステータス", migrationStatusLabel:"学習データ", btnGoUser:"計測者情報の確認・登録", btnGoPrep:"計測の準備へ", btnGoCalendar:"セッションログ（カレンダー）", btnCheckUpdate:"更新の確認", userTitle:"計測者情報", issuerLabel:"発行元", idLabel:"管理番号", nameLabel:"氏名", btnScanQr:"カメラで二次元コードを読み取る", prepTitle:"計測の準備", refSoundLabel:"基準音（「あいうえお」）", micPermLabel:"マイク許可", motionPermLabel:"モーション許可", btnMeasureRef:"基準音を測定する（3秒間）", btnStartRecord:"計測を開始する", recordTitle:"波形・音圧モニタリング中", recordStateLabel:"状態", elapsedLabel:"経過時間", eventCountLabel:"イベント検出数", btnEnterBlack:"黒画面モードへ", btnStopRecord:"計測を停止する", calendarTitle:"セッションログ一覧", detailTitle:"音響解析詳細", btnGoShare:"共有へ進む", detailFootnote:"本アプリは一般的な音響・体動モニタリングツールです。", shareTitle:"データの書き出し・共有", btnCreateZip:"ZIPを作成する", btnBack:"戻る" };
     const DB = {
@@ -456,7 +455,6 @@
     };
     const Viewer = {
       calYear:new Date().getFullYear(), calMonth:new Date().getMonth(), allRecords:[], selectedDateStr:null, currentRecord:null, externalData:null,
-      // 過去データも含めて表示時に最新ルール（3秒未満はいびき、基準音以下の不明は除外）を適用
       normalizeRecordEvents(record) {
         const refVoiceDb = (record.reference && record.reference.voiceDb !== undefined) ? record.reference.voiceDb : (App.state.reference ? App.state.reference.voiceDb : -30);
         return (record.events || []).map(ev => {
@@ -540,7 +538,6 @@
           tl.forEach(pt=>{ if(pt.motion===null||pt.motion===undefined) return; const x=(pt.t/totalSec)*w, y=h-Math.max(0,Math.min(1,pt.motion/15))*(h-20)-10; if(!st){ctx.moveTo(x,y);st=true;}else ctx.lineTo(x,y); });
           ctx.stroke();
         }
-        (rec.events||[]).forEach(ev=>{ if(ev.category==="voice"&&ev.startSec!==undefined){ const x=(ev.startSec/totalSec)*w; ctx.fillStyle="#db2777"; ctx.fillRect(x-1,20,2,h-40); } });
         if(this.externalData&&this.externalData.points){
           this.externalData.points.forEach(pt=>{
             const rel=(pt.at-rec.startedAt)/1000; if(rel<0||rel>totalSec) return; const x=(rel/totalSec)*w;
@@ -635,17 +632,24 @@
         btn.disabled = true;
         try {
           await this.saveLearningFromDecisions();
-          const files=[], expEvs=[];
           const allEvs = rec.events || [];
-          for(let i=0; i<allEvs.length; i++){
-            const ev = allEvs[i];
-            if(ev.category==="snore"||this.decisions[ev.id]===true){
-              expEvs.push(ev);
-              const clip=await DB.getClip(rec.id,ev.id);
-              if(clip&&clip.wav) files.push({name:`clips/${ev.id}.wav`,data:new Uint8Array(await clip.wav.arrayBuffer())});
+          const expEvs = allEvs.filter(ev => ev.category==="snore" || this.decisions[ev.id]===true);
+          // 落ちないように、音声クリップは音量の大きい順に合計15MB以内だけZIPに含める
+          const sortedForAudio = [...expEvs].sort((a,b)=>(b.peakDb||-120)-(a.peakDb||-120));
+          const files=[];
+          let totalBytes = 0;
+          const MAX_BYTES = 15 * 1024 * 1024;
+          for(let i=0; i<sortedForAudio.length; i++){
+            const ev = sortedForAudio[i];
+            const clip = await DB.getClip(rec.id, ev.id);
+            if(clip && clip.wav){
+              if(totalBytes + clip.wav.size > MAX_BYTES) break;
+              const ab = await clip.wav.arrayBuffer();
+              files.push({name:`clips/${ev.id}.wav`, data:new Uint8Array(ab)});
+              totalBytes += ab.byteLength;
             }
-            if(i % 20 === 0){
-              btn.textContent = `ZIP作成中... (${i}/${allEvs.length})`;
+            if(i % 15 === 0){
+              btn.textContent = `ZIP作成中... (${Math.round(totalBytes/1024/1024*10)/10}MB)`;
               await new Promise(r=>setTimeout(r,0));
             }
           }
@@ -654,7 +658,7 @@
           a.href=url; a.download=`somnolog_${rec.id}.zip`; document.body.appendChild(a); a.click(); a.remove();
           setTimeout(()=>URL.revokeObjectURL(url),1000);
           document.getElementById("btn-open-mail").disabled=false;
-          alert(`ZIPファイルを作成しました（含まれる音声：${files.length-1}件）`);
+          alert(`ZIPファイルを作成しました（全ログ + 音声${files.length-1}件 / 約${Math.round(totalBytes/1024/1024*10)/10}MB）`);
         } catch(err) {
           alert("ZIP作成に失敗しました: " + err.message);
         } finally {
