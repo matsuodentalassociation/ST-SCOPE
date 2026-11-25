@@ -76,7 +76,7 @@
   <div class="app-container">
     <header>
       <h1 data-label="appTitle">SomnoLog</h1>
-      <span class="version-badge" id="app-version">v1.0.17</span>
+      <span class="version-badge" id="app-version">v1.0.19</span>
     </header>
     <section id="page-start" class="page active">
       <div class="card">
@@ -87,7 +87,7 @@
       <button class="btn" onclick="App.navigate('page-user')" data-label="btnGoUser">計測者情報の確認・登録</button>
       <button class="btn" onclick="App.navigate('page-prep')" data-label="btnGoPrep">計測の準備へ</button>
       <button class="btn btn-secondary" onclick="App.navigate('page-calendar')" data-label="btnGoCalendar">セッションログ（カレンダー）</button>
-      <button class="btn btn-secondary" id="btn-check-update" data-label="btnCheckUpdate">更新の確認</button>
+      <button class="btn btn-secondary" id="btn-check-update" onclick="App.checkGitHubUpdate()" data-label="btnCheckUpdate">更新の確認</button>
     </section>
     <section id="page-user" class="page">
       <div class="card">
@@ -199,38 +199,38 @@
         <h2>検出イベント一覧（先頭100件）</h2>
         <div id="detail-event-list" style="font-size:0.85rem;color:var(--text-sub);">イベントはありません。</div>
       </div>
-      <button class="btn" id="btn-go-share" data-label="btnGoShare">共有へ進む</button>
+      <button class="btn" id="btn-go-share" onclick="Sharer.openShare()" data-label="btnGoShare">共有へ進む</button>
       <button class="btn btn-secondary" onclick="App.navigate('page-calendar')" data-label="btnBack">戻る</button>
       <p class="footnote" data-label="detailFootnote">本アプリは一般的な音響・体動モニタリングツールです。</p>
     </section>
     <section id="page-share" class="page">
       <div class="card">
         <h2 data-label="shareTitle">データの書き出し・共有</h2>
-        <p style="color:var(--text-sub);font-size:0.85rem;margin-top:0;">プライバシー保護のため、不明と判定された音声を共有に含めるか確認してください。確認結果は次回の人声判定に学習されます。</p>
+        <p style="color:var(--text-sub);font-size:0.85rem;margin-top:0;">3秒以上の長めの発話で、いびきか話し声か判断できないものだけを確認します。</p>
         <div class="status-row"><span>確認対象（不明）</span><strong id="share-target-count">0件</strong></div>
         <div class="status-row"><span>確認状況</span><strong id="share-progress-text">未確認: 0件</strong></div>
         <div class="btn-row" style="margin-top:8px;">
-          <button class="btn btn-success btn-sm" id="btn-share-all-ok" style="flex:1;">まとめてOK</button>
-          <button class="btn btn-danger btn-sm" id="btn-share-all-ng" style="flex:1;">すべてダメ（除外）</button>
+          <button class="btn btn-success btn-sm" id="btn-share-all-ok" onclick="Sharer.setAll(true)" style="flex:1;">まとめてOK</button>
+          <button class="btn btn-danger btn-sm" id="btn-share-all-ng" onclick="Sharer.setAll(false)" style="flex:1;">すべてダメ（除外）</button>
         </div>
       </div>
       <div class="card" id="share-review-card">
         <h2>一つずつ確認</h2>
         <div id="share-review-list" style="font-size:0.85rem;color:var(--text-sub);">確認が必要な音声はありません。</div>
         <div class="pager" id="share-pager" style="display:none;">
-          <button class="btn btn-secondary btn-sm" id="btn-share-prev">◀ 前へ</button>
+          <button class="btn btn-secondary btn-sm" id="btn-share-prev" onclick="Sharer.prevPage()">◀ 前へ</button>
           <span id="share-page-info">1 / 1</span>
-          <button class="btn btn-secondary btn-sm" id="btn-share-next">次へ ▶</button>
+          <button class="btn btn-secondary btn-sm" id="btn-share-next" onclick="Sharer.nextPage()">次へ ▶</button>
         </div>
       </div>
-      <button class="btn" id="btn-create-zip" data-label="btnCreateZip">ZIPを作成する</button>
-      <button class="btn btn-secondary" id="btn-open-mail" disabled>メールアプリを起動する</button>
+      <button class="btn" id="btn-create-zip" onclick="Sharer.createZip()" data-label="btnCreateZip">ZIPを作成する</button>
+      <button class="btn btn-secondary" id="btn-open-mail" onclick="Sharer.openMail()" disabled>メールアプリを起動する</button>
       <button class="btn btn-secondary" onclick="App.navigate('page-detail')" data-label="btnBack">戻る</button>
     </section>
   </div>
   <div id="black-screen"><div id="black-screen-hint">画面を長押し（1.5秒）で復帰</div></div>
   <script>
-    const APP_VERSION = "v1.0.17";
+    const APP_VERSION = "v1.0.19";
     const GITHUB_API_COMMITS = "https://api.github.com/repos/matsuodentalassociation/ST-SCOPE/commits/main";
     const LABELS = { appTitle:"SomnoLog", startTitle:"ホーム", userStatusLabel:"計測者ステータス", migrationStatusLabel:"学習データ", btnGoUser:"計測者情報の確認・登録", btnGoPrep:"計測の準備へ", btnGoCalendar:"セッションログ（カレンダー）", btnCheckUpdate:"更新の確認", userTitle:"計測者情報", issuerLabel:"発行元", idLabel:"管理番号", nameLabel:"氏名", btnScanQr:"カメラで二次元コードを読み取る", prepTitle:"計測の準備", refSoundLabel:"基準音（「あいうえお」）", micPermLabel:"マイク許可", motionPermLabel:"モーション許可", btnMeasureRef:"基準音を測定する（3秒間）", btnStartRecord:"計測を開始する", recordTitle:"波形・音圧モニタリング中", recordStateLabel:"状態", elapsedLabel:"経過時間", eventCountLabel:"イベント検出数", btnEnterBlack:"黒画面モードへ", btnStopRecord:"計測を停止する", calendarTitle:"セッションログ一覧", detailTitle:"音響解析詳細", btnGoShare:"共有へ進む", detailFootnote:"本アプリは一般的な音響・体動モニタリングツールです。", shareTitle:"データの書き出し・共有", btnCreateZip:"ZIPを作成する", btnBack:"戻る" };
     const DB = {
@@ -268,6 +268,8 @@
       async getAllRecords() { return new Promise((resolve,reject)=>{ const req = this.instance.transaction("records","readonly").objectStore("records").getAll(); req.onsuccess=()=>resolve(req.result||[]); req.onerror=()=>reject(req.error); }); }
     };
     const AudioUtil = {
+      playCtx: null,
+      currentSrc: null,
       calcRmsDb(samples) { let sum=0; for(let i=0;i<samples.length;i++) sum+=samples[i]*samples[i]; const rms=Math.sqrt(sum/samples.length); return rms<=1e-6?-120:Math.max(-120,Math.min(0,20*Math.log10(rms))); },
       encodeWav(samples,sampleRate) {
         const buffer=new ArrayBuffer(44+samples.length*2), view=new DataView(buffer);
@@ -316,22 +318,30 @@
         }
         return activeFrames > 0 ? (sumRatio / activeFrames) : 0;
       },
-      playClipSafe(recordId, clipId) {
-        const a = new Audio();
-        DB.getClip(recordId, clipId).then(clip => {
+      async playClipSafe(recordId, clipId) {
+        try {
+          if (!this.playCtx) this.playCtx = new (window.AudioContext || window.webkitAudioContext)();
+          if (this.playCtx.state === "suspended") await this.playCtx.resume();
+          if (this.currentSrc) { try { this.currentSrc.stop(); } catch(_){} this.currentSrc = null; }
+          const clip = await DB.getClip(recordId, clipId);
           if (!clip || !clip.wav) { alert("音声クリップが見つかりません。"); return; }
-          const u = URL.createObjectURL(clip.wav);
-          a.src = u;
-          a.onended = () => URL.revokeObjectURL(u);
-          a.play().catch(err => alert("再生に失敗しました: " + err.message));
-        }).catch(err => alert("読込エラー: " + err.message));
+          const ab = await clip.wav.arrayBuffer();
+          const audioBuf = await this.playCtx.decodeAudioData(ab);
+          const src = this.playCtx.createBufferSource();
+          src.buffer = audioBuf;
+          src.connect(this.playCtx.destination);
+          src.start(0);
+          this.currentSrc = src;
+        } catch(err) {
+          alert("再生に失敗しました: " + err.message);
+        }
       }
     };
     const VAD = {
       session:null, loading:false,
       async init() {
         const statusEl = document.getElementById("record-vad-status");
-        if(this.session){ if(statusEl) statusEl.textContent="準備完了(学習連動)"; return true; }
+        if(this.session){ if(statusEl) statusEl.textContent="準備完了(3秒以上話し声判定)"; return true; }
         if(this.loading) return false;
         if(typeof ort==="undefined"){ if(statusEl) statusEl.textContent="音響解析モード"; return true; }
         this.loading=true; if(statusEl) statusEl.textContent="モデル読込中...";
@@ -342,7 +352,7 @@
             ort.InferenceSession.create("https://matsuodentalassociation.github.io/ST-SCOPE/silero_vad.onnx"),
             new Promise((_,rej)=>setTimeout(()=>rej(new Error("タイムアウト")),15000))
           ]);
-          if(statusEl) statusEl.textContent="準備完了(学習連動)";
+          if(statusEl) statusEl.textContent="準備完了(3秒以上話し声判定)";
           return true;
         } catch(err) {
           if(statusEl) statusEl.textContent="音響解析モード";
@@ -406,19 +416,21 @@
         const peakDb=AudioUtil.calcRmsDb(samples), clipId="clip_"+Date.now()+"_"+Math.floor(Math.random()*1000);
         const refVoiceDb = App.state.reference ? App.state.reference.voiceDb : -30;
         const th = (App.state.learning && App.state.learning.learnedThreshold) ? App.state.learning.learnedThreshold : ((App.state.audioPrefs.voiceThreshold||70)/100);
-        let category="unknown", voiceProb=null, vadErr=null;
-        try {
-          const samples16k=await AudioUtil.resampleTo16k(samples,this.sampleRate); voiceProb=await VAD.predictVoiceProb(samples16k);
-          if(voiceProb!==null){
-            document.getElementById("record-vad-prob").textContent=Math.round(voiceProb*100)+"%";
-            if(voiceProb>=th) category="voice";
-            else if(voiceProb>=0.30) category="unknown";
-            else category="snore";
-          }
-        } catch(err){ vadErr=err.message; console.warn("イベント判定失敗:",err); document.getElementById("record-vad-prob").textContent="ERR:"+err.message; }
+        let category="snore", voiceProb=null, vadErr=null;
 
-        // A案: 基準音以下の音圧で「人声」または「不明」は自動削除。「いびき」は残す。
-        if (peakDb < refVoiceDb && category !== "snore") return;
+        // 3秒未満の短い音は話し声ではないため、いびきとしてそのまま保存
+        if (durationSec >= 3.0) {
+          try {
+            const samples16k=await AudioUtil.resampleTo16k(samples,this.sampleRate); voiceProb=await VAD.predictVoiceProb(samples16k);
+            if(voiceProb!==null){
+              document.getElementById("record-vad-prob").textContent=Math.round(voiceProb*100)+"%";
+              if(voiceProb>=th) category="voice";
+              else if(voiceProb>=0.30) category="unknown";
+              else category="snore";
+            }
+          } catch(err){ vadErr=err.message; console.warn("イベント判定失敗:",err); document.getElementById("record-vad-prob").textContent="ERR:"+err.message; }
+          if (peakDb < refVoiceDb && category !== "snore") return;
+        }
 
         const eventMeta={id:clipId,startSec:Number(startSec.toFixed(2)),durationSec:Number(durationSec.toFixed(2)),peakDb:Number(peakDb.toFixed(1)),category,voiceProb:voiceProb!==null?Number(voiceProb.toFixed(3)):null,vadErr};
         this.events.push(eventMeta); document.getElementById("record-events").textContent=String(this.events.length);
@@ -552,6 +564,8 @@
         document.getElementById("btn-open-mail").disabled=true;
         this.renderReviewList(rec); App.navigate("page-share");
       },
+      prevPage() { if(this.page>0){ this.page--; this.renderReviewList(Viewer.currentRecord); } },
+      nextPage() { this.page++; this.renderReviewList(Viewer.currentRecord); },
       renderReviewList(rec) {
         const listEl=document.getElementById("share-review-list");
         const pagerEl=document.getElementById("share-pager");
@@ -576,7 +590,10 @@
           bg.appendChild(bp); bg.appendChild(bo); bg.appendChild(bn); row.appendChild(bg); listEl.appendChild(row);
         });
       },
-      setAll(allow){ this.targetEvents.forEach(ev=>{ this.decisions[ev.id]=allow; }); this.renderReviewList(Viewer.currentRecord); },
+      setAll(allow){
+        this.targetEvents.forEach(ev=>{ this.decisions[ev.id]=allow; });
+        this.renderReviewList(Viewer.currentRecord);
+      },
       async saveLearningFromDecisions() {
         let snoreProbs = (App.state.learning && App.state.learning.snoreProbs) ? [...App.state.learning.snoreProbs] : [];
         let voiceProbs = (App.state.learning && App.state.learning.voiceProbs) ? [...App.state.learning.voiceProbs] : [];
@@ -662,7 +679,7 @@
         this.applyLabels();
         this.clearOldCaches();
         try{ await DB.init(); await this.loadSavedState(); }catch(err){ console.error("初期化エラー:",err); }
-        this.setupBlackScreen(); this.setupUserEvents(); this.setupPrepEvents(); this.setupRecordEvents(); this.setupViewerEvents(); this.setupShareEvents();
+        this.setupBlackScreen(); this.setupUserEvents(); this.setupPrepEvents(); this.setupRecordEvents(); this.setupViewerEvents();
         this.checkUrlHashRegistration(); this.refreshUI();
       },
       async clearOldCaches() {
@@ -769,7 +786,6 @@
             catch(err){ alert("画像の読み取りに失敗しました："+err.message); }
           } else { alert("このブラウザは画像からのQR自動読取に対応していません。URLを直接貼り付けてください。"); }
         });
-        document.getElementById("btn-check-update").addEventListener("click",()=>this.checkGitHubUpdate());
       },
       checkUrlHashRegistration() { if(location.hash.includes("slp=")) this.parseQrString(location.href); },
       async parseQrString(str) {
@@ -834,15 +850,6 @@
         document.getElementById("btn-cal-next").addEventListener("click",()=>{ Viewer.calMonth++; if(Viewer.calMonth>11){Viewer.calMonth=0;Viewer.calYear++;} Viewer.renderCalendar(); });
         document.getElementById("btn-import-external").addEventListener("click",()=>document.getElementById("external-file-input").click());
         document.getElementById("external-file-input").addEventListener("change",(e)=>{ if(e.target.files[0]) Viewer.handleExternalFile(e.target.files[0]); });
-        document.getElementById("btn-go-share").addEventListener("click",()=>Sharer.openShare());
-      },
-      setupShareEvents() {
-        document.getElementById("btn-share-all-ok").addEventListener("click",()=>Sharer.setAll(true));
-        document.getElementById("btn-share-all-ng").addEventListener("click",()=>Sharer.setAll(false));
-        document.getElementById("btn-share-prev").addEventListener("click",()=>{ if(Sharer.page>0){ Sharer.page--; Sharer.renderReviewList(Viewer.currentRecord); } });
-        document.getElementById("btn-share-next").addEventListener("click",()=>{ Sharer.page++; Sharer.renderReviewList(Viewer.currentRecord); });
-        document.getElementById("btn-create-zip").addEventListener("click",()=>Sharer.createZip());
-        document.getElementById("btn-open-mail").addEventListener("click",()=>Sharer.openMail());
       }
     };
     window.addEventListener("DOMContentLoaded",()=>App.init());
