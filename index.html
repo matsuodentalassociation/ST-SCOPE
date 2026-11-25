@@ -76,7 +76,7 @@
   <div class="app-container">
     <header>
       <h1 data-label="appTitle">SomnoLog</h1>
-      <span class="version-badge" id="app-version">v1.0.21</span>
+      <span class="version-badge" id="app-version">v1.0.22</span>
     </header>
     <section id="page-start" class="page active">
       <div class="card">
@@ -205,7 +205,7 @@
     <section id="page-share" class="page">
       <div class="card">
         <h2 data-label="shareTitle">データの書き出し・共有</h2>
-        <p style="color:var(--text-sub);font-size:0.85rem;margin-top:0;">3秒以上の長めの発話で、いびきか話し声か判断できないものだけを確認します。</p>
+        <p style="color:var(--text-sub);font-size:0.85rem;margin-top:0;">いびきか話し声か判断できない音声（不明）を確認します。OK＝いびきとして残す、ダメ＝話し声として除外します。</p>
         <div class="status-row"><span>確認対象（不明）</span><strong id="share-target-count">0件</strong></div>
         <div class="status-row"><span>確認状況</span><strong id="share-progress-text">未確認: 0件</strong></div>
         <div class="btn-row" style="margin-top:8px;">
@@ -229,7 +229,7 @@
   </div>
   <div id="black-screen"><div id="black-screen-hint">画面を長押し（1.5秒）で復帰</div></div>
   <script>
-    const APP_VERSION = "v1.0.21";
+    const APP_VERSION = "v1.0.22";
     const GITHUB_API_COMMITS = "https://api.github.com/repos/matsuodentalassociation/ST-SCOPE/commits/main";
     const LABELS = { appTitle:"SomnoLog", startTitle:"ホーム", userStatusLabel:"計測者ステータス", migrationStatusLabel:"学習データ", btnGoUser:"計測者情報の確認・登録", btnGoPrep:"計測の準備へ", btnGoCalendar:"セッションログ（カレンダー）", btnCheckUpdate:"更新の確認", userTitle:"計測者情報", issuerLabel:"発行元", idLabel:"管理番号", nameLabel:"氏名", btnScanQr:"カメラで二次元コードを読み取る", prepTitle:"計測の準備", refSoundLabel:"基準音（「あいうえお」）", micPermLabel:"マイク許可", motionPermLabel:"モーション許可", btnMeasureRef:"基準音を測定する（3秒間）", btnStartRecord:"計測を開始する", recordTitle:"波形・音圧モニタリング中", recordStateLabel:"状態", elapsedLabel:"経過時間", eventCountLabel:"イベント検出数", btnEnterBlack:"黒画面モードへ", btnStopRecord:"計測を停止する", calendarTitle:"セッションログ一覧", detailTitle:"音響解析詳細", btnGoShare:"共有へ進む", detailFootnote:"本アプリは一般的な音響・体動モニタリングツールです。", shareTitle:"データの書き出し・共有", btnCreateZip:"ZIPを作成する", btnBack:"戻る" };
     const DB = {
@@ -308,7 +308,7 @@
             }
             const e = re * re + im * im;
             totalE += e;
-            if (k >= 5 && k <= 54) voiceE += e;
+            if (k >= 8 && k <= 54) voiceE += e;
           }
           if (totalE > 0.5) {
             sumRatio += (voiceE / totalE);
@@ -340,7 +340,7 @@
       session:null, loading:false,
       async init() {
         const statusEl = document.getElementById("record-vad-status");
-        if(this.session){ if(statusEl) statusEl.textContent="準備完了(3秒以上話し声判定)"; return true; }
+        if(this.session){ if(statusEl) statusEl.textContent="準備完了(話し声検知)"; return true; }
         if(this.loading) return false;
         if(typeof ort==="undefined"){ if(statusEl) statusEl.textContent="音響解析モード"; return true; }
         this.loading=true; if(statusEl) statusEl.textContent="モデル読込中...";
@@ -351,7 +351,7 @@
             ort.InferenceSession.create("https://matsuodentalassociation.github.io/ST-SCOPE/silero_vad.onnx"),
             new Promise((_,rej)=>setTimeout(()=>rej(new Error("タイムアウト")),15000))
           ]);
-          if(statusEl) statusEl.textContent="準備完了(3秒以上話し声判定)";
+          if(statusEl) statusEl.textContent="準備完了(話し声検知)";
           return true;
         } catch(err) {
           if(statusEl) statusEl.textContent="音響解析モード";
@@ -360,9 +360,9 @@
       },
       async predictVoiceProb(samples16k) {
         const bandRatio = AudioUtil.calcVoiceBandRatio(samples16k);
-        let aiProb = 0;
         if(this.session){
           try {
+            let aiProb = 0;
             const frameSize=512, inputNames=this.session.inputNames||[], outputNames=this.session.outputNames||[], isV4=inputNames.includes("h")&&inputNames.includes("c"), sr=new ort.Tensor("int64",BigInt64Array.from([16000n]),[1]);
             let state=isV4?null:new ort.Tensor("float32",new Float32Array(2*1*128),[2,1,128]), h=isV4?new ort.Tensor("float32",new Float32Array(2*1*64),[2,1,64]):null, c=isV4?new ort.Tensor("float32",new Float32Array(2*1*64),[2,1,64]):null;
             for(let i=0;i+frameSize<=samples16k.length;i+=frameSize){
@@ -371,9 +371,10 @@
               const prob = out[outputNames[0]||"output"].data[0]; if(prob>aiProb) aiProb=prob;
               if(isV4){ h=out.hn; c=out.cn; } else { state=out.stateN; }
             }
+            return aiProb * 0.7 + bandRatio * 0.3;
           } catch(_){}
         }
-        return Math.max(aiProb, bandRatio);
+        return bandRatio;
       }
     };
     const Recorder = {
@@ -417,7 +418,7 @@
         const th = (App.state.learning && App.state.learning.learnedThreshold) ? App.state.learning.learnedThreshold : ((App.state.audioPrefs.voiceThreshold||70)/100);
         let category="snore", voiceProb=null, vadErr=null;
 
-        if (durationSec >= 3.0) {
+        if (peakDb >= refVoiceDb) {
           try {
             const samples16k=await AudioUtil.resampleTo16k(samples,this.sampleRate); voiceProb=await VAD.predictVoiceProb(samples16k);
             if(voiceProb!==null){
@@ -427,7 +428,6 @@
               else category="snore";
             }
           } catch(err){ vadErr=err.message; console.warn("イベント判定失敗:",err); document.getElementById("record-vad-prob").textContent="ERR:"+err.message; }
-          if (peakDb < refVoiceDb && category !== "snore") return;
         }
 
         const eventMeta={id:clipId,startSec:Number(startSec.toFixed(2)),durationSec:Number(durationSec.toFixed(2)),peakDb:Number(peakDb.toFixed(1)),category,voiceProb:voiceProb!==null?Number(voiceProb.toFixed(3)):null,vadErr};
@@ -459,9 +459,7 @@
         const refVoiceDb = (record.reference && record.reference.voiceDb !== undefined) ? record.reference.voiceDb : (App.state.reference ? App.state.reference.voiceDb : -30);
         return (record.events || []).map(ev => {
           const copy = Object.assign({}, ev);
-          if ((copy.durationSec || 0) < 3.0) {
-            copy.category = "snore";
-          } else if (copy.category === "unknown" && copy.peakDb !== undefined && copy.peakDb < refVoiceDb) {
+          if (copy.category === "unknown" && copy.peakDb !== undefined && copy.peakDb < refVoiceDb) {
             copy.category = "voice";
           }
           return copy;
@@ -634,7 +632,878 @@
           await this.saveLearningFromDecisions();
           const allEvs = rec.events || [];
           const expEvs = allEvs.filter(ev => ev.category==="snore" || this.decisions[ev.id]===true);
-          // 落ちないように、音声クリップは音量の大きい順に合計15MB以内だけZIPに含める
+          const sortedForAudio = [...expEvs].sort((a,b)=>(b.peakDb||-120)-(a.peakDb||-120));
+          const files=[];
+          let totalBytes = 0;
+          const MAX_BYTES = 15 * 1024 * 1024;
+          for(let i=0; i<sortedForAudio.length; i++){
+            const ev = sortedForAudio[i];
+            const clip = await DB.getClip(rec.id, ev.id);
+            if(clip && clip.wav){
+              if(totalBytes + clip.wav.size > MAX_BYTES) break;
+              const ab = await clip.wav.arrayBuffer();
+              files.push({name:`clips/${ev.id}.wav`, data:new Uint8Array(ab)});
+              totalBytes += ab.byteLength;
+            }
+            if(i % 15 === 0){
+              btn.textContent = `ZIP作成中... (${Math.round(totalBytes/1024/1024*10)/10}MB)`;
+              await new Promise(r=>setTimeout(r,0));
+            }
+          }
+          files.push({name:"record.json",data:new TextEncoder().encode(JSON.stringify({id:rec.id,startedAt:rec.startedAt,endedAt:rec.endedAt,patient:rec.patient,reference:rec.reference,timeline:rec.timeline,events:expEvs},null,2))});
+          const url=URL.createObjectURL(this.buildStoreZip(files)), a=document.createElement("a");
+          a.href=url; a.download=`somnolog_${rec.id}.zip`; document.body.appendChild(a); a.click(); a.remove();
+          setTimeout(()=>URL.revokeObjectURL(url),1000);
+          document.getElementById("btn-open-mail").disabled=false;
+          alert(`ZIPファイルを作成しました（全ログ + 音声${files.length-1}件 / 約${Math.round(totalBytes/1024/1024*10)/10}MB）`);
+        } catch(err) {
+          alert("ZIP作成に失敗しました: " + err.message);
+        } finally {
+          btn.disabled = false;
+          btn.textContent = LABELS.btnCreateZip;
+        }
+      },
+      buildStoreZip(files) {
+        const ct=new Uint32Array(256); for(let i=0;i<256;i++){ let c=i; for(let k=0;k<8;k++) c=(c&1)?(0xedb88320^(c>>>1)):(c>>>1); ct[i]=c; }
+        const crc32=(b)=>{ let c=0xffffffff; for(let i=0;i<b.length;i++) c=ct[(c^b[i])&0xff]^(c>>>8); return (c^0xffffffff)>>>0; };
+        const lp=[], cp=[]; let off=0;
+        files.forEach(f=>{
+          const nb=new TextEncoder().encode(f.name), crc=crc32(f.data), sz=f.data.length;
+          const lh=new ArrayBuffer(30+nb.length), lv=new DataView(lh);
+          lv.setUint32(0,0x04034b50,true); lv.setUint16(4,20,true); lv.setUint32(14,crc,true); lv.setUint32(18,sz,true); lv.setUint32(22,sz,true); lv.setUint16(26,nb.length,true);
+          new Uint8Array(lh,30).set(nb); lp.push(new Uint8Array(lh),f.data);
+          const ch=new ArrayBuffer(46+nb.length), cv=new DataView(ch);
+          cv.setUint32(0,0x02014b50,true); cv.setUint16(4,20,true); cv.setUint16(6,20,true); cv.setUint32(16,crc,true); cv.setUint32(20,sz,true); cv.setUint32(24,sz,true); cv.setUint16(28,nb.length,true); cv.setUint32(42,off,true);
+          new Uint8Array(ch,46).set(nb); cp.push(new Uint8Array(ch)); off+=30+nb.length+sz;
+        });
+        const cs=cp.reduce((a,b)=>a+b.length,0), eocd=new ArrayBuffer(22), ev=new DataView(eocd);
+        ev.setUint32(0,0x06054b50,true); ev.setUint16(8,files.length,true); ev.setUint16(10,files.length,true); ev.setUint32(12,cs,true); ev.setUint32(16,off,true);
+        return new Blob([...lp,...cp,new Uint8Array(eocd)],{type:"application/zip"});
+      },
+      openMail() {
+        const to=(App.state.patient&&App.state.patient.email)?App.state.patient.email:"";
+        const name=(App.state.patient&&App.state.patient.name)?App.state.patient.name:"計測者";
+        window.location.href=`mailto:${to}?subject=${encodeURIComponent(`SomnoLog 計測データ (${name})`)}&body=${encodeURIComponent("ダウンロードしたZIPファイルを添付して送信してください。")}`;
+      }
+    };
+    const App = {
+      currentPage:"page-start", blackScreenTimer:null, qrStream:null,
+      state:{ patient:null, reference:null, audioPrefs:{gain:0,loudDb:10,voiceThreshold:70}, learning:null, micGranted:false, motionGranted:false },
+      async init() {
+        this.applyLabels();
+        this.clearOldCaches();
+        try{ await DB.init(); await this.loadSavedState(); }catch(err){ console.error("初期化エラー:",err); }
+        this.setupBlackScreen(); this.setupUserEvents(); this.setupPrepEvents(); this.setupRecordEvents(); this.setupViewerEvents();
+        this.checkUrlHashRegistration(); this.refreshUI();
+      },
+      async clearOldCaches() {
+        if("serviceWorker" in navigator){ try{ const regs=await navigator.serviceWorker.getRegistrations(); for(const r of regs) await r.unregister(); }catch(_){} }
+        if("caches" in window){ try{ const keys=await caches.keys(); for(const k of keys) await caches.delete(k); }catch(_){} }
+      },
+      async checkGitHubUpdate() {
+        try {
+          await this.clearOldCaches();
+          const res = await fetch(GITHUB_API_COMMITS + "?t=" + Date.now(), { cache: "no-store" });
+          if (res.ok) {
+            const data = await res.json();
+            const sha = data.sha ? data.sha.slice(0, 7) : "latest";
+            const u = new URL(location.href);
+            u.searchParams.set("v", sha + "_" + Date.now());
+            location.replace(u.toString());
+            return;
+          }
+        } catch(_) {}
+        location.reload(true);
+      },
+      applyLabels(){ document.querySelectorAll("[data-label]").forEach(el=>{ const k=el.getAttribute("data-label"); if(LABELS[k]) el.textContent=LABELS[k]; }); },
+      async loadSavedState() {
+        const patient=await DB.getSetting("patient"), reference=await DB.getSetting("reference"), audioPrefs=await DB.getSetting("audioPrefs"), learning=await DB.getSetting("voiceLearning");
+        if(patient) this.state.patient=patient;
+        if(reference) this.state.reference=reference;
+        if(audioPrefs) this.state.audioPrefs=Object.assign(this.state.audioPrefs,audioPrefs);
+        if(learning) this.state.learning=learning;
+      },
+      navigate(pageId) {
+        document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));
+        const target=document.getElementById(pageId);
+        if(target){ target.classList.add("active"); this.currentPage=pageId; }
+        if(pageId==="page-calendar") Viewer.loadCalendar();
+        this.refreshUI();
+      },
+      refreshUI() {
+        const p=this.state.patient;
+        document.getElementById("start-user-status").textContent=p?`${p.name||"登録済"} (${p.chart||"-"})`:"未登録";
+        const l=this.state.learning;
+        const lCount = l ? ((l.snoreProbs?l.snoreProbs.length:0) + (l.voiceProbs?l.voiceProbs.length:0)) : 0;
+        document.getElementById("start-learning-status").textContent=`${lCount}件`;
+        document.getElementById("prep-learning-info").textContent = (l && l.learnedThreshold) ? `学習済みしきい値: ${Math.round(l.learnedThreshold*100)}% (${lCount}件学習)` : "学習済みしきい値: 未学習";
+        document.getElementById("user-issuer").textContent=p?(p.issuer||"-"):"-";
+        document.getElementById("user-chart").textContent=p?(p.chart||"-"):"-";
+        document.getElementById("user-name").textContent=p?(p.name||"-"):"-";
+        document.getElementById("user-serial").textContent=p?(p.serial||"-"):"-";
+        const ref=this.state.reference, refEl=document.getElementById("prep-ref-status");
+        if(ref){
+          refEl.textContent="測定済"; refEl.className="badge-ok";
+          document.getElementById("prep-ref-db").textContent=`${ref.envDb.toFixed(1)} / ${ref.voiceDb.toFixed(1)} dB`;
+          document.getElementById("prep-ref-vad").textContent=ref.vadProb!==undefined&&ref.vadProb!==null?`${Math.round(ref.vadProb*100)}%`:"未分析";
+          document.getElementById("btn-play-ref").disabled=!ref.wav;
+        } else {
+          refEl.textContent="未測定"; refEl.className="badge-ng";
+          document.getElementById("prep-ref-db").textContent="- / -";
+          document.getElementById("prep-ref-vad").textContent="-";
+          document.getElementById("btn-play-ref").disabled=true;
+        }
+        const micEl=document.getElementById("prep-mic-status"); micEl.textContent=this.state.micGranted?"許可済":"未許可"; micEl.className=this.state.micGranted?"badge-ok":"badge-ng";
+        const motEl=document.getElementById("prep-motion-status"); motEl.textContent=this.state.motionGranted?"許可済":"未許可"; motEl.className=this.state.motionGranted?"badge-ok":"badge-ng";
+        document.getElementById("voice-exclude-strength").value=this.state.audioPrefs.voiceThreshold||70;
+        document.getElementById("voice-strength-val").textContent=this.state.audioPrefs.voiceThreshold||70;
+        document.getElementById("btn-go-record").disabled=!(this.state.micGranted&&this.state.reference);
+      },
+      setupBlackScreen() {
+        const bs=document.getElementById("black-screen");
+        const startHold=(e)=>{ e.preventDefault(); this.blackScreenTimer=setTimeout(()=>{ bs.classList.remove("active"); document.documentElement.classList.remove("is-black-screen"); document.body.classList.remove("is-black-screen"); },1500); };
+        const endHold=()=>{ if(this.blackScreenTimer){ clearTimeout(this.blackScreenTimer); this.blackScreenTimer=null; } };
+        bs.addEventListener("touchstart",startHold,{passive:false}); bs.addEventListener("touchend",endHold); bs.addEventListener("touchcancel",endHold);
+        bs.addEventListener("mousedown",startHold); bs.addEventListener("mouseup",endHold); bs.addEventListener("mouseleave",endHold);
+      },
+      setupUserEvents() {
+        document.getElementById("btn-demo-user").addEventListener("click",async()=>{
+          this.state.patient={issuer:"テスト医院",chart:"0001",name:"テスト計測者",serial:"DEMO-001",email:""};
+          await DB.setSetting("patient",this.state.patient); this.refreshUI(); alert("テスト用計測者を登録しました。");
+        });
+        document.getElementById("btn-apply-manual-qr").addEventListener("click",()=>{
+          const val=document.getElementById("qr-manual-input").value.trim();
+          if(val) this.parseQrString(val);
+        });
+        document.getElementById("btn-scan-qr").addEventListener("click",async()=>{
+          const vc=document.getElementById("qr-video-container"), video=document.getElementById("qr-video");
+          if(this.qrStream){ this.qrStream.getTracks().forEach(t=>t.stop()); this.qrStream=null; vc.style.display="none"; return; }
+          try {
+            this.qrStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment"}});
+            video.srcObject=this.qrStream; vc.style.display="block";
+            if("BarcodeDetector"in window){
+              const det=new BarcodeDetector({formats:["qr_code"]});
+              const scan=async()=>{
+                if(!this.qrStream) return;
+                try{ const codes=await det.detect(video); if(codes.length>0){ this.parseQrString(codes[0].rawValue); this.qrStream.getTracks().forEach(t=>t.stop()); this.qrStream=null; vc.style.display="none"; return; } }catch(_){}
+                requestAnimationFrame(scan);
+              };
+              requestAnimationFrame(scan);
+            }
+          } catch(err){ alert("カメラの起動に失敗しました："+err.message); }
+        });
+        document.getElementById("btn-qr-file").addEventListener("click",()=>document.getElementById("qr-file-input").click());
+        document.getElementById("qr-file-input").addEventListener("change",async(e)=>{
+          const file=e.target.files[0]; if(!file) return;
+          if("BarcodeDetector"in window){
+            try{ const bmp=await createImageBitmap(file), det=new BarcodeDetector({formats:["qr_code"]}), codes=await det.detect(bmp); if(codes.length>0) this.parseQrString(codes[0].rawValue); else alert("QRコードが見つかりませんでした。"); }
+            catch(err){ alert("画像の読み取りに失敗しました："+err.message); }
+          } else { alert("このブラウザは画像からのQR自動読取に対応していません。URLを直接貼り付けてください。"); }
+        });
+      },
+      checkUrlHashRegistration() { if(location.hash.includes("slp=")) this.parseQrString(location.href); },
+      async parseQrString(str) {
+        try {
+          const m=str.match(/slp=([^&]+)/); if(!m) throw new Error("有効なコードではありません");
+          const b64=m[1].replace(/-/g,"+").replace(/_/g,"/"), bin=atob(b64), bytes=new Uint8Array(bin.length);
+          for(let i=0;i<bin.length;i++) bytes[i]=bin.charCodeAt(i);
+          const data=JSON.parse(new TextDecoder("utf-8").decode(bytes));
+          this.state.patient=data; await DB.setSetting("patient",data); this.refreshUI(); alert("計測者情報を登録しました！");
+        } catch(err){ alert("コードの解析に失敗しました："+err.message); }
+      },
+      setupPrepEvents() {
+        document.getElementById("voice-exclude-strength").addEventListener("input",async(e)=>{
+          const v=Number(e.target.value); document.getElementById("voice-strength-val").textContent=v;
+          this.state.audioPrefs.voiceThreshold=v; await DB.setSetting("audioPrefs",this.state.audioPrefs);
+        });
+        document.getElementById("btn-request-perms").addEventListener("click",async()=>{
+          try { const s=await navigator.mediaDevices.getUserMedia({audio:true}); s.getTracks().forEach(t=>t.stop()); this.state.micGranted=true; }
+          catch(err){ alert("マイク許可に失敗しました："+err.message); }
+          if(typeof DeviceMotionEvent!=="undefined"&&typeof DeviceMotionEvent.requestPermission==="function"){
+            try{ const r=await DeviceMotionEvent.requestPermission(); this.state.motionGranted=(r==="granted"); }catch(_){}
+          } else { this.state.motionGranted=true; }
+          this.refreshUI();
+        });
+        document.getElementById("btn-measure-ref").addEventListener("click",async()=>{
+          if(!this.state.micGranted){ alert("先にマイク許可を取得してください。"); return; }
+          const btn=document.getElementById("btn-measure-ref"); btn.disabled=true; btn.textContent="測定・分析中...（「あいうえお」と発声）";
+          try {
+            const stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}});
+            const ctx=new(window.AudioContext||window.webkitAudioContext)(), src=ctx.createMediaStreamSource(stream), proc=ctx.createScriptProcessor(4096,1,1);
+            const chunks=[]; proc.onaudioprocess=(e)=>chunks.push(new Float32Array(e.inputBuffer.getChannelData(0)));
+            src.connect(proc); proc.connect(ctx.destination);
+            await new Promise(r=>setTimeout(r,3000));
+            proc.disconnect(); stream.getTracks().forEach(t=>t.stop()); const sr=ctx.sampleRate; await ctx.close();
+            const total=chunks.reduce((a,c)=>a+c.length,0), samples=new Float32Array(total); let off=0;
+            for(const c of chunks){ samples.set(c,off); off+=c.length; }
+            const dbs=[]; for(let i=0;i<samples.length;i+=4096) dbs.push(AudioUtil.calcRmsDb(samples.slice(i,i+4096)));
+            dbs.sort((a,b)=>a-b); const envDb=dbs[Math.floor(dbs.length*0.15)]||-60, voiceDb=dbs[Math.floor(dbs.length*0.9)]||-20;
+            const wav=AudioUtil.encodeWav(samples,sr);
+            await VAD.init();
+            const s16=await AudioUtil.resampleTo16k(samples,sr);
+            const vadProb=await VAD.predictVoiceProb(s16);
+            this.state.reference={envDb,voiceDb,wav,vadProb}; await DB.setSetting("reference",this.state.reference);
+            this.refreshUI();
+            alert(`基準音を測定しました\n環境音: ${envDb.toFixed(1)} dB / 基準音: ${voiceDb.toFixed(1)} dB\n人声認識: ${Math.round(vadProb*100)}%`);
+          } catch(err){ alert("測定に失敗しました："+err.message); }
+          finally{ btn.disabled=false; btn.textContent=LABELS.btnMeasureRef; }
+        });
+        document.getElementById("btn-play-ref").addEventListener("click",()=>{
+          if(!this.state.reference||!this.state.reference.wav) return;
+          const u=URL.createObjectURL(this.state.reference.wav), a=new Audio(u); a.onended=()=>URL.revokeObjectURL(u); a.play();
+        });
+        document.getElementById("btn-go-record").addEventListener("click",()=>{ this.navigate("page-record"); Recorder.start(); });
+      },
+      setupRecordEvents() {
+        document.getElementById("btn-enter-black").addEventListener("click",()=>{ document.getElementById("black-screen").classList.add("active"); document.documentElement.classList.add("is-black-screen"); document.body.classList.add("is-black-screen"); });
+        document.getElementById("btn-stop-record").addEventListener("click",()=>{ if(confirm("計測を停止して保存しますか？")) Recorder.stop(true); });
+        document.getElementById("btn-retry-save").addEventListener("click",()=>Recorder.trySaveRecord());
+      },
+      setupViewerEvents() {
+        document.getElementById("btn-cal-prev").addEventListener("click",()=>{ Viewer.calMonth--; if(Viewer.calMonth<0){Viewer.calMonth=11;Viewer.calYear--;} Viewer.renderCalendar(); });
+        document.getElementById("btn-cal-next").addEventListener("click",()=>{ Viewer.calMonth++; if(Viewer.calMonth>11){Viewer.calMonth=0;Viewer.calYear++;} Viewer.renderCalendar(); });
+        document.getElementById("btn-import-external").addEventListener("click",()=>document.getElementById("external-file-input").click());
+        document.getElementById("external-file-input").addEventListener("change",(e)=>{ if(e.target.files[0]) Viewer.handleExternalFile(e.target.files[0]); });
+      }
+    };
+    window.addEventListener("DOMContentLoaded",()=>App.init());
+  </script>
+</body>
+</html>
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#000000">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <title>SomnoLog - 音響・体動ライフログ</title>
+  <script src="https://matsuodentalassociation.github.io/ST-SCOPE/ort.min.js" defer></script>
+  <style>
+    :root { --bg-color:#f4f7f9; --card-bg:#ffffff; --text-main:#1e293b; --text-sub:#64748b; --primary:#2563eb; --danger:#dc2626; --success:#16a34a; --warning:#d97706; --border:#e2e8f0; }
+    * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+    html, body { margin:0; padding:0; background-color:var(--bg-color); color:var(--text-main); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Hiragino Sans","Noto Sans JP",sans-serif; line-height:1.5; min-height:100vh; }
+    html.is-black-screen, body.is-black-screen { background-color:#000000 !important; overflow:hidden !important; overscroll-behavior:none !important; }
+    .app-container { max-width:600px; margin:0 auto; padding:16px; padding-bottom:80px; }
+    header { display:flex; justify-content:space-between; align-items:center; padding:12px 0; margin-bottom:16px; border-bottom:1px solid var(--border); }
+    header h1 { font-size:1.25rem; margin:0; font-weight:700; }
+    .version-badge { font-size:0.75rem; background:var(--border); color:var(--text-sub); padding:2px 8px; border-radius:999px; }
+    .page { display:none; }
+    .page.active { display:block; }
+    .card { background:var(--card-bg); border-radius:12px; padding:16px; margin-bottom:16px; box-shadow:0 1px 3px rgba(0,0,0,0.05); border:1px solid var(--border); }
+    .card h2 { font-size:1.1rem; margin:0 0 12px 0; }
+    .btn { display:inline-flex; align-items:center; justify-content:center; width:100%; padding:12px 16px; font-size:1rem; font-weight:600; border:none; border-radius:8px; cursor:pointer; background:var(--primary); color:#ffffff; margin-bottom:8px; transition:background 0.15s,opacity 0.15s; }
+    .btn:active { transform:scale(0.99); }
+    .btn:disabled { opacity:0.45; cursor:not-allowed; }
+    .btn-secondary { background:#e2e8f0; color:var(--text-main); }
+    .btn-danger { background:var(--danger); color:#ffffff; }
+    .btn-success { background:var(--success); color:#ffffff; }
+    .btn-dark { background:#0f172a; color:#ffffff; }
+    .btn-sm { width:auto; padding:6px 10px; font-size:0.8rem; margin-bottom:0; white-space:nowrap; }
+    .btn-row { display:flex; gap:8px; margin-bottom:8px; }
+    .btn-row .btn { margin-bottom:0; }
+    .status-row { display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid var(--border); font-size:0.95rem; }
+    .status-row:last-child { border-bottom:none; }
+    .badge-ok { color:var(--success); font-weight:700; }
+    .badge-ng { color:var(--danger); font-weight:700; }
+    .input-group { margin-bottom:12px; }
+    .input-group label { display:block; font-size:0.85rem; color:var(--text-sub); margin-bottom:4px; }
+    .input-group input[type="text"], .input-group input[type="range"] { width:100%; }
+    .input-group input[type="text"] { padding:10px; border:1px solid var(--border); border-radius:8px; font-size:0.95rem; }
+    .meter-wrap { padding:8px 0; border-bottom:1px solid var(--border); }
+    .meter-header { display:flex; justify-content:space-between; font-size:0.95rem; margin-bottom:6px; }
+    .meter-track { width:100%; height:12px; background:#e2e8f0; border-radius:999px; overflow:hidden; }
+    .meter-fill { height:100%; width:0%; background:var(--primary); border-radius:999px; transition:width 0.08s linear; }
+    .meter-fill.sound { background:var(--success); }
+    .cal-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
+    .cal-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:4px; text-align:center; }
+    .cal-dow { font-size:0.75rem; color:var(--text-sub); padding:4px 0; }
+    .cal-day { padding:8px 2px; border-radius:8px; font-size:0.9rem; cursor:pointer; position:relative; border:1px solid transparent; }
+    .cal-day.has-record { background:#eff6ff; border-color:#bfdbfe; font-weight:700; color:var(--primary); }
+    .cal-day.selected { background:var(--primary); color:#ffffff; }
+    .cal-dot { display:block; width:6px; height:6px; border-radius:50%; background:var(--primary); margin:2px auto 0; }
+    .cal-day.selected .cal-dot { background:#ffffff; }
+    #detail-canvas { width:100%; height:220px; border:1px solid var(--border); border-radius:8px; background:#ffffff; display:block; }
+    .legend { display:flex; flex-wrap:wrap; gap:10px; font-size:0.75rem; color:var(--text-sub); margin-top:8px; }
+    .legend-item { display:inline-flex; align-items:center; gap:4px; }
+    .legend-color { width:10px; height:10px; border-radius:2px; display:inline-block; }
+    .event-item { display:flex; justify-content:space-between; align-items:center; gap:8px; padding:8px 0; border-bottom:1px solid var(--border); font-size:0.85rem; }
+    .event-item:last-child { border-bottom:none; }
+    .tag { display:inline-block; padding:2px 6px; border-radius:4px; font-size:0.75rem; font-weight:600; }
+    .tag-snore { background:#dcfce7; color:#166534; }
+    .tag-voice { background:#fce7f3; color:#9d174d; }
+    .tag-unknown { background:#fef3c7; color:#92400e; }
+    #qr-video-container { display:none; margin-bottom:12px; border-radius:8px; overflow:hidden; background:#000; }
+    #qr-video { width:100%; max-height:280px; object-fit:cover; display:block; }
+    .footnote { font-size:0.8rem; color:var(--text-sub); text-align:center; margin-top:24px; }
+    #black-screen { display:none; background-color:#000000 !important; width:100vw; height:100dvh; min-height:100vh; position:fixed; top:0; left:0; right:0; bottom:0; margin:0; padding:0; padding-top:env(safe-area-inset-top); padding-bottom:env(safe-area-inset-bottom); z-index:99999; flex-direction:column; align-items:center; justify-content:center; color:#333333; user-select:none; -webkit-user-select:none; }
+    #black-screen.active { display:flex; }
+    #black-screen-hint { font-size:0.85rem; color:#262626; pointer-events:none; }
+    .pager { display:flex; justify-content:space-between; align-items:center; margin-top:10px; font-size:0.85rem; }
+  </style>
+</head>
+<body>
+  <div class="app-container">
+    <header>
+      <h1 data-label="appTitle">SomnoLog</h1>
+      <span class="version-badge" id="app-version">v1.0.22</span>
+    </header>
+    <section id="page-start" class="page active">
+      <div class="card">
+        <h2 data-label="startTitle">ホーム</h2>
+        <div class="status-row"><span data-label="userStatusLabel">計測者ステータス</span><strong id="start-user-status">未登録</strong></div>
+        <div class="status-row"><span data-label="migrationStatusLabel">学習データ</span><strong id="start-learning-status">0件</strong></div>
+      </div>
+      <button class="btn" onclick="App.navigate('page-user')" data-label="btnGoUser">計測者情報の確認・登録</button>
+      <button class="btn" onclick="App.navigate('page-prep')" data-label="btnGoPrep">計測の準備へ</button>
+      <button class="btn btn-secondary" onclick="App.navigate('page-calendar')" data-label="btnGoCalendar">セッションログ（カレンダー）</button>
+      <button class="btn btn-secondary" id="btn-check-update" onclick="App.checkGitHubUpdate()" data-label="btnCheckUpdate">更新の確認</button>
+    </section>
+    <section id="page-user" class="page">
+      <div class="card">
+        <h2 data-label="userTitle">計測者情報</h2>
+        <div class="status-row"><span data-label="issuerLabel">発行元</span><span id="user-issuer">-</span></div>
+        <div class="status-row"><span data-label="idLabel">管理番号</span><span id="user-chart">-</span></div>
+        <div class="status-row"><span data-label="nameLabel">氏名</span><span id="user-name">-</span></div>
+        <div class="status-row"><span>シリアル</span><span id="user-serial">-</span></div>
+      </div>
+      <div id="qr-video-container"><video id="qr-video" playsinline muted autoplay></video></div>
+      <button class="btn" id="btn-scan-qr" data-label="btnScanQr">カメラで二次元コードを読み取る</button>
+      <button class="btn btn-secondary" id="btn-qr-file">画像ファイルから読み取る</button>
+      <input type="file" id="qr-file-input" accept="image/*" style="display:none;">
+      <div class="card">
+        <div class="input-group">
+          <label for="qr-manual-input">URLまたはコード文字列を直接貼り付け</label>
+          <input type="text" id="qr-manual-input" placeholder="#slp=... を含むURLを貼り付け">
+        </div>
+        <button class="btn btn-secondary" id="btn-apply-manual-qr">貼り付けたコードを登録</button>
+        <button class="btn btn-secondary" id="btn-demo-user">テスト用計測者を登録（開発用）</button>
+      </div>
+      <button class="btn btn-secondary" onclick="App.navigate('page-start')" data-label="btnBack">戻る</button>
+    </section>
+    <section id="page-prep" class="page">
+      <div class="card">
+        <h2 data-label="prepTitle">計測の準備</h2>
+        <div class="status-row"><span data-label="refSoundLabel">基準音（「あいうえお」）</span><span id="prep-ref-status" class="badge-ng">未測定</span></div>
+        <div class="status-row"><span>環境音 / 基準音 (dB)</span><span id="prep-ref-db">- / -</span></div>
+        <div class="status-row"><span>基準音の人声認識</span><span id="prep-ref-vad" style="font-size:0.85rem;">-</span></div>
+        <div class="status-row"><span data-label="micPermLabel">マイク許可</span><span id="prep-mic-status" class="badge-ng">未許可</span></div>
+        <div class="status-row"><span data-label="motionPermLabel">モーション許可</span><span id="prep-motion-status" class="badge-ng">未許可</span></div>
+      </div>
+      <div class="card">
+        <div class="input-group">
+          <label for="voice-exclude-strength">人声とみなす確率しきい値: <strong id="voice-strength-val">70</strong>%</label>
+          <input type="range" id="voice-exclude-strength" min="20" max="99" value="70">
+        </div>
+        <div style="font-size:0.8rem;color:var(--text-sub);" id="prep-learning-info">学習済みしきい値: 未学習</div>
+      </div>
+      <button class="btn" id="btn-request-perms">マイク・モーション許可を取得</button>
+      <button class="btn" id="btn-measure-ref" data-label="btnMeasureRef">基準音を測定する（3秒間）</button>
+      <button class="btn btn-secondary" id="btn-play-ref" disabled>基準音を再生する</button>
+      <button class="btn btn-dark" id="btn-go-record" disabled data-label="btnStartRecord">計測を開始する</button>
+      <button class="btn btn-secondary" onclick="App.navigate('page-start')" data-label="btnBack">戻る</button>
+    </section>
+    <section id="page-record" class="page">
+      <div class="card">
+        <h2 data-label="recordTitle">波形・音圧モニタリング中</h2>
+        <div class="status-row"><span data-label="recordStateLabel">状態</span><strong id="record-state">待機</strong></div>
+        <div class="status-row"><span data-label="elapsedLabel">経過時間</span><strong id="record-elapsed">00:00:00</strong></div>
+        <div class="meter-wrap">
+          <div class="meter-header"><span>現在の音圧</span><strong id="record-db">- dB</strong></div>
+          <div class="meter-track"><div class="meter-fill sound" id="record-db-bar"></div></div>
+        </div>
+        <div class="meter-wrap">
+          <div class="meter-header"><span>モーションセンサー（体動）</span><strong id="record-motion-val">-</strong></div>
+          <div class="meter-track"><div class="meter-fill" id="record-motion-bar"></div></div>
+        </div>
+        <div class="status-row"><span data-label="eventCountLabel">イベント検出数</span><strong id="record-events">0</strong></div>
+        <div class="status-row"><span>人声判定モデル</span><strong id="record-vad-status">準備中</strong></div>
+        <div class="status-row"><span>人声確率（直近）</span><strong id="record-vad-prob" style="font-size:0.85rem;">- %</strong></div>
+      </div>
+      <button class="btn btn-dark" id="btn-enter-black" data-label="btnEnterBlack">黒画面モードへ</button>
+      <button class="btn btn-danger" id="btn-stop-record" data-label="btnStopRecord">計測を停止する</button>
+      <button class="btn" id="btn-retry-save" style="display:none;">保存を再試行</button>
+    </section>
+    <section id="page-calendar" class="page">
+      <div class="card">
+        <div class="cal-header">
+          <button class="btn btn-secondary btn-sm" id="btn-cal-prev">◀</button>
+          <strong id="cal-month-label">2026年11月</strong>
+          <button class="btn btn-secondary btn-sm" id="btn-cal-next">▶</button>
+        </div>
+        <div class="cal-grid" id="cal-grid"></div>
+      </div>
+      <div class="card">
+        <h2 id="cal-day-title">選択した日の記録</h2>
+        <div id="cal-day-list" style="font-size:0.9rem;color:var(--text-sub);">日付を選択してください。</div>
+      </div>
+      <button class="btn btn-secondary" onclick="App.navigate('page-start')" data-label="btnBack">戻る</button>
+    </section>
+    <section id="page-detail" class="page">
+      <div class="card">
+        <h2 data-label="detailTitle">音響解析詳細</h2>
+        <div class="status-row"><span>計測日時</span><strong id="detail-date">-</strong></div>
+        <div class="status-row"><span>計測時間</span><strong id="detail-duration">-</strong></div>
+        <div class="status-row"><span>イベント内訳</span><strong id="detail-summary">-</strong></div>
+      </div>
+      <div class="card">
+        <h2>タイムライン・重ね合わせ</h2>
+        <canvas id="detail-canvas" width="540" height="220"></canvas>
+        <div class="legend">
+          <span class="legend-item"><span class="legend-color" style="background:#16a34a;"></span>音圧(dB)</span>
+          <span class="legend-item"><span class="legend-color" style="background:#2563eb;"></span>体動</span>
+          <span class="legend-item"><span class="legend-color" style="background:#dc2626;"></span>心拍(HR)</span>
+          <span class="legend-item"><span class="legend-color" style="background:#9333ea;"></span>SpO2</span>
+          <span class="legend-item"><span class="legend-color" style="background:#d97706;"></span>筋電(EMG)</span>
+        </div>
+      </div>
+      <div class="card">
+        <h2>外部ログ重ね合わせ（JSON / CSV）</h2>
+        <p style="font-size:0.8rem;color:var(--text-sub);margin-top:0;">統一JSON（somnolog-external-v1）や食いしばりCSVを読み込めます。</p>
+        <button class="btn btn-secondary" id="btn-import-external">外部ファイルを選択</button>
+        <input type="file" id="external-file-input" accept=".json,.csv" style="display:none;">
+        <div id="external-status" style="font-size:0.85rem;color:var(--text-sub);margin-top:6px;">外部データ未読込</div>
+      </div>
+      <div class="card">
+        <h2>検出イベント一覧（先頭100件）</h2>
+        <div id="detail-event-list" style="font-size:0.85rem;color:var(--text-sub);">イベントはありません。</div>
+      </div>
+      <button class="btn" id="btn-go-share" onclick="Sharer.openShare()" data-label="btnGoShare">共有へ進む</button>
+      <button class="btn btn-secondary" onclick="App.navigate('page-calendar')" data-label="btnBack">戻る</button>
+      <p class="footnote" data-label="detailFootnote">本アプリは一般的な音響・体動モニタリングツールです。</p>
+    </section>
+    <section id="page-share" class="page">
+      <div class="card">
+        <h2 data-label="shareTitle">データの書き出し・共有</h2>
+        <p style="color:var(--text-sub);font-size:0.85rem;margin-top:0;">いびきか話し声か判断できない音声（不明）を確認します。OK＝いびきとして残す、ダメ＝話し声として除外します。</p>
+        <div class="status-row"><span>確認対象（不明）</span><strong id="share-target-count">0件</strong></div>
+        <div class="status-row"><span>確認状況</span><strong id="share-progress-text">未確認: 0件</strong></div>
+        <div class="btn-row" style="margin-top:8px;">
+          <button class="btn btn-success btn-sm" id="btn-share-all-ok" onclick="Sharer.setAll(true)" style="flex:1;">まとめてOK</button>
+          <button class="btn btn-danger btn-sm" id="btn-share-all-ng" onclick="Sharer.setAll(false)" style="flex:1;">すべてダメ（除外）</button>
+        </div>
+      </div>
+      <div class="card" id="share-review-card">
+        <h2>一つずつ確認</h2>
+        <div id="share-review-list" style="font-size:0.85rem;color:var(--text-sub);">確認が必要な音声はありません。</div>
+        <div class="pager" id="share-pager" style="display:none;">
+          <button class="btn btn-secondary btn-sm" id="btn-share-prev" onclick="Sharer.prevPage()">◀ 前へ</button>
+          <span id="share-page-info">1 / 1</span>
+          <button class="btn btn-secondary btn-sm" id="btn-share-next" onclick="Sharer.nextPage()">次へ ▶</button>
+        </div>
+      </div>
+      <button class="btn" id="btn-create-zip" onclick="Sharer.createZip()" data-label="btnCreateZip">ZIPを作成する</button>
+      <button class="btn btn-secondary" id="btn-open-mail" onclick="Sharer.openMail()" disabled>メールアプリを起動する</button>
+      <button class="btn btn-secondary" onclick="App.navigate('page-detail')" data-label="btnBack">戻る</button>
+    </section>
+  </div>
+  <div id="black-screen"><div id="black-screen-hint">画面を長押し（1.5秒）で復帰</div></div>
+  <script>
+    const APP_VERSION = "v1.0.22";
+    const GITHUB_API_COMMITS = "https://api.github.com/repos/matsuodentalassociation/ST-SCOPE/commits/main";
+    const LABELS = { appTitle:"SomnoLog", startTitle:"ホーム", userStatusLabel:"計測者ステータス", migrationStatusLabel:"学習データ", btnGoUser:"計測者情報の確認・登録", btnGoPrep:"計測の準備へ", btnGoCalendar:"セッションログ（カレンダー）", btnCheckUpdate:"更新の確認", userTitle:"計測者情報", issuerLabel:"発行元", idLabel:"管理番号", nameLabel:"氏名", btnScanQr:"カメラで二次元コードを読み取る", prepTitle:"計測の準備", refSoundLabel:"基準音（「あいうえお」）", micPermLabel:"マイク許可", motionPermLabel:"モーション許可", btnMeasureRef:"基準音を測定する（3秒間）", btnStartRecord:"計測を開始する", recordTitle:"波形・音圧モニタリング中", recordStateLabel:"状態", elapsedLabel:"経過時間", eventCountLabel:"イベント検出数", btnEnterBlack:"黒画面モードへ", btnStopRecord:"計測を停止する", calendarTitle:"セッションログ一覧", detailTitle:"音響解析詳細", btnGoShare:"共有へ進む", detailFootnote:"本アプリは一般的な音響・体動モニタリングツールです。", shareTitle:"データの書き出し・共有", btnCreateZip:"ZIPを作成する", btnBack:"戻る" };
+    const DB = {
+      name:"SomnoLog-local", version:1, instance:null,
+      async init() {
+        return new Promise((resolve,reject)=>{
+          const req = indexedDB.open(this.name,this.version);
+          req.onupgradeneeded = (e)=>{
+            const db = e.target.result;
+            if(!db.objectStoreNames.contains("records")) db.createObjectStore("records",{keyPath:"id"});
+            if(!db.objectStoreNames.contains("clips")) db.createObjectStore("clips",{keyPath:["recordId","id"]});
+            if(!db.objectStoreNames.contains("settings")) db.createObjectStore("settings");
+          };
+          req.onsuccess = (e)=>{ this.instance = e.target.result; resolve(this.instance); };
+          req.onerror = (e)=>reject(e.target.error);
+        });
+      },
+      async getSetting(key) {
+        return new Promise((resolve,reject)=>{
+          const tx = this.instance.transaction("settings","readonly"), store = tx.objectStore("settings"), req = store.get(key);
+          req.onsuccess = ()=>{ const r = req.result; if(r===undefined||r===null) return resolve(null); if(store.keyPath&&typeof r==="object"&&"value"in r) return resolve(r.value); resolve(r); };
+          req.onerror = ()=>reject(req.error);
+        });
+      },
+      async setSetting(key,value) {
+        return new Promise((resolve,reject)=>{
+          const tx = this.instance.transaction("settings","readwrite"), store = tx.objectStore("settings");
+          const req = store.keyPath ? store.put({[store.keyPath]:key,value}) : store.put(value,key);
+          req.onsuccess = ()=>resolve(); req.onerror = ()=>reject(req.error);
+        });
+      },
+      async saveClip(clipObj) { return new Promise((resolve,reject)=>{ const req = this.instance.transaction("clips","readwrite").objectStore("clips").put(clipObj); req.onsuccess=()=>resolve(); req.onerror=()=>reject(req.error); }); },
+      async getClip(recordId,clipId) { return new Promise((resolve,reject)=>{ const req = this.instance.transaction("clips","readonly").objectStore("clips").get([recordId,clipId]); req.onsuccess=()=>resolve(req.result||null); req.onerror=()=>reject(req.error); }); },
+      async saveRecord(recordObj) { return new Promise((resolve,reject)=>{ const req = this.instance.transaction("records","readwrite").objectStore("records").put(recordObj); req.onsuccess=()=>resolve(); req.onerror=()=>reject(req.error); }); },
+      async getAllRecords() { return new Promise((resolve,reject)=>{ const req = this.instance.transaction("records","readonly").objectStore("records").getAll(); req.onsuccess=()=>resolve(req.result||[]); req.onerror=()=>reject(req.error); }); }
+    };
+    const AudioUtil = {
+      playCtx: null,
+      currentSrc: null,
+      calcRmsDb(samples) { let sum=0; for(let i=0;i<samples.length;i++) sum+=samples[i]*samples[i]; const rms=Math.sqrt(sum/samples.length); return rms<=1e-6?-120:Math.max(-120,Math.min(0,20*Math.log10(rms))); },
+      encodeWav(samples,sampleRate) {
+        const buffer=new ArrayBuffer(44+samples.length*2), view=new DataView(buffer);
+        const ws=(o,s)=>{ for(let i=0;i<s.length;i++) view.setUint8(o+i,s.charCodeAt(i)); };
+        ws(0,"RIFF"); view.setUint32(4,36+samples.length*2,true); ws(8,"WAVE"); ws(12,"fmt "); view.setUint32(16,16,true); view.setUint16(20,1,true); view.setUint16(22,1,true); view.setUint32(24,sampleRate,true); view.setUint32(28,sampleRate*2,true); view.setUint16(32,2,true); view.setUint16(34,16,true); ws(36,"data"); view.setUint32(40,samples.length*2,true);
+        let o=44; for(let i=0;i<samples.length;i++){ const s=Math.max(-1,Math.min(1,samples[i])); view.setInt16(o,s<0?s*0x8000:s*0x7fff,true); o+=2; }
+        return new Blob([buffer],{type:"audio/wav"});
+      },
+      async resampleTo16k(samples,sourceRate) {
+        const targetLen=Math.max(1,Math.ceil(samples.length*16000/sourceRate));
+        const offCtx=new OfflineAudioContext(1,targetLen,16000);
+        const buf=offCtx.createBuffer(1,samples.length,sourceRate);
+        buf.getChannelData(0).set(samples);
+        const src=offCtx.createBufferSource();
+        src.buffer=buf; src.connect(offCtx.destination); src.start(0);
+        const rendered=await offCtx.startRendering();
+        const out=rendered.getChannelData(0);
+        let mean=0; for(let i=0;i<out.length;i++) mean+=out[i]; mean/=out.length;
+        let peak=0; for(let i=0;i<out.length;i++){ const a=Math.abs(out[i]-mean); if(a>peak) peak=a; }
+        const gain=peak>1e-4?Math.min(12,0.7/peak):1;
+        const res=new Float32Array(out.length);
+        for(let i=0;i<out.length;i++) res[i]=Math.max(-1,Math.min(1,(out[i]-mean)*gain));
+        return res;
+      },
+      calcVoiceBandRatio(samples16k) {
+        const frameSize = 256;
+        let sumRatio = 0, activeFrames = 0;
+        for (let start = 0; start + frameSize <= samples16k.length; start += frameSize) {
+          let totalE = 0, voiceE = 0;
+          for (let k = 1; k <= 120; k++) {
+            let re = 0, im = 0;
+            const w = (2 * Math.PI * k) / frameSize;
+            for (let n = 0; n < frameSize; n++) {
+              const s = samples16k[start + n];
+              re += s * Math.cos(w * n);
+              im -= s * Math.sin(w * n);
+            }
+            const e = re * re + im * im;
+            totalE += e;
+            if (k >= 8 && k <= 54) voiceE += e;
+          }
+          if (totalE > 0.5) {
+            sumRatio += (voiceE / totalE);
+            activeFrames++;
+          }
+        }
+        return activeFrames > 0 ? (sumRatio / activeFrames) : 0;
+      },
+      async playClipSafe(recordId, clipId) {
+        try {
+          if (!this.playCtx) this.playCtx = new (window.AudioContext || window.webkitAudioContext)();
+          if (this.playCtx.state === "suspended") await this.playCtx.resume();
+          if (this.currentSrc) { try { this.currentSrc.stop(); } catch(_){} this.currentSrc = null; }
+          const clip = await DB.getClip(recordId, clipId);
+          if (!clip || !clip.wav) { alert("音声クリップが見つかりません。"); return; }
+          const ab = await clip.wav.arrayBuffer();
+          const audioBuf = await this.playCtx.decodeAudioData(ab);
+          const src = this.playCtx.createBufferSource();
+          src.buffer = audioBuf;
+          src.connect(this.playCtx.destination);
+          src.start(0);
+          this.currentSrc = src;
+        } catch(err) {
+          alert("再生に失敗しました: " + err.message);
+        }
+      }
+    };
+    const VAD = {
+      session:null, loading:false,
+      async init() {
+        const statusEl = document.getElementById("record-vad-status");
+        if(this.session){ if(statusEl) statusEl.textContent="準備完了(話し声検知)"; return true; }
+        if(this.loading) return false;
+        if(typeof ort==="undefined"){ if(statusEl) statusEl.textContent="音響解析モード"; return true; }
+        this.loading=true; if(statusEl) statusEl.textContent="モデル読込中...";
+        try {
+          ort.env.wasm.wasmPaths="https://matsuodentalassociation.github.io/ST-SCOPE/";
+          ort.env.wasm.numThreads=1;
+          this.session = await Promise.race([
+            ort.InferenceSession.create("https://matsuodentalassociation.github.io/ST-SCOPE/silero_vad.onnx"),
+            new Promise((_,rej)=>setTimeout(()=>rej(new Error("タイムアウト")),15000))
+          ]);
+          if(statusEl) statusEl.textContent="準備完了(話し声検知)";
+          return true;
+        } catch(err) {
+          if(statusEl) statusEl.textContent="音響解析モード";
+          return true;
+        } finally { this.loading=false; }
+      },
+      async predictVoiceProb(samples16k) {
+        const bandRatio = AudioUtil.calcVoiceBandRatio(samples16k);
+        if(this.session){
+          try {
+            let aiProb = 0;
+            const frameSize=512, inputNames=this.session.inputNames||[], outputNames=this.session.outputNames||[], isV4=inputNames.includes("h")&&inputNames.includes("c"), sr=new ort.Tensor("int64",BigInt64Array.from([16000n]),[1]);
+            let state=isV4?null:new ort.Tensor("float32",new Float32Array(2*1*128),[2,1,128]), h=isV4?new ort.Tensor("float32",new Float32Array(2*1*64),[2,1,64]):null, c=isV4?new ort.Tensor("float32",new Float32Array(2*1*64),[2,1,64]):null;
+            for(let i=0;i+frameSize<=samples16k.length;i+=frameSize){
+              const chunk=samples16k.slice(i,i+frameSize), input=new ort.Tensor("float32",chunk,[1,frameSize]);
+              const out = await this.session.run(isV4?{input,h,c,sr}:{input,state,sr});
+              const prob = out[outputNames[0]||"output"].data[0]; if(prob>aiProb) aiProb=prob;
+              if(isV4){ h=out.hn; c=out.cn; } else { state=out.stateN; }
+            }
+            return aiProb * 0.7 + bandRatio * 0.3;
+          } catch(_){}
+        }
+        return bandRatio;
+      }
+    };
+    const Recorder = {
+      active:false, wakeLock:null, stream:null, ctx:null, proc:null, timerId:null, timelineTimerId:null, motionHandler:null, currentMotion:null, recordId:null, startedAt:0, sampleRate:44100, timeline:[], events:[], inEvent:false, preRollChunks:[], eventChunks:[], eventStartOffset:0, silenceCount:0, lastWindowDb:-120, pendingSaveRecord:null,
+      async start() {
+        if(this.active) return; this.active=true; this.recordId="rec_"+Date.now(); this.startedAt=Date.now(); this.timeline=[]; this.events=[]; this.inEvent=false; this.preRollChunks=[]; this.eventChunks=[]; this.silenceCount=0; this.pendingSaveRecord=null; this.currentMotion=null;
+        document.getElementById("btn-retry-save").style.display="none"; document.getElementById("record-state").textContent="記録中"; document.getElementById("record-events").textContent="0"; document.getElementById("record-elapsed").textContent="00:00:00"; document.getElementById("record-db").textContent="- dB"; document.getElementById("record-db-bar").style.width="0%"; document.getElementById("record-motion-val").textContent="-"; document.getElementById("record-motion-bar").style.width="0%"; document.getElementById("record-vad-prob").textContent="- %";
+        if("wakeLock"in navigator){ try{ this.wakeLock=await navigator.wakeLock.request("screen"); }catch(_){} }
+        VAD.init();
+        this.motionHandler=(e)=>{ const acc=e.acceleration||e.accelerationIncludingGravity; if(acc&&acc.x!==null){ const mag=Math.sqrt(acc.x*acc.x+acc.y*acc.y+acc.z*acc.z); this.currentMotion=mag; document.getElementById("record-motion-val").textContent=mag.toFixed(2); document.getElementById("record-motion-bar").style.width=Math.min(100,(mag/15)*100).toFixed(1)+"%"; } };
+        window.addEventListener("devicemotion",this.motionHandler);
+        try {
+          this.stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}});
+          this.ctx=new(window.AudioContext||window.webkitAudioContext)(); this.sampleRate=this.ctx.sampleRate;
+          const src=this.ctx.createMediaStreamSource(this.stream); this.proc=this.ctx.createScriptProcessor(4096,1,1);
+          const envDb=App.state.reference?App.state.reference.envDb:-60, thresholdDb=envDb+(App.state.audioPrefs.loudDb||10);
+          this.proc.onaudioprocess=(e)=>{
+            if(!this.active) return;
+            const input=new Float32Array(e.inputBuffer.getChannelData(0)), db=AudioUtil.calcRmsDb(input);
+            this.lastWindowDb=db; document.getElementById("record-db").textContent=db.toFixed(1)+" dB"; document.getElementById("record-db-bar").style.width=Math.max(0,Math.min(100,((db+80)/80)*100)).toFixed(1)+"%";
+            if(db>=thresholdDb){
+              if(!this.inEvent){ this.inEvent=true; this.eventStartOffset=Math.max(0,(Date.now()-this.startedAt)/1000-0.5); this.eventChunks=[...this.preRollChunks,input]; this.preRollChunks=[]; }
+              else { this.eventChunks.push(input); }
+              this.silenceCount=0;
+            } else if(this.inEvent){
+              this.eventChunks.push(input); this.silenceCount++;
+              if(this.silenceCount>=12){ const cap=this.eventChunks, st=this.eventStartOffset; this.inEvent=false; this.eventChunks=[]; this.silenceCount=0; this.processEvent(cap,st); }
+            } else { this.preRollChunks.push(input); if(this.preRollChunks.length>6) this.preRollChunks.shift(); }
+          };
+          src.connect(this.proc); this.proc.connect(this.ctx.destination);
+          this.timerId=setInterval(()=>{ const sec=Math.floor((Date.now()-this.startedAt)/1000); document.getElementById("record-elapsed").textContent=`${String(Math.floor(sec/3600)).padStart(2,"0")}:${String(Math.floor((sec%3600)/60)).padStart(2,"0")}:${String(sec%60).padStart(2,"0")}`; },1000);
+          this.timelineTimerId=setInterval(()=>{ this.timeline.push({t:Math.floor((Date.now()-this.startedAt)/1000),db:Number(this.lastWindowDb.toFixed(1)),motion:this.currentMotion!==null?Number(this.currentMotion.toFixed(3)):null}); this.currentMotion=null; },5000);
+        } catch(err){ alert("録音の開始に失敗しました："+err.message); this.stop(false); }
+      },
+      async processEvent(chunks,startSec) {
+        const totalLen=chunks.reduce((a,c)=>a+c.length,0), samples=new Float32Array(totalLen); let offset=0;
+        for(const c of chunks){ samples.set(c,offset); offset+=c.length; }
+        const durationSec=totalLen/this.sampleRate; if(durationSec<0.3) return;
+        const peakDb=AudioUtil.calcRmsDb(samples), clipId="clip_"+Date.now()+"_"+Math.floor(Math.random()*1000);
+        const refVoiceDb = App.state.reference ? App.state.reference.voiceDb : -30;
+        const th = (App.state.learning && App.state.learning.learnedThreshold) ? App.state.learning.learnedThreshold : ((App.state.audioPrefs.voiceThreshold||70)/100);
+        let category="snore", voiceProb=null, vadErr=null;
+
+        if (peakDb >= refVoiceDb) {
+          try {
+            const samples16k=await AudioUtil.resampleTo16k(samples,this.sampleRate); voiceProb=await VAD.predictVoiceProb(samples16k);
+            if(voiceProb!==null){
+              document.getElementById("record-vad-prob").textContent=Math.round(voiceProb*100)+"%";
+              if(voiceProb>=th) category="voice";
+              else if(voiceProb>=0.30) category="unknown";
+              else category="snore";
+            }
+          } catch(err){ vadErr=err.message; console.warn("イベント判定失敗:",err); document.getElementById("record-vad-prob").textContent="ERR:"+err.message; }
+        }
+
+        const eventMeta={id:clipId,startSec:Number(startSec.toFixed(2)),durationSec:Number(durationSec.toFixed(2)),peakDb:Number(peakDb.toFixed(1)),category,voiceProb:voiceProb!==null?Number(voiceProb.toFixed(3)):null,vadErr};
+        this.events.push(eventMeta); document.getElementById("record-events").textContent=String(this.events.length);
+        if(category==="voice") return;
+        const wavBlob=AudioUtil.encodeWav(samples,this.sampleRate);
+        try{ await DB.saveClip({recordId:this.recordId,id:clipId,wav:wavBlob,meta:eventMeta}); }catch(err){ console.error("クリップ保存失敗:",err); }
+      },
+      async stop(save=true) {
+        this.active=false; clearInterval(this.timerId); clearInterval(this.timelineTimerId);
+        if(this.motionHandler) window.removeEventListener("devicemotion",this.motionHandler);
+        if(this.proc){ this.proc.disconnect(); this.proc=null; }
+        if(this.stream){ this.stream.getTracks().forEach(t=>t.stop()); this.stream=null; }
+        if(this.ctx){ await this.ctx.close().catch(()=>{}); this.ctx=null; }
+        if(this.wakeLock){ await this.wakeLock.release().catch(()=>{}); this.wakeLock=null; }
+        document.getElementById("record-state").textContent="停止"; if(!save) return;
+        this.pendingSaveRecord={id:this.recordId,startedAt:this.startedAt,endedAt:Date.now(),patient:App.state.patient,reference:App.state.reference?{envDb:App.state.reference.envDb,voiceDb:App.state.reference.voiceDb,vadProb:App.state.reference.vadProb}:null,timeline:this.timeline,events:this.events};
+        await this.trySaveRecord();
+      },
+      async trySaveRecord() {
+        if(!this.pendingSaveRecord) return;
+        try{ await DB.saveRecord(this.pendingSaveRecord); this.pendingSaveRecord=null; document.getElementById("btn-retry-save").style.display="none"; alert("計測データを保存しました！"); App.navigate("page-start"); }
+        catch(err){ document.getElementById("btn-retry-save").style.display="block"; alert("保存に失敗しました。「保存を再試行」を押してください："+err.message); }
+      }
+    };
+    const Viewer = {
+      calYear:new Date().getFullYear(), calMonth:new Date().getMonth(), allRecords:[], selectedDateStr:null, currentRecord:null, externalData:null,
+      normalizeRecordEvents(record) {
+        const refVoiceDb = (record.reference && record.reference.voiceDb !== undefined) ? record.reference.voiceDb : (App.state.reference ? App.state.reference.voiceDb : -30);
+        return (record.events || []).map(ev => {
+          const copy = Object.assign({}, ev);
+          if (copy.category === "unknown" && copy.peakDb !== undefined && copy.peakDb < refVoiceDb) {
+            copy.category = "voice";
+          }
+          return copy;
+        });
+      },
+      async loadCalendar(){ this.allRecords=await DB.getAllRecords(); this.renderCalendar(); },
+      renderCalendar() {
+        document.getElementById("cal-month-label").textContent=`${this.calYear}年${this.calMonth+1}月`;
+        const grid=document.getElementById("cal-grid"); grid.innerHTML="";
+        ["日","月","火","水","木","金","土"].forEach(d=>{ const el=document.createElement("div"); el.className="cal-dow"; el.textContent=d; grid.appendChild(el); });
+        const firstDay=new Date(this.calYear,this.calMonth,1).getDay(), daysInMonth=new Date(this.calYear,this.calMonth+1,0).getDate();
+        for(let i=0;i<firstDay;i++) grid.appendChild(document.createElement("div"));
+        const recordMap={};
+        this.allRecords.forEach(r=>{ const d=new Date(r.startedAt), k=`${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`; if(!recordMap[k]) recordMap[k]=[]; recordMap[k].push(r); });
+        for(let day=1;day<=daysInMonth;day++){
+          const cell=document.createElement("div"); cell.className="cal-day"; const k=`${this.calYear}-${this.calMonth}-${day}`, recs=recordMap[k]||[];
+          if(recs.length>0) cell.classList.add("has-record"); if(this.selectedDateStr===k) cell.classList.add("selected");
+          cell.textContent=day; if(recs.length>0){ const dot=document.createElement("span"); dot.className="cal-dot"; cell.appendChild(dot); }
+          cell.addEventListener("click",()=>{ this.selectedDateStr=k; this.renderCalendar(); this.renderDayList(day,recs); });
+          grid.appendChild(cell);
+        }
+      },
+      renderDayList(day,recs) {
+        document.getElementById("cal-day-title").textContent=`${this.calMonth+1}月${day}日の記録`;
+        const listEl=document.getElementById("cal-day-list"); if(recs.length===0){ listEl.textContent="この日の記録はありません。"; return; }
+        listEl.innerHTML="";
+        recs.sort((a,b)=>b.startedAt-a.startedAt).forEach(r=>{
+          const d=new Date(r.startedAt), ts=d.toLocaleTimeString("ja-JP",{hour:"2-digit",minute:"2-digit"}), dm=Math.round(((r.endedAt||r.startedAt)-r.startedAt)/60000);
+          const row=document.createElement("div"); row.className="status-row"; row.innerHTML=`<span>${ts} 開始 (${dm}分 / ${(r.events||[]).length}件)</span>`;
+          const btn=document.createElement("button"); btn.className="btn btn-sm"; btn.textContent="詳細"; btn.addEventListener("click",()=>this.openDetail(r));
+          row.appendChild(btn); listEl.appendChild(row);
+        });
+      },
+      openDetail(record) {
+        const normalized = Object.assign({}, record, { events: this.normalizeRecordEvents(record) });
+        this.currentRecord=normalized; this.externalData=null; document.getElementById("external-status").textContent="外部データ未読込";
+        document.getElementById("detail-date").textContent=new Date(normalized.startedAt).toLocaleString("ja-JP");
+        const durSec=Math.max(1,Math.round(((normalized.endedAt||normalized.startedAt)-normalized.startedAt)/1000));
+        document.getElementById("detail-duration").textContent=`${Math.floor(durSec/3600)}時間${Math.floor((durSec%3600)/60)}分${durSec%60}秒`;
+        const evs=normalized.events||[], snore=evs.filter(e=>e.category==="snore").length, voice=evs.filter(e=>e.category==="voice").length, unk=evs.filter(e=>!e.category||e.category==="unknown").length;
+        document.getElementById("detail-summary").textContent=`いびき:${snore} / 人声:${voice} / 不明:${unk}`;
+        this.renderEventList(normalized); App.navigate("page-detail"); setTimeout(()=>this.drawTimeline(),50);
+      },
+      renderEventList(record) {
+        const listEl=document.getElementById("detail-event-list"), evs=(record.events||[]).slice(0,100);
+        if(evs.length===0){ listEl.textContent="イベントはありません。"; return; }
+        listEl.innerHTML="";
+        evs.forEach(ev=>{
+          const row=document.createElement("div"); row.className="event-item";
+          const tc=ev.category==="voice"?"tag-voice":ev.category==="snore"?"tag-snore":"tag-unknown", lb=ev.category==="voice"?"人声(除外)":ev.category==="snore"?"いびき":"不明";
+          const st=ev.startSec!==undefined?`${Number(ev.startSec).toFixed(1)}秒〜`:"時刻記録", dr=ev.durationSec!==undefined?`${Number(ev.durationSec).toFixed(1)}s`:"-", db=ev.peakDb!==undefined?`${Number(ev.peakDb).toFixed(1)}dB`:"-";
+          const vp=ev.voiceProb!==null&&ev.voiceProb!==undefined?` 声:${Math.round(ev.voiceProb*100)}%`:"";
+          row.innerHTML=`<div><span class="tag ${tc}">${lb}</span><span> ${st} (${dr} / ${db}${vp})</span></div>`;
+          if(ev.category!=="voice"){
+            const btn=document.createElement("button"); btn.className="btn btn-secondary btn-sm"; btn.textContent="▶ 再生";
+            btn.addEventListener("click",()=>AudioUtil.playClipSafe(record.id,ev.id));
+            row.appendChild(btn);
+          }
+          listEl.appendChild(row);
+        });
+      },
+      drawTimeline() {
+        const canvas=document.getElementById("detail-canvas"), ctx=canvas.getContext("2d"), w=canvas.width, h=canvas.height;
+        ctx.clearRect(0,0,w,h); ctx.fillStyle="#f8fafc"; ctx.fillRect(0,0,w,h);
+        const rec=this.currentRecord; if(!rec) return;
+        const tl=rec.timeline||[], totalSec=Math.max(10,((rec.endedAt||rec.startedAt)-rec.startedAt)/1000);
+        ctx.strokeStyle="#e2e8f0"; ctx.lineWidth=1;
+        for(let i=1;i<4;i++){ const y=(h/4)*i; ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(w,y); ctx.stroke(); }
+        if(tl.length>0){
+          ctx.strokeStyle="#16a34a"; ctx.lineWidth=2; ctx.beginPath();
+          tl.forEach((pt,i)=>{ const x=(pt.t/totalSec)*w, y=h-Math.max(0,Math.min(1,(pt.db+80)/80))*(h-20)-10; if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y); });
+          ctx.stroke();
+          ctx.strokeStyle="#2563eb"; ctx.lineWidth=1.5; ctx.beginPath(); let st=false;
+          tl.forEach(pt=>{ if(pt.motion===null||pt.motion===undefined) return; const x=(pt.t/totalSec)*w, y=h-Math.max(0,Math.min(1,pt.motion/15))*(h-20)-10; if(!st){ctx.moveTo(x,y);st=true;}else ctx.lineTo(x,y); });
+          ctx.stroke();
+        }
+        if(this.externalData&&this.externalData.points){
+          this.externalData.points.forEach(pt=>{
+            const rel=(pt.at-rec.startedAt)/1000; if(rel<0||rel>totalSec) return; const x=(rel/totalSec)*w;
+            if(pt.hr!==null&&pt.hr!==undefined){ ctx.fillStyle="#dc2626"; ctx.fillRect(x-1.5,h-Math.min(1,pt.hr/140)*(h-20)-10-1.5,3,3); }
+            if(pt.spo2!==null&&pt.spo2!==undefined){ ctx.fillStyle="#9333ea"; ctx.fillRect(x-1.5,h-Math.max(0,Math.min(1,(pt.spo2-80)/20))*(h-20)-10-1.5,3,3); }
+            if(pt.emg){ ctx.fillStyle="#d97706"; ctx.fillRect(x-1,4,2,16); }
+          });
+        }
+      },
+      async handleExternalFile(file) {
+        try {
+          const buf=await file.arrayBuffer();
+          if(file.name.toLowerCase().endsWith(".json")){
+            const json=JSON.parse(new TextDecoder("utf-8").decode(buf));
+            if(json.schema!=="somnolog-external-v1"||!Array.isArray(json.points)) throw new Error("統一JSON形式ではありません");
+            this.externalData=json; document.getElementById("external-status").textContent=`読込完了：${json.source||"JSON"} (${json.points.length}点)`;
+          } else {
+            let text=new TextDecoder("shift_jis").decode(buf); if(!text.includes("Phasic")&&!text.includes("Tonic")) text=new TextDecoder("utf-8").decode(buf);
+            const points=[];
+            text.split(/\r?\n/).filter(l=>l.trim()).forEach(line=>{ const m=line.match(/(\d{4}[\/\-]\d{1,2}[\/\-]\d{1,2}\s+\d{1,2}:\d{2}:\d{2})/); if(m){ const ts=new Date(m[1].replace(/\//g,"-")).getTime(); if(!isNaN(ts)) points.push({at:ts,emg:1}); } });
+            this.externalData={schema:"somnolog-external-v1",source:"emg-csv",points}; document.getElementById("external-status").textContent=`CSV読込完了：${points.length}件`;
+          }
+          this.drawTimeline();
+        } catch(err){ alert("外部データの読み込みに失敗しました："+err.message); }
+      }
+    };
+    const Sharer = {
+      decisions:{}, targetEvents:[], page:0, pageSize:50,
+      openShare() {
+        const rec=Viewer.currentRecord; if(!rec) return;
+        this.decisions={}; this.page=0;
+        this.targetEvents=(rec.events||[]).filter(e=>e.category!=="snore"&&e.category!=="voice");
+        document.getElementById("share-target-count").textContent=`${this.targetEvents.length}件`;
+        document.getElementById("btn-open-mail").disabled=true;
+        this.renderReviewList(rec); App.navigate("page-share");
+      },
+      prevPage() { if(this.page>0){ this.page--; this.renderReviewList(Viewer.currentRecord); } },
+      nextPage() { this.page++; this.renderReviewList(Viewer.currentRecord); },
+      renderReviewList(rec) {
+        const listEl=document.getElementById("share-review-list");
+        const pagerEl=document.getElementById("share-pager");
+        const undCount = this.targetEvents.filter(ev=>this.decisions[ev.id]===undefined).length;
+        document.getElementById("share-progress-text").textContent = `未確認: ${undCount}件`;
+        if(this.targetEvents.length===0){ listEl.textContent="確認が必要な音声はありません。"; pagerEl.style.display="none"; return; }
+        const totalPages = Math.ceil(this.targetEvents.length / this.pageSize);
+        if(this.page >= totalPages) this.page = totalPages - 1;
+        pagerEl.style.display = totalPages > 1 ? "flex" : "none";
+        document.getElementById("share-page-info").textContent = `${this.page + 1} / ${totalPages}`;
+        const slice = this.targetEvents.slice(this.page * this.pageSize, (this.page + 1) * this.pageSize);
+        listEl.innerHTML="";
+        slice.forEach(ev=>{
+          const row=document.createElement("div"); row.className="event-item";
+          const st=this.decisions[ev.id], lbl=st===true?" [OK]":st===false?" [除外]":" [未確認]";
+          const info=document.createElement("div"); info.textContent=`${ev.startSec!==undefined?Number(ev.startSec).toFixed(1)+"秒〜":"時刻記録"}${lbl}`; row.appendChild(info);
+          const bg=document.createElement("div"); bg.style.display="flex"; bg.style.gap="4px";
+          const bp=document.createElement("button"); bp.className="btn btn-secondary btn-sm"; bp.textContent="▶";
+          bp.addEventListener("click",()=>AudioUtil.playClipSafe(rec.id,ev.id));
+          const bo=document.createElement("button"); bo.className="btn btn-success btn-sm"; bo.textContent="OK"; bo.addEventListener("click",()=>{ this.decisions[ev.id]=true; this.renderReviewList(rec); });
+          const bn=document.createElement("button"); bn.className="btn btn-danger btn-sm"; bn.textContent="ダメ"; bn.addEventListener("click",()=>{ this.decisions[ev.id]=false; this.renderReviewList(rec); });
+          bg.appendChild(bp); bg.appendChild(bo); bg.appendChild(bn); row.appendChild(bg); listEl.appendChild(row);
+        });
+      },
+      setAll(allow){
+        this.targetEvents.forEach(ev=>{ this.decisions[ev.id]=allow; });
+        this.renderReviewList(Viewer.currentRecord);
+      },
+      async saveLearningFromDecisions() {
+        let snoreProbs = (App.state.learning && App.state.learning.snoreProbs) ? [...App.state.learning.snoreProbs] : [];
+        let voiceProbs = (App.state.learning && App.state.learning.voiceProbs) ? [...App.state.learning.voiceProbs] : [];
+        this.targetEvents.forEach(ev => {
+          if (ev.voiceProb !== null && ev.voiceProb !== undefined) {
+            if (this.decisions[ev.id] === true) snoreProbs.push(ev.voiceProb);
+            else if (this.decisions[ev.id] === false) voiceProbs.push(ev.voiceProb);
+          }
+        });
+        snoreProbs = snoreProbs.slice(-200); voiceProbs = voiceProbs.slice(-200);
+        let learnedThreshold = null;
+        if (snoreProbs.length > 0 && voiceProbs.length > 0) {
+          const avgSnore = snoreProbs.reduce((a,b)=>a+b,0)/snoreProbs.length;
+          const avgVoice = voiceProbs.reduce((a,b)=>a+b,0)/voiceProbs.length;
+          learnedThreshold = Math.max(0.35, Math.min(0.95, (avgSnore + avgVoice) / 2));
+        }
+        App.state.learning = { snoreProbs, voiceProbs, learnedThreshold };
+        await DB.setSetting("voiceLearning", App.state.learning);
+        App.refreshUI();
+      },
+      async createZip() {
+        const rec=Viewer.currentRecord; if(!rec) return;
+        const und=this.targetEvents.filter(ev=>this.decisions[ev.id]===undefined);
+        if(und.length>0){ alert(`未確認の音声が ${und.length} 件あります。`); return; }
+        const btn = document.getElementById("btn-create-zip");
+        btn.disabled = true;
+        try {
+          await this.saveLearningFromDecisions();
+          const allEvs = rec.events || [];
+          const expEvs = allEvs.filter(ev => ev.category==="snore" || this.decisions[ev.id]===true);
           const sortedForAudio = [...expEvs].sort((a,b)=>(b.peakDb||-120)-(a.peakDb||-120));
           const files=[];
           let totalBytes = 0;
